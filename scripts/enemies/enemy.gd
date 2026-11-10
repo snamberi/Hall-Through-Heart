@@ -8,6 +8,23 @@ extends CharacterBody2D
 signal died(enemy: Enemy)
 
 enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
+enum Rank { NORMAL, ELITE }
+
+## How each rank changes an enemy. "xp" 3.75 makes an Elite Husk worth 30.
+const RANK_DATA := {
+	Rank.NORMAL: {"id": "normal", "title": "", "health": 1.0, "damage": 1.0, "xp": 1.0, "size": 1.0, "tint": Color.WHITE},
+	Rank.ELITE: {"id": "elite", "title": "Elite ", "health": 3.0, "damage": 1.4, "xp": 3.75, "size": 1.3, "tint": Color(1.0, 0.8, 0.55)},
+}
+## Extra health and damage per level above 1, as a share of the base value.
+const HEALTH_PER_LEVEL := 0.25
+const DAMAGE_PER_LEVEL := 0.12
+## Experience grows with level to this power.
+const XP_LEVEL_EXPONENT := 1.25
+
+@export_group("Identity")
+## Stable id used by saves, quests, and loot tables. Never rename it.
+@export var enemy_id := "husk"
+@export var display_name := "Husk"
 
 @export_group("Movement")
 @export var move_speed := 105.0
@@ -15,8 +32,8 @@ enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
 @export var body_radius := 13.0
 
 @export_group("Rewards")
-## Experience given to the player when this enemy dies.
-@export var xp_reward := 8
+## Experience a level 1 normal enemy of this type gives.
+@export var base_xp := 8
 
 @export_group("Senses")
 ## The enemy notices the player inside this distance, in pixels.
@@ -35,20 +52,45 @@ enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
 
 var target: Player
 var state := State.WANDER
+var level := 1
+var rank := Rank.NORMAL
 
 var _state_time_left := 0.0
 var _direction := Vector2.ZERO
 var _has_hit := false
 var _flash_tween: Tween
+var _damage := 0.0
+var _tint := Color.WHITE
+var _last_weapon_type := ""
 
 @onready var health: Health = $Health
 @onready var _visual: Node2D = $Visual
 
 
+## Sets level and rank. Call before adding the enemy to the scene.
+func configure(p_level: int, p_rank: Rank = Rank.NORMAL) -> void:
+	level = maxi(p_level, 1)
+	rank = p_rank
+
+
 func _ready() -> void:
 	add_to_group("enemies")
+	var data: Dictionary = RANK_DATA[rank]
+	health.max_health *= data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1))
+	health.current = health.max_health
+	_damage = contact_damage * data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1))
+	_tint = data["tint"]
+	_visual.scale *= data["size"]
+	_visual.modulate = _tint
+	body_radius *= data["size"]
+	_add_nameplate(data)
 	health.died.connect(_on_died)
 	_pick_wander()
+
+
+## Experience this enemy is worth at its level and rank.
+func xp_value() -> int:
+	return roundi(base_xp * RANK_DATA[rank]["xp"] * pow(level, XP_LEVEL_EXPONENT))
 
 
 func _physics_process(delta: float) -> void:
@@ -71,7 +113,7 @@ func _physics_process(delta: float) -> void:
 			elif to_target.length() < attack_range:
 				_enter(State.WINDUP, windup_time)
 				velocity = Vector2.ZERO
-				_visual.modulate = Color(1.6, 0.6, 0.6)
+				_visual.modulate = Color(1.8, 0.5, 0.5)
 			else:
 				velocity = to_target.normalized() * move_speed + _separation()
 		State.WINDUP:
@@ -81,12 +123,12 @@ func _physics_process(delta: float) -> void:
 			if _state_time_left == 0.0:
 				_enter(State.LUNGE, lunge_time)
 				_has_hit = false
-				_visual.modulate = Color.WHITE
+				_visual.modulate = _tint
 		State.LUNGE:
 			velocity = _direction * lunge_speed
 			if has_target and not _has_hit and to_target.length() < body_radius + 13.0:
 				_has_hit = true
-				target.take_damage(contact_damage, global_position)
+				target.take_damage(_damage, global_position)
 			if _state_time_left == 0.0:
 				_enter(State.RECOVER, recover_time)
 		State.RECOVER:
@@ -99,21 +141,26 @@ func _physics_process(delta: float) -> void:
 				state = State.CHASE
 
 	if absf(velocity.x) > 1.0:
-		_visual.scale.x = signf(velocity.x)
+		_visual.scale.x = absf(_visual.scale.x) * signf(velocity.x)
 	move_and_slide()
 
 
-func take_damage(amount: float, knockback: Vector2, critical: bool = false) -> void:
+## Returns the health actually removed, so callers can reward real damage only.
+func take_damage(
+	amount: float, knockback: Vector2, critical: bool = false, weapon_type: String = ""
+) -> float:
 	if state == State.DEAD:
-		return
+		return 0.0
 	var color := Color(1.0, 0.8, 0.25) if critical else Color(0.95, 0.9, 0.75)
 	DamageNumber.spawn(get_parent(), global_position, amount, color, critical)
-	health.take_damage(amount)
+	_last_weapon_type = weapon_type
+	var dealt := health.take_damage(amount)
 	if health.is_dead():
-		return
+		return dealt
 	_enter(State.STAGGER, 0.22)
 	velocity = knockback
 	_flash()
+	return dealt
 
 
 func _enter(new_state: State, duration: float) -> void:
@@ -146,7 +193,7 @@ func _flash() -> void:
 		_flash_tween.kill()
 	_visual.modulate = Color(4.0, 4.0, 4.0)
 	_flash_tween = create_tween()
-	_flash_tween.tween_property(_visual, "modulate", Color.WHITE, 0.15)
+	_flash_tween.tween_property(_visual, "modulate", _tint, 0.15)
 
 
 func _on_died() -> void:
@@ -154,10 +201,39 @@ func _on_died() -> void:
 	remove_from_group("enemies")
 	velocity = Vector2.ZERO
 	$Collision.set_deferred("disabled", true)
+	var xp := xp_value()
+	DamageNumber.spawn_text(
+		get_parent(), global_position + Vector2(0, -24), "+%d XP" % xp, Color(0.45, 0.7, 1.0), 12
+	)
 	died.emit(self)
+	Events.enemy_killed.emit({
+		"id": enemy_id,
+		"name": display_name,
+		"level": level,
+		"rank": RANK_DATA[rank]["id"],
+		"xp": xp,
+		"xp_multiplier": RANK_DATA[rank]["xp"],
+		"position": global_position,
+		"weapon_type": _last_weapon_type,
+	})
 	if _flash_tween:
 		_flash_tween.kill()
 	_visual.modulate = Color(4.0, 4.0, 4.0)
 	var tween := create_tween()
 	tween.tween_property(self, "modulate:a", 0.0, 0.35)
 	tween.tween_callback(queue_free)
+
+
+func _add_nameplate(data: Dictionary) -> void:
+	var label := Label.new()
+	label.text = "Lv %d %s%s" % [level, data["title"], display_name]
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.4) if rank != Rank.NORMAL else Color(0.82, 0.8, 0.74))
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 4)
+	# The camera zooms in 2x; shrink so the text stays small and sharp.
+	label.scale = Vector2.ONE / 2.0
+	label.position = Vector2(-label.get_minimum_size().x / 4.0, -50.0 * data["size"] - 14.0)
+	label.z_index = 10
+	add_child(label)
+	$HealthBar.position.y = -50.0 * data["size"]
