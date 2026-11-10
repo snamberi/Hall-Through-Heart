@@ -14,3 +14,5 @@ signal level_up(level: int)
 signal milestone_reached(level: int)
 signal mastery_level_up(weapon_type: String, level: int)
 signal player_died(xp_lost: int)
+## The player picked something up. `item` is the saved form (Item.to_dict()).
+signal item_acquired(item: Dictionary)

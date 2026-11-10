@@ -27,7 +27,8 @@ const DISPLAY: Array[Dictionary] = [
 	{"id": "mining_efficiency", "name": "Mining efficiency", "format": "percent"},
 ]
 
-const BASE_PHYSICAL_DAMAGE := 12.0
+## Bare-handed damage; weapons add their own on top.
+const BASE_PHYSICAL_DAMAGE := 6.0
 const BASE_MAX_HEALTH := 100.0
 const BASE_MAX_STAMINA := 100.0
 const BASE_MAX_MANA := 50.0
@@ -110,8 +111,19 @@ static func format_value(format: String, value: float) -> String:
 	return str(roundi(value))
 
 
+## Attribute points including bonuses from equipment and other modifiers.
 func _points(id: String) -> int:
-	return _attributes.points[id] + int(_preview.get(id, 0))
+	var bonus := 0.0
+	for source: Dictionary in _modifiers.values():
+		if source.has(id):
+			bonus += source[id].get("flat", 0.0)
+	return _attributes.points[id] + int(_preview.get(id, 0)) + roundi(bonus)
+
+
+## Share of a hit that armor removes. Higher-level attackers cut through more.
+func damage_reduction(attacker_level: int) -> float:
+	var armor := get_stat("armor")
+	return armor / (armor + 40.0 + 10.0 * attacker_level)
 
 
 ## A bonus that approaches `limit` as points grow, reaching half at `half_at`.

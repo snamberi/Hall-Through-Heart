@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
@@ -9,6 +9,8 @@
 [ext_resource type="Script" path="res://scripts/progression/attributes.gd" id="7_attributes"]
 [ext_resource type="Script" path="res://scripts/progression/weapon_mastery.gd" id="8_mastery"]
 [ext_resource type="Script" path="res://scripts/progression/character_stats.gd" id="9_stats"]
+[ext_resource type="Script" path="res://scripts/items/inventory.gd" id="10_inventory"]
+[ext_resource type="Script" path="res://scripts/items/equipment.gd" id="11_equipment"]
 
 [sub_resource type="CircleShape2D" id="shape_feet"]
 radius = 10.0
@@ -43,6 +45,12 @@ script = ExtResource("8_mastery")
 
 [node name="Stats" type="Node" parent="."]
 script = ExtResource("9_stats")
+
+[node name="Inventory" type="Node" parent="."]
+script = ExtResource("10_inventory")
+
+[node name="Equipment" type="Node" parent="."]
+script = ExtResource("11_equipment")
 
 [node name="Collision" type="CollisionShape2D" parent="."]
 shape = SubResource("shape_feet")
