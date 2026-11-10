@@ -2,8 +2,8 @@ class_name CharacterMenu
 extends GameMenu
 ## Character sheet: level, attributes to spend points on, and derived stats.
 
-const CLASS_NAMES := {"adventurer": "Adventurer"}
 const SPEND_AMOUNTS: Array[int] = [1, 5, 10]
+const ATTRIBUTE_ICONS := {"strength": 38, "vitality": 35, "agility": 39, "luck": 40, "intelligence": 41, "endurance": 5}
 
 var _title: Label
 var _xp: Label
@@ -15,7 +15,7 @@ var _stat_values: Dictionary[String, Label] = {}
 
 
 func _build() -> void:
-	_title = make_label("", 28)
+	_title = UITheme.heading("", 28)
 	content.add_child(_title)
 	_xp = make_label("", 16, Color(0.55, 0.72, 1.0))
 	content.add_child(_xp)
@@ -28,7 +28,7 @@ func _build() -> void:
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 10)
 	columns.add_child(left)
-	left.add_child(make_label("Attributes", 20, MenuColors.HEADING))
+	left.add_child(UITheme.heading("Attributes"))
 	_unspent = make_label("", 16, MenuColors.GOLD)
 	left.add_child(_unspent)
 	var grid := GridContainer.new()
@@ -37,7 +37,11 @@ func _build() -> void:
 	grid.add_theme_constant_override("v_separation", 8)
 	left.add_child(grid)
 	for id in Attributes.IDS:
-		grid.add_child(make_label(Attributes.NAMES[id], 18))
+		var name_row := HBoxContainer.new()
+		name_row.add_theme_constant_override("separation", 8)
+		name_row.add_child(UITheme.icon(ATTRIBUTE_ICONS[id]))
+		name_row.add_child(make_label(Attributes.NAMES[id], 18))
+		grid.add_child(name_row)
 		_attribute_values[id] = make_label("0", 18)
 		_attribute_values[id].custom_minimum_size.x = 36.0
 		grid.add_child(_attribute_values[id])
@@ -54,7 +58,7 @@ func _build() -> void:
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 10)
 	columns.add_child(right)
-	right.add_child(make_label("Statistics", 20, MenuColors.HEADING))
+	right.add_child(UITheme.heading("Statistics"))
 	var stat_grid := GridContainer.new()
 	stat_grid.columns = 2
 	stat_grid.add_theme_constant_override("h_separation", 28)
@@ -73,7 +77,7 @@ func _build() -> void:
 
 func refresh() -> void:
 	var leveling := player.leveling
-	_title.text = "%s  -  Level %d" % [CLASS_NAMES.get(player.class_id, player.class_id), leveling.level]
+	_title.text = "%s  -  Level %d" % [HeroClasses.CLASSES[player.class_id]["name"], leveling.level]
 	if leveling.is_max_level():
 		_xp.text = "Maximum level"
 	else:

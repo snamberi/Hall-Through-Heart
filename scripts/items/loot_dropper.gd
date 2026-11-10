@@ -20,7 +20,7 @@ func drop_gold(amount: int, at: Vector2) -> void:
 func _on_enemy_killed(info: Dictionary) -> void:
 	var drops := LootGenerator.roll_enemy_drops(info, _player.stats.get_stat("magic_find"))
 	if drops["gold"] > 0:
-		drop_gold(drops["gold"], info["position"])
+		drop_gold(roundi(drops["gold"] * _player.stats.get_stat("gold_find")), info["position"])
 	for item: Item in drops["items"]:
 		drop_item(item, info["position"])
 

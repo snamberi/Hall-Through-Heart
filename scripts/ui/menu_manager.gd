@@ -1,16 +1,31 @@
 extends CanvasLayer
-## Owns the pause menus and makes sure only one is open at a time.
+## The main menu: a row of tabs across the top, one screen per tab.
 ##
-## The game is paused while any menu is open. Switching from one menu to
-## another keeps it paused.
+## M (or Tab) opens it on the last tab used. E, C, and K jump straight to
+## Inventory, Attributes, and Talents. The game is paused while it is open,
+## and switching tabs keeps it paused.
+##
+## To add a screen: write a GameMenu subclass and add a line to TABS.
 
+## "action" is an optional input action that opens the tab directly.
+## "icon" is an index into the item icon atlas.
+const TABS: Array[Dictionary] = [
+	{"id": "inventory", "title": "Inventory", "icon": 17, "action": "toggle_inventory"},
+	{"id": "attributes", "title": "Attributes", "icon": 38, "action": "toggle_character"},
+	{"id": "mastery", "title": "Mastery", "icon": 0, "action": ""},
+	{"id": "talents", "title": "Talents", "icon": 28, "action": "toggle_talents"},
+	{"id": "class", "title": "Class", "icon": 6, "action": ""},
+	{"id": "map", "title": "Map", "icon": 12, "action": ""},
+	{"id": "system", "title": "System", "icon": 5, "action": ""},
+]
 
-## input action -> menu
 var _menus: Dictionary[String, GameMenu] = {}
-var _open: GameMenu
+var _buttons: Dictionary[String, Button] = {}
+var _open_id := ""
+var _last_id := "inventory"
 var _player: Player
-var _dim: ColorRect
-var _center: CenterContainer
+var _root: Control
+var _holder: CenterContainer
 
 
 func _ready() -> void:
@@ -21,46 +36,84 @@ func _ready() -> void:
 
 func setup(player: Player) -> void:
 	_player = player
-	_dim = ColorRect.new()
-	_dim.color = Color(0.0, 0.0, 0.0, 0.6)
-	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(_dim)
-	_center = CenterContainer.new()
-	_center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(_center)
+	_root = Control.new()
+	_root.theme = UITheme.get_theme()
+	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_root)
 
-	var hint := GameMenu.make_label("C Character     I Inventory     M Mastery     Esc Close", 14, Color(0.6, 0.58, 0.54))
-	hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	hint.position.y -= 24.0
-	hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	add_child(hint)
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.03, 0.05, 0.78)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.add_child(dim)
 
-	_add("toggle_character", CharacterMenu.new())
-	_add("toggle_inventory", InventoryMenu.new())
-	_add("toggle_mastery", MasteryMenu.new())
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side: String in ["left", "top", "right", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 18)
+	_root.add_child(margin)
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 10)
+	margin.add_child(rows)
+
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 8)
+	rows.add_child(bar)
+	var title := UITheme.heading("Hall Through Heart", 26)
+	title.custom_minimum_size.x = 250.0
+	bar.add_child(title)
+	for tab in TABS:
+		var button := Button.new()
+		button.text = " " + tab["title"]
+		button.icon = ItemDB.icon(tab["icon"])
+		button.toggle_mode = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = Vector2(118.0, 40.0)
+		button.add_theme_constant_override("icon_max_width", 22)
+		button.pressed.connect(open.bind(tab["id"]))
+		bar.add_child(button)
+		_buttons[tab["id"]] = button
+
+	_holder = CenterContainer.new()
+	_holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rows.add_child(_holder)
+
+	var hint := UITheme.label("E Inventory     C Attributes     K Talents     M Menu     Esc Close", 14, UITheme.DIM)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rows.add_child(hint)
+
+	_add("inventory", InventoryMenu.new())
+	_add("attributes", CharacterMenu.new())
+	_add("mastery", MasteryMenu.new())
+	_add("talents", TalentMenu.new())
+	_add("class", ClassMenu.new())
+	_add("map", MapMenu.new())
+	_add("system", SystemMenu.new())
 
 
 func is_open() -> bool:
-	return _open != null
+	return _open_id != ""
 
 
-## Opens the menu bound to an input action, closing any other.
-func open(action: String) -> void:
-	if _player.is_dead() or not _menus.has(action):
+func get_menu(id: String) -> GameMenu:
+	return _menus[id]
+
+
+## Opens a tab by id, closing whichever was showing.
+func open(id: String) -> void:
+	if _player.is_dead() or not _menus.has(id):
 		return
-	if _open:
-		_open.visible = false
-	_open = _menus[action]
-	_open.visible = true
-	_open.refresh()
+	for other in _menus:
+		_menus[other].visible = other == id
+		_buttons[other].set_pressed_no_signal(other == id)
+	_open_id = id
+	_last_id = id
+	_menus[id].refresh()
 	visible = true
 	get_tree().paused = true
 
 
 func close() -> void:
-	if _open:
-		_open.visible = false
-	_open = null
+	_open_id = ""
 	visible = false
 	get_tree().paused = false
 
@@ -68,22 +121,29 @@ func close() -> void:
 func _input(event: InputEvent) -> void:
 	if _player == null:
 		return
-	if _open and event.is_action_pressed("ui_cancel"):
+	if is_open() and event.is_action_pressed("ui_cancel"):
 		close()
 		get_viewport().set_input_as_handled()
 		return
-	for action in _menus:
-		if event.is_action_pressed(action):
-			if _open == _menus[action]:
+	if event.is_action_pressed("toggle_menu"):
+		if is_open():
+			close()
+		else:
+			open(_last_id)
+		get_viewport().set_input_as_handled()
+		return
+	for tab in TABS:
+		if tab["action"] != "" and event.is_action_pressed(tab["action"]):
+			if _open_id == tab["id"]:
 				close()
 			else:
-				open(action)
+				open(tab["id"])
 			get_viewport().set_input_as_handled()
 			return
 
 
-func _add(action: String, menu: GameMenu) -> void:
+func _add(id: String, menu: GameMenu) -> void:
 	menu.visible = false
-	_center.add_child(menu)
+	_holder.add_child(menu)
 	menu.setup(_player)
-	_menus[action] = menu
+	_menus[id] = menu

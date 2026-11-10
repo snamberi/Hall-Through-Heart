@@ -8,7 +8,7 @@ var _milestone_labels: Array[Label] = []
 
 
 func _build() -> void:
-	content.add_child(make_label("Weapon Mastery", 28))
+	content.add_child(UITheme.heading("Weapon Mastery", 28))
 
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 48)
@@ -43,7 +43,7 @@ func _build() -> void:
 		var label := make_label("", 14)
 		_milestone_labels.append(label)
 		right.add_child(label)
-	right.add_child(make_label("Abilities gain a rank every %d mastery levels. Use them with keys 1-4." % AbilityDB.RANK_EVERY, 13, MenuColors.DIM))
+	right.add_child(make_label("Abilities gain a rank every %d mastery levels. Use them with keys 1 and 2." % AbilityDB.RANK_EVERY, 13, MenuColors.DIM))
 
 	player.mastery.changed.connect(refresh_if_open)
 

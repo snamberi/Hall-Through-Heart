@@ -23,7 +23,10 @@ const DISPLAY: Array[Dictionary] = [
 	{"id": "armor", "name": "Armor", "format": "number"},
 	{"id": "elemental_resistance", "name": "Elemental resistance", "format": "percent"},
 	{"id": "dodge_efficiency", "name": "Dodge efficiency", "format": "percent_fine"},
+	{"id": "life_steal", "name": "Life steal", "format": "percent_fine"},
+	{"id": "damage_taken", "name": "Damage taken", "format": "percent"},
 	{"id": "magic_find", "name": "Magic find", "format": "bonus_percent"},
+	{"id": "gold_find", "name": "Gold found", "format": "percent"},
 	{"id": "mining_efficiency", "name": "Mining efficiency", "format": "percent"},
 ]
 
@@ -159,6 +162,12 @@ func _base(id: String) -> float:
 			return 0.005 * _points("luck")
 		"mining_efficiency":
 			return 1.0
+		"damage_taken", "gold_find", "dodge_distance":
+			return 1.0
+		"stamina_regen":
+			return 22.0
+		"mana_regen":
+			return 2.0 + 0.05 * _points("intelligence")
 		# Not shown on the character screen:
 		"stamina_cost_multiplier":
 			return 1.0 - _diminishing(_points("endurance"), 0.35, 100.0)

@@ -13,7 +13,7 @@ var _font: Font
 
 func setup(player: Player) -> void:
 	_player = player
-	_font = ThemeDB.fallback_font
+	_font = UITheme.get_theme().default_font
 	custom_minimum_size = Vector2(AbilityDB.SLOTS * SLOT + (AbilityDB.SLOTS - 1) * GAP, SLOT + 18.0)
 
 
@@ -40,12 +40,13 @@ func _draw_ability(id: String, rect: Rect2) -> Color:
 	var reason := _player.abilities.blocked_reason(id)
 	var tint := Color.WHITE if reason == "" else Color(0.4, 0.4, 0.45)
 	draw_texture_rect(ItemDB.icon(ability["icon"]), rect.grow(-8.0), false, tint)
-	draw_string(_font, Vector2(rect.position.x, SLOT + 14.0), ability["name"], HORIZONTAL_ALIGNMENT_CENTER, SLOT, 10, Color(0.75, 0.72, 0.66))
+	draw_string(_font, Vector2(rect.position.x - 8.0, SLOT + 14.0), ability["name"], HORIZONTAL_ALIGNMENT_CENTER, SLOT + 16.0, 11, Color(0.75, 0.72, 0.66))
 
 	match reason:
 		"locked":
 			draw_rect(rect, Color(0.0, 0.0, 0.0, 0.55))
-			draw_string(_font, rect.position + Vector2(0, 36), "Mastery %d" % ability["mastery"], HORIZONTAL_ALIGNMENT_CENTER, SLOT, 10, Color(0.8, 0.75, 0.6))
+			var needs := "Mastery %d" % ability["mastery"] if ability.has("mastery") else "Level %d" % ability["level"]
+			draw_string(_font, rect.position + Vector2(0, 36), needs, HORIZONTAL_ALIGNMENT_CENTER, SLOT, 11, Color(0.8, 0.75, 0.6))
 			return Color(0.3, 0.28, 0.26)
 		"cooldown":
 			var left: float = _player.abilities.cooldowns[id]
@@ -55,4 +56,6 @@ func _draw_ability(id: String, rect: Rect2) -> Color:
 			return Color(0.4, 0.37, 0.32)
 		"stamina":
 			return Color(0.75, 0.62, 0.22, 0.6)
+		"mana":
+			return Color(0.45, 0.6, 0.95, 0.6)
 	return Color(0.95, 0.85, 0.55)

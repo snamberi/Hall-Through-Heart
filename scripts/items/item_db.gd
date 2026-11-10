@@ -149,6 +149,31 @@ const ITEMS := {
 		"damage": 9.0, "two_handed": true, "requires": {"strength": [3.0, 0.7]},
 		"weapon": {"type": "spears", "range": 100.0, "arc": 110.0, "cooldown": 0.55, "knockback": 480.0},
 	},
+	# Ranged weapons fire a projectile (see Projectile for the keys) instead
+	# of swinging. "magic" weapons scale with magic damage.
+	"bow": {
+		"name": "Bow", "icon": 32, "visual": "bow", "slot": "main_hand", "tiered": true, "drop_weight": 5.0,
+		"damage": 5.5, "two_handed": true, "requires": {"agility": [3.0, 0.7]},
+		"weapon": {"type": "bows", "range": 560.0, "arc": 0.0, "cooldown": 0.5, "knockback": 200.0,
+			"projectile": {"sprite": 0, "speed": 780.0, "radius": 10.0, "range": 560.0}},
+	},
+	"staff": {
+		"name": "Staff", "icon": 33, "visual": "staff", "slot": "main_hand", "tiered": true, "drop_weight": 4.0,
+		"damage": 5.0, "two_handed": true, "magic": true, "slash": Color(0.75, 0.55, 1.0),
+		"requires": {"intelligence": [3.0, 0.7]},
+		"implicit": [{"stat": "max_mana", "kind": "flat", "base": 10.0, "per_level": 0.5}],
+		"weapon": {"type": "staves", "range": 480.0, "arc": 0.0, "cooldown": 0.55, "knockback": 160.0,
+			"projectile": {"sprite": 1, "speed": 560.0, "radius": 12.0, "range": 480.0, "color": Color(0.75, 0.55, 1.0)}},
+	},
+	"ember_staff": {
+		"name": "Emberstaff", "icon": 34, "visual": "ember_staff", "slot": "main_hand", "tiered": true,
+		"drop_weight": 1.5, "min_rarity": 1, "damage": 4.5, "two_handed": true, "magic": true,
+		"slash": Color(1.0, 0.6, 0.2), "requires": {"intelligence": [3.0, 0.7]},
+		"on_hit": {"status": "burn", "duration": 3.0, "power": 0.3},
+		"implicit": [{"stat": "max_mana", "kind": "flat", "base": 10.0, "per_level": 0.5}],
+		"weapon": {"type": "staves", "range": 480.0, "arc": 0.0, "cooldown": 0.55, "knockback": 160.0,
+			"projectile": {"sprite": 2, "speed": 560.0, "radius": 12.0, "range": 480.0, "color": Color(1.0, 0.6, 0.2)}},
+	},
 	# --- armor
 	"shield": {"name": "Shield", "icon": 5, "slot": "off_hand", "tiered": true, "drop_weight": 6.0, "armor": 8.0},
 	"helmet": {"name": "Helm", "icon": 6, "slot": "helmet", "tiered": true, "drop_weight": 8.0, "armor": 4.0},

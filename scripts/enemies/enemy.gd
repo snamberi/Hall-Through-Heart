@@ -162,6 +162,7 @@ func take_damage(
 	var color := Color(1.0, 0.8, 0.25) if critical else Color(0.95, 0.9, 0.75)
 	DamageNumber.spawn(get_parent(), global_position, amount, color, critical)
 	_last_weapon_type = weapon_type
+	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(1.0, 0.85, 0.4) if critical else Color(1.0, 0.95, 0.85), critical)
 	var dealt := health.take_damage(amount)
 	if health.is_dead():
 		return dealt
@@ -289,7 +290,8 @@ func _on_died() -> void:
 func _add_nameplate(data: Dictionary) -> void:
 	var label := Label.new()
 	label.text = "Lv %d %s%s" % [level, data["title"], display_name]
-	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_font_override("font", UITheme.get_theme().default_font)
+	label.add_theme_font_size_override("font_size", 13)
 	label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.4) if rank != Rank.NORMAL else Color(0.82, 0.8, 0.74))
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
