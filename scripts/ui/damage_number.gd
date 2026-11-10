@@ -6,10 +6,18 @@ const RISE := 14.0
 const LIFETIME := 0.6
 
 
-static func spawn(parent: Node, world_position: Vector2, amount: float, color: Color) -> void:
+static func spawn(
+	parent: Node, world_position: Vector2, amount: float, color: Color, big: bool = false
+) -> void:
+	spawn_text(parent, world_position, str(roundi(amount)), color, 20 if big else 14)
+
+
+static func spawn_text(
+	parent: Node, world_position: Vector2, text: String, color: Color, font_size: int = 14
+) -> void:
 	var label := DamageNumber.new()
-	label.text = str(roundi(amount))
-	label.add_theme_font_size_override("font_size", 14)
+	label.text = text
+	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)

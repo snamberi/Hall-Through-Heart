@@ -1,8 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
 [ext_resource type="Script" path="res://scripts/combat/slash_effect.gd" id="3_slash"]
+
+[ext_resource type="Script" path="res://scripts/player/player_stats.gd" id="4_stats"]
 
 [sub_resource type="CircleShape2D" id="shape_feet"]
 radius = 4.5
@@ -15,6 +17,9 @@ script = ExtResource("1_player")
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("2_health")
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("4_stats")
 
 [node name="Collision" type="CollisionShape2D" parent="."]
 shape = SubResource("shape_feet")
