@@ -62,6 +62,8 @@ var _flash_tween: Tween
 var _damage := 0.0
 var _tint := Color.WHITE
 var _last_weapon_type := ""
+## status id -> {"time": seconds left, "power": float, "tick": seconds to next tick}
+var _statuses: Dictionary = {}
 
 @onready var health: Health = $Health
 @onready var _visual: Node2D = $Visual
@@ -98,6 +100,9 @@ func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
+	_update_statuses(delta)
+	if state == State.DEAD:
+		return
 	var has_target := target != null and not target.is_dead()
 	var to_target := target.global_position - global_position if has_target else Vector2.ZERO
 
@@ -143,6 +148,8 @@ func _physics_process(delta: float) -> void:
 
 	if absf(velocity.x) > 1.0:
 		_visual.scale.x = absf(_visual.scale.x) * signf(velocity.x)
+	if _statuses.has("chill"):
+		velocity *= 1.0 - _statuses["chill"]["power"]
 	move_and_slide()
 
 
@@ -155,6 +162,7 @@ func take_damage(
 	var color := Color(1.0, 0.8, 0.25) if critical else Color(0.95, 0.9, 0.75)
 	DamageNumber.spawn(get_parent(), global_position, amount, color, critical)
 	_last_weapon_type = weapon_type
+	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(1.0, 0.85, 0.4) if critical else Color(1.0, 0.95, 0.85), critical)
 	var dealt := health.take_damage(amount)
 	if health.is_dead():
 		return dealt
@@ -162,6 +170,54 @@ func take_damage(
 	velocity = knockback
 	_flash()
 	return dealt
+
+
+## Inflicts a status (see ItemDB.STATUSES), or refreshes it if stronger.
+## For burn, poison, and bleed, `power` is damage per second.
+func apply_status(id: String, duration: float, power: float, weapon_type: String = "") -> void:
+	if state == State.DEAD:
+		return
+	var current: Dictionary = _statuses.get(id, {})
+	_statuses[id] = {
+		"time": maxf(duration, current.get("time", 0.0)),
+		"power": maxf(power, current.get("power", 0.0)),
+		"tick": current.get("tick", 0.5),
+	}
+	if weapon_type != "":
+		_last_weapon_type = weapon_type
+	_refresh_status_tint()
+
+
+func has_status(id: String) -> bool:
+	return _statuses.has(id)
+
+
+func _update_statuses(delta: float) -> void:
+	if _statuses.is_empty():
+		return
+	for id: String in _statuses.keys():
+		var status: Dictionary = _statuses[id]
+		status["time"] -= delta
+		if id != "chill":
+			status["tick"] -= delta
+			if status["tick"] <= 0.0:
+				status["tick"] += 0.5
+				var amount: float = maxf(status["power"] * 0.5, 1.0)
+				DamageNumber.spawn(get_parent(), global_position, amount, ItemDB.STATUSES[id]["color"])
+				health.take_damage(amount)
+				if health.is_dead():
+					return
+		if status["time"] <= 0.0:
+			_statuses.erase(id)
+	_refresh_status_tint()
+
+
+## Tints the whole enemy toward the colour of the status it suffers.
+func _refresh_status_tint() -> void:
+	var tint := Color.WHITE
+	for id: String in _statuses:
+		tint = tint.lerp(ItemDB.STATUSES[id]["color"], 0.45)
+	modulate = Color(tint, modulate.a)
 
 
 func _enter(new_state: State, duration: float) -> void:
@@ -199,6 +255,8 @@ func _flash() -> void:
 
 func _on_died() -> void:
 	state = State.DEAD
+	_statuses.clear()
+	_refresh_status_tint()
 	remove_from_group("enemies")
 	velocity = Vector2.ZERO
 	$Collision.set_deferred("disabled", true)
@@ -232,7 +290,8 @@ func _on_died() -> void:
 func _add_nameplate(data: Dictionary) -> void:
 	var label := Label.new()
 	label.text = "Lv %d %s%s" % [level, data["title"], display_name]
-	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_font_override("font", UITheme.get_theme().default_font)
+	label.add_theme_font_size_override("font_size", 13)
 	label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.4) if rank != Rank.NORMAL else Color(0.82, 0.8, 0.74))
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)

@@ -2,20 +2,18 @@ class_name SheetAnimations
 extends RefCounted
 ## Builds SpriteFrames from a sprite sheet with one animation per row.
 
-const FRAMES_PER_ANIMATION := 12
 
-
-## `rows` lists the animations top to bottom: [{"name", "seconds", "loop"}].
-## "seconds" is how long the 12 frames take at normal speed.
+## `rows` lists the animations top to bottom:
+## [{"name", "frames", "fps", "loop"}]. Frames run left to right.
 static func build(sheet: Texture2D, frame_size: int, rows: Array[Dictionary]) -> SpriteFrames:
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
 	for row in rows.size():
 		var animation: String = rows[row]["name"]
 		frames.add_animation(animation)
-		frames.set_animation_speed(animation, FRAMES_PER_ANIMATION / float(rows[row]["seconds"]))
+		frames.set_animation_speed(animation, rows[row]["fps"])
 		frames.set_animation_loop(animation, rows[row]["loop"])
-		for column in FRAMES_PER_ANIMATION:
+		for column: int in rows[row]["frames"]:
 			var frame := AtlasTexture.new()
 			frame.atlas = sheet
 			frame.region = Rect2(column * frame_size, row * frame_size, frame_size, frame_size)
@@ -23,6 +21,6 @@ static func build(sheet: Texture2D, frame_size: int, rows: Array[Dictionary]) ->
 	return frames
 
 
-## Default length of an animation in seconds.
+## Length of an animation in seconds at normal speed.
 static func seconds(frames: SpriteFrames, animation: String) -> float:
-	return FRAMES_PER_ANIMATION / frames.get_animation_speed(animation)
+	return frames.get_frame_count(animation) / frames.get_animation_speed(animation)

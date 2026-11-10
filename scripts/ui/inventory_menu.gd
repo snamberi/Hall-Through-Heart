@@ -30,7 +30,7 @@ func _build() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 32)
 	content.add_child(top)
-	_header = make_label("", 28)
+	_header = UITheme.heading("", 28)
 	top.add_child(_header)
 	_gold = make_label("", 20, MenuColors.GOLD)
 	_gold.size_flags_vertical = Control.SIZE_SHRINK_END
@@ -75,11 +75,11 @@ func _build() -> void:
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 10)
 	left.add_child(actions)
-	_action_button = _text_button("Equip", _use_selected)
+	_action_button = UITheme.button("Equip", _use_selected)
 	actions.add_child(_action_button)
-	_discard_button = _text_button("Discard", _discard_selected)
+	_discard_button = UITheme.button("Discard", _discard_selected)
 	actions.add_child(_discard_button)
-	actions.add_child(_text_button("Sort", func() -> void: player.inventory.sort()))
+	actions.add_child(UITheme.button("Sort", func() -> void: player.inventory.sort()))
 	_message = make_label("", 14, Color("e0555a"))
 	actions.add_child(_message)
 
@@ -87,7 +87,7 @@ func _build() -> void:
 	var middle := VBoxContainer.new()
 	middle.add_theme_constant_override("separation", 4)
 	columns.add_child(middle)
-	middle.add_child(make_label("Equipment", 20, MenuColors.HEADING))
+	middle.add_child(UITheme.heading("Equipment"))
 	for slot in ItemDB.SLOTS:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
@@ -109,10 +109,19 @@ func _build() -> void:
 		middle.add_child(row)
 		_slot_buttons[slot] = button
 
+	var helmet_toggle := CheckBox.new()
+	helmet_toggle.text = "Show helmet"
+	helmet_toggle.focus_mode = Control.FOCUS_NONE
+	helmet_toggle.button_pressed = player.show_helmet
+	helmet_toggle.toggled.connect(func(shown: bool) -> void: player.show_helmet = shown)
+	middle.add_child(helmet_toggle)
+
 	# Right: details
+	var details_frame := UITheme.inset_panel()
+	columns.add_child(details_frame)
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 12)
-	columns.add_child(right)
+	details_frame.add_child(right)
 	_details = _rich_text()
 	right.add_child(_details)
 	_compare = _rich_text()
@@ -179,8 +188,16 @@ func _describe(item: Item) -> String:
 	lines.append("[color=#%s]%s  -  %s  -  item level %d[/color]" % [DIM, ItemDB.RARITIES[item.rarity]["name"], kind, item.level])
 	if def.has("damage"):
 		var weapon: Dictionary = def["weapon"]
-		lines.append("[color=#%s]%d damage[/color]" % [TEXT, roundi(item.base_power("damage"))])
-		lines.append("[color=#%s]%.2fs between swings, reach %d[/color]" % [DIM, weapon["cooldown"], roundi(weapon["range"])])
+		lines.append("[color=#%s]%d damage%s[/color]" % [TEXT, roundi(item.base_power("damage")), "  (scales with magic damage)" if def.get("magic", false) else ""])
+		var action := "shots, range" if weapon.has("projectile") else "swings, reach"
+		lines.append("[color=#%s]%.2fs between %s %d[/color]" % [DIM, weapon["cooldown"], action, roundi(weapon["range"])])
+	if def.has("on_hit"):
+		var effect: Dictionary = def["on_hit"]
+		var status: Dictionary = ItemDB.STATUSES[effect["status"]]
+		var detail := "slows by %d%%" % roundi(effect["power"] * 100.0) if effect["status"] == "chill" else "%d%% of the hit per second" % roundi(effect["power"] * 100.0)
+		lines.append("[color=#%s]Hits inflict %s: %s for %.1fs[/color]" % [status["color"].to_html(false), status["name"], detail, effect["duration"]])
+	if def.has("life_steal"):
+		lines.append("[color=#%s]Heals you for %d%% of damage dealt[/color]" % [GOOD, roundi(def["life_steal"] * 100.0)])
 	if def.has("armor"):
 		lines.append("[color=#%s]%d armor[/color]" % [TEXT, roundi(item.base_power("armor"))])
 	for modifier in item.implicit_modifiers():
