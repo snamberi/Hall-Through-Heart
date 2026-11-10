@@ -109,6 +109,13 @@ func _build() -> void:
 		middle.add_child(row)
 		_slot_buttons[slot] = button
 
+	var helmet_toggle := CheckBox.new()
+	helmet_toggle.text = "Show helmet"
+	helmet_toggle.focus_mode = Control.FOCUS_NONE
+	helmet_toggle.button_pressed = player.show_helmet
+	helmet_toggle.toggled.connect(func(shown: bool) -> void: player.show_helmet = shown)
+	middle.add_child(helmet_toggle)
+
 	# Right: details
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 12)
@@ -181,6 +188,13 @@ func _describe(item: Item) -> String:
 		var weapon: Dictionary = def["weapon"]
 		lines.append("[color=#%s]%d damage[/color]" % [TEXT, roundi(item.base_power("damage"))])
 		lines.append("[color=#%s]%.2fs between swings, reach %d[/color]" % [DIM, weapon["cooldown"], roundi(weapon["range"])])
+	if def.has("on_hit"):
+		var effect: Dictionary = def["on_hit"]
+		var status: Dictionary = ItemDB.STATUSES[effect["status"]]
+		var detail := "slows by %d%%" % roundi(effect["power"] * 100.0) if effect["status"] == "chill" else "%d%% of the hit per second" % roundi(effect["power"] * 100.0)
+		lines.append("[color=#%s]Hits inflict %s: %s for %.1fs[/color]" % [status["color"].to_html(false), status["name"], detail, effect["duration"]])
+	if def.has("life_steal"):
+		lines.append("[color=#%s]Heals you for %d%% of damage dealt[/color]" % [GOOD, roundi(def["life_steal"] * 100.0)])
 	if def.has("armor"):
 		lines.append("[color=#%s]%d armor[/color]" % [TEXT, roundi(item.base_power("armor"))])
 	for modifier in item.implicit_modifiers():

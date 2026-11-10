@@ -9,7 +9,7 @@ signal died(xp_lost: int)
 ## The rebirth animation has ended and the player can move again.
 signal rebirth_finished
 
-enum State { MOVE, ATTACK, DODGE, DEAD, REVIVING }
+enum State { MOVE, ATTACK, DODGE, DEAD, REVIVING, ABILITY }
 
 @export_group("Movement")
 ## How quickly the player reaches full speed and stops, in pixels/second².
@@ -37,6 +37,13 @@ var class_id := "adventurer"
 var weapon_type: String:
 	get:
 		return equipment.weapon_profile()["type"]
+## Whether a worn helmet is drawn on the character.
+var show_helmet := true:
+	set(value):
+		show_helmet = value
+		if is_node_ready():
+			_on_equipment_changed()
+			SaveGame.request_save()
 ## Last direction the player moved or attacked in.
 var facing := Vector2.DOWN
 var state := State.MOVE
@@ -56,6 +63,7 @@ var _dodge_direction := Vector2.ZERO
 @onready var stats: CharacterStats = $Stats
 @onready var inventory: Inventory = $Inventory
 @onready var equipment: Equipment = $Equipment
+@onready var abilities: AbilityUser = $Abilities
 @onready var camera: Camera2D = $Camera
 @onready var _visual: Node2D = $Visual
 @onready var _animator: PlayerAnimator = $Visual/Sprite
@@ -67,8 +75,9 @@ func _ready() -> void:
 	stats.setup(attributes, mastery)
 	equipment.setup(inventory, leveling, attributes)
 	if not inventory.starter_given:
+		# A new character starts empty-handed with a sword in the bag.
 		inventory.starter_given = true
-		equipment.equip_directly(LootGenerator.make_equipment(1, 0, "sword"))
+		inventory.add(LootGenerator.make_equipment(1, 0, "sword"))
 	equipment.changed.connect(_on_equipment_changed)
 	stats.changed.connect(_apply_stats)
 	leveling.leveled_up.connect(_on_leveled_up)
@@ -97,6 +106,9 @@ func _physics_process(delta: float) -> void:
 			velocity = _dodge_direction * dodge_speed
 			if _state_time_left == 0.0:
 				state = State.MOVE
+		State.ABILITY:
+			# AbilityUser steers the player and ends this state.
+			pass
 
 	_visual.modulate.a = 0.45 if _invulnerable_left > 0.0 else 1.0
 	move_and_slide()
@@ -114,32 +126,129 @@ func attack(direction: Vector2) -> void:
 	state = State.ATTACK
 	_state_time_left = attack_duration
 	var weapon := equipment.weapon_profile()
-	var attack_range: float = weapon["range"]
-	var attack_arc: float = weapon["arc"]
 	_attack_cooldown_left = weapon["cooldown"] / stats.get_stat("attack_speed")
 	velocity = direction * 130.0
 	# The swing animation fills the gap until the next swing is ready.
 	_animator.play_attack(clampf(_attack_cooldown_left, attack_duration, 0.4))
-	_slash.play(direction, attack_range, deg_to_rad(attack_arc), attack_duration + 0.08)
+	show_slash(direction, weapon["range"], weapon["arc"])
+	strike_arc(direction, weapon["range"], weapon["arc"], 1.0, weapon["knockback"])
 
-	var half_arc := deg_to_rad(attack_arc) / 2.0
+
+## Damages every enemy in a cone in front of the player. `multiplier` scales
+## the player's physical damage. Returns how many enemies were hit.
+func strike_arc(
+	direction: Vector2, reach: float, arc_degrees: float, multiplier: float, knockback: float,
+	already_hit: Variant = null
+) -> int:
+	# Pass an array to collect who was hit and to skip anyone already in it.
+	if already_hit == null:
+		already_hit = []
+	var half_arc := deg_to_rad(arc_degrees) / 2.0
+	var hits := 0
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
-		if enemy == null:
+		if enemy == null or enemy in already_hit:
 			continue
 		var offset := enemy.global_position - global_position
-		if offset.length() > attack_range + enemy.body_radius:
+		if offset.length() > reach + enemy.body_radius:
 			continue
 		# Enemies standing right on top of the player are hit from any side.
 		if offset.length() > enemy.body_radius and absf(direction.angle_to(offset)) > half_arc:
 			continue
-		var critical := randf() < stats.get_stat("critical_chance")
-		var damage := stats.get_stat("physical_damage")
-		if critical:
-			damage *= stats.get_stat("critical_damage")
-		var dealt := enemy.take_damage(damage, direction * weapon["knockback"], critical, weapon_type)
-		if dealt > 0.0:
-			Events.damage_dealt.emit(weapon_type, dealt)
+		_hit(enemy, multiplier, direction * knockback)
+		already_hit.append(enemy)
+		hits += 1
+	return hits
+
+
+## Damages every enemy within `radius` of a point, pushing them away from it.
+func strike_circle(
+	center: Vector2, radius: float, multiplier: float, knockback: float, already_hit: Variant = null
+) -> int:
+	if already_hit == null:
+		already_hit = []
+	var hits := 0
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy == null or enemy in already_hit:
+			continue
+		var offset := enemy.global_position - center
+		if offset.length() > radius + enemy.body_radius:
+			continue
+		var push := offset.normalized() if offset.length() > 1.0 else facing
+		_hit(enemy, multiplier, push * knockback)
+		already_hit.append(enemy)
+		hits += 1
+	return hits
+
+
+func show_slash(direction: Vector2, reach: float, arc_degrees: float, duration: float = 0.24) -> void:
+	_slash.play(direction, reach, deg_to_rad(arc_degrees), duration, weapon_color())
+
+
+## Tint of the weapon in hand, for swings and ability effects.
+func weapon_color() -> Color:
+	var weapon := equipment.get_item("main_hand")
+	return weapon.definition().get("slash", Color(0.95, 0.9, 0.8)) if weapon else Color(0.95, 0.9, 0.8)
+
+
+## Short camera jolt for heavy impacts.
+func shake_camera(strength: float = 6.0) -> void:
+	var tween := create_tween()
+	for i in 5:
+		var offset := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * strength * (1.0 - i / 5.0)
+		tween.tween_property(camera, "offset", offset, 0.035)
+	tween.tween_property(camera, "offset", Vector2.ZERO, 0.035)
+
+
+## Hands control to an ability: the player ignores input until end_ability().
+func begin_ability(invulnerable_for: float = 0.0) -> void:
+	state = State.ABILITY
+	velocity = Vector2.ZERO
+	_invulnerable_left = maxf(_invulnerable_left, invulnerable_for)
+
+
+func end_ability() -> void:
+	if state == State.ABILITY:
+		state = State.MOVE
+		velocity = Vector2.ZERO
+
+
+## Direction from the player to the mouse, or the facing if the mouse is on them.
+func aim_direction() -> Vector2:
+	var aim := get_global_mouse_position() - global_position
+	return aim.normalized() if aim.length() > 1.0 else facing
+
+
+func face(direction: Vector2) -> void:
+	facing = direction
+	_face_visual(direction.x)
+
+
+func play_attack_animation(duration: float, heavy: bool = false) -> void:
+	_animator.play_attack(duration, heavy)
+
+
+func _hit(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
+	var critical := randf() < stats.get_stat("critical_chance")
+	var damage := stats.get_stat("physical_damage") * multiplier
+	if critical:
+		damage *= stats.get_stat("critical_damage")
+	var type := weapon_type
+	var dealt := enemy.take_damage(damage, knockback, critical, type)
+	if dealt <= 0.0:
+		return
+	Events.damage_dealt.emit(type, dealt)
+	var weapon := equipment.get_item("main_hand")
+	if weapon == null:
+		return
+	var def := weapon.definition()
+	if def.has("on_hit"):
+		var effect: Dictionary = def["on_hit"]
+		var power: float = effect["power"] if effect["status"] == "chill" else effect["power"] * damage
+		enemy.apply_status(effect["status"], effect["duration"], power, type)
+	if def.has("life_steal"):
+		health.heal(dealt * def["life_steal"])
 
 
 func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1) -> void:
@@ -151,6 +260,7 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 	if health.is_dead():
 		state = State.DEAD
 		velocity = Vector2.ZERO
+		camera.offset = Vector2.ZERO
 		_visual.modulate.a = 1.0
 		_animator.play_death()
 		var xp_lost := leveling.apply_death_penalty()
@@ -158,6 +268,8 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		Events.player_died.emit(xp_lost)
 		return
 	_invulnerable_left = hurt_invulnerability
+	if state == State.MOVE:
+		_animator.play_hurt()
 	var resistance := stats.get_stat("knockback_resistance")
 	velocity = source_position.direction_to(global_position) * 300.0 * (1.0 - resistance)
 
@@ -177,11 +289,12 @@ func begin_rebirth() -> void:
 
 
 func save_data() -> Dictionary:
-	return {"class_id": class_id}
+	return {"class_id": class_id, "show_helmet": show_helmet}
 
 
 func load_data(data: Dictionary) -> void:
 	class_id = str(data.get("class_id", class_id))
+	show_helmet = bool(data.get("show_helmet", true))
 
 
 func _process_move(delta: float) -> void:
@@ -193,9 +306,10 @@ func _process_move(delta: float) -> void:
 
 	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0:
 		_try_dodge()
+	elif abilities.try_use_pressed():
+		pass
 	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0:
-		var aim := get_global_mouse_position() - global_position
-		attack(aim.normalized() if aim.length() > 1.0 else facing)
+		attack(aim_direction())
 
 
 func _try_dodge() -> void:
@@ -216,6 +330,7 @@ func _apply_stats() -> void:
 
 
 func _on_equipment_changed() -> void:
+	_animator.update_equipment(equipment, show_helmet)
 	stats.weapon_type = weapon_type
 	stats.set_modifiers("equipment", equipment.modifiers())
 

@@ -30,7 +30,7 @@ PALETTE = {
     "belt": ["5a4032", "46312a", "32231f"],
     "trousers": ["4c4a5e", "383648", "272633"],
     "boot": ["4a3b33", "382b26", "261c1a"],
-    "blade": ["eef0f0", "b4bcc2", "7d8890"],
+    "blade": ["ffffff", "c4ced6", "7f8c98"],
     "guard": ["b89a52", "8e7338", "634f26"],
     "void": ["0b0a12"] * 3,
     "mouth": ["9c6a5a"] * 3,
@@ -38,17 +38,38 @@ PALETTE = {
     "rib": ["2c3440", "252c37", "1e242e"],
     "bone": ["f2efe2", "cfcbb8", "9b9889"],
     "eye": ["7dff9a"] * 3,
+    "wood": ["8a6a48", "6b4f36", "4a3626"],
+    "fire": ["ffd86b", "f08a2e", "b8401e"],
+    "fire_core": ["fff3c4"] * 3,
+    "frost": ["e6fbff", "8fd6ee", "4a93bf"],
+    "dark": ["5a4a82", "3b2f5c", "2a2142"],
+    "dark_edge": ["c08cff", "9a5cf0", "6a38b8"],
+    "obsidian": ["5a5668", "3a3748", "2a2836"],
+    "blood": ["e0555a", "b3242e", "7a1620"],
+    "poison": ["c8f08a", "7cc84a", "4a8a2c"],
+    "wrap": ["8a2c37", "5c1c28", "3d1220"],
+    # Single-tone details.
+    "tunic_fold": ["7d7260"] * 3,
+    "skin_shade": ["b98a6c"] * 3,
+    "boot_cuff": ["6a554a"] * 3,
+    # Armour layers are drawn in neutral steel and tinted by tier in game.
+    "plate": ["f4f6f8", "c2c9d0", "8c96a0"],
+    "plate_dark": ["8c96a0", "6c7682", "4e5762"],
+    "cape": ["f2f2f2", "c8c8c8", "9a9a9a"],
 }
 
 
 # Animated characters are rigs: named groups of parts, each rotating about a
 # pivot and following its parent group. A pose gives each group
-# (dx, dy, degrees); every animation is 12 poses. Coordinates are in a 44px
-# box; frames are FRAME px so swings and falls have room around the body.
+# (dx, dy, degrees); an animation is a list of poses. Coordinates are in a
+# 44px box; frames are FRAME px so swings and falls have room around the body.
+#
+# Equipment is never baked into the body. The body sheet is the bare
+# character, and each weapon, shield, helmet, and so on is drawn into its own
+# sheet using the same poses, then layered over the body in game.
 
-FRAMES = 12
-FRAME = 64
-FRAME_OFFSET = (10, 14)  # where the 44px box sits inside a frame
+FRAME = 96
+FRAME_OFFSET = (26, 30)  # where the 44px box sits inside a frame
 GROUND_Y = 41 + FRAME_OFFSET[1]
 
 
@@ -63,18 +84,27 @@ def E(x0, y0, x1, y1, n=28):
 
 HUMAN = {
     "root": dict(parent=None, pivot=(22, 41), parts=[]),
-    "leg_l": dict(parent="root", pivot=(18.5, 34), parts=[("trousers", R(17, 34, 20, 39)), ("boot", R(16, 39, 20, 41))]),
-    "leg_r": dict(parent="root", pivot=(25.5, 34), parts=[("trousers", R(24, 34, 27, 39)), ("boot", R(24, 39, 28, 41))]),
-    "torso": dict(parent="root", pivot=(22, 35), parts=[("tunic", [(15, 25), (29, 25), (30, 35), (14, 35)]), ("belt", R(14, 31, 30, 32))]),
+    "leg_l": dict(parent="root", pivot=(18.5, 34), parts=[
+        ("trousers", R(17, 34, 20, 39)), ("boot", R(16, 39, 20, 41)), ("boot_cuff", R(16, 38.6, 20, 39.2))]),
+    "leg_r": dict(parent="root", pivot=(25.5, 34), parts=[
+        ("trousers", R(24, 34, 27, 39)), ("boot", R(24, 39, 28, 41)), ("boot_cuff", R(24, 38.6, 28, 39.2))]),
+    "torso": dict(parent="root", pivot=(22, 35), parts=[
+        ("tunic", [(15, 25), (29, 25), (30, 35), (14, 35)]),
+        ("tunic_fold", R(21.6, 25, 22.4, 28)),                      # collar slit
+        ("tunic_fold", R(17.8, 27, 18.3, 30)), ("tunic_fold", R(26, 28, 26.5, 30.5)),  # folds
+        ("tunic_fold", R(14.2, 34.3, 29.8, 35)),                    # hem
+        ("belt", R(14, 31, 30, 32)), ("guard", R(21, 30.8, 23, 32.2))]),
     "arm_l": dict(parent="torso", pivot=(12.5, 26), parts=[("tunic", R(11, 26, 14, 32)), ("skin", R(11, 33, 14, 34))]),
-    "sword": dict(parent="arm_r", pivot=(35.5, 32), parts=[
-        ("blade", R(34.5, 13.5, 36.5, 29.5)), ("blade", [(34.5, 14), (36.5, 14), (36.5, 10.5)]),
-        ("guard", R(33, 30, 38, 31)), ("belt", R(35, 32, 36, 34))]),
+    # The hands are empty here; held items are separate layers that follow
+    # these groups (see WEAPONS and LAYERS).
+    "sword": dict(parent="arm_r", pivot=(35.5, 32), parts=[]),
     "arm_r": dict(parent="torso", pivot=(31.5, 26), parts=[("tunic", R(30, 26, 33, 30)), ("skin", R(32, 31, 36, 33))]),
     "head": dict(parent="torso", pivot=(22, 25), parts=[
         ("hair", E(10, 3, 34, 23)), ("skin", E(13, 10, 31, 26)),
-        ("hair", [(13, 12), (18, 9), (24, 12), (28, 9), (31, 13), (30, 8), (14, 8)]),
-        ("void", R(17, 17, 18, 19)), ("void", R(25, 17, 26, 19)), ("mouth", R(21, 23, 23, 23))]),
+        ("hair", [(13, 13), (17, 9), (21, 12.5), (25, 9), (29, 12), (31, 14), (31, 8), (13, 8)]),  # fringe
+        ("hair", [(10, 12), (13.5, 12), (13, 19), (11, 21)]),       # side lock
+        ("void", R(17, 17, 18, 19)), ("void", R(25, 17, 26, 19)),
+        ("skin_shade", R(21.6, 20.6, 22.4, 21.4))]),               # hint of a nose
 }
 HUMAN_ORDER = ["leg_l", "leg_r", "torso", "arm_l", "sword", "arm_r", "head"]
 
@@ -96,6 +126,67 @@ HUSK = {
 HUSK_ORDER = ["back_arm", "leg_l", "leg_r", "torso", "head", "front_arm"]
 
 
+# Weapon art, drawn as held upright in the right hand (grip at 35.5, 32).
+# Keys are the "visual" names used in scripts/items/item_db.py; the order is
+# also the order of the generated weapon icons, so only ever append.
+WEAPONS = {
+    "sword": [("blade", R(34, 12, 37, 29.5)), ("blade", [(34, 12), (37, 12), (35.5, 8)]),
+              ("guard", R(32, 30, 39, 31.5)), ("belt", R(35, 32, 36, 34)), ("guard", R(34.8, 34.5, 36.2, 35.5))],
+    "greatsword": [("blade", R(33, 5, 38, 29.5)), ("blade", [(33, 5), (38, 5), (35.5, 0)]),
+                   ("obsidian", R(35.2, 7, 35.8, 28)),
+                   ("guard", R(30, 30, 41, 31.8)), ("belt", R(35, 32, 36, 37)), ("guard", R(34.5, 37, 36.5, 38.5))],
+    "axe": [("wood", R(35, 12, 36, 36)), ("blade", [(36, 12), (43, 9), (45.5, 17), (43, 25), (36, 22)]),
+            ("blade", [(35, 14), (32, 16), (35, 18)])],
+    "dagger": [("blade", [(34.2, 29.5), (36.8, 29.5), (36.6, 23), (35.5, 19)]),
+               ("guard", R(33, 30, 38, 31)), ("belt", R(35, 31.5, 36, 33.5))],
+    "spear": [("wood", R(35, 3, 36, 41)), ("blade", [(33, 6), (38, 6), (35.5, -4)]), ("wrap", R(34.6, 6, 36.4, 8))],
+    "flame_sword": [("fire", [(34, 29.5), (33, 25), (34.6, 21), (33, 16), (35.5, 7), (38, 16), (36.4, 21), (38, 25), (37, 29.5)]),
+                    ("fire_core", R(35, 14, 36, 29)), ("guard", R(32, 30, 39, 31.5)), ("belt", R(35, 32, 36, 34))],
+    "frost_sword": [("frost", R(34, 12, 37, 29.5)), ("frost", [(34, 12), (37, 12), (35.5, 6)]),
+                    ("frost", [(34, 19), (31, 16.5), (34, 23)]), ("frost", [(37, 23), (40, 20.5), (37, 27)]),
+                    ("frost", [(31.5, 30), (39.5, 30), (37.5, 32), (33.5, 32)]), ("belt", R(35, 32, 36, 34))],
+    "dark_sword": [("dark", R(33.5, 12, 37.5, 29.5)), ("dark", [(33.5, 12), (37.5, 12), (37.5, 7), (35.5, 10)]),
+                   ("dark_edge", R(35, 11, 36, 29)), ("dark", [(30.5, 28.5), (40.5, 28.5), (38.5, 32), (32.5, 32)]),
+                   ("dark_edge", R(34.8, 29.5, 36.2, 30.9)), ("belt", R(35, 32, 36, 34))],
+    "katana": [("blade", [(34.6, 30), (37, 30), (37.6, 22), (38.8, 13), (40.6, 5), (38.4, 8), (36.8, 15), (35.4, 22)]),
+               ("obsidian", R(33.5, 30, 38.5, 31)), ("wrap", R(35, 31, 36.5, 37))],
+    "executioner": [("obsidian", R(32.5, 6, 38.5, 29.5)), ("obsidian", [(32.5, 6), (38.5, 6), (38.5, 1)]),
+                    ("blood", R(37.4, 3, 38.6, 29)), ("guard", R(30.5, 30, 40.5, 31.8)), ("wrap", R(35, 32, 36, 37))],
+    "reaver": [("wood", R(35, 11, 36, 36)), ("blade", [(36, 12), (43, 9), (45.5, 17), (43, 25), (36, 22)]),
+               ("bone", [(35, 12), (28, 9), (25.5, 17), (28, 25), (35, 22)]), ("blood", R(44.2, 13, 45.2, 21)),
+               ("blood", R(25.8, 13, 26.8, 21))],
+    "fang": [("poison", [(34.2, 29.5), (36.8, 29.5), (38.6, 24), (38, 17), (36.2, 21), (35, 25.5)]),
+             ("bone", R(33, 30, 38, 31)), ("belt", R(35, 31.5, 36, 33.5))],
+    "halberd": [("wood", R(35, 4, 36, 41)), ("blade", [(34, 5), (37, 5), (35.5, -4)]),
+                ("blade", [(36, 6), (42, 4), (44, 11), (42, 18), (36, 15)]), ("blade", [(35, 8), (31, 9.5), (35, 12)])],
+}
+
+
+def _half_ellipse(cx, cy, rx, ry, n=16):
+    """Upper half of an ellipse, as a polygon."""
+    return [(cx + rx * math.cos(math.pi + math.pi * k / n), cy + ry * math.sin(math.pi + math.pi * k / n)) for k in range(n + 1)]
+
+
+# Wearable layers: name -> parts per rig group. Each becomes its own sheet.
+LAYERS = {
+    "shield": {"arm_l": [
+        ("plate", [(4, 23), (16, 23), (17, 31), (10.5, 39), (3, 31)]),
+        ("plate_dark", [(6, 25), (14, 25), (14.8, 30.5), (10.5, 36), (5.2, 30.5)]),
+        ("plate", E(8.5, 27, 12.5, 31))]},
+    "helmet": {"head": [
+        ("plate", _half_ellipse(22, 13.5, 12.6, 11.5)),
+        ("plate_dark", R(9.5, 12.5, 34.5, 14.5)),
+        ("plate", R(21, 14, 23, 20)),
+        ("plate", R(9.5, 14, 12.5, 21)), ("plate", R(31.5, 14, 34.5, 21))]},
+    "chest": {"torso": [
+        ("plate", [(15, 25), (29, 25), (29.6, 30.6), (14.4, 30.6)]),
+        ("plate_dark", R(21.6, 25.5, 22.4, 30)),
+        ("plate_dark", [(14.2, 32.6), (29.8, 32.6), (30, 35), (14, 35)])]},
+    "shoulders": {"torso": [("plate", E(10.5, 23.5, 16.5, 28)), ("plate", E(27.5, 23.5, 33.5, 28))]},
+    "cape": {"torso": [("cape", [(14.5, 25), (29.5, 25), (34, 40), (10, 40)])]},
+}
+
+
 def _transform(rig, name, point, pose):
     while name is not None:
         group = rig[name]
@@ -108,7 +199,7 @@ def _transform(rig, name, point, pose):
     return point
 
 
-def draw_frame(rig, order, pose):
+def draw_frame(rig, order, pose, shadow=True):
     ox, oy = FRAME_OFFSET
     pixels = {}
     for name in order:
@@ -126,8 +217,9 @@ def draw_frame(rig, order, pose):
                 pixels[(x, y)] = PALETTE[material][0 if t < 0.3 else 1 if t < 0.68 else 2]
 
     img = Image.new("RGBA", (FRAME, FRAME), (0, 0, 0, 0))
-    shadow_x, shadow_w = pose.get("shadow", (22, 9))
-    ImageDraw.Draw(img).ellipse((shadow_x + ox - shadow_w, GROUND_Y - 2, shadow_x + ox + shadow_w, GROUND_Y + 2), fill=(0, 0, 0, 90))
+    shadow_x, shadow_w = pose.get("shadow", (22, 9))[:2]
+    if shadow:
+        ImageDraw.Draw(img).ellipse((shadow_x + ox - shadow_w, GROUND_Y - 2, shadow_x + ox + shadow_w, GROUND_Y + 2), fill=(0, 0, 0, 90))
     for (x, y), colour in pixels.items():
         img.putpixel((x, y), rgba(colour))
     for y in range(FRAME):
@@ -150,9 +242,9 @@ def blend(a, b, t):
 
 
 def keyframes(keys):
-    """12 poses from [(frame, pose), ...], blending between neighbours."""
+    """Poses from [(frame, pose), ...], blending between neighbours."""
     poses = []
-    for i in range(FRAMES):
+    for i in range(keys[-1][0] + 1):
         for (f0, p0), (f1, p1) in zip(keys, keys[1:]):
             if f0 <= i <= f1:
                 poses.append(blend(p0, p1, (i - f0) / max(f1 - f0, 1)))
@@ -160,44 +252,37 @@ def keyframes(keys):
     return poses
 
 
-def wave(i):
-    return math.sin(2 * math.pi * i / FRAMES)
+def cycle(n, pose_at):
+    """A looping animation: pose_at(sine of the phase) for each of n frames."""
+    return [pose_at(math.sin(2 * math.pi * i / n)) for i in range(n)]
 
 
-# --- human animations
-def human_idle(i):
-    return {"torso": (0, 1 if 3 <= i <= 8 else 0, 0), "sword": (0, 0, 3 * wave(i))}
+# --- human animations (frame counts follow the animation spec in the game)
+HUMAN_IDLE = [{"torso": (0, bob, 0)} for bob in (0, 1, 1, 0)]
+HUMAN_WALK = cycle(8, lambda s: {
+    "root": (0, -round(abs(s)), 0),
+    "leg_l": (0, 0, 22 * s), "leg_r": (0, 0, -22 * s), "arm_l": (0, 0, -18 * s), "arm_r": (0, 0, 10 * s)})
+HUMAN_RUN = cycle(8, lambda s: {
+    "root": (0, -round(abs(s) * 2), 0), "torso": (1, 0, 7), "head": (0, 0, -4),
+    "leg_l": (0, 0, 38 * s), "leg_r": (0, 0, -38 * s), "arm_l": (0, 0, -35 * s), "arm_r": (0, 0, 18 * s)})
 
 
-def human_run(i):
-    s = wave(i)
-    return {
-        "root": (0, -round(abs(s) * 2), 0), "torso": (1, 0, 7), "head": (0, 0, -4),
-        "leg_l": (0, 0, 38 * s), "leg_r": (0, 0, -38 * s),
-        "arm_l": (0, 0, -35 * s), "arm_r": (0, 0, 18 * s),
-    }
+def _swing(arm, weapon, lean, step):
+    return {"root": (step, 0, 0), "torso": (0, 0, lean), "arm_r": (0, 0, arm), "sword": (0, 0, weapon), "arm_l": (0, 0, -lean * 2)}
 
 
-def human_attack(i):
-    # (sword arm, sword, torso lean, step forward): wind back, slash, recover.
-    arm, sword, lean, step = [
-        (-20, -10, -3, 0), (-60, -25, -6, -1), (-95, -35, -8, -1), (-60, 0, 0, 1),
-        (10, 40, 8, 3), (55, 70, 12, 4), (75, 85, 12, 4), (70, 80, 10, 3),
-        (50, 60, 7, 2), (30, 35, 4, 1), (12, 15, 2, 0), (0, 0, 0, 0),
-    ][i]
-    return {"root": (step, 0, 0), "torso": (0, 0, lean), "arm_r": (0, 0, arm), "sword": (0, 0, sword), "arm_l": (0, 0, -lean * 2)}
-
-
-def human_dodge(i):
-    spin = [0, 20, 60, 110, 160, 200, 240, 280, 320, 345, 355, 0][i]
-    drop = [0, 2, 4, 5, 5, 5, 5, 5, 4, 2, 1, 0][i]
-    tuck = min(i, 11 - i, 2) / 2
-    return {
-        "root": (0, drop, spin), "root_pivot": (22, 27),
-        "leg_l": (0, 0, 45 * tuck), "leg_r": (0, 0, -40 * tuck),
-        "arm_l": (0, 0, -50 * tuck), "arm_r": (0, 0, 40 * tuck), "head": (0, 2 * tuck, 0),
-    }
-
+# Wind back, slash, recover.
+HUMAN_ATTACK = [_swing(*k) for k in [
+    (-60, -25, -6, -1), (-95, -35, -8, -1), (10, 40, 8, 3), (70, 85, 12, 4), (40, 50, 6, 2), (0, 0, 0, 0)]]
+# A bigger wind-up and follow-through, for abilities.
+HUMAN_HEAVY = [_swing(*k) for k in [
+    (-40, -20, -6, -1), (-90, -40, -12, -2), (-125, -50, -15, -3), (-30, 20, 0, 2),
+    (60, 80, 16, 6), (90, 100, 18, 6), (50, 60, 8, 3), (0, 0, 0, 0)]]
+HUMAN_DODGE = [{
+    "root": (0, drop, spin), "root_pivot": (22, 27),
+    "leg_l": (0, 0, 45 * tuck), "leg_r": (0, 0, -40 * tuck),
+    "arm_l": (0, 0, -50 * tuck), "arm_r": (0, 0, 40 * tuck), "head": (0, 2 * tuck, 0),
+} for spin, drop, tuck in [(0, 0, 0), (45, 3, 1), (110, 5, 1), (180, 5, 1), (250, 5, 1), (320, 3, 1), (0, 0, 0)]]
 
 HUMAN_STAND = {"root_pivot": (16, 41), "shadow": (22, 9, 0)}
 HUMAN_RECOIL = {"root_pivot": (16, 41), "shadow": (22, 9, 0), "root": (-1, 0, -6), "torso": (0, 0, -12), "head": (0, 0, -14),
@@ -209,77 +294,76 @@ HUMAN_LYING = {"root_pivot": (16, 41), "shadow": (34, 18, 0), "root": (0, -20, 9
 HUMAN_RISEN = {"root_pivot": (16, 41), "shadow": (22, 9, 0), "torso": (0, -1, -4), "head": (0, 0, -10),
                "arm_l": (0, 0, 150), "arm_r": (0, 0, -150), "sword": (0, 0, 0)}
 HUMAN_KNEEL_UP = dict(HUMAN_KNEEL, sword=(0, 0, 0))
+HUMAN_FLINCH = {"root": (-3, 0, -5), "torso": (0, 0, -10), "head": (0, 0, -12), "arm_l": (0, 0, -40), "arm_r": (0, 0, 35)}
 
-HUMAN_DEATH = keyframes([(0, HUMAN_STAND), (2, HUMAN_RECOIL), (5, HUMAN_KNEEL), (9, HUMAN_LYING), (11, HUMAN_LYING)])
-HUMAN_REBIRTH = keyframes([(0, HUMAN_LYING), (2, HUMAN_LYING), (6, HUMAN_KNEEL_UP), (9, HUMAN_RISEN), (11, HUMAN_STAND)])
-
+HUMAN_HURT = [blend({}, HUMAN_FLINCH, t) for t in (0.7, 1.0, 0.4)]
+HUMAN_DEATH = keyframes([(0, HUMAN_STAND), (1, HUMAN_RECOIL), (3, HUMAN_KNEEL), (6, HUMAN_LYING), (7, HUMAN_LYING)])
+HUMAN_REBIRTH = keyframes([(0, HUMAN_LYING), (1, HUMAN_LYING), (4, HUMAN_KNEEL_UP), (6, HUMAN_RISEN), (7, HUMAN_STAND)])
 
 # --- husk animations
-def husk_idle(i):
-    return {"torso": (0, 1 if 3 <= i <= 8 else 0, 0), "front_arm": (0, 0, 4 * wave(i)), "back_arm": (0, 0, -4 * wave(i))}
-
-
-def husk_walk(i):
-    s = wave(i)
-    return {
-        "root": (0, -round(abs(s)), 0), "head": (0, 0, 4 * s),
-        "leg_l": (0, 0, 28 * s), "leg_r": (0, 0, -28 * s),
-        "back_arm": (0, 0, -22 * s), "front_arm": (0, 0, 22 * s),
-    }
-
-
-def husk_windup(i):
-    t = i / 11
-    shake = (i % 2) if i > 5 else 0
-    return {
-        "root": (-round(2 * t) + shake, round(3 * t), 0), "torso": (0, 0, -12 * t), "head": (0, 0, -22 * t),
-        "front_arm": (0, 0, -120 * t), "back_arm": (0, 0, -100 * t),
-    }
-
-
-def husk_lunge(i):
-    k = min(i / 3, 1) if i <= 8 else (11 - i) / 3
-    return {
-        "root": (round(5 * k), round(k), 0), "torso": (0, 0, 28 * k), "head": (0, 0, 12 * k),
-        "front_arm": (0, 0, -95 * k), "back_arm": (0, 0, -80 * k),
-        "leg_l": (0, 0, 30 * k), "leg_r": (0, 0, -25 * k),
-    }
-
+HUSK_IDLE = [{"torso": (0, bob, 0), "front_arm": (0, 0, 4 * bob), "back_arm": (0, 0, -4 * bob)} for bob in (0, 1, 1, 0)]
+HUSK_WALK = cycle(8, lambda s: {
+    "root": (0, -round(abs(s)), 0), "head": (0, 0, 4 * s),
+    "leg_l": (0, 0, 28 * s), "leg_r": (0, 0, -28 * s), "back_arm": (0, 0, -22 * s), "front_arm": (0, 0, 22 * s)})
+# Crouch, rear back, and shake before striking.
+HUSK_WINDUP = [{
+    "root": (-round(2 * t) + (i % 2 if i > 2 else 0), round(3 * t), 0), "torso": (0, 0, -12 * t), "head": (0, 0, -22 * t),
+    "front_arm": (0, 0, -120 * t), "back_arm": (0, 0, -100 * t),
+} for i, t in enumerate(k / 5 for k in range(6))]
+HUSK_LUNGE = [{
+    "root": (round(5 * k), round(k), 0), "torso": (0, 0, 28 * k), "head": (0, 0, 12 * k),
+    "front_arm": (0, 0, -95 * k), "back_arm": (0, 0, -80 * k), "leg_l": (0, 0, 30 * k), "leg_r": (0, 0, -25 * k),
+} for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
 
 HUSK_STAND = {"root_pivot": (30, 41), "shadow": (22, 11, 0)}
 HUSK_REEL = {"root_pivot": (30, 41), "shadow": (22, 11, 0), "torso": (0, 0, -15), "head": (0, 0, -30),
              "front_arm": (0, 0, -40), "back_arm": (0, 0, -40)}
 HUSK_FALLEN = {"root_pivot": (30, 41), "shadow": (12, 18, 0), "root": (0, -19, -90), "head": (0, 0, -20),
                "front_arm": (0, 0, -60), "back_arm": (0, 0, 30), "leg_l": (0, 0, 15), "leg_r": (0, 0, -20)}
-HUSK_DEATH = keyframes([(0, HUSK_STAND), (2, HUSK_REEL), (7, HUSK_FALLEN), (11, HUSK_FALLEN)])
+HUSK_HURT = [blend({}, dict(HUSK_REEL, root=(-2, 0, 0)), t) for t in (0.7, 1.0, 0.4)]
+HUSK_DEATH = keyframes([(0, HUSK_STAND), (1, HUSK_REEL), (5, HUSK_FALLEN), (7, HUSK_FALLEN)])
 
-# Row order here is the row order in the sheet; the game lists the same names.
+# Row order here is the row order in every sheet. The game lists the same
+# names and frame counts in player_animator.gd and enemy_animator.gd.
 HUMAN_ANIMATIONS = [
-    ("idle", [human_idle(i) for i in range(FRAMES)]),
-    ("run", [human_run(i) for i in range(FRAMES)]),
-    ("attack", [human_attack(i) for i in range(FRAMES)]),
-    ("dodge", [human_dodge(i) for i in range(FRAMES)]),
-    ("death", HUMAN_DEATH),
-    ("rebirth", HUMAN_REBIRTH),
+    ("idle", HUMAN_IDLE), ("walk", HUMAN_WALK), ("run", HUMAN_RUN), ("attack", HUMAN_ATTACK),
+    ("heavy", HUMAN_HEAVY), ("dodge", HUMAN_DODGE), ("hurt", HUMAN_HURT),
+    ("death", HUMAN_DEATH), ("rebirth", HUMAN_REBIRTH),
 ]
 HUSK_ANIMATIONS = [
-    ("idle", [husk_idle(i) for i in range(FRAMES)]),
-    ("walk", [husk_walk(i) for i in range(FRAMES)]),
-    ("windup", [husk_windup(i) for i in range(FRAMES)]),
-    ("lunge", [husk_lunge(i) for i in range(FRAMES)]),
-    ("death", HUSK_DEATH),
+    ("idle", HUSK_IDLE), ("walk", HUSK_WALK), ("windup", HUSK_WINDUP), ("lunge", HUSK_LUNGE),
+    ("hurt", HUSK_HURT), ("death", HUSK_DEATH),
 ]
 
 
-def draw_sheet(rig, order, animations):
-    sheet = Image.new("RGBA", (FRAMES * FRAME, len(animations) * FRAME), (0, 0, 0, 0))
+def draw_sheet(rig, order, animations, shadow=True):
+    columns = max(len(poses) for _name, poses in animations)
+    sheet = Image.new("RGBA", (columns * FRAME, len(animations) * FRAME), (0, 0, 0, 0))
     for row, (_name, poses) in enumerate(animations):
         for column, pose in enumerate(poses):
-            pose = dict(pose)
-            if "shadow" in pose:
-                pose["shadow"] = (pose["shadow"][0], pose["shadow"][1])
-            sheet.paste(draw_frame(rig, order, pose), (column * FRAME, row * FRAME))
+            sheet.paste(draw_frame(rig, order, pose, shadow), (column * FRAME, row * FRAME))
     return sheet
+
+
+def draw_layer_sheet(parts_by_group):
+    """One piece of equipment alone, moving exactly as the body part it sits on."""
+    rig = {name: dict(group, parts=parts_by_group.get(name, [])) for name, group in HUMAN.items()}
+    return draw_sheet(rig, [name for name in HUMAN_ORDER if name in parts_by_group], HUMAN_ANIMATIONS, shadow=False)
+
+
+def weapon_icon_parts(parts):
+    """Turns weapon art into icon parts: tilted 45 degrees and fitted to the cell."""
+    a = math.radians(45)
+    turned = []
+    for material, polygon in parts:
+        turned.append((material, [((x - 35.5) * math.cos(a) - (y - 32) * math.sin(a),
+                                   (x - 35.5) * math.sin(a) + (y - 32) * math.cos(a)) for x, y in polygon]))
+    xs = [x for _m, poly in turned for x, _y in poly]
+    ys = [y for _m, poly in turned for _x, y in poly]
+    scale = min(1.0, (ICON - 4) / max(max(xs) - min(xs), max(ys) - min(ys)))
+    cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+    return [(material, "poly", [((x - cx) * scale + ICON / 2, (y - cy) * scale + ICON / 2) for x, y in poly])
+            for material, poly in turned]
 
 
 # ----------------------------------------------------------------- tiles
@@ -424,6 +508,17 @@ ICONS = [
     ("essence", [("green", "ellipse", (5, 5, 17, 17)), ("bone", "rect", (9, 8, 10, 9))]),
     ("gold", [("gold", "ellipse", (3, 9, 13, 18)), ("gold", "ellipse", (9, 5, 19, 14))]),
 ]
+# Icons 18-25: the newer weapons, drawn from their in-hand art.
+ICONS += [(name, None) for name in ["flame_sword", "frost_sword", "dark_sword", "katana", "executioner", "reaver", "fang", "halberd"]]
+# Icons 26-31: ability shapes.
+ICONS += [
+    ("ability_slash", [("metal", "poly", [(4, 18), (8, 7), (18, 3), (12, 9), (9, 19)])]),
+    ("ability_spin", [("metal", "ring", (4, 5, 17, 18), 2), ("metal", "poly", [(13, 2), (20, 6), (14, 10)])]),
+    ("ability_slam", [("gold", "poly", [(11, 2), (13, 8), (20, 6), (15, 11), (20, 17), (13, 14), (11, 20), (9, 14), (2, 17), (7, 11), (2, 6), (9, 8)])]),
+    ("ability_dash", [("green", "poly", [(2, 9), (12, 9), (12, 5), (20, 11), (12, 17), (12, 13), (2, 13)])]),
+    ("ability_thrust", [("metal", "line", (3, 18, 16, 5), 2), ("metal", "poly", [(13, 3), (19, 3), (19, 9)])]),
+    ("ability_flurry", [("metal", "line", (4, 8, 12, 3), 2), ("metal", "line", (5, 15, 16, 6), 2), ("metal", "line", (9, 19, 19, 11), 2)]),
+]
 
 
 def draw_icon(parts):
@@ -449,7 +544,8 @@ def draw_icon(parts):
         y0, y1 = min(p[1] for p in points), max(p[1] for p in points)
         for x, y in points:
             t = 0.6 * (x - x0) / max(x1 - x0, 1) + 0.4 * (y - y0) / max(y1 - y0, 1)
-            pixels[(x, y)] = ICON_PALETTE[material][0 if t < 0.3 else 1 if t < 0.68 else 2]
+            shades = ICON_PALETTE.get(material) or PALETTE[material]
+            pixels[(x, y)] = shades[0 if t < 0.3 else 1 if t < 0.68 else 2]
     img = Image.new("RGBA", (ICON, ICON), (0, 0, 0, 0))
     for (x, y), colour in pixels.items():
         img.putpixel((x, y), rgba(colour))
@@ -467,6 +563,12 @@ def main():
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
     draw_sheet(HUMAN, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
     draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
+    os.makedirs(os.path.join(ROOT, "sprites", "weapons"), exist_ok=True)
+    for name, parts in WEAPONS.items():
+        draw_layer_sheet({"sword": parts}).save(os.path.join(ROOT, "sprites", "weapons", name + ".png"))
+    os.makedirs(os.path.join(ROOT, "sprites", "layers"), exist_ok=True)
+    for name, parts_by_group in LAYERS.items():
+        draw_layer_sheet(parts_by_group).save(os.path.join(ROOT, "sprites", "layers", name + ".png"))
     atlas = Image.new("RGBA", (VARIANTS * N, len(TILES) * N))
     for row in range(len(TILES)):
         for variant in range(VARIANTS):
@@ -477,6 +579,8 @@ def main():
     rows = (len(ICONS) + ICON_COLUMNS - 1) // ICON_COLUMNS
     icons = Image.new("RGBA", (ICON_COLUMNS * ICON, rows * ICON), (0, 0, 0, 0))
     for index, (_name, parts) in enumerate(ICONS):
+        if parts is None:
+            parts = weapon_icon_parts(WEAPONS[_name])
         icons.paste(draw_icon(parts), (index % ICON_COLUMNS * ICON, index // ICON_COLUMNS * ICON))
     icons.save(os.path.join(ROOT, "icons", "items.png"))
 

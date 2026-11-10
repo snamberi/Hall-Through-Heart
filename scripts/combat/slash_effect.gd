@@ -5,13 +5,18 @@ extends Node2D
 var _radius := 24.0
 var _arc := PI / 2.0
 var _tween: Tween
+var _color := Color(0.95, 0.9, 0.8)
 
 
 func _ready() -> void:
 	modulate.a = 0.0
 
 
-func play(direction: Vector2, radius: float, arc_radians: float, duration: float) -> void:
+func play(
+	direction: Vector2, radius: float, arc_radians: float, duration: float,
+	color: Color = Color(0.95, 0.9, 0.8)
+) -> void:
+	_color = color
 	_radius = radius
 	_arc = arc_radians
 	rotation = direction.angle()
@@ -24,5 +29,5 @@ func play(direction: Vector2, radius: float, arc_radians: float, duration: float
 
 
 func _draw() -> void:
-	draw_arc(Vector2.ZERO, _radius * 0.8, -_arc / 2.0, _arc / 2.0, 16, Color(0.95, 0.9, 0.8), 6.0)
-	draw_arc(Vector2.ZERO, _radius * 0.6, -_arc / 2.5, _arc / 2.5, 12, Color(0.95, 0.9, 0.8, 0.4), 4.0)
+	draw_arc(Vector2.ZERO, _radius * 0.8, -_arc / 2.0, _arc / 2.0, 16, _color, 6.0)
+	draw_arc(Vector2.ZERO, _radius * 0.6, -_arc / 2.5, _arc / 2.5, 12, Color(_color, 0.4), 4.0)

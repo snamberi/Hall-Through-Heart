@@ -42,12 +42,23 @@ const SLOT_NAMES := {
 }
 
 ## Name prefix for metal gear by item level, matching the ore tiers.
+## The colour tints worn armour on the character.
 const TIERS: Array[Array] = [
-	[100, "Heartstone"], [80, "Void"], [65, "Adamantite"], [50, "Obsidian"],
-	[40, "Mithril"], [30, "Gilded"], [20, "Silver"], [10, "Iron"], [1, "Copper"],
+	[100, "Heartstone", Color("e0506a")], [80, "Void", Color("9a6cf0")],
+	[65, "Adamantite", Color("d06a5a")], [50, "Obsidian", Color("6a6480")],
+	[40, "Mithril", Color("8fe0e8")], [30, "Gilded", Color("f0cf6a")],
+	[20, "Silver", Color("eef2f6")], [10, "Iron", Color("aab2bc")], [1, "Copper", Color("d99a6c")],
 ]
 ## Base damage and armor grow by this share per item level above 1.
 const POWER_PER_LEVEL := 0.15
+
+## Colour and name for each status a weapon can inflict.
+const STATUSES := {
+	"burn": {"name": "Burn", "color": Color(1.0, 0.6, 0.25)},
+	"poison": {"name": "Poison", "color": Color(0.55, 0.95, 0.4)},
+	"bleed": {"name": "Bleed", "color": Color(0.95, 0.3, 0.3)},
+	"chill": {"name": "Chill", "color": Color(0.6, 0.85, 1.0)},
+}
 
 ## Fighting bare-handed.
 const UNARMED := {"type": "unarmed", "range": 44.0, "arc": 100.0, "cooldown": 0.3, "knockback": 300.0}
@@ -57,31 +68,86 @@ const UNARMED := {"type": "unarmed", "range": 44.0, "arc": 100.0, "cooldown": 0.
 ## "implicit": modifiers every copy has; value = base + per_level * item level.
 const ITEMS := {
 	# --- weapons
+	# "visual" names the sheet in assets/sprites/weapons/. "slash" tints the
+	# swing. "on_hit" applies a status to whatever is struck:
+	#   burn / poison / bleed: "power" x the hit's damage, every second
+	#   chill: "power" is the share of movement speed removed
+	# "life_steal" heals that share of damage dealt.
 	"sword": {
-		"name": "Sword", "icon": 0, "slot": "main_hand", "tiered": true, "drop_weight": 10.0,
+		"name": "Sword", "icon": 0, "visual": "sword", "slot": "main_hand", "tiered": true, "drop_weight": 10.0,
 		"damage": 6.0,
 		"weapon": {"type": "swords", "range": 64.0, "arc": 120.0, "cooldown": 0.34, "knockback": 380.0},
 	},
+	"flame_sword": {
+		"name": "Emberbrand", "icon": 18, "visual": "flame_sword", "slot": "main_hand", "tiered": true,
+		"drop_weight": 2.0, "min_rarity": 1, "damage": 5.5, "slash": Color(1.0, 0.6, 0.2),
+		"on_hit": {"status": "burn", "duration": 3.0, "power": 0.3},
+		"weapon": {"type": "swords", "range": 64.0, "arc": 120.0, "cooldown": 0.34, "knockback": 380.0},
+	},
+	"frost_sword": {
+		"name": "Frostbrand", "icon": 19, "visual": "frost_sword", "slot": "main_hand", "tiered": true,
+		"drop_weight": 2.0, "min_rarity": 1, "damage": 5.5, "slash": Color(0.6, 0.9, 1.0),
+		"on_hit": {"status": "chill", "duration": 2.5, "power": 0.4},
+		"weapon": {"type": "swords", "range": 64.0, "arc": 120.0, "cooldown": 0.34, "knockback": 380.0},
+	},
+	"dark_sword": {
+		"name": "Gloomblade", "icon": 20, "visual": "dark_sword", "slot": "main_hand", "tiered": true,
+		"drop_weight": 1.5, "min_rarity": 2, "damage": 7.0, "slash": Color(0.7, 0.45, 1.0),
+		"life_steal": 0.05,
+		"weapon": {"type": "swords", "range": 66.0, "arc": 125.0, "cooldown": 0.38, "knockback": 400.0},
+	},
+	"katana": {
+		"name": "Katana", "icon": 21, "visual": "katana", "slot": "main_hand", "tiered": true, "drop_weight": 3.0,
+		"damage": 5.0, "requires": {"agility": [3.0, 0.5]},
+		"implicit": [{"stat": "critical_damage", "kind": "flat", "base": 0.25, "per_level": 0.0}],
+		"weapon": {"type": "swords", "range": 74.0, "arc": 80.0, "cooldown": 0.26, "knockback": 260.0},
+	},
 	"greatsword": {
-		"name": "Greatsword", "icon": 1, "slot": "main_hand", "tiered": true, "drop_weight": 5.0,
+		"name": "Greatsword", "icon": 1, "visual": "greatsword", "slot": "main_hand", "tiered": true, "drop_weight": 5.0,
 		"damage": 11.0, "two_handed": true, "requires": {"strength": [4.0, 1.0]},
 		"weapon": {"type": "greatswords", "range": 82.0, "arc": 150.0, "cooldown": 0.6, "knockback": 540.0},
 	},
+	"executioner": {
+		"name": "Executioner", "icon": 22, "visual": "executioner", "slot": "main_hand", "tiered": true,
+		"drop_weight": 1.5, "min_rarity": 1, "damage": 13.0, "two_handed": true, "slash": Color(1.0, 0.4, 0.4),
+		"requires": {"strength": [5.0, 1.1]},
+		"implicit": [{"stat": "critical_damage", "kind": "flat", "base": 0.3, "per_level": 0.0}],
+		"weapon": {"type": "greatswords", "range": 84.0, "arc": 130.0, "cooldown": 0.7, "knockback": 600.0},
+	},
 	"axe": {
-		"name": "Axe", "icon": 2, "slot": "main_hand", "tiered": true, "drop_weight": 6.0,
+		"name": "Axe", "icon": 2, "visual": "axe", "slot": "main_hand", "tiered": true, "drop_weight": 6.0,
 		"damage": 8.0, "requires": {"strength": [2.0, 0.6]},
 		"weapon": {"type": "axes", "range": 60.0, "arc": 110.0, "cooldown": 0.45, "knockback": 460.0},
 	},
+	"reaver": {
+		"name": "Reaver", "icon": 23, "visual": "reaver", "slot": "main_hand", "tiered": true,
+		"drop_weight": 1.5, "min_rarity": 1, "damage": 9.5, "slash": Color(1.0, 0.4, 0.4),
+		"requires": {"strength": [3.0, 0.7]},
+		"on_hit": {"status": "bleed", "duration": 4.0, "power": 0.2},
+		"weapon": {"type": "axes", "range": 66.0, "arc": 140.0, "cooldown": 0.5, "knockback": 480.0},
+	},
 	"dagger": {
-		"name": "Dagger", "icon": 3, "slot": "main_hand", "tiered": true, "drop_weight": 6.0,
+		"name": "Dagger", "icon": 3, "visual": "dagger", "slot": "main_hand", "tiered": true, "drop_weight": 6.0,
 		"damage": 4.0, "requires": {"agility": [2.0, 0.6]},
 		"implicit": [{"stat": "critical_chance", "kind": "flat", "base": 0.05, "per_level": 0.0}],
 		"weapon": {"type": "daggers", "range": 48.0, "arc": 90.0, "cooldown": 0.22, "knockback": 220.0},
 	},
+	"fang": {
+		"name": "Fang", "icon": 24, "visual": "fang", "slot": "main_hand", "tiered": true,
+		"drop_weight": 1.5, "min_rarity": 1, "damage": 3.5, "slash": Color(0.6, 1.0, 0.4),
+		"requires": {"agility": [2.0, 0.6]},
+		"on_hit": {"status": "poison", "duration": 4.0, "power": 0.25},
+		"weapon": {"type": "daggers", "range": 48.0, "arc": 90.0, "cooldown": 0.2, "knockback": 200.0},
+	},
 	"spear": {
-		"name": "Spear", "icon": 4, "slot": "main_hand", "tiered": true, "drop_weight": 5.0,
+		"name": "Spear", "icon": 4, "visual": "spear", "slot": "main_hand", "tiered": true, "drop_weight": 5.0,
 		"damage": 7.0, "two_handed": true,
 		"weapon": {"type": "spears", "range": 106.0, "arc": 50.0, "cooldown": 0.42, "knockback": 420.0},
+	},
+	"halberd": {
+		"name": "Halberd", "icon": 25, "visual": "halberd", "slot": "main_hand", "tiered": true, "drop_weight": 2.0,
+		"damage": 9.0, "two_handed": true, "requires": {"strength": [3.0, 0.7]},
+		"weapon": {"type": "spears", "range": 100.0, "arc": 110.0, "cooldown": 0.55, "knockback": 480.0},
 	},
 	# --- armor
 	"shield": {"name": "Shield", "icon": 5, "slot": "off_hand", "tiered": true, "drop_weight": 6.0, "armor": 8.0},
@@ -169,6 +235,13 @@ static func tier_name(level: int) -> String:
 		if level >= tier[0]:
 			return tier[1]
 	return TIERS[-1][1]
+
+
+static func tier_color(level: int) -> Color:
+	for tier in TIERS:
+		if level >= tier[0]:
+			return tier[2]
+	return TIERS[-1][2]
 
 
 ## Readable name for a stat or attribute id.

@@ -33,6 +33,7 @@ func setup(player: Player) -> void:
 	player.leveling.xp_changed.connect(func(_x: int, _r: int) -> void: _refresh())
 	player.attributes.changed.connect(_refresh)
 	Events.level_up.connect(_on_level_up)
+	$AbilityBar.setup(player)
 	_death_message.visible = false
 	_banner.visible = false
 	# Nothing spends mana yet; the bar appears once a class or ability does.

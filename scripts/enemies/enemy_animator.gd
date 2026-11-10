@@ -2,19 +2,20 @@ class_name EnemyAnimator
 extends AnimatedSprite2D
 ## Plays an enemy's animation from its state.
 ##
-## Works for any enemy whose sheet has these rows of 12 frames, in order:
-## idle, walk, windup, lunge, death.
+## Works for any enemy whose sheet has the rows below, in order. Rows must
+## match HUSK_ANIMATIONS in tools/generate_art.py.
 
 const ROWS: Array[Dictionary] = [
-	{"name": "idle", "seconds": 1.2, "loop": true},
-	{"name": "walk", "seconds": 0.7, "loop": true},
-	{"name": "windup", "seconds": 0.45, "loop": false},
-	{"name": "lunge", "seconds": 0.22, "loop": false},
-	{"name": "death", "seconds": 0.6, "loop": false},
+	{"name": "idle", "frames": 4, "fps": 6.0, "loop": true},
+	{"name": "walk", "frames": 8, "fps": 10.0, "loop": true},
+	{"name": "windup", "frames": 6, "fps": 13.0, "loop": false},
+	{"name": "lunge", "frames": 6, "fps": 16.0, "loop": false},
+	{"name": "hurt", "frames": 3, "fps": 12.0, "loop": false},
+	{"name": "death", "frames": 8, "fps": 10.0, "loop": false},
 ]
 
 @export var sheet: Texture2D
-@export var frame_size := 64
+@export var frame_size := 96
 
 @onready var _enemy: Enemy = owner
 
@@ -30,11 +31,13 @@ func _process(_delta: float) -> void:
 			_play_for("windup", _enemy.windup_time)
 		Enemy.State.LUNGE:
 			_play_for("lunge", _enemy.lunge_time)
+		Enemy.State.STAGGER:
+			_play_for("hurt", 0.22)
 		Enemy.State.DEAD:
 			_play_for("death", death_seconds())
 		_:
 			var moving := _enemy.velocity.length() > 8.0
-			speed_scale = 1.6 if _enemy.state == Enemy.State.CHASE else 1.0
+			speed_scale = 1.5 if _enemy.state == Enemy.State.CHASE else 1.0
 			var wanted := "walk" if moving else "idle"
 			if animation != wanted:
 				play(wanted)

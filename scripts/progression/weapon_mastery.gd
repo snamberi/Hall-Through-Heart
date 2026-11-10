@@ -37,7 +37,7 @@ const MILESTONES: Array[Dictionary] = [
 ## Damage bonus with a weapon category at maximum mastery.
 const MAX_DAMAGE_BONUS := 0.15
 const XP_PER_DAMAGE := 0.05
-const XP_PER_KILL := 10.0
+const XP_PER_KILL := 15.0
 
 var levels: Dictionary[String, int] = {}
 var xp: Dictionary[String, float] = {}
@@ -60,7 +60,7 @@ func _ready() -> void:
 
 
 static func xp_required(from_level: int) -> float:
-	return roundf(30.0 * pow(from_level, 1.4))
+	return roundf(12.0 * pow(from_level, 1.25))
 
 
 func add_xp(id: String, amount: float) -> void:

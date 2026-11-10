@@ -39,11 +39,11 @@ func _build() -> void:
 	columns.add_child(right)
 	_milestone_title = make_label("", 20, MenuColors.HEADING)
 	right.add_child(_milestone_title)
-	for milestone in WeaponMastery.MILESTONES:
-		var label := make_label("", 15)
+	for i in 14:
+		var label := make_label("", 14)
 		_milestone_labels.append(label)
 		right.add_child(label)
-	right.add_child(make_label("Milestone rewards are not in the game yet.", 13, MenuColors.DIM))
+	right.add_child(make_label("Abilities gain a rank every %d mastery levels. Use them with keys 1-4." % AbilityDB.RANK_EVERY, 13, MenuColors.DIM))
 
 	player.mastery.changed.connect(refresh_if_open)
 
@@ -61,10 +61,24 @@ func refresh() -> void:
 		row["bar"].value = mastery.xp[id]
 		row["bonus"].text = "+%.1f%% damage" % (mastery.damage_bonus(id) * 100.0)
 
-	var current := mastery.levels[player.weapon_type]
-	_milestone_title.text = "%s milestones" % WeaponMastery.NAMES[player.weapon_type]
-	for i in WeaponMastery.MILESTONES.size():
-		var milestone := WeaponMastery.MILESTONES[i]
-		var reached: bool = current >= milestone["level"]
-		_milestone_labels[i].text = "%s  Lv %d   %s" % ["[x]" if reached else "[  ]", milestone["level"], milestone["reward"]]
-		_milestone_labels[i].add_theme_color_override("font_color", MenuColors.GOOD if reached else MenuColors.DIM)
+	var weapon_type := player.weapon_type
+	var current := mastery.levels[weapon_type]
+	_milestone_title.text = "%s abilities" % WeaponMastery.NAMES[weapon_type]
+	var lines: Array[Array] = []
+	for id in AbilityDB.for_weapon(weapon_type):
+		var ability: Dictionary = AbilityDB.ABILITIES[id]
+		var rank := AbilityDB.rank(id, current)
+		var heading := "Lv %d   %s" % [ability["mastery"], ability["name"]]
+		if rank > 0:
+			heading += "   rank %d  (x%.1f damage)" % [rank, AbilityDB.damage(id, rank)]
+		lines.append([heading, rank > 0])
+		lines.append(["        %s  %ds cooldown, %d stamina" % [ability["text"], ability["cooldown"], ability["stamina"]], rank > 0])
+	lines.append(["", false])
+	for milestone in WeaponMastery.MILESTONES:
+		if not milestone["level"] in [1, 10, 50]:
+			lines.append(["Lv %d   %s  (not in the game yet)" % [milestone["level"], milestone["reward"]], false])
+	for i in _milestone_labels.size():
+		_milestone_labels[i].visible = i < lines.size()
+		if i < lines.size():
+			_milestone_labels[i].text = lines[i][0]
+			_milestone_labels[i].add_theme_color_override("font_color", MenuColors.GOOD if lines[i][1] else MenuColors.DIM)
