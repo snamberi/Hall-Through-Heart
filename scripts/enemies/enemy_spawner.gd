@@ -18,6 +18,9 @@ extends Node2D
 @export var safe_radius_tiles := 16.0
 ## Chance that a spawn is an Elite.
 @export_range(0.0, 1.0) var elite_chance := 0.08
+## Chance that a spawn is a Champion, once the area level allows them.
+@export_range(0.0, 1.0) var champion_chance := 0.015
+@export var champion_min_area_level := 4
 
 var _world: World
 var _player: Player
@@ -43,8 +46,14 @@ func spawn_at(
 	enemy.is_fragment = fragment
 	enemy.configure(level, rank, enemy_id)
 	enemy.died.connect(_on_enemy_died)
+	enemy.wants_minion.connect(_on_wants_minion)
 	add_child(enemy)
 	return enemy
+
+
+## A Summoner calls a normal enemy of its own kind to its side.
+func _on_wants_minion(enemy: Enemy) -> void:
+	spawn_at(enemy.global_position + Vector2.from_angle(randf() * TAU) * 50.0, enemy.level, Enemy.Rank.NORMAL, enemy.enemy_id)
 
 
 ## Slimes (and anything else with the "split" trait) burst into two smaller copies.
@@ -84,6 +93,11 @@ func _try_spawn() -> void:
 	if not _world.generator.is_walkable(cell):
 		return
 	var level := maxi(_world.generator.enemy_level_at(cell) + randi_range(-1, 1), 1)
-	var rank := Enemy.Rank.ELITE if randf() < elite_chance else Enemy.Rank.NORMAL
+	var rank := Enemy.Rank.NORMAL
+	var roll := randf()
+	if roll < champion_chance and _world.generator.enemy_level_at(cell) >= champion_min_area_level:
+		rank = Enemy.Rank.CHAMPION
+	elif roll < champion_chance + elite_chance:
+		rank = Enemy.Rank.ELITE
 	var area_level := _world.generator.enemy_level_at(cell)
 	spawn_at(_world.cell_to_world(cell), level, rank, EnemyDB.pick(_world.generator.tile_type_at(cell), area_level))

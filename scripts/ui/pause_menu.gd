@@ -7,11 +7,12 @@ const CONTROLS: Array[Array] = [
 	["Attack", "Left mouse button (aims at the cursor)"],
 	["Dodge", "Space or Shift"],
 	["Abilities", "1  2  3  4  5"],
-	["Gather / interact", "F"],
+	["Gather / talk", "F"],
 	["Drink health potion", "Q"],
 	["Menu wheel", "M or Tab"],
 	["Inventory", "E"],
 	["Attributes / Talents / Professions", "C / K / P"],
+	["Journal", "J"],
 	["Pause", "Esc"],
 	["Debug screen", "F3"],
 ]

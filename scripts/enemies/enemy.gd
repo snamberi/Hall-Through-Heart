@@ -9,13 +9,37 @@ extends CharacterBody2D
 signal died(enemy: Enemy)
 
 enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
-enum Rank { NORMAL, ELITE }
+enum Rank { NORMAL, ELITE, CHAMPION }
 
 ## How each rank changes an enemy. "xp" 3.75 makes an Elite Husk worth 30.
+## "modifiers" is how many random modifiers the rank rolls.
 const RANK_DATA := {
-	Rank.NORMAL: {"id": "normal", "title": "", "health": 1.0, "damage": 1.0, "xp": 1.0, "size": 1.0, "tint": Color.WHITE},
-	Rank.ELITE: {"id": "elite", "title": "Elite ", "health": 3.0, "damage": 1.4, "xp": 3.75, "size": 1.3, "tint": Color(1.0, 0.8, 0.55)},
+	Rank.NORMAL: {"id": "normal", "title": "", "health": 1.0, "damage": 1.0, "xp": 1.0, "size": 1.0, "tint": Color.WHITE, "modifiers": 0},
+	Rank.ELITE: {"id": "elite", "title": "Elite ", "health": 3.0, "damage": 1.4, "xp": 3.75, "size": 1.3, "tint": Color(1.0, 0.8, 0.55), "modifiers": 1},
+	Rank.CHAMPION: {"id": "champion", "title": "Champion ", "health": 6.0, "damage": 1.7, "xp": 9.0, "size": 1.5, "tint": Color(0.85, 0.65, 1.0), "modifiers": 2},
 }
+## Random modifiers for Elites and Champions. Each changes how the enemy
+## fights, not just its numbers, and each adds REWARD_PER_MODIFIER to its XP.
+##   "traits"  standing buffs it gains (see EnemyDB.TRAITS)
+##   "touch"   status its hits inflict
+## Swift, Frozen Aura, Explosive, Poisonous, and Summoner have their own
+## handling in this script.
+const MODIFIERS := {
+	"burning": {"name": "Burning", "color": Color(1.0, 0.55, 0.2), "touch": {"status": "burn", "duration": 3.0, "power": 0.3}},
+	"frozen_aura": {"name": "Frozen", "color": Color(0.6, 0.9, 1.0)},
+	"vampiric": {"name": "Vampiric", "color": Color(0.8, 0.2, 0.3), "traits": ["lifesteal"]},
+	"armored": {"name": "Armored", "color": Color(0.7, 0.75, 0.8), "traits": ["armored"]},
+	"swift": {"name": "Swift", "color": Color(0.6, 1.0, 0.6)},
+	"explosive": {"name": "Explosive", "color": Color(1.0, 0.75, 0.3)},
+	"poisonous": {"name": "Poisonous", "color": Color(0.6, 0.95, 0.4), "touch": {"status": "poison", "duration": 4.0, "power": 0.3}},
+	"regenerating": {"name": "Regenerating", "color": Color(0.5, 0.9, 0.6), "traits": ["regen"]},
+	"summoner": {"name": "Summoner", "color": Color(0.75, 0.55, 1.0)},
+	"berserker": {"name": "Berserker", "color": Color(1.0, 0.3, 0.3), "traits": ["enrage"]},
+}
+const REWARD_PER_MODIFIER := 0.25
+const FROZEN_AURA_RADIUS := 170.0
+const SUMMON_SECONDS := 8.0
+const SUMMON_LIMIT := 3
 ## Extra health and damage per level above 1, as a share of the base value.
 const HEALTH_PER_LEVEL := 0.25
 const DAMAGE_PER_LEVEL := 0.12
@@ -37,6 +61,10 @@ var windup_time := 0.45
 var lunge_time := 0.22
 ## Smaller copies made by the "split" trait do not split again.
 var is_fragment := false
+## Ids from MODIFIERS. Rolled for Elites and Champions unless set beforehand.
+var modifiers: Array[String] = []
+## Asks whoever spawned this enemy for a minion (the Summoner modifier).
+signal wants_minion(enemy: Enemy)
 
 var _data: Dictionary
 var _attack: Dictionary
@@ -51,6 +79,9 @@ var _tint := Color.WHITE
 var _last_weapon_type := ""
 var _since_hurt := 99.0
 var _blink_left := 3.0
+var _aura_left := 0.0
+var _summon_left := SUMMON_SECONDS
+var _minions := 0
 var _weave := 0.0
 ## status id -> {"time": seconds left, "power": float, "tick": seconds to next tick}
 var _statuses: Dictionary = {}
@@ -71,16 +102,24 @@ func _ready() -> void:
 	add_to_group("enemies")
 	_data = EnemyDB.ENEMIES[enemy_id]
 	_attack = _data["attack"]
-	_traits = _data["traits"]
+	_traits = _data["traits"].duplicate()
 	display_name = _data["name"]
-	windup_time = _attack["windup"]
+	var rolls: int = RANK_DATA[rank]["modifiers"]
+	if modifiers.is_empty() and rolls > 0 and not is_fragment:
+		var pool: Array = MODIFIERS.keys()
+		pool.shuffle()
+		for index in rolls:
+			modifiers.append(pool[index])
+	for modifier in modifiers:
+		_traits.append_array(MODIFIERS[modifier].get("traits", []))
+	windup_time = _attack["windup"] * (0.75 if "swift" in modifiers else 1.0)
 	lunge_time = _attack.get("time", 0.25)
 	var rank_data: Dictionary = RANK_DATA[rank]
 	var size: float = rank_data["size"] * _data["size"] * (0.62 if is_fragment else 1.0)
 	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0)
 	health.current = health.max_health
 	_damage = _data["damage"] * rank_data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1)) * (0.6 if is_fragment else 1.0)
-	_speed = _data["speed"]
+	_speed = _data["speed"] * (1.4 if "swift" in modifiers else 1.0)
 	_tint = rank_data["tint"]
 	body_radius = _data["radius"] * size
 	_visual.scale = Vector2(size, size)
@@ -96,7 +135,7 @@ func _ready() -> void:
 
 ## Experience this enemy is worth at its level and rank.
 func xp_value() -> int:
-	var value: float = _data["xp"] * RANK_DATA[rank]["xp"] * pow(level, XP_LEVEL_EXPONENT)
+	var value: float = _data["xp"] * RANK_DATA[rank]["xp"] * pow(level, XP_LEVEL_EXPONENT) * (1.0 + REWARD_PER_MODIFIER * modifiers.size())
 	return maxi(roundi(value * (0.3 if is_fragment else 1.0)), 1)
 
 
@@ -119,6 +158,8 @@ func _physics_process(delta: float) -> void:
 		return
 	if has_trait("regen") and _since_hurt > 3.0:
 		health.heal(health.max_health * 0.04 * delta)
+	if not modifiers.is_empty():
+		_update_modifiers(delta)
 	var has_target := target != null and not target.is_dead()
 	var to_target := target.global_position - global_position if has_target else Vector2.ZERO
 	var distance := to_target.length()
@@ -176,6 +217,15 @@ func _physics_process(delta: float) -> void:
 
 
 func _draw() -> void:
+	# A ring in each modifier's colour marks an Elite or Champion.
+	if state != State.DEAD:
+		for index in modifiers.size():
+			var ring: Color = MODIFIERS[modifiers[index]]["color"]
+			draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
+			draw_arc(Vector2.ZERO, body_radius + 9.0 + index * 5.0, 0.0, TAU, 28, Color(ring, 0.9), 2.0)
+			if modifiers[index] == "frozen_aura":
+				draw_arc(Vector2.ZERO, FROZEN_AURA_RADIUS, 0.0, TAU, 48, Color(ring, 0.25), 1.5)
+			draw_set_transform(Vector2.ZERO)
 	# The ground marker for an area attack, filling in as the wind-up runs out.
 	if state != State.WINDUP or not is_area_attack():
 		return
@@ -287,7 +337,10 @@ func _hit_target(amount: float) -> bool:
 	if not target.take_damage(amount, global_position, level):
 		return false
 	on_dealt_damage(amount)
-	for effect: Dictionary in [_data.get("touch", {}), _attack.get("status", {}) if _attack["kind"] != "shoot" else {}]:
+	var effects: Array = [_data.get("touch", {}), _attack.get("status", {}) if _attack["kind"] != "shoot" else {}]
+	for modifier in modifiers:
+		effects.append(MODIFIERS[modifier].get("touch", {}))
+	for effect: Dictionary in effects:
 		if not effect.is_empty():
 			var power: float = effect["power"] if effect["status"] == "chill" else effect["power"] * amount
 			target.apply_status(effect["status"], effect["duration"], power)
@@ -354,6 +407,36 @@ func _try_blink(delta: float, to_target: Vector2, distance: float) -> void:
 	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(0.7, 0.9, 1.0), 40.0)
 	global_position = target.global_position - to_target.normalized().rotated(randf_range(-1.2, 1.2)) * 150.0
 	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(0.7, 0.9, 1.0), 40.0)
+
+
+## The modifiers that act on their own over time.
+func _update_modifiers(delta: float) -> void:
+	var has_target := target != null and not target.is_dead()
+	if "frozen_aura" in modifiers and has_target:
+		_aura_left -= delta
+		if _aura_left <= 0.0:
+			_aura_left = 0.5
+			if target.global_position.distance_to(global_position) < FROZEN_AURA_RADIUS:
+				target.apply_status("chill", 1.0, 0.3)
+	if "summoner" in modifiers and has_target and state == State.CHASE:
+		_summon_left -= delta
+		if _summon_left <= 0.0 and _minions < SUMMON_LIMIT:
+			_summon_left = SUMMON_SECONDS
+			_minions += 1
+			RingBurst.spawn(get_parent(), global_position, MODIFIERS["summoner"]["color"], 60.0)
+			wants_minion.emit(self)
+
+
+## What some modifiers leave behind when the enemy dies.
+func _death_effects() -> void:
+	if "explosive" in modifiers:
+		var color: Color = MODIFIERS["explosive"]["color"]
+		RingBurst.spawn(get_parent(), global_position, color, 110.0)
+		HitSpark.spawn(get_parent(), global_position + Vector2(0, -10), color, true)
+		if target and not target.is_dead() and target.global_position.distance_to(global_position) < 110.0:
+			target.take_damage(_damage * 1.5, global_position, level)
+	if "poisonous" in modifiers and target:
+		HazardZone.spawn(get_parent(), global_position, target, 100.0, 5.0, MODIFIERS["poisonous"]["color"], {"status": "poison", "duration": 3.0, "power": 0.3}, _damage)
 
 
 # --- internals
@@ -428,6 +511,7 @@ func _on_died() -> void:
 	velocity = Vector2.ZERO
 	queue_redraw()
 	$Collision.set_deferred("disabled", true)
+	_death_effects()
 	var xp := xp_value()
 	DamageNumber.spawn_text(
 		get_parent(), global_position + Vector2(0, -24), "+%d XP" % xp, Color(0.45, 0.7, 1.0), 12
@@ -443,6 +527,7 @@ func _on_died() -> void:
 		"position": global_position,
 		"weapon_type": _last_weapon_type,
 		"fragment": is_fragment,
+		"modifiers": modifiers.size(),
 	})
 	if _flash_tween:
 		_flash_tween.kill()
@@ -458,10 +543,14 @@ func _on_died() -> void:
 
 func _add_nameplate(rank_data: Dictionary, size: float) -> void:
 	var label := Label.new()
-	label.text = "Lv %d %s%s" % [level, rank_data["title"], display_name]
+	var prefix := ""
+	for modifier in modifiers:
+		prefix += MODIFIERS[modifier]["name"] + " "
+	label.text = "Lv %d %s%s%s" % [level, prefix, rank_data["title"], display_name]
 	label.add_theme_font_override("font", UITheme.get_theme().default_font)
 	label.add_theme_font_size_override("font_size", 13)
-	label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.4) if rank != Rank.NORMAL else Color(0.82, 0.8, 0.74))
+	var plate_colors: Array[Color] = [Color(0.82, 0.8, 0.74), Color(1.0, 0.82, 0.4), Color(0.85, 0.6, 1.0)]
+	label.add_theme_color_override("font_color", plate_colors[rank])
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	# The camera zooms in 2x; shrink so the text stays small and sharp.

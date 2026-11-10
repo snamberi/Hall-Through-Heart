@@ -20,3 +20,7 @@ signal profession_level_up(profession: String, level: int)
 ## Something was gathered from the world. Keys: resource, item, count.
 signal resource_gathered(info: Dictionary)
 signal item_crafted(recipe_id: String)
+## The player pressed interact next to someone.
+signal npc_interacted(npc: Node)
+signal quest_completed(title: String, rewards: String)
+signal biome_discovered(biome: String, xp: int)

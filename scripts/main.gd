@@ -29,6 +29,7 @@ func _ready() -> void:
 
 	_world.setup(_active_seed)
 	_resources.setup(_world)
+	$Npcs.setup(_world)
 	_place_player_at_start()
 	_world.target = _player
 	_spawner.setup(_world, _player)

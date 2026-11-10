@@ -2,8 +2,9 @@ extends CanvasLayer
 ## Every pause-time screen, and the wheel that leads to them.
 ##
 ## M (or Tab) opens the menu wheel; clicking a wedge opens that screen by
-## itself. E, C, K, and P open Inventory, Attributes, Talents, and
-## Professions directly. Esc closes whatever is open, or opens the pause
+## itself. E, C, K, P, and J open Inventory, Attributes, Talents,
+## Professions, and the Journal directly. Shops and quest boards open by
+## talking to people. Esc closes whatever is open, or opens the pause
 ## menu if nothing is. The game is paused while anything here is showing.
 ##
 ## To add a screen: write a GameMenu subclass and add a line to SCREENS.
@@ -18,6 +19,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "talents", "title": "Talents", "icon": 28, "action": "toggle_talents"},
 	{"id": "class", "title": "Class", "icon": 6, "action": ""},
 	{"id": "professions", "title": "Professions", "icon": 49, "action": "toggle_professions"},
+	{"id": "journal", "title": "Journal", "icon": 53, "action": "toggle_journal"},
 	{"id": "map", "title": "Map", "icon": 12, "action": ""},
 	{"id": "pause", "title": "Settings", "icon": 5, "action": ""},
 ]
@@ -74,6 +76,10 @@ func setup(player: Player) -> void:
 	_add("talents", TalentMenu.new())
 	_add("class", ClassMenu.new())
 	_add("professions", ProfessionsMenu.new())
+	_add("journal", JournalMenu.new())
+	_add("shop", ShopMenu.new())
+	_add("quest_board", QuestBoardMenu.new())
+	Events.npc_interacted.connect(_on_npc_interacted)
 	_add("map", MapMenu.new())
 	_add("pause", PauseMenu.new())
 
@@ -117,6 +123,15 @@ func _show(id: String) -> void:
 	_hint.text = "M Close" if id == "wheel" else "M Menu wheel     Esc Close"
 	visible = true
 	get_tree().paused = true
+
+
+## Talking to someone opens their screen.
+func _on_npc_interacted(npc: Node) -> void:
+	if npc.kind == "merchant":
+		(_menus["shop"] as ShopMenu).npc = npc
+		open("shop")
+	else:
+		open("quest_board")
 
 
 func _input(event: InputEvent) -> void:

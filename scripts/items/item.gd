@@ -85,6 +85,20 @@ func tint() -> Color:
 	return definition().get("tint", Color.WHITE)
 
 
+## What a merchant charges for one of this item, in gold.
+func value() -> int:
+	var def := definition()
+	if def.has("value"):
+		return def["value"]
+	if is_equipment():
+		var worth := (10.0 + level * 6.0) * pow(1.0 + rarity * 0.8, 1.5) * (1.0 + 0.15 * upgrade)
+		return roundi(worth * (1.6 if def.get("two_handed", false) or slot() == "chest" else 1.0))
+	if is_tool():
+		return 60 * int(def["tool"]["tier"]) * int(def["tool"]["tier"])
+	var by_rarity: Array[int] = [4, 12, 40, 120, 400, 1200]
+	return by_rarity[rarity] * (5 if is_consumable() else 1)
+
+
 ## Whether a blacksmith can upgrade this: it must have damage or armour.
 func is_upgradable() -> bool:
 	return definition().has("damage") or definition().has("armor")
