@@ -10,9 +10,9 @@ signal died(enemy: Enemy)
 enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
 
 @export_group("Movement")
-@export var move_speed := 48.0
+@export var move_speed := 105.0
 ## Roughly how wide the enemy is; used for hits and for spacing from others.
-@export var body_radius := 6.0
+@export var body_radius := 13.0
 
 @export_group("Rewards")
 ## Experience given to the player when this enemy dies.
@@ -20,16 +20,16 @@ enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
 
 @export_group("Senses")
 ## The enemy notices the player inside this distance, in pixels.
-@export var aggro_radius := 120.0
+@export var aggro_radius := 270.0
 ## The enemy gives up once the player is this far away.
-@export var leash_radius := 230.0
+@export var leash_radius := 520.0
 
 @export_group("Attack")
 @export var contact_damage := 10.0
 ## The enemy starts its wind-up when the player is this close.
-@export var attack_range := 34.0
+@export var attack_range := 76.0
 @export var windup_time := 0.45
-@export var lunge_speed := 210.0
+@export var lunge_speed := 470.0
 @export var lunge_time := 0.22
 @export var recover_time := 0.7
 
@@ -84,17 +84,17 @@ func _physics_process(delta: float) -> void:
 				_visual.modulate = Color.WHITE
 		State.LUNGE:
 			velocity = _direction * lunge_speed
-			if has_target and not _has_hit and to_target.length() < body_radius + 6.0:
+			if has_target and not _has_hit and to_target.length() < body_radius + 13.0:
 				_has_hit = true
 				target.take_damage(contact_damage, global_position)
 			if _state_time_left == 0.0:
 				_enter(State.RECOVER, recover_time)
 		State.RECOVER:
-			velocity = velocity.move_toward(Vector2.ZERO, 900.0 * delta)
+			velocity = velocity.move_toward(Vector2.ZERO, 2000.0 * delta)
 			if _state_time_left == 0.0:
 				state = State.CHASE
 		State.STAGGER:
-			velocity = velocity.move_toward(Vector2.ZERO, 700.0 * delta)
+			velocity = velocity.move_toward(Vector2.ZERO, 1600.0 * delta)
 			if _state_time_left == 0.0:
 				state = State.CHASE
 
@@ -135,7 +135,7 @@ func _separation() -> Vector2:
 		if other == null or other == self:
 			continue
 		var offset := global_position - other.global_position
-		var spacing := body_radius + other.body_radius + 4.0
+		var spacing := body_radius + other.body_radius + 8.0
 		if offset.length() < spacing and offset.length() > 0.01:
 			push += offset.normalized() * (spacing - offset.length()) * 6.0
 	return push

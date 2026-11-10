@@ -6,24 +6,24 @@ signal died
 enum State { MOVE, ATTACK, DODGE, DEAD }
 
 @export_group("Movement")
-@export var move_speed := 90.0
+@export var move_speed := 200.0
 ## How quickly the player reaches full speed and stops, in pixels/second².
-@export var acceleration := 900.0
+@export var acceleration := 2200.0
 
 @export_group("Attack")
 @export var attack_damage := 12.0
 ## How far the swing reaches, in pixels.
-@export var attack_range := 28.0
+@export var attack_range := 64.0
 ## Width of the swing, in degrees.
 @export var attack_arc := 120.0
 ## How long the player is committed to a swing.
 @export var attack_duration := 0.16
 @export var attack_cooldown := 0.34
 ## How hard a hit shoves an enemy back, in pixels/second.
-@export var attack_knockback := 170.0
+@export var attack_knockback := 380.0
 
 @export_group("Dodge")
-@export var dodge_speed := 250.0
+@export var dodge_speed := 560.0
 ## The player cannot be hurt for the length of the dodge.
 @export var dodge_duration := 0.22
 @export var dodge_cooldown := 0.6
@@ -90,7 +90,7 @@ func attack(direction: Vector2) -> void:
 	state = State.ATTACK
 	_state_time_left = attack_duration
 	_attack_cooldown_left = attack_cooldown
-	velocity = direction * 60.0
+	velocity = direction * 130.0
 	_slash.play(direction, attack_range, deg_to_rad(attack_arc), attack_duration + 0.08)
 
 	var half_arc := deg_to_rad(attack_arc) / 2.0
@@ -122,7 +122,7 @@ func take_damage(amount: float, source_position: Vector2) -> void:
 		died.emit()
 		return
 	_invulnerable_left = hurt_invulnerability
-	velocity = source_position.direction_to(global_position) * 140.0
+	velocity = source_position.direction_to(global_position) * 300.0
 
 
 ## Brings the player back at full health. Main calls this after moving them.

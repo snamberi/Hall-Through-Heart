@@ -6,7 +6,7 @@ extends Node2D
 ## are freed. Each chunk is its own TileMapLayer.
 
 ## Chunk width and height, in tiles.
-const CHUNK_SIZE := 32
+const CHUNK_SIZE := 16
 
 ## How many chunks to keep loaded in every direction from the target.
 @export_range(1, 6) var load_radius := 2

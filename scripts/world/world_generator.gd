@@ -8,8 +8,8 @@ extends RefCounted
 ## the generated terrain inside their footprint.
 
 ## Tiles around the origin that are always open ground, so the start is safe.
-const SANCTUARY_INNER := 8.0
-const SANCTUARY_OUTER := 26.0
+const SANCTUARY_INNER := 5.0
+const SANCTUARY_OUTER := 14.0
 
 var world_seed: int
 
@@ -22,13 +22,13 @@ func _init(p_seed: int) -> void:
 
 	_elevation.seed = p_seed
 	_elevation.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	_elevation.frequency = 0.006
+	_elevation.frequency = 0.009
 	_elevation.fractal_type = FastNoiseLite.FRACTAL_FBM
 	_elevation.fractal_octaves = 5
 
 	_moisture.seed = p_seed + 1013
 	_moisture.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	_moisture.frequency = 0.004
+	_moisture.frequency = 0.006
 	_moisture.fractal_type = FastNoiseLite.FRACTAL_FBM
 	_moisture.fractal_octaves = 3
 
