@@ -11,10 +11,14 @@ extends RefCounted
 const SANCTUARY_INNER := 5.0
 const SANCTUARY_OUTER := 14.0
 
+## Tiles of travel away from the start per enemy level.
+const LEVEL_DISTANCE_TILES := 40.0
+
 var world_seed: int
 
 var _elevation := FastNoiseLite.new()
 var _moisture := FastNoiseLite.new()
+var _danger := FastNoiseLite.new()
 
 
 func _init(p_seed: int) -> void:
@@ -31,6 +35,25 @@ func _init(p_seed: int) -> void:
 	_moisture.frequency = 0.006
 	_moisture.fractal_type = FastNoiseLite.FRACTAL_FBM
 	_moisture.fractal_octaves = 3
+
+	_danger.seed = p_seed + 2027
+	_danger.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_danger.frequency = 0.004
+
+
+## Enemy level for an area. Rises with distance from the start, with pockets
+## of extra danger and harsher biomes mixed in so it is not distance alone.
+## Roughly: level 10 at 360 tiles out, 50 at 2,000, 200 at 8,000.
+func enemy_level_at(cell: Vector2i) -> int:
+	var distance := maxf(Vector2(cell).length() - SANCTUARY_OUTER, 0.0)
+	var level := 1.0 + distance / LEVEL_DISTANCE_TILES
+	level *= 1.0 + maxf(_danger.get_noise_2d(cell.x, cell.y), 0.0) * 0.8
+	match tile_type_at(cell):
+		TerrainTiles.Type.ASH:
+			level *= 1.15
+		TerrainTiles.Type.BOG:
+			level *= 1.1
+	return maxi(roundi(level), 1)
 
 
 func tile_type_at(cell: Vector2i) -> TerrainTiles.Type:

@@ -1,12 +1,14 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
 [ext_resource type="Script" path="res://scripts/combat/slash_effect.gd" id="3_slash"]
-
-[ext_resource type="Script" path="res://scripts/player/player_stats.gd" id="4_stats"]
-
+[ext_resource type="Script" path="res://scripts/combat/resource_pool.gd" id="4_pool"]
 [ext_resource type="Texture2D" path="res://assets/sprites/player.png" id="5_sprite"]
+[ext_resource type="Script" path="res://scripts/progression/leveling.gd" id="6_leveling"]
+[ext_resource type="Script" path="res://scripts/progression/attributes.gd" id="7_attributes"]
+[ext_resource type="Script" path="res://scripts/progression/weapon_mastery.gd" id="8_mastery"]
+[ext_resource type="Script" path="res://scripts/progression/character_stats.gd" id="9_stats"]
 
 [sub_resource type="CircleShape2D" id="shape_feet"]
 radius = 10.0
@@ -20,8 +22,27 @@ script = ExtResource("1_player")
 [node name="Health" type="Node" parent="."]
 script = ExtResource("2_health")
 
+[node name="Stamina" type="Node" parent="."]
+script = ExtResource("4_pool")
+regen_per_second = 22.0
+regen_delay = 0.7
+
+[node name="Mana" type="Node" parent="."]
+script = ExtResource("4_pool")
+max_value = 50.0
+regen_per_second = 2.0
+
+[node name="Leveling" type="Node" parent="."]
+script = ExtResource("6_leveling")
+
+[node name="Attributes" type="Node" parent="."]
+script = ExtResource("7_attributes")
+
+[node name="Mastery" type="Node" parent="."]
+script = ExtResource("8_mastery")
+
 [node name="Stats" type="Node" parent="."]
-script = ExtResource("4_stats")
+script = ExtResource("9_stats")
 
 [node name="Collision" type="CollisionShape2D" parent="."]
 shape = SubResource("shape_feet")

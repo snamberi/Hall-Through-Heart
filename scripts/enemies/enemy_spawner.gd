@@ -16,6 +16,8 @@ extends Node2D
 @export var despawn_distance := 1000.0
 ## No spawns within this many tiles of the world origin.
 @export var safe_radius_tiles := 16.0
+## Chance that a spawn is an Elite.
+@export_range(0.0, 1.0) var elite_chance := 0.08
 
 var _world: World
 var _player: Player
@@ -31,20 +33,15 @@ func alive_count() -> int:
 	return get_tree().get_nodes_in_group("enemies").size()
 
 
-func spawn_at(world_position: Vector2) -> Enemy:
+func spawn_at(
+	world_position: Vector2, level: int = 1, rank: Enemy.Rank = Enemy.Rank.NORMAL
+) -> Enemy:
 	var enemy: Enemy = enemy_scene.instantiate()
 	enemy.position = world_position
 	enemy.target = _player
-	enemy.died.connect(_on_enemy_died)
+	enemy.configure(level, rank)
 	add_child(enemy)
 	return enemy
-
-
-func _on_enemy_died(enemy: Enemy) -> void:
-	_player.stats.add_xp(enemy.xp_reward)
-	DamageNumber.spawn_text(
-		self, enemy.global_position + Vector2(0, -24), "+%d XP" % enemy.xp_reward, Color(0.6, 0.85, 1.0), 12
-	)
 
 
 func _physics_process(delta: float) -> void:
@@ -73,4 +70,6 @@ func _try_spawn() -> void:
 		return
 	if not _world.generator.is_walkable(cell):
 		return
-	spawn_at(_world.cell_to_world(cell))
+	var level := maxi(_world.generator.enemy_level_at(cell) + randi_range(-1, 1), 1)
+	var rank := Enemy.Rank.ELITE if randf() < elite_chance else Enemy.Rank.NORMAL
+	spawn_at(_world.cell_to_world(cell), level, rank)
