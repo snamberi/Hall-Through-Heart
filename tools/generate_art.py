@@ -6,6 +6,7 @@ Needs Pillow (pip install pillow). Overwrites the PNGs in assets/.
 Hand-drawn art can replace any of these files as long as the size and
 layout stay the same.
 """
+import math
 import os
 import random
 from PIL import Image, ImageDraw
@@ -20,7 +21,6 @@ def rgba(h):
 
 
 # --------------------------------------------------------------- sprites
-# Each sprite is a list of parts drawn back to front: (material, shape, coords).
 # Each material has three shades: light, mid, shadow. Light comes from top-left.
 
 PALETTE = {
@@ -41,70 +41,245 @@ PALETTE = {
 }
 
 
-def human_parts():
-    return [
-        ("trousers", "rect", (17, 34, 20, 39)), ("trousers", "rect", (24, 34, 27, 39)),
-        ("boot", "rect", (16, 39, 20, 41)), ("boot", "rect", (24, 39, 28, 41)),
-        ("tunic", "poly", [(15, 25), (29, 25), (30, 35), (14, 35)]),
-        ("belt", "rect", (14, 31, 30, 32)),
-        ("tunic", "rect", (11, 26, 14, 32)), ("skin", "rect", (11, 33, 14, 34)),   # left arm
-        ("blade", "rect", (35, 14, 36, 29)), ("blade", "poly", [(35, 14), (36, 14), (36, 11)]),
-        ("guard", "rect", (33, 30, 38, 31)), ("belt", "rect", (35, 32, 36, 34)),
-        ("tunic", "rect", (30, 26, 33, 30)), ("skin", "rect", (32, 31, 36, 33)),   # sword arm
-        ("hair", "ellipse", (10, 3, 34, 23)),
-        ("skin", "ellipse", (13, 10, 31, 26)),
-        ("hair", "poly", [(13, 12), (18, 9), (24, 12), (28, 9), (31, 13), (30, 8), (14, 8)]),  # fringe
-        ("void", "rect", (17, 17, 18, 19)), ("void", "rect", (25, 17, 26, 19)),
-        ("mouth", "rect", (21, 23, 23, 23)),
-    ]
+# Animated characters are rigs: named groups of parts, each rotating about a
+# pivot and following its parent group. A pose gives each group
+# (dx, dy, degrees); every animation is 12 poses. Coordinates are in a 44px
+# box; frames are FRAME px so swings and falls have room around the body.
+
+FRAMES = 12
+FRAME = 64
+FRAME_OFFSET = (10, 14)  # where the 44px box sits inside a frame
+GROUND_Y = 41 + FRAME_OFFSET[1]
 
 
-def husk_parts():
-    return [
-        ("flesh", "rect", (12, 22, 14, 38)), ("bone", "poly", [(11, 38), (15, 38), (13, 42)]),
-        ("flesh", "rect", (17, 34, 20, 41)), ("flesh", "rect", (24, 34, 27, 41)),
-        ("flesh", "ellipse", (11, 13, 31, 37)),
-        ("rib", "rect", (16, 24, 24, 24)), ("rib", "rect", (16, 27, 25, 27)), ("rib", "rect", (17, 30, 24, 30)),
-        ("flesh", "ellipse", (21, 6, 37, 21)),
-        ("void", "ellipse", (28, 14, 35, 20)),
-        ("bone", "rect", (30, 14, 30, 15)), ("bone", "rect", (33, 14, 33, 15)), ("bone", "rect", (31, 19, 31, 20)),
-        ("void", "ellipse", (26, 9, 30, 13)), ("eye", "rect", (28, 11, 28, 11)),
-        ("flesh", "rect", (29, 23, 31, 37)), ("bone", "poly", [(28, 37), (32, 37), (31, 42)]),
-        ("bone", "poly", [(13, 16), (11, 12), (16, 14)]), ("bone", "poly", [(17, 13), (17, 8), (21, 12)]),
-    ]
+def R(x0, y0, x1, y1):
+    return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
 
 
-def draw_sprite(parts, shadow_width):
+def E(x0, y0, x1, y1, n=28):
+    cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
+    return [(cx + rx * math.cos(2 * math.pi * k / n), cy + ry * math.sin(2 * math.pi * k / n)) for k in range(n)]
+
+
+HUMAN = {
+    "root": dict(parent=None, pivot=(22, 41), parts=[]),
+    "leg_l": dict(parent="root", pivot=(18.5, 34), parts=[("trousers", R(17, 34, 20, 39)), ("boot", R(16, 39, 20, 41))]),
+    "leg_r": dict(parent="root", pivot=(25.5, 34), parts=[("trousers", R(24, 34, 27, 39)), ("boot", R(24, 39, 28, 41))]),
+    "torso": dict(parent="root", pivot=(22, 35), parts=[("tunic", [(15, 25), (29, 25), (30, 35), (14, 35)]), ("belt", R(14, 31, 30, 32))]),
+    "arm_l": dict(parent="torso", pivot=(12.5, 26), parts=[("tunic", R(11, 26, 14, 32)), ("skin", R(11, 33, 14, 34))]),
+    "sword": dict(parent="arm_r", pivot=(35.5, 32), parts=[
+        ("blade", R(34.5, 13.5, 36.5, 29.5)), ("blade", [(34.5, 14), (36.5, 14), (36.5, 10.5)]),
+        ("guard", R(33, 30, 38, 31)), ("belt", R(35, 32, 36, 34))]),
+    "arm_r": dict(parent="torso", pivot=(31.5, 26), parts=[("tunic", R(30, 26, 33, 30)), ("skin", R(32, 31, 36, 33))]),
+    "head": dict(parent="torso", pivot=(22, 25), parts=[
+        ("hair", E(10, 3, 34, 23)), ("skin", E(13, 10, 31, 26)),
+        ("hair", [(13, 12), (18, 9), (24, 12), (28, 9), (31, 13), (30, 8), (14, 8)]),
+        ("void", R(17, 17, 18, 19)), ("void", R(25, 17, 26, 19)), ("mouth", R(21, 23, 23, 23))]),
+}
+HUMAN_ORDER = ["leg_l", "leg_r", "torso", "arm_l", "sword", "arm_r", "head"]
+
+HUSK = {
+    "root": dict(parent=None, pivot=(22, 41), parts=[]),
+    "back_arm": dict(parent="torso", pivot=(13, 22), parts=[("flesh", R(12, 22, 14, 38)), ("bone", [(11, 38), (15, 38), (13, 42)])]),
+    "leg_l": dict(parent="root", pivot=(18.5, 34), parts=[("flesh", R(17, 34, 20, 41))]),
+    "leg_r": dict(parent="root", pivot=(25.5, 34), parts=[("flesh", R(24, 34, 27, 41))]),
+    "torso": dict(parent="root", pivot=(21, 37), parts=[
+        ("flesh", E(11, 13, 31, 37)),
+        ("rib", R(16, 24, 24, 24)), ("rib", R(16, 27, 25, 27)), ("rib", R(17, 30, 24, 30)),
+        ("bone", [(13, 16), (11, 12), (16, 14)]), ("bone", [(17, 13), (17, 8), (21, 12)])]),
+    "head": dict(parent="torso", pivot=(25, 17), parts=[
+        ("flesh", E(21, 6, 37, 21)), ("void", E(28, 14, 35, 20)),
+        ("bone", R(30, 14, 30, 15)), ("bone", R(33, 14, 33, 15)), ("bone", R(31, 19, 31, 20)),
+        ("void", E(26, 9, 30, 13)), ("eye", R(28, 11, 28, 11))]),
+    "front_arm": dict(parent="torso", pivot=(30, 23), parts=[("flesh", R(29, 23, 31, 37)), ("bone", [(28, 37), (32, 37), (31, 42)])]),
+}
+HUSK_ORDER = ["back_arm", "leg_l", "leg_r", "torso", "head", "front_arm"]
+
+
+def _transform(rig, name, point, pose):
+    while name is not None:
+        group = rig[name]
+        dx, dy, degrees = pose.get(name, (0, 0, 0))
+        px, py = pose.get(name + "_pivot", group["pivot"])
+        a = math.radians(degrees)
+        x, y = point[0] - px, point[1] - py
+        point = (px + x * math.cos(a) - y * math.sin(a) + dx, py + x * math.sin(a) + y * math.cos(a) + dy)
+        name = group["parent"]
+    return point
+
+
+def draw_frame(rig, order, pose):
+    ox, oy = FRAME_OFFSET
     pixels = {}
-    for material, shape, coords in parts:
-        mask = Image.new("L", (N, N), 0)
-        d = ImageDraw.Draw(mask)
-        if shape == "rect":
-            d.rectangle(coords, fill=255)
-        elif shape == "ellipse":
-            d.ellipse(coords, fill=255)
-        else:
-            d.polygon(coords, fill=255, outline=255)
-        points = [(x, y) for y in range(N) for x in range(N) if mask.getpixel((x, y))]
-        if not points:
-            continue
-        x0, x1 = min(p[0] for p in points), max(p[0] for p in points)
-        y0, y1 = min(p[1] for p in points), max(p[1] for p in points)
-        for x, y in points:
-            t = 0.7 * (x - x0) / max(x1 - x0, 1) + 0.3 * (y - y0) / max(y1 - y0, 1)
-            pixels[(x, y)] = PALETTE[material][0 if t < 0.3 else 1 if t < 0.68 else 2]
+    for name in order:
+        for material, polygon in rig[name]["parts"]:
+            moved = [_transform(rig, name, pt, pose) for pt in polygon]
+            mask = Image.new("L", (FRAME, FRAME), 0)
+            ImageDraw.Draw(mask).polygon([(x + ox, y + oy) for x, y in moved], fill=255, outline=255)
+            points = [(x, y) for y in range(FRAME) for x in range(FRAME) if mask.getpixel((x, y))]
+            if not points:
+                continue
+            x0, x1 = min(p[0] for p in points), max(p[0] for p in points)
+            y0, y1 = min(p[1] for p in points), max(p[1] for p in points)
+            for x, y in points:
+                t = 0.7 * (x - x0) / max(x1 - x0, 1) + 0.3 * (y - y0) / max(y1 - y0, 1)
+                pixels[(x, y)] = PALETTE[material][0 if t < 0.3 else 1 if t < 0.68 else 2]
 
-    img = Image.new("RGBA", (N, N), (0, 0, 0, 0))
-    ImageDraw.Draw(img).ellipse((22 - shadow_width, 39, 22 + shadow_width, 43), fill=(0, 0, 0, 90))
+    img = Image.new("RGBA", (FRAME, FRAME), (0, 0, 0, 0))
+    shadow_x, shadow_w = pose.get("shadow", (22, 9))
+    ImageDraw.Draw(img).ellipse((shadow_x + ox - shadow_w, GROUND_Y - 2, shadow_x + ox + shadow_w, GROUND_Y + 2), fill=(0, 0, 0, 90))
     for (x, y), colour in pixels.items():
         img.putpixel((x, y), rgba(colour))
-    for y in range(N):
-        for x in range(N):
+    for y in range(FRAME):
+        for x in range(FRAME):
             if (x, y) not in pixels and any(
                 (x + dx, y + dy) in pixels for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
             ):
                 img.putpixel((x, y), rgba(OUTLINE))
     return img
+
+
+def blend(a, b, t):
+    """Pose between two poses, t from 0 to 1."""
+    out = {}
+    for key in set(a) | set(b):
+        default = a.get(key, b.get(key)) if key.endswith("_pivot") or key == "shadow" else (0, 0, 0)
+        va, vb = a.get(key, default), b.get(key, default)
+        out[key] = tuple(x + (y - x) * t for x, y in zip(va, vb))
+    return out
+
+
+def keyframes(keys):
+    """12 poses from [(frame, pose), ...], blending between neighbours."""
+    poses = []
+    for i in range(FRAMES):
+        for (f0, p0), (f1, p1) in zip(keys, keys[1:]):
+            if f0 <= i <= f1:
+                poses.append(blend(p0, p1, (i - f0) / max(f1 - f0, 1)))
+                break
+    return poses
+
+
+def wave(i):
+    return math.sin(2 * math.pi * i / FRAMES)
+
+
+# --- human animations
+def human_idle(i):
+    return {"torso": (0, 1 if 3 <= i <= 8 else 0, 0), "sword": (0, 0, 3 * wave(i))}
+
+
+def human_run(i):
+    s = wave(i)
+    return {
+        "root": (0, -round(abs(s) * 2), 0), "torso": (1, 0, 7), "head": (0, 0, -4),
+        "leg_l": (0, 0, 38 * s), "leg_r": (0, 0, -38 * s),
+        "arm_l": (0, 0, -35 * s), "arm_r": (0, 0, 18 * s),
+    }
+
+
+def human_attack(i):
+    # (sword arm, sword, torso lean, step forward): wind back, slash, recover.
+    arm, sword, lean, step = [
+        (-20, -10, -3, 0), (-60, -25, -6, -1), (-95, -35, -8, -1), (-60, 0, 0, 1),
+        (10, 40, 8, 3), (55, 70, 12, 4), (75, 85, 12, 4), (70, 80, 10, 3),
+        (50, 60, 7, 2), (30, 35, 4, 1), (12, 15, 2, 0), (0, 0, 0, 0),
+    ][i]
+    return {"root": (step, 0, 0), "torso": (0, 0, lean), "arm_r": (0, 0, arm), "sword": (0, 0, sword), "arm_l": (0, 0, -lean * 2)}
+
+
+def human_dodge(i):
+    spin = [0, 20, 60, 110, 160, 200, 240, 280, 320, 345, 355, 0][i]
+    drop = [0, 2, 4, 5, 5, 5, 5, 5, 4, 2, 1, 0][i]
+    tuck = min(i, 11 - i, 2) / 2
+    return {
+        "root": (0, drop, spin), "root_pivot": (22, 27),
+        "leg_l": (0, 0, 45 * tuck), "leg_r": (0, 0, -40 * tuck),
+        "arm_l": (0, 0, -50 * tuck), "arm_r": (0, 0, 40 * tuck), "head": (0, 2 * tuck, 0),
+    }
+
+
+HUMAN_STAND = {"root_pivot": (16, 41), "shadow": (22, 9, 0)}
+HUMAN_RECOIL = {"root_pivot": (16, 41), "shadow": (22, 9, 0), "root": (-1, 0, -6), "torso": (0, 0, -12), "head": (0, 0, -14),
+                "arm_l": (0, 0, -70), "arm_r": (0, 0, 60), "sword": (0, 0, 40)}
+HUMAN_KNEEL = {"root_pivot": (16, 41), "shadow": (22, 11, 0), "root": (0, 7, 0), "torso": (0, 0, 10), "head": (0, 0, 20),
+               "arm_l": (0, 0, 10), "arm_r": (0, 0, 10), "sword": (3, 2, 95), "leg_l": (0, 0, 80), "leg_r": (0, 0, 75)}
+HUMAN_LYING = {"root_pivot": (16, 41), "shadow": (34, 18, 0), "root": (0, -20, 90), "head": (0, 0, 10),
+               "arm_l": (0, 0, 20), "arm_r": (0, 0, -20), "sword": (0, 0, 120), "leg_l": (0, 0, 10), "leg_r": (0, 0, -6)}
+HUMAN_RISEN = {"root_pivot": (16, 41), "shadow": (22, 9, 0), "torso": (0, -1, -4), "head": (0, 0, -10),
+               "arm_l": (0, 0, 150), "arm_r": (0, 0, -150), "sword": (0, 0, 0)}
+HUMAN_KNEEL_UP = dict(HUMAN_KNEEL, sword=(0, 0, 0))
+
+HUMAN_DEATH = keyframes([(0, HUMAN_STAND), (2, HUMAN_RECOIL), (5, HUMAN_KNEEL), (9, HUMAN_LYING), (11, HUMAN_LYING)])
+HUMAN_REBIRTH = keyframes([(0, HUMAN_LYING), (2, HUMAN_LYING), (6, HUMAN_KNEEL_UP), (9, HUMAN_RISEN), (11, HUMAN_STAND)])
+
+
+# --- husk animations
+def husk_idle(i):
+    return {"torso": (0, 1 if 3 <= i <= 8 else 0, 0), "front_arm": (0, 0, 4 * wave(i)), "back_arm": (0, 0, -4 * wave(i))}
+
+
+def husk_walk(i):
+    s = wave(i)
+    return {
+        "root": (0, -round(abs(s)), 0), "head": (0, 0, 4 * s),
+        "leg_l": (0, 0, 28 * s), "leg_r": (0, 0, -28 * s),
+        "back_arm": (0, 0, -22 * s), "front_arm": (0, 0, 22 * s),
+    }
+
+
+def husk_windup(i):
+    t = i / 11
+    shake = (i % 2) if i > 5 else 0
+    return {
+        "root": (-round(2 * t) + shake, round(3 * t), 0), "torso": (0, 0, -12 * t), "head": (0, 0, -22 * t),
+        "front_arm": (0, 0, -120 * t), "back_arm": (0, 0, -100 * t),
+    }
+
+
+def husk_lunge(i):
+    k = min(i / 3, 1) if i <= 8 else (11 - i) / 3
+    return {
+        "root": (round(5 * k), round(k), 0), "torso": (0, 0, 28 * k), "head": (0, 0, 12 * k),
+        "front_arm": (0, 0, -95 * k), "back_arm": (0, 0, -80 * k),
+        "leg_l": (0, 0, 30 * k), "leg_r": (0, 0, -25 * k),
+    }
+
+
+HUSK_STAND = {"root_pivot": (30, 41), "shadow": (22, 11, 0)}
+HUSK_REEL = {"root_pivot": (30, 41), "shadow": (22, 11, 0), "torso": (0, 0, -15), "head": (0, 0, -30),
+             "front_arm": (0, 0, -40), "back_arm": (0, 0, -40)}
+HUSK_FALLEN = {"root_pivot": (30, 41), "shadow": (12, 18, 0), "root": (0, -19, -90), "head": (0, 0, -20),
+               "front_arm": (0, 0, -60), "back_arm": (0, 0, 30), "leg_l": (0, 0, 15), "leg_r": (0, 0, -20)}
+HUSK_DEATH = keyframes([(0, HUSK_STAND), (2, HUSK_REEL), (7, HUSK_FALLEN), (11, HUSK_FALLEN)])
+
+# Row order here is the row order in the sheet; the game lists the same names.
+HUMAN_ANIMATIONS = [
+    ("idle", [human_idle(i) for i in range(FRAMES)]),
+    ("run", [human_run(i) for i in range(FRAMES)]),
+    ("attack", [human_attack(i) for i in range(FRAMES)]),
+    ("dodge", [human_dodge(i) for i in range(FRAMES)]),
+    ("death", HUMAN_DEATH),
+    ("rebirth", HUMAN_REBIRTH),
+]
+HUSK_ANIMATIONS = [
+    ("idle", [husk_idle(i) for i in range(FRAMES)]),
+    ("walk", [husk_walk(i) for i in range(FRAMES)]),
+    ("windup", [husk_windup(i) for i in range(FRAMES)]),
+    ("lunge", [husk_lunge(i) for i in range(FRAMES)]),
+    ("death", HUSK_DEATH),
+]
+
+
+def draw_sheet(rig, order, animations):
+    sheet = Image.new("RGBA", (FRAMES * FRAME, len(animations) * FRAME), (0, 0, 0, 0))
+    for row, (_name, poses) in enumerate(animations):
+        for column, pose in enumerate(poses):
+            pose = dict(pose)
+            if "shadow" in pose:
+                pose["shadow"] = (pose["shadow"][0], pose["shadow"][1])
+            sheet.paste(draw_frame(rig, order, pose), (column * FRAME, row * FRAME))
+    return sheet
 
 
 # ----------------------------------------------------------------- tiles
@@ -290,8 +465,8 @@ def draw_icon(parts):
 def main():
     os.makedirs(os.path.join(ROOT, "sprites"), exist_ok=True)
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
-    draw_sprite(human_parts(), 9).save(os.path.join(ROOT, "sprites", "player.png"))
-    draw_sprite(husk_parts(), 11).save(os.path.join(ROOT, "sprites", "husk.png"))
+    draw_sheet(HUMAN, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
+    draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
     atlas = Image.new("RGBA", (VARIANTS * N, len(TILES) * N))
     for row in range(len(TILES)):
         for variant in range(VARIANTS):

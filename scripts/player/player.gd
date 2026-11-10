@@ -6,8 +6,10 @@ extends CharacterBody2D
 ## Stats); this script only reads the numbers they produce.
 
 signal died(xp_lost: int)
+## The rebirth animation has ended and the player can move again.
+signal rebirth_finished
 
-enum State { MOVE, ATTACK, DODGE, DEAD }
+enum State { MOVE, ATTACK, DODGE, DEAD, REVIVING }
 
 @export_group("Movement")
 ## How quickly the player reaches full speed and stops, in pixels/second².
@@ -56,6 +58,7 @@ var _dodge_direction := Vector2.ZERO
 @onready var equipment: Equipment = $Equipment
 @onready var camera: Camera2D = $Camera
 @onready var _visual: Node2D = $Visual
+@onready var _animator: PlayerAnimator = $Visual/Sprite
 @onready var _slash: SlashEffect = $Slash
 
 
@@ -75,7 +78,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if state == State.DEAD:
+	if state == State.DEAD or state == State.REVIVING:
 		return
 	_attack_cooldown_left = maxf(_attack_cooldown_left - delta, 0.0)
 	_dodge_cooldown_left = maxf(_dodge_cooldown_left - delta, 0.0)
@@ -99,8 +102,9 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 
+## True while dead and while rising again; enemies ignore the player.
 func is_dead() -> bool:
-	return state == State.DEAD
+	return state == State.DEAD or state == State.REVIVING
 
 
 ## Swings at everything in an arc in front of the player.
@@ -114,6 +118,8 @@ func attack(direction: Vector2) -> void:
 	var attack_arc: float = weapon["arc"]
 	_attack_cooldown_left = weapon["cooldown"] / stats.get_stat("attack_speed")
 	velocity = direction * 130.0
+	# The swing animation fills the gap until the next swing is ready.
+	_animator.play_attack(clampf(_attack_cooldown_left, attack_duration, 0.4))
 	_slash.play(direction, attack_range, deg_to_rad(attack_arc), attack_duration + 0.08)
 
 	var half_arc := deg_to_rad(attack_arc) / 2.0
@@ -137,7 +143,7 @@ func attack(direction: Vector2) -> void:
 
 
 func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1) -> void:
-	if state == State.DEAD or _invulnerable_left > 0.0:
+	if is_dead() or _invulnerable_left > 0.0:
 		return
 	amount = maxf(amount * (1.0 - stats.damage_reduction(attacker_level)), 1.0)
 	health.take_damage(amount)
@@ -145,7 +151,8 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 	if health.is_dead():
 		state = State.DEAD
 		velocity = Vector2.ZERO
-		_visual.modulate.a = 0.0
+		_visual.modulate.a = 1.0
+		_animator.play_death()
 		var xp_lost := leveling.apply_death_penalty()
 		died.emit(xp_lost)
 		Events.player_died.emit(xp_lost)
@@ -155,13 +162,18 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 	velocity = source_position.direction_to(global_position) * 300.0 * (1.0 - resistance)
 
 
-## Brings the player back at full health. Main calls this after moving them.
-func revive() -> void:
+## Starts rising from the ground at full health. Call after moving the
+## player to where they wake; rebirth_finished fires when they can move.
+func begin_rebirth() -> void:
+	state = State.REVIVING
 	_restore_all()
-	state = State.MOVE
 	velocity = Vector2.ZERO
-	_invulnerable_left = 1.5
 	_visual.modulate.a = 1.0
+	_animator.play_rebirth()
+	await _animator.rebirth_finished
+	state = State.MOVE
+	_invulnerable_left = 1.5
+	rebirth_finished.emit()
 
 
 func save_data() -> Dictionary:
@@ -216,7 +228,7 @@ func _restore_all() -> void:
 
 func _on_leveled_up(_level: int) -> void:
 	attributes.grant_points(Leveling.STAT_POINTS_PER_LEVEL)
-	if state != State.DEAD:
+	if not is_dead():
 		_restore_all()
 	RingBurst.spawn(get_parent(), global_position + Vector2(0, -16), Color(1.0, 0.82, 0.3))
 

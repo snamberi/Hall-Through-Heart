@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemies/enemy.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
 [ext_resource type="Script" path="res://scripts/ui/world_health_bar.gd" id="3_bar"]
 
-[ext_resource type="Texture2D" path="res://assets/sprites/husk.png" id="4_sprite"]
+[ext_resource type="Texture2D" path="res://assets/sprites/husk_sheet.png" id="4_sprite"]
+[ext_resource type="Script" path="res://scripts/enemies/enemy_animator.gd" id="5_animator"]
 
 [sub_resource type="CircleShape2D" id="shape_feet"]
 radius = 10.0
@@ -24,9 +25,10 @@ shape = SubResource("shape_feet")
 
 [node name="Visual" type="Node2D" parent="."]
 
-[node name="Sprite" type="Sprite2D" parent="Visual"]
-position = Vector2(0, -19)
-texture = ExtResource("4_sprite")
+[node name="Sprite" type="AnimatedSprite2D" parent="Visual"]
+position = Vector2(0, -23)
+script = ExtResource("5_animator")
+sheet = ExtResource("4_sprite")
 
 [node name="HealthBar" type="Node2D" parent="."]
 position = Vector2(0, -46)

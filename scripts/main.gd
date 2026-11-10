@@ -5,8 +5,6 @@ const START_NAME := "the Sanctuary"
 ## World seed. Leave at 0 to use the saved world, or a new random one if
 ## there is no save. Set a number to force that world.
 @export var world_seed := 0
-## Seconds between dying and waking up at the starting area.
-@export var respawn_delay := 3.0
 
 var _active_seed := 0
 
@@ -14,6 +12,7 @@ var _active_seed := 0
 @onready var _player: Player = $Player
 @onready var _spawner: EnemySpawner = $Enemies
 @onready var _loot: Node2D = $Loot
+@onready var _cinematic: CanvasLayer = $Cinematic
 @onready var _hud: CanvasLayer = $HUD
 @onready var _menus: CanvasLayer = $Menus
 @onready var _debug_hud: CanvasLayer = $DebugHUD
@@ -54,8 +53,7 @@ func _place_player_at_start() -> void:
 
 
 func _on_player_died(xp_lost: int) -> void:
-	_hud.show_death(xp_lost, START_NAME)
-	await get_tree().create_timer(respawn_delay).timeout
+	await _cinematic.play_death(_player, _hud.show_death.bind(xp_lost, START_NAME))
 	_place_player_at_start()
-	_player.revive()
 	_hud.hide_death()
+	await _cinematic.play_rebirth(_player)
