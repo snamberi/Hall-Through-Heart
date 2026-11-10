@@ -198,7 +198,77 @@ const ITEMS := {
 	"bone": {"name": "Bone", "icon": 14, "material_rarity": 0, "text": "Picked clean. Still useful."},
 	"claw": {"name": "Claw", "icon": 15, "material_rarity": 1, "text": "Sharp enough to keep an edge."},
 	"essence": {"name": "Essence", "icon": 16, "material_rarity": 2, "text": "A bead of whatever keeps the dead moving."},
+	# --- gathered materials (pale icons tinted by "tint")
+	"stone": {"name": "Stone", "icon": 42, "tint": Color("9a98a0"), "material_rarity": 0, "text": "Plain rock. Useful in every forge."},
+	"tin_ore": {"name": "Tin Ore", "icon": 42, "tint": Color("c8d0d4"), "material_rarity": 0, "text": "Soft ore, smelted with copper into bronze."},
+	"copper_ore": {"name": "Copper Ore", "icon": 42, "tint": Color("d98a5a"), "material_rarity": 0, "text": "Raw copper, ready for smelting."},
+	"iron_ore": {"name": "Iron Ore", "icon": 42, "tint": Color("8f9aa6"), "material_rarity": 0, "text": "Raw iron, ready for smelting."},
+	"silver_ore": {"name": "Silver Ore", "icon": 42, "tint": Color("eef2f6"), "material_rarity": 1, "text": "Raw silver, ready for smelting."},
+	"gold_ore": {"name": "Gold Ore", "icon": 42, "tint": Color("f0cf6a"), "material_rarity": 1, "text": "Raw gold, ready for smelting."},
+	"mithril_ore": {"name": "Mithril Ore", "icon": 42, "tint": Color("8fe0e8"), "material_rarity": 2, "text": "Raw mithril, ready for smelting."},
+	"obsidian_ore": {"name": "Obsidian Ore", "icon": 42, "tint": Color("5a5470"), "material_rarity": 2, "text": "Raw obsidian, ready for smelting."},
+	"adamantite_ore": {"name": "Adamantite Ore", "icon": 42, "tint": Color("d06a5a"), "material_rarity": 3, "text": "Raw adamantite, ready for smelting."},
+	"void_crystal": {"name": "Void Crystal", "icon": 42, "tint": Color("9a6cf0"), "material_rarity": 3, "text": "Raw void, ready for smelting."},
+	"heartstone": {"name": "Heartstone", "icon": 42, "tint": Color("e0506a"), "material_rarity": 4, "text": "Raw heartstone, ready for smelting."},
+	"bronze_ingot": {"name": "Bronze Ingot", "icon": 46, "tint": Color("c9954a"), "material_rarity": 0, "text": "Copper and tin. Makes sturdy tools."},
+	"copper_ingot": {"name": "Copper Ingot", "icon": 46, "tint": Color("d98a5a"), "material_rarity": 0, "text": "A bar of copper for the forge."},
+	"iron_ingot": {"name": "Iron Ingot", "icon": 46, "tint": Color("8f9aa6"), "material_rarity": 0, "text": "A bar of iron for the forge."},
+	"silver_ingot": {"name": "Silver Ingot", "icon": 46, "tint": Color("eef2f6"), "material_rarity": 1, "text": "A bar of silver for the forge."},
+	"gold_ingot": {"name": "Gold Ingot", "icon": 46, "tint": Color("f0cf6a"), "material_rarity": 1, "text": "A bar of gold for the forge."},
+	"mithril_ingot": {"name": "Mithril Ingot", "icon": 46, "tint": Color("8fe0e8"), "material_rarity": 2, "text": "A bar of mithril for the forge."},
+	"obsidian_ingot": {"name": "Obsidian Ingot", "icon": 46, "tint": Color("5a5470"), "material_rarity": 2, "text": "A bar of obsidian for the forge."},
+	"adamantite_ingot": {"name": "Adamantite Ingot", "icon": 46, "tint": Color("d06a5a"), "material_rarity": 3, "text": "A bar of adamantite for the forge."},
+	"void_ingot": {"name": "Void Ingot", "icon": 46, "tint": Color("9a6cf0"), "material_rarity": 3, "text": "A bar of void for the forge."},
+	"heartstone_ingot": {"name": "Heartstone Ingot", "icon": 46, "tint": Color("e0506a"), "material_rarity": 4, "text": "A bar of heartstone for the forge."},
+	"oak_wood": {"name": "Oak Wood", "icon": 43, "tint": Color("b08a5a"), "material_rarity": 0, "text": "Timber for hafts, bows, and staves."},
+	"pine_wood": {"name": "Pine Wood", "icon": 43, "tint": Color("8a6a48"), "material_rarity": 0, "text": "Timber for hafts, bows, and staves."},
+	"ancient_wood": {"name": "Ancient Wood", "icon": 43, "tint": Color("6f7a5a"), "material_rarity": 2, "text": "Timber for hafts, bows, and staves."},
+	"spiritwood": {"name": "Spiritwood", "icon": 43, "tint": Color("a8e0d0"), "material_rarity": 3, "text": "Timber for hafts, bows, and staves."},
+	"healing_herb": {"name": "Healing Herb", "icon": 44, "tint": Color("6fd070"), "material_rarity": 0, "text": "Bitter leaves that close wounds."},
+	"mana_flower": {"name": "Mana Flower", "icon": 44, "tint": Color("6fa0f0"), "material_rarity": 1, "text": "Its petals hum faintly."},
+	"poison_mushroom": {"name": "Poison Mushroom", "icon": 44, "tint": Color("b06ad0"), "material_rarity": 1, "text": "Do not eat this one raw."},
+	"rare_root": {"name": "Rare Root", "icon": 44, "tint": Color("d0b070"), "material_rarity": 2, "text": "A knotted root prized by alchemists."},
+	"minnow": {"name": "Minnow", "icon": 45, "tint": Color("c0d0d8"), "material_rarity": 0, "text": "Fresh from the black water. Best cooked."},
+	"trout": {"name": "Trout", "icon": 45, "tint": Color("e0a080"), "material_rarity": 1, "text": "Fresh from the black water. Best cooked."},
+	"eel": {"name": "Eel", "icon": 45, "tint": Color("708090"), "material_rarity": 2, "text": "Fresh from the black water. Best cooked."},
+	"enchanted_dust": {"name": "Enchanted Dust", "icon": 52, "tint": Color("ffffff"), "material_rarity": 1, "text": "What is left when magic gear is broken down."},
+	"venom_sac": {"name": "Venom Sac", "icon": 16, "tint": Color("b06ad0"), "material_rarity": 1, "text": "Handle with care."},
+	"ember_core": {"name": "Ember Core", "icon": 16, "tint": Color("f08a2e"), "material_rarity": 2, "text": "Still warm."},
+	"stone_heart": {"name": "Stone Heart", "icon": 42, "tint": Color("8a8794"), "material_rarity": 2, "text": "The slow-beating core of a golem."},
+	# --- consumables: "use" is what happens when used
+	"health_potion": {"name": "Health Potion", "icon": 47, "tint": Color("e0555a"), "material_rarity": 0, "use": {"heal": 0.4}, "text": "Restores 40% of your health."},
+	"mana_potion": {"name": "Mana Potion", "icon": 47, "tint": Color("4f9dff"), "material_rarity": 0, "use": {"mana": 0.6}, "text": "Restores 60% of your mana."},
+	"stamina_tonic": {"name": "Stamina Tonic", "icon": 47, "tint": Color("f0cf6a"), "material_rarity": 0, "use": {"stamina": 1.0}, "text": "Fully restores your stamina."},
+	"might_elixir": {"name": "Might Elixir", "icon": 47, "tint": Color("f08a2e"), "material_rarity": 1, "use": {"buff": "might", "name": "Might", "duration": 90.0, "mods": {"physical_damage": {"percent": 0.15}}}, "text": "+15% damage for 90 seconds."},
+	"grilled_minnow": {"name": "Grilled Minnow", "icon": 48, "tint": Color("e0c090"), "material_rarity": 0, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 20.0}, "health_regen": {"flat": 0.5}}}, "text": "+20 maximum HP and regeneration for 5 minutes."},
+	"trout_stew": {"name": "Trout Stew", "icon": 48, "tint": Color("f0a060"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 60.0}, "max_stamina": {"flat": 20.0}}}, "text": "+60 maximum HP and +20 stamina for 5 minutes."},
+	"eel_pie": {"name": "Eel Pie", "icon": 48, "tint": Color("c09060"), "material_rarity": 2, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 100.0}, "physical_damage": {"percent": 0.08}}}, "text": "+100 maximum HP and +8% damage for 5 minutes."},
+	# --- tools: needed to gather; higher tiers reach better materials and work faster
+	"worn_pickaxe": {"name": "Worn Pickaxe", "icon": 49, "tint": Color("9a98a0"), "material_rarity": 0, "tool": {"kind": "pickaxe", "tier": 1, "speed": 1.0}, "text": "Tier 1 pickaxe."},
+	"bronze_pickaxe": {"name": "Bronze Pickaxe", "icon": 49, "tint": Color("c9954a"), "material_rarity": 1, "tool": {"kind": "pickaxe", "tier": 2, "speed": 1.2}, "text": "Tier 2 pickaxe."},
+	"iron_pickaxe": {"name": "Iron Pickaxe", "icon": 49, "tint": Color("aab2bc"), "material_rarity": 2, "tool": {"kind": "pickaxe", "tier": 3, "speed": 1.4}, "text": "Tier 3 pickaxe."},
+	"mithril_pickaxe": {"name": "Mithril Pickaxe", "icon": 49, "tint": Color("8fe0e8"), "material_rarity": 3, "tool": {"kind": "pickaxe", "tier": 4, "speed": 1.7}, "text": "Tier 4 pickaxe."},
+	"adamantite_pickaxe": {"name": "Adamantite Pickaxe", "icon": 49, "tint": Color("d06a5a"), "material_rarity": 4, "tool": {"kind": "pickaxe", "tier": 5, "speed": 2.0}, "text": "Tier 5 pickaxe."},
+	"worn_hatchet": {"name": "Worn Hatchet", "icon": 50, "tint": Color("9a98a0"), "material_rarity": 0, "tool": {"kind": "hatchet", "tier": 1, "speed": 1.0}, "text": "Tier 1 hatchet."},
+	"bronze_hatchet": {"name": "Bronze Hatchet", "icon": 50, "tint": Color("c9954a"), "material_rarity": 1, "tool": {"kind": "hatchet", "tier": 2, "speed": 1.2}, "text": "Tier 2 hatchet."},
+	"iron_hatchet": {"name": "Iron Hatchet", "icon": 50, "tint": Color("aab2bc"), "material_rarity": 2, "tool": {"kind": "hatchet", "tier": 3, "speed": 1.4}, "text": "Tier 3 hatchet."},
+	"mithril_hatchet": {"name": "Mithril Hatchet", "icon": 50, "tint": Color("8fe0e8"), "material_rarity": 3, "tool": {"kind": "hatchet", "tier": 4, "speed": 1.7}, "text": "Tier 4 hatchet."},
+	"adamantite_hatchet": {"name": "Adamantite Hatchet", "icon": 50, "tint": Color("d06a5a"), "material_rarity": 4, "tool": {"kind": "hatchet", "tier": 5, "speed": 2.0}, "text": "Tier 5 hatchet."},
+	"fishing_rod": {"name": "Fishing Rod", "icon": 51, "material_rarity": 0, "tool": {"kind": "rod", "tier": 1, "speed": 1.0}, "text": "For the patient."},
 }
+
+## Metal for each equipment tier, by the item level the tier starts at.
+const TIER_INGOTS := {1: "copper_ingot", 10: "iron_ingot", 20: "silver_ingot", 30: "gold_ingot", 40: "mithril_ingot",
+	50: "obsidian_ingot", 65: "adamantite_ingot", 80: "void_ingot", 100: "heartstone_ingot"}
+## Wearing several armour pieces of one tier gives a set bonus.
+const SET_SLOTS: Array[String] = ["off_hand", "helmet", "chest", "legs", "boots"]
+const SET_BONUSES := {
+	2: {"max_health": {"percent": 0.05}},
+	4: {"max_health": {"percent": 0.05}, "armor": {"percent": 0.1}, "physical_damage": {"percent": 0.05}},
+}
+## Base power gained per blacksmith upgrade level, and the most upgrades allowed.
+const UPGRADE_POWER := 0.08
+const MAX_UPGRADE := 10
 
 ## Random modifiers. Value = (base + per_level * item level) * a quality roll.
 ## "slots" lists the equipment slots an affix can appear on ("ring" covers both).
@@ -225,17 +295,32 @@ const AFFIXES: Array[Dictionary] = [
 ]
 
 ## What each enemy type can drop. "gold" is [min, max] at level 1.
+## Enemies without an entry use "husk".
 const LOOT_TABLES := {
-	"husk": {
-		"gold": [1, 3],
-		"equipment_chance": 0.1,
-		"materials": [
-			{"id": "husk_fragment", "chance": 0.6, "count": [1, 2]},
-			{"id": "bone", "chance": 0.25, "count": [1, 1]},
-			{"id": "claw", "chance": 0.12, "count": [1, 1]},
-			{"id": "essence", "chance": 0.03, "count": [1, 1]},
-		],
-	},
+	"husk": {"gold": [1, 3], "equipment_chance": 0.1, "materials": [
+		{"id": "husk_fragment", "chance": 0.6, "count": [1, 2]}, {"id": "bone", "chance": 0.25, "count": [1, 1]},
+		{"id": "claw", "chance": 0.12, "count": [1, 1]}, {"id": "essence", "chance": 0.03, "count": [1, 1]}]},
+	"rot_hound": {"gold": [1, 3], "equipment_chance": 0.08, "materials": [
+		{"id": "claw", "chance": 0.45, "count": [1, 2]}, {"id": "bone", "chance": 0.3, "count": [1, 1]}]},
+	"bone_archer": {"gold": [2, 4], "equipment_chance": 0.12, "materials": [
+		{"id": "bone", "chance": 0.7, "count": [1, 3]}, {"id": "essence", "chance": 0.05, "count": [1, 1]}]},
+	"bog_slime": {"gold": [1, 2], "equipment_chance": 0.06, "materials": [
+		{"id": "venom_sac", "chance": 0.3, "count": [1, 1]}, {"id": "healing_herb", "chance": 0.2, "count": [1, 1]}]},
+	"carrion_bat": {"gold": [1, 2], "equipment_chance": 0.06, "materials": [
+		{"id": "claw", "chance": 0.35, "count": [1, 1]}, {"id": "bone", "chance": 0.2, "count": [1, 1]}]},
+	"thorn_stalker": {"gold": [2, 4], "equipment_chance": 0.1, "materials": [
+		{"id": "venom_sac", "chance": 0.45, "count": [1, 2]}, {"id": "claw", "chance": 0.25, "count": [1, 1]}]},
+	"spore_shambler": {"gold": [2, 4], "equipment_chance": 0.1, "materials": [
+		{"id": "poison_mushroom", "chance": 0.6, "count": [1, 2]}, {"id": "rare_root", "chance": 0.08, "count": [1, 1]}]},
+	"rot_cultist": {"gold": [4, 8], "equipment_chance": 0.16, "materials": [
+		{"id": "essence", "chance": 0.25, "count": [1, 1]}, {"id": "mana_flower", "chance": 0.2, "count": [1, 1]}]},
+	"ember_wisp": {"gold": [1, 3], "equipment_chance": 0.05, "materials": [
+		{"id": "ember_core", "chance": 0.3, "count": [1, 1]}]},
+	"ash_wraith": {"gold": [3, 6], "equipment_chance": 0.14, "materials": [
+		{"id": "essence", "chance": 0.4, "count": [1, 2]}, {"id": "enchanted_dust", "chance": 0.15, "count": [1, 1]}]},
+	"crag_golem": {"gold": [5, 10], "equipment_chance": 0.25, "materials": [
+		{"id": "stone", "chance": 0.9, "count": [2, 5]}, {"id": "stone_heart", "chance": 0.2, "count": [1, 1]},
+		{"id": "copper_ore", "chance": 0.4, "count": [1, 3]}]},
 }
 ## How enemy rank changes loot.
 const RANK_LOOT := {
@@ -253,6 +338,14 @@ static func icon(index: int) -> Texture2D:
 		atlas.region = Rect2(index % ICON_COLUMNS * ICON_SIZE, index / ICON_COLUMNS * ICON_SIZE, ICON_SIZE, ICON_SIZE)
 		_icon_cache[index] = atlas
 	return _icon_cache[index]
+
+
+## Item level at which the tier of `level` begins (1, 10, 20, ...).
+static func tier_start(level: int) -> int:
+	for tier in TIERS:
+		if level >= tier[0]:
+			return tier[0]
+	return 1
 
 
 static func tier_name(level: int) -> String:

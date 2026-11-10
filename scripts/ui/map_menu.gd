@@ -10,6 +10,7 @@ const SCALE := 2
 var _map: TextureRect
 var _where: Label
 var _world: World
+var _minimap: CheckBox
 
 
 func _build() -> void:
@@ -32,6 +33,11 @@ func _build() -> void:
 	_where = UITheme.label("", 16)
 	side.add_child(_where)
 	side.add_child(UITheme.label("White: you      Gold: the Sanctuary", 14, UITheme.DIM))
+	_minimap = CheckBox.new()
+	_minimap.text = "Show minimap while playing"
+	_minimap.focus_mode = Control.FOCUS_NONE
+	_minimap.toggled.connect(func(on: bool) -> void: GameSettings.set_value("show_minimap", on))
+	side.add_child(_minimap)
 	side.add_child(UITheme.heading("Terrain", 18))
 	for type in TerrainTiles.Type.size():
 		var row := HBoxContainer.new()
@@ -46,6 +52,7 @@ func _build() -> void:
 
 
 func refresh() -> void:
+	_minimap.set_pressed_no_signal(GameSettings.show_minimap)
 	if _world == null:
 		_world = player.get_parent().get_node("World")
 	var generator := _world.generator

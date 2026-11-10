@@ -1,9 +1,9 @@
 class_name AbilityUser
 extends Node
-## Lets the player use the abilities of the weapon in hand (keys 1-4).
+## Lets the player use their abilities (keys 1-5).
 ##
-## Slots 1-2 hold the abilities of the weapon type in hand; slots 3-4 hold
-## the player's class abilities. Cooldowns are tracked per ability, so they
+## The first slots hold the abilities of the weapon type in hand; the rest
+## hold the player's class abilities. Cooldowns are tracked per ability, so they
 ## keep running while a different weapon is out.
 
 signal changed
@@ -27,7 +27,7 @@ func _physics_process(delta: float) -> void:
 
 ## Ability ids on the bar right now, one per slot.
 func slots() -> Array[String]:
-	var ids := AbilityDB.for_weapon(_player.weapon_type).slice(0, 2)
+	var ids := AbilityDB.for_weapon(_player.weapon_type).slice(0, AbilityDB.WEAPON_SLOTS)
 	var class_abilities: Array = HeroClasses.CLASSES[_player.class_id]["abilities"]
 	for id: String in class_abilities:
 		ids.append(id)

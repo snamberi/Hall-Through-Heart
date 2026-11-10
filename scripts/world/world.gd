@@ -5,6 +5,9 @@ extends Node2D
 ## Chunks near the target are built a few per frame; chunks left far behind
 ## are freed. Each chunk is its own TileMapLayer.
 
+signal chunk_built(chunk: Vector2i)
+signal chunk_freed(chunk: Vector2i)
+
 ## Chunk width and height, in tiles.
 const CHUNK_SIZE := 16
 
@@ -74,6 +77,7 @@ func _recenter(center: Vector2i) -> void:
 		if _chunk_distance(chunk, center) > load_radius + 1:
 			_chunks[chunk].queue_free()
 			_chunks.erase(chunk)
+			chunk_freed.emit(chunk)
 
 	_queue.clear()
 	for y in range(-load_radius, load_radius + 1):
@@ -105,3 +109,4 @@ func _build_chunk(chunk: Vector2i) -> void:
 			layer.set_cell(Vector2i(x, y), 0, atlas)
 	add_child(layer)
 	_chunks[chunk] = layer
+	chunk_built.emit(chunk)

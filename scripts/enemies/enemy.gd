@@ -1,9 +1,10 @@
 class_name Enemy
 extends CharacterBody2D
-## A melee enemy: wanders, chases the player, winds up, then lunges.
+## Any monster. What kind it is, how it attacks, and its buffs all come from
+## its entry in EnemyDB; this script plays that entry out.
 ##
-## The wind-up is the player's cue to dodge. Tune a new enemy type by
-## changing the exported numbers on its scene.
+## Every attack has a wind-up the player can read: a red tint, and for area
+## attacks a circle on the ground showing where it will land.
 
 signal died(enemy: Enemy)
 
@@ -20,48 +21,37 @@ const HEALTH_PER_LEVEL := 0.25
 const DAMAGE_PER_LEVEL := 0.12
 ## Experience grows with level to this power.
 const XP_LEVEL_EXPONENT := 1.25
+const AGGRO_RADIUS := 290.0
+const LEASH_RADIUS := 560.0
 
-@export_group("Identity")
-## Stable id used by saves, quests, and loot tables. Never rename it.
-@export var enemy_id := "husk"
-@export var display_name := "Husk"
-
-@export_group("Movement")
-@export var move_speed := 105.0
-## Roughly how wide the enemy is; used for hits and for spacing from others.
-@export var body_radius := 13.0
-
-@export_group("Rewards")
-## Experience a level 1 normal enemy of this type gives.
-@export var base_xp := 8
-
-@export_group("Senses")
-## The enemy notices the player inside this distance, in pixels.
-@export var aggro_radius := 270.0
-## The enemy gives up once the player is this far away.
-@export var leash_radius := 520.0
-
-@export_group("Attack")
-@export var contact_damage := 10.0
-## The enemy starts its wind-up when the player is this close.
-@export var attack_range := 76.0
-@export var windup_time := 0.45
-@export var lunge_speed := 470.0
-@export var lunge_time := 0.22
-@export var recover_time := 0.7
-
-var target: Player
-var state := State.WANDER
+var enemy_id := "husk"
+var display_name := "Husk"
 var level := 1
 var rank := Rank.NORMAL
+var target: Player
+var state := State.WANDER
+## Roughly how wide the enemy is; used for hits and for spacing from others.
+var body_radius := 13.0
+## Shorter names for the animator.
+var windup_time := 0.45
+var lunge_time := 0.22
+## Smaller copies made by the "split" trait do not split again.
+var is_fragment := false
 
+var _data: Dictionary
+var _attack: Dictionary
+var _traits: Array = []
 var _state_time_left := 0.0
 var _direction := Vector2.ZERO
 var _has_hit := false
 var _flash_tween: Tween
 var _damage := 0.0
+var _speed := 100.0
 var _tint := Color.WHITE
 var _last_weapon_type := ""
+var _since_hurt := 99.0
+var _blink_left := 3.0
+var _weave := 0.0
 ## status id -> {"time": seconds left, "power": float, "tick": seconds to next tick}
 var _statuses: Dictionary = {}
 
@@ -70,73 +60,103 @@ var _statuses: Dictionary = {}
 @onready var _animator: EnemyAnimator = $Visual/Sprite
 
 
-## Sets level and rank. Call before adding the enemy to the scene.
-func configure(p_level: int, p_rank: Rank = Rank.NORMAL) -> void:
+## Sets what this is. Call before adding the enemy to the scene.
+func configure(p_level: int, p_rank: Rank = Rank.NORMAL, p_id: String = "husk") -> void:
 	level = maxi(p_level, 1)
 	rank = p_rank
+	enemy_id = p_id if EnemyDB.ENEMIES.has(p_id) else "husk"
 
 
 func _ready() -> void:
 	add_to_group("enemies")
-	var data: Dictionary = RANK_DATA[rank]
-	health.max_health *= data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1))
+	_data = EnemyDB.ENEMIES[enemy_id]
+	_attack = _data["attack"]
+	_traits = _data["traits"]
+	display_name = _data["name"]
+	windup_time = _attack["windup"]
+	lunge_time = _attack.get("time", 0.25)
+	var rank_data: Dictionary = RANK_DATA[rank]
+	var size: float = rank_data["size"] * _data["size"] * (0.62 if is_fragment else 1.0)
+	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0)
 	health.current = health.max_health
-	_damage = contact_damage * data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1))
-	_tint = data["tint"]
-	_visual.scale *= data["size"]
+	_damage = _data["damage"] * rank_data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1)) * (0.6 if is_fragment else 1.0)
+	_speed = _data["speed"]
+	_tint = rank_data["tint"]
+	body_radius = _data["radius"] * size
+	_visual.scale = Vector2(size, size)
 	_visual.modulate = _tint
-	body_radius *= data["size"]
-	_add_nameplate(data)
+	_animator.sheet = EnemyDB.sheet(enemy_id)
+	_animator.rebuild()
+	if _data.get("flying", false):
+		collision_mask = 0
+	_add_nameplate(rank_data, size)
 	health.died.connect(_on_died)
 	_pick_wander()
 
 
 ## Experience this enemy is worth at its level and rank.
 func xp_value() -> int:
-	return roundi(base_xp * RANK_DATA[rank]["xp"] * pow(level, XP_LEVEL_EXPONENT))
+	var value: float = _data["xp"] * RANK_DATA[rank]["xp"] * pow(level, XP_LEVEL_EXPONENT)
+	return maxi(roundi(value * (0.3 if is_fragment else 1.0)), 1)
+
+
+func has_trait(id: String) -> bool:
+	return id in _traits
+
+
+## True while a wind-up will end in an area attack (for the ground marker).
+func is_area_attack() -> bool:
+	return _attack["kind"] in ["slam", "cloud", "explode"]
 
 
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
+	_since_hurt += delta
 	_update_statuses(delta)
 	if state == State.DEAD:
 		return
+	if has_trait("regen") and _since_hurt > 3.0:
+		health.heal(health.max_health * 0.04 * delta)
 	var has_target := target != null and not target.is_dead()
 	var to_target := target.global_position - global_position if has_target else Vector2.ZERO
+	var distance := to_target.length()
 
 	match state:
 		State.WANDER:
-			velocity = _direction * move_speed * 0.4
-			if has_target and to_target.length() < aggro_radius:
+			velocity = _direction * _speed * 0.4
+			if has_target and distance < AGGRO_RADIUS:
 				state = State.CHASE
 			elif _state_time_left == 0.0:
 				_pick_wander()
 		State.CHASE:
-			if not has_target or to_target.length() > leash_radius:
+			if not has_target or distance > LEASH_RADIUS:
 				_pick_wander()
-			elif to_target.length() < attack_range:
+			elif _in_attack_range(distance):
 				_enter(State.WINDUP, windup_time)
 				velocity = Vector2.ZERO
 				_visual.modulate = Color(1.8, 0.5, 0.5)
 			else:
-				velocity = to_target.normalized() * move_speed + _separation()
+				velocity = _chase_velocity(to_target, distance, delta)
+				_try_blink(delta, to_target, distance)
 		State.WINDUP:
 			velocity = Vector2.ZERO
 			if has_target:
 				_direction = to_target.normalized()
+			if is_area_attack():
+				queue_redraw()
 			if _state_time_left == 0.0:
-				_enter(State.LUNGE, lunge_time)
-				_has_hit = false
 				_visual.modulate = _tint
+				_has_hit = false
+				_strike(has_target)
 		State.LUNGE:
-			velocity = _direction * lunge_speed
-			if has_target and not _has_hit and to_target.length() < body_radius + 13.0:
+			velocity = _direction * _attack.get("speed", 400.0) * _speed_multiplier()
+			if has_target and not _has_hit and distance < body_radius + 13.0:
 				_has_hit = true
-				target.take_damage(_damage, global_position, level)
+				_hit_target(_current_damage())
 			if _state_time_left == 0.0:
-				_enter(State.RECOVER, recover_time)
+				_enter(State.RECOVER, _attack["recover"])
 		State.RECOVER:
 			velocity = velocity.move_toward(Vector2.ZERO, 2000.0 * delta)
 			if _state_time_left == 0.0:
@@ -148,9 +168,24 @@ func _physics_process(delta: float) -> void:
 
 	if absf(velocity.x) > 1.0:
 		_visual.scale.x = absf(_visual.scale.x) * signf(velocity.x)
+	elif state == State.WINDUP and absf(_direction.x) > 0.1:
+		_visual.scale.x = absf(_visual.scale.x) * signf(_direction.x)
 	if _statuses.has("chill"):
 		velocity *= 1.0 - _statuses["chill"]["power"]
 	move_and_slide()
+
+
+func _draw() -> void:
+	# The ground marker for an area attack, filling in as the wind-up runs out.
+	if state != State.WINDUP or not is_area_attack():
+		return
+	var radius: float = _attack["radius"]
+	var progress := 1.0 - _state_time_left / windup_time
+	var color: Color = _attack.get("color", Color(1.0, 0.4, 0.3))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.75))
+	draw_circle(Vector2.ZERO, radius * progress, Color(color, 0.22))
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, Color(color, 0.85), 2.0)
+	draw_set_transform(Vector2.ZERO)
 
 
 ## Returns the health actually removed, so callers can reward real damage only.
@@ -159,15 +194,24 @@ func take_damage(
 ) -> float:
 	if state == State.DEAD:
 		return 0.0
+	if has_trait("armored"):
+		amount *= 0.65
 	var color := Color(1.0, 0.8, 0.25) if critical else Color(0.95, 0.9, 0.75)
 	DamageNumber.spawn(get_parent(), global_position, amount, color, critical)
 	_last_weapon_type = weapon_type
+	_since_hurt = 0.0
+	Audio.play("hit", -4.0)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(1.0, 0.85, 0.4) if critical else Color(1.0, 0.95, 0.85), critical)
 	var dealt := health.take_damage(amount)
 	if health.is_dead():
 		return dealt
-	_enter(State.STAGGER, 0.22)
-	velocity = knockback
+	# Heavy enemies and ones mid-attack are harder to interrupt.
+	var steady := has_trait("armored") or (state == State.WINDUP and is_area_attack())
+	if not steady:
+		_enter(State.STAGGER, 0.22)
+		_visual.modulate = _tint
+		velocity = knockback
+		queue_redraw()
 	_flash()
 	return dealt
 
@@ -191,6 +235,128 @@ func apply_status(id: String, duration: float, power: float, weapon_type: String
 func has_status(id: String) -> bool:
 	return _statuses.has(id)
 
+
+## Called when this enemy's attack has hurt the player.
+func on_dealt_damage(amount: float) -> void:
+	if has_trait("lifesteal") and state != State.DEAD:
+		health.heal(amount * 0.5)
+
+
+# --- attacks
+
+func _in_attack_range(distance: float) -> bool:
+	return distance < _attack["range"]
+
+
+## Carries out the attack once the wind-up ends.
+func _strike(has_target: bool) -> void:
+	match _attack["kind"]:
+		"lunge":
+			_enter(State.LUNGE, lunge_time)
+		"shoot":
+			if has_target:
+				EnemyProjectile.fire(self, target, _attack, _current_damage())
+			_enter(State.RECOVER, _attack["recover"])
+		"slam", "cloud":
+			_blast()
+			if _attack["kind"] == "cloud":
+				HazardZone.spawn(get_parent(), global_position, target, _attack["radius"], _attack["linger"], _attack["color"], _attack["status"], _current_damage())
+			_enter(State.RECOVER, _attack["recover"])
+		"explode":
+			_blast()
+			health.take_damage(health.current)
+	queue_redraw()
+
+
+## An area attack centred on this enemy.
+func _blast() -> void:
+	var radius: float = _attack["radius"]
+	var color: Color = _attack.get("color", Color(1.0, 0.6, 0.3))
+	RingBurst.spawn(get_parent(), global_position, color, radius)
+	HitSpark.spawn(get_parent(), global_position + Vector2(0, -10), color, true)
+	if target and not target.is_dead() and target.global_position.distance_to(global_position) < radius:
+		if _hit_target(_current_damage()):
+			target.shake_camera(7.0)
+			if _attack.has("knockback"):
+				target.velocity = global_position.direction_to(target.global_position) * _attack["knockback"]
+
+
+## Damages the player and applies this enemy's on-hit status. Returns whether
+## the blow landed (it may have been dodged).
+func _hit_target(amount: float) -> bool:
+	if not target.take_damage(amount, global_position, level):
+		return false
+	on_dealt_damage(amount)
+	for effect: Dictionary in [_data.get("touch", {}), _attack.get("status", {}) if _attack["kind"] != "shoot" else {}]:
+		if not effect.is_empty():
+			var power: float = effect["power"] if effect["status"] == "chill" else effect["power"] * amount
+			target.apply_status(effect["status"], effect["duration"], power)
+	return true
+
+
+# --- buffs
+
+func _current_damage() -> float:
+	var damage := _damage
+	if has_trait("enrage") and health.current < health.max_health * 0.4:
+		damage *= 1.3
+	if has_trait("pack"):
+		damage *= 1.0 + 0.08 * _allies_near(180.0, 3)
+	return damage
+
+
+func _speed_multiplier() -> float:
+	var multiplier := 1.0
+	if has_trait("enrage") and health.current < health.max_health * 0.4:
+		multiplier *= 1.4
+	if has_trait("pack"):
+		multiplier *= 1.0 + 0.08 * _allies_near(180.0, 3)
+	if _inspired():
+		multiplier *= 1.25
+	return multiplier
+
+
+func _allies_near(reach: float, most: int) -> int:
+	var count := 0
+	for node in get_tree().get_nodes_in_group("enemies"):
+		if node != self and node.global_position.distance_to(global_position) < reach:
+			count += 1
+	return mini(count, most)
+
+
+## Whether an ally with the "inspire" trait is close by.
+func _inspired() -> bool:
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var other := node as Enemy
+		if other and other != self and other.has_trait("inspire") and other.global_position.distance_to(global_position) < 220.0:
+			return true
+	return false
+
+
+func _chase_velocity(to_target: Vector2, distance: float, delta: float) -> Vector2:
+	var heading := to_target.normalized()
+	# Ranged enemies back away when the player gets too close.
+	if _attack["kind"] == "shoot" and distance < _attack["range"] * 0.45:
+		heading = -heading
+	if has_trait("erratic"):
+		_weave += delta * 7.0
+		heading = heading.rotated(sin(_weave) * 0.9)
+	return heading * _speed * _speed_multiplier() + _separation()
+
+
+func _try_blink(delta: float, to_target: Vector2, distance: float) -> void:
+	if not has_trait("blink"):
+		return
+	_blink_left -= delta
+	if _blink_left > 0.0 or distance < 140.0:
+		return
+	_blink_left = randf_range(3.5, 5.5)
+	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(0.7, 0.9, 1.0), 40.0)
+	global_position = target.global_position - to_target.normalized().rotated(randf_range(-1.2, 1.2)) * 150.0
+	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(0.7, 0.9, 1.0), 40.0)
+
+
+# --- internals
 
 func _update_statuses(delta: float) -> void:
 	if _statuses.is_empty():
@@ -248,9 +414,10 @@ func _separation() -> Vector2:
 func _flash() -> void:
 	if _flash_tween:
 		_flash_tween.kill()
+	var back := _visual.modulate if state == State.WINDUP else _tint
 	_visual.modulate = Color(4.0, 4.0, 4.0)
 	_flash_tween = create_tween()
-	_flash_tween.tween_property(_visual, "modulate", _tint, 0.15)
+	_flash_tween.tween_property(_visual, "modulate", back, 0.15)
 
 
 func _on_died() -> void:
@@ -259,6 +426,7 @@ func _on_died() -> void:
 	_refresh_status_tint()
 	remove_from_group("enemies")
 	velocity = Vector2.ZERO
+	queue_redraw()
 	$Collision.set_deferred("disabled", true)
 	var xp := xp_value()
 	DamageNumber.spawn_text(
@@ -274,6 +442,7 @@ func _on_died() -> void:
 		"xp_multiplier": RANK_DATA[rank]["xp"],
 		"position": global_position,
 		"weapon_type": _last_weapon_type,
+		"fragment": is_fragment,
 	})
 	if _flash_tween:
 		_flash_tween.kill()
@@ -287,9 +456,9 @@ func _on_died() -> void:
 	tween.tween_callback(queue_free)
 
 
-func _add_nameplate(data: Dictionary) -> void:
+func _add_nameplate(rank_data: Dictionary, size: float) -> void:
 	var label := Label.new()
-	label.text = "Lv %d %s%s" % [level, data["title"], display_name]
+	label.text = "Lv %d %s%s" % [level, rank_data["title"], display_name]
 	label.add_theme_font_override("font", UITheme.get_theme().default_font)
 	label.add_theme_font_size_override("font_size", 13)
 	label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.4) if rank != Rank.NORMAL else Color(0.82, 0.8, 0.74))
@@ -297,7 +466,8 @@ func _add_nameplate(data: Dictionary) -> void:
 	label.add_theme_constant_override("outline_size", 4)
 	# The camera zooms in 2x; shrink so the text stays small and sharp.
 	label.scale = Vector2.ONE / 2.0
-	label.position = Vector2(-label.get_minimum_size().x / 4.0, -50.0 * data["size"] - 14.0)
+	var top := -52.0 * size - (10.0 if _data.get("flying", false) else 0.0)
+	label.position = Vector2(-label.get_minimum_size().x / 4.0, top - 14.0)
 	label.z_index = 10
 	add_child(label)
-	$HealthBar.position.y = -50.0 * data["size"]
+	$HealthBar.position.y = top

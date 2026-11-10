@@ -10,8 +10,10 @@ var rarity := 0
 var level := 1
 ## Random modifiers: [{"stat", "kind", "value"}].
 var mods: Array[Dictionary] = []
-## Blacksmith upgrade level (not used yet).
+## Blacksmith upgrade level; each adds ItemDB.UPGRADE_POWER to base power.
 var upgrade := 0
+## The enchantment on this item: one modifier {"stat", "kind", "value"}, or empty.
+var enchant: Dictionary = {}
 
 
 static func create(item_id: String, p_count: int = 1) -> Item:
@@ -33,6 +35,13 @@ static func from_dict(data: Dictionary) -> Item:
 	item.rarity = clampi(int(data.get("rarity", 0)), 0, ItemDB.RARITIES.size() - 1)
 	item.level = maxi(int(data.get("level", 1)), 1)
 	item.upgrade = maxi(int(data.get("upgrade", 0)), 0)
+	var saved_enchant: Variant = data.get("enchant", {})
+	if saved_enchant is Dictionary and saved_enchant.has("stat") and saved_enchant.has("value"):
+		item.enchant = {
+			"stat": str(saved_enchant["stat"]),
+			"kind": str(saved_enchant.get("kind", "flat")),
+			"value": float(saved_enchant["value"]),
+		}
 	var saved_mods: Variant = data.get("mods", [])
 	if saved_mods is Array:
 		for mod: Variant in saved_mods:
@@ -48,7 +57,7 @@ static func from_dict(data: Dictionary) -> Item:
 func to_dict() -> Dictionary:
 	if not is_equipment():
 		return {"id": id, "count": count}
-	return {"id": id, "rarity": rarity, "level": level, "upgrade": upgrade, "mods": mods.duplicate(true)}
+	return {"id": id, "rarity": rarity, "level": level, "upgrade": upgrade, "mods": mods.duplicate(true), "enchant": enchant.duplicate()}
 
 
 func definition() -> Dictionary:
@@ -59,8 +68,26 @@ func is_equipment() -> bool:
 	return definition().has("slot")
 
 
+func is_tool() -> bool:
+	return definition().has("tool")
+
+
+func is_consumable() -> bool:
+	return definition().has("use")
+
+
 func is_stackable() -> bool:
-	return not is_equipment()
+	return not is_equipment() and not is_tool()
+
+
+## Colour to tint the icon with (white for icons drawn in their own colours).
+func tint() -> Color:
+	return definition().get("tint", Color.WHITE)
+
+
+## Whether a blacksmith can upgrade this: it must have damage or armour.
+func is_upgradable() -> bool:
+	return definition().has("damage") or definition().has("armor")
 
 
 ## "main_hand", "ring", "chest"... or "" for materials.
@@ -70,9 +97,10 @@ func slot() -> String:
 
 func display_name() -> String:
 	var def := definition()
+	var text: String = def["name"]
 	if def.get("tiered", false):
-		return "%s %s" % [ItemDB.tier_name(level), def["name"]]
-	return def["name"]
+		text = "%s %s" % [ItemDB.tier_name(level), text]
+	return "%s +%d" % [text, upgrade] if upgrade > 0 else text
 
 
 func color() -> Color:
@@ -86,7 +114,9 @@ func icon() -> Texture2D:
 ## Base damage or armor at this item's level and rarity.
 func base_power(key: String) -> float:
 	var base: float = definition().get(key, 0.0)
-	return roundf(base * (1.0 + ItemDB.POWER_PER_LEVEL * (level - 1)) * ItemDB.RARITIES[rarity]["power"])
+	var power: float = base * (1.0 + ItemDB.POWER_PER_LEVEL * (level - 1)) * ItemDB.RARITIES[rarity]["power"]
+	# Each upgrade is worth at least one point, so it shows on weak items too.
+	return roundf(maxf(power * (1.0 + ItemDB.UPGRADE_POWER * upgrade), roundf(power) + upgrade))
 
 
 ## Modifiers every copy of this item has (not the random ones).
@@ -110,6 +140,8 @@ func all_modifiers() -> Array[Dictionary]:
 		result.append({"stat": "armor", "kind": "flat", "value": base_power("armor")})
 	result.append_array(implicit_modifiers())
 	result.append_array(mods)
+	if not enchant.is_empty():
+		result.append(enchant)
 	return result
 
 

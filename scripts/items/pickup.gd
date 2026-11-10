@@ -61,6 +61,7 @@ func _draw() -> void:
 
 func _collect() -> void:
 	var text_position := _player.global_position + Vector2(0, -20)
+	Audio.play("pickup", -8.0)
 	if item == null:
 		_player.inventory.add_gold(gold)
 		DamageNumber.spawn_text(get_parent(), text_position, "+%d gold" % gold, Color(0.95, 0.8, 0.3), 12)

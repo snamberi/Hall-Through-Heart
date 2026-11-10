@@ -34,6 +34,23 @@ const MILESTONES: Array[Dictionary] = [
 	{"level": 500, "reward": "Ultimate technique"},
 	{"level": 600, "reward": "Mastery title and final passive"},
 ]
+## The passive each weapon type grows at mastery 25, 150, 300, and 600:
+## [stat, kind, amount at each of those four milestones].
+const PASSIVE_LEVELS: Array[int] = [25, 150, 300, 600]
+const PASSIVES := {
+	"swords": ["attack_speed", "percent", [0.03, 0.05, 0.07, 0.10]],
+	"greatswords": ["physical_damage", "percent", [0.03, 0.05, 0.07, 0.10]],
+	"axes": ["critical_damage", "flat", [0.08, 0.12, 0.16, 0.25]],
+	"daggers": ["critical_chance", "flat", [0.02, 0.03, 0.04, 0.06]],
+	"spears": ["damage_taken", "percent", [-0.02, -0.03, -0.04, -0.06]],
+	"bows": ["attack_speed", "percent", [0.03, 0.05, 0.07, 0.10]],
+	"staves": ["magic_power", "percent", [0.04, 0.06, 0.08, 0.12]],
+	"unarmed": ["dodge_efficiency", "percent", [0.05, 0.08, 0.10, 0.15]],
+}
+## From this mastery, every third basic attack in a row is a finisher.
+const COMBO_LEVEL := 100
+const COMBO_DAMAGE := 1.6
+
 ## Damage bonus with a weapon category at maximum mastery.
 const MAX_DAMAGE_BONUS := 0.15
 const XP_PER_DAMAGE := 0.05
@@ -82,6 +99,27 @@ func damage_bonus(id: String) -> float:
 	if not levels.has(id):
 		return 0.0
 	return MAX_DAMAGE_BONUS * (levels[id] - 1) / float(MAX_LEVEL - 1)
+
+
+## Stat modifiers earned so far with a weapon type, active while it is in hand.
+func passive_modifiers(id: String) -> Dictionary:
+	if not PASSIVES.has(id):
+		return {}
+	var passive: Array = PASSIVES[id]
+	var total := 0.0
+	for index in PASSIVE_LEVELS.size():
+		if levels[id] >= PASSIVE_LEVELS[index]:
+			total += passive[2][index]
+	return {passive[0]: {passive[1]: total}} if total != 0.0 else {}
+
+
+func has_combo(id: String) -> bool:
+	return levels.get(id, 1) >= COMBO_LEVEL
+
+
+## "Sword Master" and so on at the cap, otherwise "".
+func title(id: String) -> String:
+	return "%s Master" % NAMES[id].trim_suffix("s") if levels.get(id, 1) >= MAX_LEVEL else ""
 
 
 func save_data() -> Dictionary:

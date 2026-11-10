@@ -118,6 +118,52 @@ const ABILITIES := {
 		"status": {"status": "chill", "duration": 4.0, "power": 0.5}, "color": Color(0.6, 0.9, 1.0),
 		"text": "A burst of cold that damages and slows everything around you.",
 	},
+	# --- third abilities, at mastery 200
+	"blade_dance": {
+		"name": "Blade Dance", "weapon": "swords", "mastery": 200, "icon": 31, "shape": "flurry",
+		"damage": 1.0, "stamina": 35.0, "cooldown": 12.0, "hits": 5, "reach": 1.3, "arc": 140.0, "knockback": 120.0,
+		"text": "Five sweeping cuts in a blur.",
+	},
+	"earthshatter": {
+		"name": "Earthshatter", "weapon": "greatswords", "mastery": 200, "icon": 28, "shape": "slam",
+		"damage": 3.8, "stamina": 45.0, "cooldown": 14.0, "radius": 150.0, "distance": 90.0, "knockback": 820.0,
+		"text": "A blow that cracks the ground across a huge area.",
+	},
+	"bloodbath": {
+		"name": "Bloodbath", "weapon": "axes", "mastery": 200, "icon": 27, "shape": "spin",
+		"damage": 1.6, "stamina": 40.0, "cooldown": 12.0, "radius": 110.0, "hits": 2, "knockback": 300.0,
+		"status": {"status": "bleed", "duration": 5.0, "power": 0.3},
+		"text": "Two wild circles that leave everything nearby bleeding.",
+	},
+	"fan_of_knives": {
+		"name": "Fan of Knives", "weapon": "daggers", "mastery": 200, "icon": 31, "shape": "shot",
+		"damage": 1.1, "stamina": 30.0, "cooldown": 9.0, "count": 7, "spread": 110.0,
+		"projectile": {"sprite": 0, "speed": 820.0, "radius": 10.0, "range": 360.0, "knockback": 140.0},
+		"text": "Throw seven blades in a wide fan.",
+	},
+	"impale": {
+		"name": "Impale", "weapon": "spears", "mastery": 200, "icon": 29, "shape": "dash",
+		"damage": 2.8, "stamina": 35.0, "cooldown": 10.0, "distance": 280.0, "radius": 50.0, "knockback": 500.0,
+		"text": "Charge spear-first through everything in your way.",
+	},
+	"explosive_arrow": {
+		"name": "Explosive Arrow", "weapon": "bows", "mastery": 200, "icon": 28, "shape": "shot",
+		"damage": 2.6, "stamina": 35.0, "cooldown": 10.0, "count": 1, "spread": 0.0,
+		"projectile": {"sprite": 0, "speed": 820.0, "radius": 12.0, "range": 600.0, "explode": 110.0, "knockback": 420.0,
+			"status": {"status": "burn", "duration": 3.0, "power": 0.2}, "color": Color(1.0, 0.6, 0.2)},
+		"text": "An arrow that bursts into flame where it lands.",
+	},
+	"meteor": {
+		"name": "Meteor", "weapon": "staves", "mastery": 200, "icon": 28, "shape": "slam", "magic": true,
+		"damage": 3.6, "mana": 40.0, "cooldown": 14.0, "radius": 140.0, "distance": 190.0, "knockback": 700.0,
+		"status": {"status": "burn", "duration": 4.0, "power": 0.25}, "color": Color(1.0, 0.55, 0.2),
+		"text": "Call down fire on a spot ahead of you.",
+	},
+	"dragon_kick": {
+		"name": "Dragon Kick", "weapon": "unarmed", "mastery": 200, "icon": 29, "shape": "leap",
+		"damage": 3.0, "stamina": 35.0, "cooldown": 10.0, "radius": 90.0, "distance": 220.0, "knockback": 760.0,
+		"text": "A flying kick that bowls enemies over.",
+	},
 	# --- class abilities
 	"battle_cry": {
 		"name": "Battle Cry", "class": "warrior", "level": 10, "icon": 28, "shape": "buff",
@@ -187,7 +233,9 @@ const ABILITIES := {
 }
 
 ## Number of ability slots on the bar.
-const SLOTS := 4
+const SLOTS := 5
+## How many of the slots hold weapon abilities; the rest hold class abilities.
+const WEAPON_SLOTS := 3
 
 
 ## Ability ids for a weapon type, in unlock order.

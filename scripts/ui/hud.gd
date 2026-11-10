@@ -14,8 +14,8 @@ var _banner_tween: Tween
 @onready var _banner_detail: Label = $LevelUpBanner/Detail
 @onready var _death_message: Label = $DeathMessage
 @onready var _death_summary: Label = $DeathMessage/Summary
-@onready var _level_up_sound: AudioStreamPlayer = $LevelUpSound
 @onready var _buff_label: Label = $BuffLabel
+@onready var _gather: Control = $Gather
 
 
 func setup(player: Player) -> void:
@@ -29,7 +29,7 @@ func setup(player: Player) -> void:
 		return player.stamina.current / player.stamina.max_value)
 	_bind(_mana_bar, Color(0.25, 0.5, 0.95), 36, func() -> float:
 		return player.mana.current / player.mana.max_value)
-	player.buffs.changed.connect(func() -> void: set_process(true))
+	$Minimap.setup(player, player.get_parent().get_node("World"))
 	player.health.changed.connect(func(_c: float, _m: float) -> void: _health_bar.queue_redraw())
 	player.stamina.changed.connect(func(_c: float, _m: float) -> void: _stamina_bar.queue_redraw())
 	player.mana.changed.connect(func(_c: float, _m: float) -> void: _mana_bar.queue_redraw())
@@ -38,6 +38,11 @@ func setup(player: Player) -> void:
 	player.talents.changed.connect(_refresh)
 	player.class_changed.connect(_refresh)
 	Events.level_up.connect(_on_level_up)
+	Events.profession_level_up.connect(func(id: String, level: int) -> void:
+		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -52), "%s %d" % [Professions.NAMES[id], level], UITheme.GOLD, 15)
+		Audio.play("level_up", -10.0, 0.0)
+	)
+	_gather.draw.connect(_draw_gather)
 	$AbilityBar.setup(player)
 	_death_message.visible = false
 	_banner.visible = false
@@ -71,7 +76,7 @@ func _on_level_up(level: int) -> void:
 	_banner_detail.text = "Level %d" % level
 	if level % Leveling.MILESTONE_INTERVAL == 0:
 		_banner_detail.text += "  -  milestone reached"
-	_level_up_sound.play()
+	Audio.play("level_up", -4.0, 0.0)
 	if _banner_tween:
 		_banner_tween.kill()
 	_banner.visible = true
@@ -91,8 +96,28 @@ func _process(_delta: float) -> void:
 	for id: String in _player.buffs.active:
 		lines.append("%s  %ds" % [_player.buffs.active[id]["name"], ceili(_player.buffs.active[id]["time"])])
 	_buff_label.text = "\n".join(lines)
-	if lines.is_empty():
-		set_process(false)
+	_gather.queue_redraw()
+
+
+## The prompt for a gatherable node in reach, and the bar while gathering.
+func _draw_gather() -> void:
+	var font := UITheme.get_theme().default_font
+	var width := _gather.size.x
+	if _player.state == Player.State.GATHER and _player.gather_seconds > 0.0:
+		var share := clampf(_player.gather_progress / _player.gather_seconds, 0.0, 1.0)
+		_gather.draw_rect(Rect2(0, 22, width, 12), Color(0.04, 0.05, 0.08, 0.9))
+		_gather.draw_rect(Rect2(2, 24, (width - 4.0) * share, 8), UITheme.GOLD)
+		_gather.draw_rect(Rect2(0, 22, width, 12), Color("8a683a"), false, 1.0)
+		return
+	if _player.state != Player.State.MOVE:
+		return
+	var node := _player.nearest_resource()
+	if node == null:
+		return
+	var reason := node.blocked_reason(_player)
+	var text := "[F]  %s" % node.prompt() if reason == "" else "%s  -  %s" % [GatherDB.display_name(node.resource_id), reason]
+	_gather.draw_string_outline(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
+	_gather.draw_string(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.TEXT if reason == "" else UITheme.BAD)
 
 
 ## Draws `bar` as a framed gauge with an optional icon to its left.

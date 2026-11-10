@@ -35,15 +35,15 @@ func _build() -> void:
 		_rows[id] = {"name": name_label, "level": level_label, "bar": bar, "bonus": bonus_label}
 
 	var right := VBoxContainer.new()
-	right.add_theme_constant_override("separation", 6)
+	right.add_theme_constant_override("separation", 3)
 	columns.add_child(right)
 	_milestone_title = make_label("", 20, MenuColors.HEADING)
 	right.add_child(_milestone_title)
-	for i in 14:
-		var label := make_label("", 14)
+	for i in 16:
+		var label := make_label("", 13)
 		_milestone_labels.append(label)
 		right.add_child(label)
-	right.add_child(make_label("Abilities gain a rank every %d mastery levels. Use them with keys 1 and 2." % AbilityDB.RANK_EVERY, 13, MenuColors.DIM))
+	right.add_child(make_label("Abilities gain a rank every %d mastery levels. Use them with keys 1 to 3." % AbilityDB.RANK_EVERY, 13, MenuColors.DIM))
 
 	player.mastery.changed.connect(refresh_if_open)
 
@@ -74,9 +74,17 @@ func refresh() -> void:
 		lines.append([heading, rank > 0])
 		lines.append(["        %s  %ds cooldown, %d stamina" % [ability["text"], ability["cooldown"], ability["stamina"]], rank > 0])
 	lines.append(["", false])
-	for milestone in WeaponMastery.MILESTONES:
-		if not milestone["level"] in [1, 10, 50]:
-			lines.append(["Lv %d   %s  (not in the game yet)" % [milestone["level"], milestone["reward"]], false])
+	var passive: Array = WeaponMastery.PASSIVES.get(weapon_type, [])
+	if not passive.is_empty():
+		for index in WeaponMastery.PASSIVE_LEVELS.size():
+			var needed := WeaponMastery.PASSIVE_LEVELS[index]
+			var text := ItemDB.describe_modifier({"stat": passive[0], "kind": passive[1], "value": absf(passive[2][index])})
+			if passive[2][index] < 0.0:
+				text = "-" + text.substr(1)
+			lines.append(["Lv %d   Passive: %s" % [needed, text], current >= needed])
+	lines.append(["Lv %d   Combo: every third attack in a row hits %d%% harder" % [WeaponMastery.COMBO_LEVEL, roundi((WeaponMastery.COMBO_DAMAGE - 1.0) * 100.0)], current >= WeaponMastery.COMBO_LEVEL])
+	lines.append(["Lv 400 awakening quest and Lv 500 ultimate: not in the game yet", false])
+	lines.append(["Lv 600   Title: %s Master" % WeaponMastery.NAMES[weapon_type].trim_suffix("s"), current >= WeaponMastery.MAX_LEVEL])
 	for i in _milestone_labels.size():
 		_milestone_labels[i].visible = i < lines.size()
 		if i < lines.size():
