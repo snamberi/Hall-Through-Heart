@@ -326,6 +326,7 @@ const LOOT_TABLES := {
 const RANK_LOOT := {
 	"normal": {"gold": 1.0, "materials": 1.0, "equipment_chance": 1.0, "rarity_bonus": 0.0},
 	"elite": {"gold": 4.0, "materials": 2.0, "equipment_chance": 6.0, "rarity_bonus": 1.5},
+	"champion": {"gold": 10.0, "materials": 3.0, "equipment_chance": 100.0, "rarity_bonus": 4.0},
 }
 
 static var _icon_cache: Dictionary = {}

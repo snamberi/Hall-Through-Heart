@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://scripts/combat/buffs.gd" id="13_buffs"]
 [ext_resource type="Script" path="res://scripts/progression/talents.gd" id="14_talents"]
 [ext_resource type="Script" path="res://scripts/progression/professions.gd" id="15_professions"]
+[ext_resource type="Script" path="res://scripts/quests/quest_log.gd" id="16_quests"]
 
 [sub_resource type="CircleShape2D" id="shape_feet"]
 radius = 10.0
@@ -67,6 +68,9 @@ script = ExtResource("14_talents")
 
 [node name="Professions" type="Node" parent="."]
 script = ExtResource("15_professions")
+
+[node name="Quests" type="Node" parent="."]
+script = ExtResource("16_quests")
 
 [node name="Collision" type="CollisionShape2D" parent="."]
 shape = SubResource("shape_feet")

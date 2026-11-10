@@ -61,7 +61,9 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 	var rank: Dictionary = ItemDB.RANK_LOOT.get(info["rank"], ItemDB.RANK_LOOT["normal"])
 	var level: int = info["level"]
 
-	var gold: float = randf_range(table["gold"][0], table["gold"][1]) * pow(level, 0.9) * rank["gold"]
+	# Each modifier on an Elite or Champion sweetens what it drops.
+	var bonus: float = 1.0 + Enemy.REWARD_PER_MODIFIER * info.get("modifiers", 0)
+	var gold: float = randf_range(table["gold"][0], table["gold"][1]) * pow(level, 0.9) * rank["gold"] * bonus
 	result["gold"] = maxi(roundi(gold), 1)
 
 	for entry: Dictionary in table["materials"]:
@@ -70,7 +72,7 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 			items.append(Item.create(entry["id"], randi_range(entry["count"][0], entry["count"][1])))
 
 	if randf() < table["equipment_chance"] * rank["equipment_chance"]:
-		var rarity := roll_rarity(magic_find, rank["rarity_bonus"])
+		var rarity := roll_rarity(magic_find, rank["rarity_bonus"] * bonus)
 		items.append(make_equipment(level, rarity, "", magic_find))
 	return result
 

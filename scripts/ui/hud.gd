@@ -43,6 +43,14 @@ func setup(player: Player) -> void:
 		Audio.play("level_up", -10.0, 0.0)
 	)
 	_gather.draw.connect(_draw_gather)
+	$QuestTracker.setup(player)
+	Events.quest_completed.connect(func(title: String, rewards: String) -> void:
+		_show_banner("QUEST COMPLETE", "%s  -  %s" % [title, rewards])
+		Audio.play("level_up", -6.0, 0.0)
+	)
+	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
+		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
+	)
 	$AbilityBar.setup(player)
 	_death_message.visible = false
 	_banner.visible = false
@@ -73,10 +81,17 @@ func _refresh() -> void:
 
 
 func _on_level_up(level: int) -> void:
-	_banner_detail.text = "Level %d" % level
+	var detail := "Level %d" % level
 	if level % Leveling.MILESTONE_INTERVAL == 0:
-		_banner_detail.text += "  -  milestone reached"
+		detail += "  -  milestone reached"
 	Audio.play("level_up", -4.0, 0.0)
+	_show_banner("LEVEL UP!", detail)
+
+
+## Pops the big banner in the middle of the screen, then fades it.
+func _show_banner(title: String, detail: String) -> void:
+	_banner.text = title
+	_banner_detail.text = detail
 	if _banner_tween:
 		_banner_tween.kill()
 	_banner.visible = true
@@ -110,6 +125,12 @@ func _draw_gather() -> void:
 		_gather.draw_rect(Rect2(0, 22, width, 12), Color("8a683a"), false, 1.0)
 		return
 	if _player.state != Player.State.MOVE:
+		return
+	var npc := _player.nearest_npc()
+	if npc:
+		var talk := "[F]  %s" % npc.prompt()
+		_gather.draw_string_outline(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
+		_gather.draw_string(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.GOLD)
 		return
 	var node := _player.nearest_resource()
 	if node == null:

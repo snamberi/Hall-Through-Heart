@@ -81,6 +81,7 @@ var _unbreakable_left := 0.0
 @onready var buffs: Buffs = $Buffs
 @onready var talents: Talents = $Talents
 @onready var professions: Professions = $Professions
+@onready var quests: QuestLog = $Quests
 @onready var camera: Camera2D = $Camera
 @onready var _visual: Node2D = $Visual
 @onready var _animator: PlayerAnimator = $Visual/Sprite
@@ -536,7 +537,24 @@ func _apply_mastery_passive() -> void:
 	stats.set_modifiers_quietly("mastery_passive", mastery.passive_modifiers(weapon_type))
 
 
+## The person closest to the player and in reach, or null.
+func nearest_npc() -> Npc:
+	var best: Npc = null
+	var best_distance := Npc.REACH
+	for node in get_tree().get_nodes_in_group("npcs"):
+		var distance: float = node.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = node
+	return best
+
+
 func _start_gathering() -> void:
+	var npc := nearest_npc()
+	if npc:
+		velocity = Vector2.ZERO
+		Events.npc_interacted.emit(npc)
+		return
 	var node := nearest_resource()
 	if node == null:
 		return

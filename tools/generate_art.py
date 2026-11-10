@@ -564,6 +564,34 @@ MONSTERS = {
 }
 
 
+# Townsfolk: the human rig in other clothes, standing idle.
+#   name -> (palette changes, extra parts per rig group)
+NPCS = {
+    "merchant": (
+        {"tunic": ["5f9a6a", "447a50", "2f5a3a"], "tunic_fold": ["2f5a3a"] * 3, "hair": ["c8c4b8", "9a968c", "6c6960"],
+         "trousers": ["6a5a48", "4e4236", "362e26"]},
+        {"head": [("guard", R(9, 6, 35, 8)), ("guard", _half_ellipse(22, 7, 9, 7))],
+         "torso": [("belt", R(9, 24, 14, 34)), ("guard", R(10, 27, 13, 28))]},
+    ),
+    "warden": (
+        {"tunic": ["8fa0b8", "6a7a94", "4a586e"], "tunic_fold": ["4a586e"] * 3, "hair": ["3a3038", "2a2228", "1c161a"],
+         "trousers": ["3a3a4a", "2a2a38", "1e1e28"]},
+        {"torso": [("blood", [(14, 25), (30, 25), (33, 38), (11, 38)]), ("tunic", [(15, 25), (29, 25), (30, 35), (14, 35)]),
+                   ("guard", R(21, 26, 23, 30))]},
+    ),
+}
+
+
+def draw_npc(changes, extras):
+    saved = {key: PALETTE[key] for key in changes}
+    PALETTE.update(changes)
+    try:
+        rig = {name: dict(group, parts=group["parts"] + extras.get(name, [])) for name, group in HUMAN.items()}
+        return draw_sheet(rig, HUMAN_ORDER, [("idle", HUMAN_IDLE)])
+    finally:
+        PALETTE.update(saved)
+
+
 def draw_sheet(rig, order, animations, shadow=True):
     columns = max(len(poses) for _name, poses in animations)
     sheet = Image.new("RGBA", (columns * FRAME, len(animations) * FRAME), (0, 0, 0, 0))
@@ -774,6 +802,9 @@ ICONS += [
     ("hatchet", [("wood", "line", (5, 19, 15, 6), 2), ("plate", "poly", [(11, 3), (19, 4), (19, 12), (14, 9)])]),
     ("rod", [("wood", "line", (3, 19, 17, 3), 2), ("bone", "line", (17, 3, 18, 14), 1), ("red", "ellipse", (17, 13, 20, 16))]),
     ("dust", [("purple", "ellipse", (4, 11, 17, 19)), ("bone", "rect", (7, 8, 8, 9)), ("bone", "rect", (13, 6, 14, 7)), ("bone", "rect", (10, 3, 11, 4))]),
+    # Icon 53.
+    ("scroll", [("bone", "rect", (5, 4, 16, 18)), ("wood", "rect", (4, 3, 17, 5)), ("wood", "rect", (4, 17, 17, 19)),
+                ("dark", "rect", (7, 8, 14, 8)), ("dark", "rect", (7, 11, 14, 11)), ("dark", "rect", (7, 14, 12, 14))]),
 ]
 
 # Things to gather in the world: 64px frames in one row. Pale parts are
@@ -852,6 +883,8 @@ def main():
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
     draw_sheet(HUMAN, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
     draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
+    for name, (changes, extras) in NPCS.items():
+        draw_npc(changes, extras).save(os.path.join(ROOT, "sprites", "npc_%s.png" % name))
     os.makedirs(os.path.join(ROOT, "sprites", "enemies"), exist_ok=True)
     for name, (rig, order, animations) in MONSTERS.items():
         draw_sheet(rig, order, animations).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
