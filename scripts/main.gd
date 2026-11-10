@@ -13,6 +13,7 @@ var _active_seed := 0
 @onready var _world: World = $World
 @onready var _player: Player = $Player
 @onready var _spawner: EnemySpawner = $Enemies
+@onready var _loot: Node2D = $Loot
 @onready var _hud: CanvasLayer = $HUD
 @onready var _menus: CanvasLayer = $Menus
 @onready var _debug_hud: CanvasLayer = $DebugHUD
@@ -30,6 +31,7 @@ func _ready() -> void:
 	_place_player_at_start()
 	_world.target = _player
 	_spawner.setup(_world, _player)
+	_loot.setup(_player)
 	_hud.setup(_player)
 	_menus.setup(_player)
 	_debug_hud.setup(_world, _player)

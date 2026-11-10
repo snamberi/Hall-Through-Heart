@@ -29,13 +29,14 @@ func setup(player: Player) -> void:
 	_center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_center)
 
-	var hint := GameMenu.make_label("C Character     M Mastery     Esc Close", 14, Color(0.6, 0.58, 0.54))
+	var hint := GameMenu.make_label("C Character     I Inventory     M Mastery     Esc Close", 14, Color(0.6, 0.58, 0.54))
 	hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	hint.position.y -= 24.0
 	hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	add_child(hint)
 
 	_add("toggle_character", CharacterMenu.new())
+	_add("toggle_inventory", InventoryMenu.new())
 	_add("toggle_mastery", MasteryMenu.new())
 
 

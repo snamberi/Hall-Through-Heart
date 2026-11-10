@@ -128,7 +128,7 @@ func _physics_process(delta: float) -> void:
 			velocity = _direction * lunge_speed
 			if has_target and not _has_hit and to_target.length() < body_radius + 13.0:
 				_has_hit = true
-				target.take_damage(_damage, global_position)
+				target.take_damage(_damage, global_position, level)
 			if _state_time_left == 0.0:
 				_enter(State.RECOVER, recover_time)
 		State.RECOVER:

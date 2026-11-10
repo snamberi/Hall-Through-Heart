@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="7_hud"]
 [ext_resource type="Script" path="res://scripts/ui/menu_manager.gd" id="8_menus"]
 [ext_resource type="AudioStream" path="res://assets/audio/level_up.wav" id="9_levelup"]
+[ext_resource type="Script" path="res://scripts/items/loot_dropper.gd" id="10_loot"]
 
 [node name="Main" type="Node2D"]
 y_sort_enabled = true
@@ -22,6 +23,10 @@ script = ExtResource("2_world")
 y_sort_enabled = true
 script = ExtResource("5_spawner")
 enemy_scene = ExtResource("6_husk")
+
+[node name="Loot" type="Node2D" parent="."]
+y_sort_enabled = true
+script = ExtResource("10_loot")
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 

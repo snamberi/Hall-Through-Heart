@@ -211,6 +211,82 @@ def draw_tile(row, variant):
     return img
 
 
+# ----------------------------------------------------------------- icons
+# Item icons are 22px cells in one atlas, 8 per row. The order here is the
+# icon index used in scripts/items/item_db.gd - only ever append.
+ICON = 22
+ICON_COLUMNS = 8
+ICON_PALETTE = {
+    "metal": ["eef0f0", "b4bcc2", "7d8890"],
+    "steel": ["9aa7b8", "6f7c90", "4c5668"],
+    "gold": ["f0cf6a", "c09a3c", "866a26"],
+    "wood": ["8a6a48", "6b4f36", "4a3626"],
+    "leather": ["7a5a44", "5a4032", "3b2a22"],
+    "bone": ["f2efe2", "cfcbb8", "9b9889"],
+    "flesh": ["5d6a78", "424d5b", "2c3440"],
+    "green": ["a8ffb4", "5fe07c", "36b85a"],
+    "red": ["e0555a", "b3242e", "7a1620"],
+    "purple": ["c9a0f0", "8e5cc8", "5c3690"],
+    "dark": ["0b0a12"] * 3,
+}
+ICONS = [
+    ("sword", [("metal", "line", (6, 15, 17, 4), 3), ("gold", "line", (4, 13, 9, 18), 2), ("wood", "line", (3, 19, 5, 17), 2)]),
+    ("greatsword", [("metal", "line", (7, 14, 18, 3), 5), ("gold", "line", (3, 12, 10, 19), 2), ("wood", "line", (2, 20, 5, 17), 3)]),
+    ("axe", [("wood", "line", (5, 19, 15, 6), 2), ("metal", "poly", [(11, 3), (19, 4), (19, 12), (14, 9)])]),
+    ("dagger", [("metal", "line", (9, 12, 15, 6), 3), ("gold", "line", (6, 11, 11, 16), 2), ("wood", "line", (5, 17, 7, 15), 2)]),
+    ("spear", [("wood", "line", (3, 19, 15, 7), 2), ("metal", "poly", [(13, 6), (20, 2), (16, 9)])]),
+    ("shield", [("steel", "poly", [(4, 3), (18, 3), (18, 11), (11, 19), (4, 11)]), ("gold", "ellipse", (9, 7, 13, 11))]),
+    ("helmet", [("steel", "ellipse", (4, 3, 18, 17)), ("steel", "rect", (4, 10, 18, 16)), ("dark", "rect", (7, 10, 15, 11)), ("dark", "rect", (10, 12, 12, 16))]),
+    ("chest", [("steel", "poly", [(5, 3), (9, 3), (11, 5), (13, 3), (17, 3), (20, 7), (17, 9), (17, 19), (5, 19), (5, 9), (2, 7)]), ("gold", "rect", (5, 14, 17, 15))]),
+    ("legs", [("steel", "poly", [(5, 3), (17, 3), (18, 19), (13, 19), (11, 9), (9, 19), (4, 19)]), ("leather", "rect", (5, 3, 17, 4))]),
+    ("boots", [("leather", "poly", [(7, 3), (12, 3), (12, 13), (18, 15), (18, 19), (6, 19)]), ("steel", "rect", (6, 18, 18, 19))]),
+    ("necklace", [("gold", "ring", (5, 2, 17, 14), 1), ("red", "poly", [(11, 13), (14, 16), (11, 19), (8, 16)])]),
+    ("ring", [("gold", "ring", (5, 8, 17, 20), 2), ("green", "rect", (9, 4, 13, 8))]),
+    ("relic", [("purple", "poly", [(11, 2), (18, 11), (11, 20), (4, 11)]), ("bone", "rect", (10, 9, 12, 12))]),
+    ("husk_fragment", [("flesh", "poly", [(4, 8), (10, 3), (17, 6), (18, 14), (11, 19), (5, 15)])]),
+    ("bone", [("bone", "line", (6, 15, 15, 6), 3), ("bone", "ellipse", (3, 14, 8, 19)), ("bone", "ellipse", (13, 2, 18, 7))]),
+    ("claw", [("bone", "poly", [(5, 18), (8, 8), (15, 3), (18, 4), (13, 9), (11, 18)])]),
+    ("essence", [("green", "ellipse", (5, 5, 17, 17)), ("bone", "rect", (9, 8, 10, 9))]),
+    ("gold", [("gold", "ellipse", (3, 9, 13, 18)), ("gold", "ellipse", (9, 5, 19, 14))]),
+]
+
+
+def draw_icon(parts):
+    pixels = {}
+    for part in parts:
+        material, shape, coords = part[0], part[1], part[2]
+        mask = Image.new("L", (ICON, ICON), 0)
+        d = ImageDraw.Draw(mask)
+        if shape == "rect":
+            d.rectangle(coords, fill=255)
+        elif shape == "ellipse":
+            d.ellipse(coords, fill=255)
+        elif shape == "ring":
+            d.ellipse(coords, outline=255, width=part[3])
+        elif shape == "line":
+            d.line(coords, fill=255, width=part[3])
+        else:
+            d.polygon(coords, fill=255, outline=255)
+        points = [(x, y) for y in range(ICON) for x in range(ICON) if mask.getpixel((x, y))]
+        if not points:
+            continue
+        x0, x1 = min(p[0] for p in points), max(p[0] for p in points)
+        y0, y1 = min(p[1] for p in points), max(p[1] for p in points)
+        for x, y in points:
+            t = 0.6 * (x - x0) / max(x1 - x0, 1) + 0.4 * (y - y0) / max(y1 - y0, 1)
+            pixels[(x, y)] = ICON_PALETTE[material][0 if t < 0.3 else 1 if t < 0.68 else 2]
+    img = Image.new("RGBA", (ICON, ICON), (0, 0, 0, 0))
+    for (x, y), colour in pixels.items():
+        img.putpixel((x, y), rgba(colour))
+    for y in range(ICON):
+        for x in range(ICON):
+            if (x, y) not in pixels and any(
+                (x + dx, y + dy) in pixels for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+            ):
+                img.putpixel((x, y), rgba(OUTLINE))
+    return img
+
+
 def main():
     os.makedirs(os.path.join(ROOT, "sprites"), exist_ok=True)
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
@@ -221,6 +297,13 @@ def main():
         for variant in range(VARIANTS):
             atlas.paste(draw_tile(row, variant), (variant * N, row * N))
     atlas.save(os.path.join(ROOT, "tiles", "terrain.png"))
+
+    os.makedirs(os.path.join(ROOT, "icons"), exist_ok=True)
+    rows = (len(ICONS) + ICON_COLUMNS - 1) // ICON_COLUMNS
+    icons = Image.new("RGBA", (ICON_COLUMNS * ICON, rows * ICON), (0, 0, 0, 0))
+    for index, (_name, parts) in enumerate(ICONS):
+        icons.paste(draw_icon(parts), (index % ICON_COLUMNS * ICON, index // ICON_COLUMNS * ICON))
+    icons.save(os.path.join(ROOT, "icons", "items.png"))
 
 
 if __name__ == "__main__":

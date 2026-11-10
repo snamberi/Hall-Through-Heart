@@ -14,16 +14,9 @@ enum State { MOVE, ATTACK, DODGE, DEAD }
 @export var acceleration := 2200.0
 
 @export_group("Attack")
-## How far the swing reaches, in pixels.
-@export var attack_range := 64.0
-## Width of the swing, in degrees.
-@export var attack_arc := 120.0
-## How long the player is committed to a swing.
+## How long the player is committed to a swing. Reach, arc, speed, and
+## knockback come from the weapon in hand (see ItemDB).
 @export var attack_duration := 0.16
-## Seconds between swings at 100% attack speed.
-@export var attack_cooldown := 0.34
-## How hard a hit shoves an enemy back, in pixels/second.
-@export var attack_knockback := 380.0
 
 @export_group("Dodge")
 @export var dodge_speed := 560.0
@@ -39,7 +32,9 @@ enum State { MOVE, ATTACK, DODGE, DEAD }
 ## Stable id of the current class. Everyone starts as an Adventurer.
 var class_id := "adventurer"
 ## Weapon category in hand; decides which mastery is trained.
-var weapon_type := "swords"
+var weapon_type: String:
+	get:
+		return equipment.weapon_profile()["type"]
 ## Last direction the player moved or attacked in.
 var facing := Vector2.DOWN
 var state := State.MOVE
@@ -57,6 +52,8 @@ var _dodge_direction := Vector2.ZERO
 @onready var attributes: Attributes = $Attributes
 @onready var mastery: WeaponMastery = $Mastery
 @onready var stats: CharacterStats = $Stats
+@onready var inventory: Inventory = $Inventory
+@onready var equipment: Equipment = $Equipment
 @onready var camera: Camera2D = $Camera
 @onready var _visual: Node2D = $Visual
 @onready var _slash: SlashEffect = $Slash
@@ -64,10 +61,15 @@ var _dodge_direction := Vector2.ZERO
 
 func _ready() -> void:
 	SaveGame.register("character", self)
-	stats.weapon_type = weapon_type
 	stats.setup(attributes, mastery)
+	equipment.setup(inventory, leveling, attributes)
+	if not inventory.starter_given:
+		inventory.starter_given = true
+		equipment.equip_directly(LootGenerator.make_equipment(1, 0, "sword"))
+	equipment.changed.connect(_on_equipment_changed)
 	stats.changed.connect(_apply_stats)
 	leveling.leveled_up.connect(_on_leveled_up)
+	_on_equipment_changed()
 	_apply_stats()
 	_restore_all()
 
@@ -107,7 +109,10 @@ func attack(direction: Vector2) -> void:
 	_face_visual(direction.x)
 	state = State.ATTACK
 	_state_time_left = attack_duration
-	_attack_cooldown_left = attack_cooldown / stats.get_stat("attack_speed")
+	var weapon := equipment.weapon_profile()
+	var attack_range: float = weapon["range"]
+	var attack_arc: float = weapon["arc"]
+	_attack_cooldown_left = weapon["cooldown"] / stats.get_stat("attack_speed")
 	velocity = direction * 130.0
 	_slash.play(direction, attack_range, deg_to_rad(attack_arc), attack_duration + 0.08)
 
@@ -126,14 +131,15 @@ func attack(direction: Vector2) -> void:
 		var damage := stats.get_stat("physical_damage")
 		if critical:
 			damage *= stats.get_stat("critical_damage")
-		var dealt := enemy.take_damage(damage, direction * attack_knockback, critical, weapon_type)
+		var dealt := enemy.take_damage(damage, direction * weapon["knockback"], critical, weapon_type)
 		if dealt > 0.0:
 			Events.damage_dealt.emit(weapon_type, dealt)
 
 
-func take_damage(amount: float, source_position: Vector2) -> void:
+func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1) -> void:
 	if state == State.DEAD or _invulnerable_left > 0.0:
 		return
+	amount = maxf(amount * (1.0 - stats.damage_reduction(attacker_level)), 1.0)
 	health.take_damage(amount)
 	DamageNumber.spawn(get_parent(), global_position, amount, Color(0.95, 0.3, 0.3))
 	if health.is_dead():
@@ -159,12 +165,11 @@ func revive() -> void:
 
 
 func save_data() -> Dictionary:
-	return {"class_id": class_id, "weapon_type": weapon_type}
+	return {"class_id": class_id}
 
 
 func load_data(data: Dictionary) -> void:
 	class_id = str(data.get("class_id", class_id))
-	weapon_type = str(data.get("weapon_type", weapon_type))
 
 
 func _process_move(delta: float) -> void:
@@ -196,6 +201,11 @@ func _apply_stats() -> void:
 	health.set_max_health(stats.get_stat("max_health"))
 	stamina.set_max(stats.get_stat("max_stamina"))
 	mana.set_max(stats.get_stat("max_mana"))
+
+
+func _on_equipment_changed() -> void:
+	stats.weapon_type = weapon_type
+	stats.set_modifiers("equipment", equipment.modifiers())
 
 
 func _restore_all() -> void:
