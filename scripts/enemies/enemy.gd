@@ -14,6 +14,10 @@ enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
 ## Roughly how wide the enemy is; used for hits and for spacing from others.
 @export var body_radius := 6.0
 
+@export_group("Rewards")
+## Experience given to the player when this enemy dies.
+@export var xp_reward := 8
+
 @export_group("Senses")
 ## The enemy notices the player inside this distance, in pixels.
 @export var aggro_radius := 120.0
@@ -99,10 +103,11 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 
-func take_damage(amount: float, knockback: Vector2) -> void:
+func take_damage(amount: float, knockback: Vector2, critical: bool = false) -> void:
 	if state == State.DEAD:
 		return
-	DamageNumber.spawn(get_parent(), global_position, amount, Color(0.95, 0.9, 0.75))
+	var color := Color(1.0, 0.8, 0.25) if critical else Color(0.95, 0.9, 0.75)
+	DamageNumber.spawn(get_parent(), global_position, amount, color, critical)
 	health.take_damage(amount)
 	if health.is_dead():
 		return

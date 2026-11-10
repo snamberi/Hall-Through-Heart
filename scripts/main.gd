@@ -10,6 +10,7 @@ extends Node2D
 @onready var _player: Player = $Player
 @onready var _spawner: EnemySpawner = $Enemies
 @onready var _hud: CanvasLayer = $HUD
+@onready var _stat_screen: CanvasLayer = $StatScreen
 @onready var _debug_hud: CanvasLayer = $DebugHUD
 
 
@@ -21,6 +22,7 @@ func _ready() -> void:
 	_world.target = _player
 	_spawner.setup(_world, _player)
 	_hud.setup(_player)
+	_stat_screen.setup(_player)
 	_debug_hud.setup(_world, _player)
 	_player.died.connect(_on_player_died)
 

@@ -43,9 +43,16 @@ var _invulnerable_left := 0.0
 var _dodge_direction := Vector2.ZERO
 
 @onready var health: Health = $Health
+@onready var stats: PlayerStats = $Stats
 @onready var camera: Camera2D = $Camera
 @onready var _visual: Node2D = $Visual
 @onready var _slash: SlashEffect = $Slash
+
+
+func _ready() -> void:
+	stats.stats_changed.connect(_apply_stats)
+	stats.leveled_up.connect(func(_level: int) -> void: health.heal_full())
+	_apply_stats()
 
 
 func _physics_process(delta: float) -> void:
@@ -97,7 +104,9 @@ func attack(direction: Vector2) -> void:
 		# Enemies standing right on top of the player are hit from any side.
 		if offset.length() > enemy.body_radius and absf(direction.angle_to(offset)) > half_arc:
 			continue
-		enemy.take_damage(attack_damage, direction * attack_knockback)
+		var critical := stats.roll_critical()
+		var damage := stats.attack_damage(attack_damage) * (stats.CRITICAL_MULTIPLIER if critical else 1.0)
+		enemy.take_damage(damage, direction * attack_knockback, critical)
 
 
 func take_damage(amount: float, source_position: Vector2) -> void:
@@ -109,6 +118,7 @@ func take_damage(amount: float, source_position: Vector2) -> void:
 		state = State.DEAD
 		velocity = Vector2.ZERO
 		_visual.modulate.a = 0.0
+		stats.apply_death_penalty()
 		died.emit()
 		return
 	_invulnerable_left = hurt_invulnerability
@@ -124,18 +134,22 @@ func revive() -> void:
 	_visual.modulate.a = 1.0
 
 
+func _apply_stats() -> void:
+	health.set_max_health(stats.max_health())
+
+
 func _process_move(delta: float) -> void:
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if input != Vector2.ZERO:
 		facing = input.normalized()
 		_face_visual(input.x)
-	velocity = velocity.move_toward(input * move_speed, acceleration * delta)
+	velocity = velocity.move_toward(input * stats.move_speed(move_speed), acceleration * delta)
 
 	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0:
 		_dodge_direction = facing
 		state = State.DODGE
 		_state_time_left = dodge_duration
-		_dodge_cooldown_left = dodge_cooldown
+		_dodge_cooldown_left = stats.dodge_cooldown(dodge_cooldown)
 		_invulnerable_left = maxf(_invulnerable_left, dodge_duration)
 	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0:
 		var aim := get_global_mouse_position() - global_position

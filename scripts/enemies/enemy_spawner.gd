@@ -35,8 +35,16 @@ func spawn_at(world_position: Vector2) -> Enemy:
 	var enemy: Enemy = enemy_scene.instantiate()
 	enemy.position = world_position
 	enemy.target = _player
+	enemy.died.connect(_on_enemy_died)
 	add_child(enemy)
 	return enemy
+
+
+func _on_enemy_died(enemy: Enemy) -> void:
+	_player.stats.add_xp(enemy.xp_reward)
+	DamageNumber.spawn_text(
+		self, enemy.global_position + Vector2(0, -8), "+%d XP" % enemy.xp_reward, Color(0.6, 0.85, 1.0), 12
+	)
 
 
 func _physics_process(delta: float) -> void:

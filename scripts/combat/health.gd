@@ -29,6 +29,14 @@ func take_damage(amount: float) -> void:
 		died.emit()
 
 
+## Changes the maximum. Any increase is also added to current health.
+func set_max_health(value: float) -> void:
+	var gained := maxf(value - max_health, 0.0)
+	max_health = value
+	current = clampf(current + gained, 0.0, max_health)
+	changed.emit(current, max_health)
+
+
 func heal_full() -> void:
 	current = max_health
 	changed.emit(current, max_health)
