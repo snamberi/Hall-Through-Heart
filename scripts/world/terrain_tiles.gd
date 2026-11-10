@@ -1,13 +1,14 @@
 class_name TerrainTiles
 extends RefCounted
-## Terrain tile definitions and the placeholder tileset.
+## Terrain tile definitions and the tileset built from the terrain atlas.
 ##
-## The tileset is painted in code so the game runs with no art files.
-## To use real art later, replace build_tileset() with a TileSet resource
-## that keeps the same layout: one row per Type, one column per variant.
+## The atlas image has one row per Type (in enum order) and one column per
+## look-alike variant. Replace the PNG with new art of the same layout to
+## reskin the world.
 
-const TILE_SIZE := 16
-const VARIANTS := 4
+const TILE_SIZE := 44
+const VARIANTS := 8
+const ATLAS: Texture2D = preload("res://assets/tiles/terrain.png")
 
 enum Type {
 	DEEP_WATER,
@@ -31,15 +32,16 @@ const NAMES: Array[String] = [
 	"Cragstone",
 ]
 
+## Flat colour for each type, for maps and previews.
 const COLORS: Array[Color] = [
-	Color("10141d"),
-	Color("1d2a38"),
-	Color("3a3229"),
-	Color("5b554e"),
-	Color("4b4f33"),
-	Color("26382a"),
-	Color("2c3327"),
-	Color("24232b"),
+	Color("141b2b"),
+	Color("23364a"),
+	Color("3d342c"),
+	Color("4b4a4e"),
+	Color("4a4d32"),
+	Color("26382c"),
+	Color("2e3528"),
+	Color("3a3944"),
 ]
 
 ## Tiles the player cannot walk through.
@@ -54,30 +56,6 @@ static func is_solid(type: Type) -> bool:
 	return SOLID[type]
 
 
-static func build_atlas_image() -> Image:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7411
-	var image := Image.create(
-		VARIANTS * TILE_SIZE, Type.size() * TILE_SIZE, false, Image.FORMAT_RGBA8
-	)
-	for type in Type.size():
-		var base: Color = COLORS[type]
-		for variant in VARIANTS:
-			for y in TILE_SIZE:
-				for x in TILE_SIZE:
-					var shade := rng.randf_range(-0.035, 0.035)
-					# A few stronger flecks give each variant its own grain.
-					if rng.randf() < 0.06:
-						shade += rng.randf_range(-0.09, 0.09)
-					var color := Color(
-						clampf(base.r + shade, 0.0, 1.0),
-						clampf(base.g + shade, 0.0, 1.0),
-						clampf(base.b + shade, 0.0, 1.0)
-					)
-					image.set_pixel(variant * TILE_SIZE + x, type * TILE_SIZE + y, color)
-	return image
-
-
 static func build_tileset() -> TileSet:
 	var tile_set := TileSet.new()
 	tile_set.tile_size = Vector2i(TILE_SIZE, TILE_SIZE)
@@ -86,7 +64,7 @@ static func build_tileset() -> TileSet:
 	tile_set.set_physics_layer_collision_mask(0, 0)
 
 	var source := TileSetAtlasSource.new()
-	source.texture = ImageTexture.create_from_image(build_atlas_image())
+	source.texture = ATLAS
 	source.texture_region_size = Vector2i(TILE_SIZE, TILE_SIZE)
 	tile_set.add_source(source, 0)
 

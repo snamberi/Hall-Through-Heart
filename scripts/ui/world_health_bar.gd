@@ -1,7 +1,7 @@
 extends Node2D
 ## Small bar above an enemy. Hidden until the enemy has been hurt.
 
-const SIZE := Vector2(14.0, 2.0)
+const SIZE := Vector2(30.0, 4.0)
 
 var _fraction := 1.0
 

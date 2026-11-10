@@ -24,5 +24,5 @@ func play(direction: Vector2, radius: float, arc_radians: float, duration: float
 
 
 func _draw() -> void:
-	draw_arc(Vector2.ZERO, _radius * 0.8, -_arc / 2.0, _arc / 2.0, 16, Color(0.95, 0.9, 0.8), 3.0)
-	draw_arc(Vector2.ZERO, _radius * 0.6, -_arc / 2.5, _arc / 2.5, 12, Color(0.95, 0.9, 0.8, 0.4), 2.0)
+	draw_arc(Vector2.ZERO, _radius * 0.8, -_arc / 2.0, _arc / 2.0, 16, Color(0.95, 0.9, 0.8), 6.0)
+	draw_arc(Vector2.ZERO, _radius * 0.6, -_arc / 2.5, _arc / 2.5, 12, Color(0.95, 0.9, 0.8, 0.4), 4.0)
