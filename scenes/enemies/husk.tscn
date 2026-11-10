@@ -1,0 +1,40 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
+[ext_resource type="Script" path="res://scripts/ui/world_health_bar.gd" id="3_bar"]
+
+[sub_resource type="CircleShape2D" id="shape_feet"]
+radius = 4.5
+
+[node name="Husk" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("1_enemy")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("2_health")
+max_health = 30.0
+
+[node name="Collision" type="CollisionShape2D" parent="."]
+shape = SubResource("shape_feet")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Shadow" type="Polygon2D" parent="Visual"]
+color = Color(0, 0, 0, 0.35)
+polygon = PackedVector2Array(-6, 3, -4, 1, 4, 1, 6, 3, 4, 5, -4, 5)
+
+[node name="Body" type="Polygon2D" parent="Visual"]
+color = Color(0.56, 0.6, 0.5, 1)
+polygon = PackedVector2Array(-4, 3, -5, -4, -3, -9, 1, -11, 5, -9, 5, -5, 3, -3, 4, 3)
+
+[node name="Maw" type="Polygon2D" parent="Visual"]
+color = Color(0.12, 0.07, 0.09, 1)
+polygon = PackedVector2Array(1, -8, 4, -8, 4, -5, 2, -5)
+
+[node name="HealthBar" type="Node2D" parent="."]
+position = Vector2(0, -15)
+z_index = 10
+script = ExtResource("3_bar")

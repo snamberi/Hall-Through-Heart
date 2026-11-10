@@ -22,11 +22,12 @@ func _process(_delta: float) -> void:
 	if _world == null or not visible:
 		return
 	var cell := _world.world_to_cell(_player.global_position)
-	_label.text = "Seed %d\nTile %d, %d\n%s\nChunks %d   FPS %d" % [
+	_label.text = "Seed %d\nTile %d, %d\n%s\nChunks %d   Enemies %d   FPS %d" % [
 		_world.generator.world_seed,
 		cell.x,
 		cell.y,
 		TerrainTiles.display_name(_world.generator.tile_type_at(cell)),
 		_world.loaded_chunk_count(),
+		get_tree().get_nodes_in_group("enemies").size(),
 		Engine.get_frames_per_second(),
 	]
