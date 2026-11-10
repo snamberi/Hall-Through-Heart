@@ -65,6 +65,7 @@ var _last_weapon_type := ""
 
 @onready var health: Health = $Health
 @onready var _visual: Node2D = $Visual
+@onready var _animator: EnemyAnimator = $Visual/Sprite
 
 
 ## Sets level and rank. Call before adding the enemy to the scene.
@@ -218,9 +219,13 @@ func _on_died() -> void:
 	})
 	if _flash_tween:
 		_flash_tween.kill()
+	$HealthBar.visible = false
 	_visual.modulate = Color(4.0, 4.0, 4.0)
 	var tween := create_tween()
-	tween.tween_property(self, "modulate:a", 0.0, 0.35)
+	tween.tween_property(_visual, "modulate", _tint, 0.15)
+	# Let the collapse play, lie still a moment, then fade away.
+	tween.tween_interval(_animator.death_seconds() + 0.25)
+	tween.tween_property(self, "modulate:a", 0.0, 0.4)
 	tween.tween_callback(queue_free)
 
 

@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
 [ext_resource type="Script" path="res://scripts/combat/slash_effect.gd" id="3_slash"]
 [ext_resource type="Script" path="res://scripts/combat/resource_pool.gd" id="4_pool"]
-[ext_resource type="Texture2D" path="res://assets/sprites/player.png" id="5_sprite"]
+[ext_resource type="Script" path="res://scripts/player/player_animator.gd" id="5_sprite"]
 [ext_resource type="Script" path="res://scripts/progression/leveling.gd" id="6_leveling"]
 [ext_resource type="Script" path="res://scripts/progression/attributes.gd" id="7_attributes"]
 [ext_resource type="Script" path="res://scripts/progression/weapon_mastery.gd" id="8_mastery"]
@@ -57,9 +57,9 @@ shape = SubResource("shape_feet")
 
 [node name="Visual" type="Node2D" parent="."]
 
-[node name="Sprite" type="Sprite2D" parent="Visual"]
-position = Vector2(0, -19)
-texture = ExtResource("5_sprite")
+[node name="Sprite" type="AnimatedSprite2D" parent="Visual"]
+position = Vector2(0, -23)
+script = ExtResource("5_sprite")
 
 [node name="Slash" type="Node2D" parent="."]
 position = Vector2(0, -14)

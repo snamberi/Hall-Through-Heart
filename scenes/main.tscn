@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://scripts/ui/menu_manager.gd" id="8_menus"]
 [ext_resource type="AudioStream" path="res://assets/audio/level_up.wav" id="9_levelup"]
 [ext_resource type="Script" path="res://scripts/items/loot_dropper.gd" id="10_loot"]
+[ext_resource type="Script" path="res://scripts/effects/death_cinematic.gd" id="11_cinematic"]
 
 [node name="Main" type="Node2D"]
 y_sort_enabled = true
@@ -30,7 +31,11 @@ script = ExtResource("10_loot")
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 
+[node name="Cinematic" type="CanvasLayer" parent="."]
+script = ExtResource("11_cinematic")
+
 [node name="HUD" type="CanvasLayer" parent="."]
+layer = 2
 script = ExtResource("7_hud")
 
 [node name="HealthBar" type="Control" parent="HUD"]
@@ -123,6 +128,7 @@ visible = false
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_bottom = -340.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/font_color = Color(0.7, 0.12, 0.16, 1)
@@ -158,6 +164,7 @@ visible = false
 script = ExtResource("8_menus")
 
 [node name="DebugHUD" type="CanvasLayer" parent="."]
+layer = 2
 script = ExtResource("4_debug")
 
 [node name="Label" type="Label" parent="DebugHUD"]
