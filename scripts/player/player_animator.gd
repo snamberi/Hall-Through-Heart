@@ -165,6 +165,12 @@ func _choose_animation(delta: float) -> void:
 	match _player.state:
 		Player.State.DEAD, Player.State.REVIVING:
 			return
+		Player.State.GATHER:
+			# Keep swinging for as long as the work takes.
+			if animation != "attack" or not is_playing():
+				_play_for("attack", 0.55, true)
+			_busy = ""
+			return
 		Player.State.DODGE:
 			_play_for("dodge", _player.dodge_duration)
 			_busy = ""

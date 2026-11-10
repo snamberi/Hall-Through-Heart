@@ -62,6 +62,12 @@ func set_modifiers(source_id: String, modifiers: Dictionary) -> void:
 	changed.emit()
 
 
+## Like set_modifiers, but without announcing a change (for use from inside
+## handlers that will announce one themselves).
+func set_modifiers_quietly(source_id: String, modifiers: Dictionary) -> void:
+	_modifiers[source_id] = modifiers
+
+
 func clear_modifiers(source_id: String) -> void:
 	if _modifiers.erase(source_id):
 		changed.emit()

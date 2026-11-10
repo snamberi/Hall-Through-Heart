@@ -11,6 +11,7 @@ var _active_seed := 0
 @onready var _world: World = $World
 @onready var _player: Player = $Player
 @onready var _spawner: EnemySpawner = $Enemies
+@onready var _resources: ResourceSpawner = $Resources
 @onready var _loot: Node2D = $Loot
 @onready var _cinematic: CanvasLayer = $Cinematic
 @onready var _hud: CanvasLayer = $HUD
@@ -27,6 +28,7 @@ func _ready() -> void:
 	SaveGame.register("world", self)
 
 	_world.setup(_active_seed)
+	_resources.setup(_world)
 	_place_player_at_start()
 	_world.target = _player
 	_spawner.setup(_world, _player)

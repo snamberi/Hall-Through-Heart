@@ -162,6 +162,7 @@ func take_damage(
 	var color := Color(1.0, 0.8, 0.25) if critical else Color(0.95, 0.9, 0.75)
 	DamageNumber.spawn(get_parent(), global_position, amount, color, critical)
 	_last_weapon_type = weapon_type
+	Audio.play("hit", -4.0)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(1.0, 0.85, 0.4) if critical else Color(1.0, 0.95, 0.85), critical)
 	var dealt := health.take_damage(amount)
 	if health.is_dead():

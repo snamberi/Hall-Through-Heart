@@ -109,7 +109,38 @@ func modifiers() -> Dictionary:
 			if not totals.has(stat):
 				totals[stat] = {"flat": 0.0, "percent": 0.0}
 			totals[stat][modifier["kind"]] += modifier["value"]
+	var bonus: Dictionary = set_bonus()
+	for stat: String in bonus:
+		if not totals.has(stat):
+			totals[stat] = {"flat": 0.0, "percent": 0.0}
+		for kind: String in bonus[stat]:
+			totals[stat][kind] += bonus[stat][kind]
 	return totals
+
+
+## The most armour pieces worn from one tier: {"tier": name, "count": n}.
+func set_progress() -> Dictionary:
+	var counts := {}
+	for slot in ItemDB.SET_SLOTS:
+		var item := get_item(slot)
+		if item and item.definition().get("tiered", false):
+			var tier := ItemDB.tier_name(item.level)
+			counts[tier] = counts.get(tier, 0) + 1
+	var best := {"tier": "", "count": 0}
+	for tier: String in counts:
+		if counts[tier] > best["count"]:
+			best = {"tier": tier, "count": counts[tier]}
+	return best
+
+
+## Stat modifiers from the set bonus currently earned.
+func set_bonus() -> Dictionary:
+	var count: int = set_progress()["count"]
+	var earned := {}
+	for needed: int in ItemDB.SET_BONUSES:
+		if count >= needed:
+			earned = ItemDB.SET_BONUSES[needed]
+	return earned
 
 
 func save_data() -> Dictionary:

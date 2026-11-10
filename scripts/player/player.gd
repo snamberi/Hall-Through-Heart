@@ -10,7 +10,7 @@ signal died(xp_lost: int)
 signal rebirth_finished
 signal class_changed
 
-enum State { MOVE, ATTACK, DODGE, DEAD, REVIVING, ABILITY }
+enum State { MOVE, ATTACK, DODGE, DEAD, REVIVING, ABILITY, GATHER }
 
 @export_group("Movement")
 ## How quickly the player reaches full speed and stops, in pixels/second².
@@ -54,6 +54,15 @@ var _attack_cooldown_left := 0.0
 var _dodge_cooldown_left := 0.0
 var _invulnerable_left := 0.0
 var _dodge_direction := Vector2.ZERO
+## Seconds until another potion can be drunk.
+var potion_cooldown_left := 0.0
+## The node being gathered from, how long it takes, and how far along.
+var gather_target: ResourceNode
+var gather_seconds := 0.0
+var gather_progress := 0.0
+## Consecutive basic attacks, for the mastery combo finisher.
+var _combo_count := 0
+var _combo_left := 0.0
 ## Seconds until the Unbreakable talent can save the player again.
 var _unbreakable_left := 0.0
 
@@ -69,6 +78,7 @@ var _unbreakable_left := 0.0
 @onready var abilities: AbilityUser = $Abilities
 @onready var buffs: Buffs = $Buffs
 @onready var talents: Talents = $Talents
+@onready var professions: Professions = $Professions
 @onready var camera: Camera2D = $Camera
 @onready var _visual: Node2D = $Visual
 @onready var _animator: PlayerAnimator = $Visual/Sprite
@@ -86,6 +96,12 @@ func _ready() -> void:
 		# A new character starts empty-handed with a sword in the bag.
 		inventory.starter_given = true
 		inventory.add(LootGenerator.make_equipment(1, 0, "sword"))
+	if not inventory.tools_given:
+		# Older saves get the gathering tools too.
+		inventory.tools_given = true
+		for tool_id: String in ["worn_pickaxe", "worn_hatchet", "fishing_rod"]:
+			inventory.add(Item.create(tool_id))
+	mastery.changed.connect(_apply_mastery_passive)
 	equipment.changed.connect(_on_equipment_changed)
 	stats.changed.connect(_apply_stats)
 	leveling.leveled_up.connect(_on_leveled_up)
@@ -102,6 +118,8 @@ func _physics_process(delta: float) -> void:
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
 	_unbreakable_left = maxf(_unbreakable_left - delta, 0.0)
+	potion_cooldown_left = maxf(potion_cooldown_left - delta, 0.0)
+	_combo_left = maxf(_combo_left - delta, 0.0)
 	health.heal(stats.get_stat("health_regen") * delta)
 
 	match state:
@@ -118,6 +136,8 @@ func _physics_process(delta: float) -> void:
 		State.ABILITY:
 			# AbilityUser steers the player and ends this state.
 			pass
+		State.GATHER:
+			_process_gather(delta)
 
 	_visual.modulate.a = 0.45 if _invulnerable_left > 0.0 else 1.0
 	move_and_slide()
@@ -139,13 +159,25 @@ func attack(direction: Vector2) -> void:
 	velocity = direction * 130.0
 	# The swing animation fills the gap until the next swing is ready.
 	_animator.play_attack(clampf(_attack_cooldown_left, attack_duration, 0.4))
+	Audio.play("swing", -6.0)
+	# With enough mastery, every third attack in a row is a finisher.
+	var multiplier := 1.0
+	var reach: float = weapon["range"]
+	if mastery.has_combo(weapon_type):
+		_combo_count = _combo_count + 1 if _combo_left > 0.0 else 1
+		_combo_left = _attack_cooldown_left + 0.6
+		if _combo_count >= 3:
+			_combo_count = 0
+			multiplier = WeaponMastery.COMBO_DAMAGE
+			reach *= 1.25
+			shake_camera(4.0)
 	if weapon.has("projectile"):
 		var config: Dictionary = weapon["projectile"].duplicate()
 		config["knockback"] = weapon["knockback"]
-		Projectile.fire(self, direction, config, _weapon_multiplier())
+		Projectile.fire(self, direction, config, _weapon_multiplier() * multiplier)
 		return
-	show_slash(direction, weapon["range"], weapon["arc"])
-	strike_arc(direction, weapon["range"], weapon["arc"], 1.0, weapon["knockback"])
+	show_slash(direction, reach, weapon["arc"] * (1.2 if multiplier > 1.0 else 1.0))
+	strike_arc(direction, reach, weapon["arc"], multiplier, weapon["knockback"])
 
 
 ## Damages every enemy in a cone in front of the player. `multiplier` scales
@@ -272,6 +304,50 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 		health.heal(minf(dealt * life_steal, health.max_health * 0.05))
 
 
+## Uses a consumable from the bag. Returns "" on success or why it failed.
+func use_item(item: Item) -> String:
+	if is_dead() or not item.is_consumable() or not item in inventory.items:
+		return "This cannot be used."
+	var use: Dictionary = item.definition()["use"]
+	if not use.has("buff"):
+		if potion_cooldown_left > 0.0:
+			return "Wait %.0fs before another potion." % ceilf(potion_cooldown_left)
+		potion_cooldown_left = 8.0
+	if use.has("heal"):
+		health.heal(health.max_health * use["heal"])
+	if use.has("mana"):
+		mana.current = minf(mana.current + mana.max_value * use["mana"], mana.max_value)
+		mana.changed.emit(mana.current, mana.max_value)
+	if use.has("stamina"):
+		stamina.current = minf(stamina.current + stamina.max_value * use["stamina"], stamina.max_value)
+		stamina.changed.emit(stamina.current, stamina.max_value)
+	if use.has("buff"):
+		buffs.add(use["buff"], use["name"], use["duration"], use["mods"])
+	inventory.take(item.id, 1)
+	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), item.tint(), 50.0)
+	return ""
+
+
+## Drinks a health potion if there is one (the quick-use key).
+func quick_potion() -> void:
+	for item in inventory.items:
+		if item.id == "health_potion":
+			use_item(item)
+			return
+
+
+## The gatherable node closest to the player and in reach, or null.
+func nearest_resource() -> ResourceNode:
+	var best: ResourceNode = null
+	var best_distance := ResourceNode.REACH
+	for node in get_tree().get_nodes_in_group("resource_nodes"):
+		var distance: float = node.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = node
+	return best
+
+
 ## Chooses a class. Returns "" on success or why it was refused.
 func choose_class(id: String) -> String:
 	if not HeroClasses.CLASSES.has(id) or id == "adventurer":
@@ -325,6 +401,8 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		Events.player_died.emit(xp_lost)
 		return
 	_invulnerable_left = maxf(_invulnerable_left, hurt_invulnerability)
+	if state == State.GATHER:
+		_stop_gathering()
 	if state == State.MOVE:
 		_animator.play_hurt()
 	var resistance := stats.get_stat("knockback_resistance")
@@ -365,6 +443,10 @@ func _process_move(delta: float) -> void:
 		_try_dodge()
 	elif abilities.try_use_pressed():
 		pass
+	elif Input.is_action_just_pressed("quick_potion"):
+		quick_potion()
+	elif Input.is_action_just_pressed("interact"):
+		_start_gathering()
 	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0:
 		attack(aim_direction())
 
@@ -391,6 +473,7 @@ func _apply_stats() -> void:
 func _on_equipment_changed() -> void:
 	_animator.update_equipment(equipment, show_helmet)
 	stats.weapon_type = weapon_type
+	stats.set_modifiers_quietly("mastery_passive", mastery.passive_modifiers(weapon_type))
 	stats.set_modifiers("equipment", equipment.modifiers())
 	# A class hits harder with the weapon types it favours.
 	var favoured: Array = HeroClasses.CLASSES[class_id]["weapons"]
@@ -399,6 +482,47 @@ func _on_equipment_changed() -> void:
 	else:
 		stats.clear_modifiers("class_weapon")
 	abilities.changed.emit()
+
+
+## Bonuses earned through mastery of the weapon type in hand.
+func _apply_mastery_passive() -> void:
+	stats.set_modifiers_quietly("mastery_passive", mastery.passive_modifiers(weapon_type))
+
+
+func _start_gathering() -> void:
+	var node := nearest_resource()
+	if node == null:
+		return
+	var reason := node.blocked_reason(self)
+	if reason != "":
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -30), reason, UITheme.BAD, 12)
+		return
+	gather_target = node
+	gather_seconds = node.gather_seconds(self)
+	gather_progress = 0.0
+	state = State.GATHER
+	velocity = Vector2.ZERO
+	_face_visual(node.global_position.x - global_position.x)
+
+
+func _process_gather(delta: float) -> void:
+	velocity = Vector2.ZERO
+	var moving := Input.get_vector("move_left", "move_right", "move_up", "move_down") != Vector2.ZERO
+	if moving or not is_instance_valid(gather_target):
+		_stop_gathering()
+		return
+	gather_progress += delta
+	if gather_progress >= gather_seconds:
+		var node := gather_target
+		_stop_gathering()
+		node.harvest(self)
+
+
+func _stop_gathering() -> void:
+	gather_target = null
+	gather_progress = 0.0
+	if state == State.GATHER:
+		state = State.MOVE
 
 
 func _apply_class() -> void:

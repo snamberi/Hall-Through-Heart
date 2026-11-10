@@ -538,9 +538,57 @@ ICONS += [
                 ("green", "ellipse", (10, 9, 17, 16)), ("wood", "line", (11, 14, 14, 20), 2)]),
     ("book", [("purple", "rect", (4, 4, 17, 18)), ("bone", "rect", (6, 6, 15, 16)), ("purple", "rect", (10, 4, 11, 18))]),
 ]
+# Icons 42-52: materials, consumables, and tools. The pale ones are tinted
+# in game with each item's own colour.
+ICONS += [
+    ("ore", [("plate", "poly", [(3, 13), (6, 6), (12, 3), (18, 7), (19, 14), (14, 19), (6, 18)]), ("plate_dark", "rect", (8, 9, 10, 11)), ("plate_dark", "rect", (13, 12, 15, 14))]),
+    ("log", [("plate", "poly", [(3, 8), (16, 4), (19, 10), (6, 15)]), ("plate_dark", "ellipse", (2, 8, 8, 15)), ("plate", "ellipse", (4, 10, 6, 13))]),
+    ("herb", [("plate", "poly", [(10, 20), (10, 11), (4, 6), (5, 3), (11, 8), (11, 2), (13, 2), (13, 8), (18, 4), (19, 7), (13, 12), (13, 20)])]),
+    ("fish", [("plate", "ellipse", (3, 6, 16, 16)), ("plate", "poly", [(14, 11), (20, 5), (20, 17)]), ("dark", "rect", (6, 9, 7, 10))]),
+    ("ingot", [("plate", "poly", [(5, 8), (17, 8), (20, 16), (2, 16)]), ("plate", "poly", [(5, 8), (17, 8), (16, 6), (6, 6)])]),
+    ("potion", [("plate", "ellipse", (4, 8, 17, 20)), ("bone", "rect", (9, 3, 12, 9)), ("wood", "rect", (8, 2, 13, 4))]),
+    ("food", [("wood", "poly", [(2, 11), (20, 11), (17, 19), (5, 19)]), ("plate", "ellipse", (4, 7, 18, 13))]),
+    ("pickaxe", [("wood", "line", (5, 19, 15, 7), 2), ("plate", "poly", [(8, 4), (14, 3), (20, 8), (19, 14), (16, 8), (11, 6)])]),
+    ("hatchet", [("wood", "line", (5, 19, 15, 6), 2), ("plate", "poly", [(11, 3), (19, 4), (19, 12), (14, 9)])]),
+    ("rod", [("wood", "line", (3, 19, 17, 3), 2), ("bone", "line", (17, 3, 18, 14), 1), ("red", "ellipse", (17, 13, 20, 16))]),
+    ("dust", [("purple", "ellipse", (4, 11, 17, 19)), ("bone", "rect", (7, 8, 8, 9)), ("bone", "rect", (13, 6, 14, 7)), ("bone", "rect", (10, 3, 11, 4))]),
+]
+
+# Things to gather in the world: 64px frames in one row. Pale parts are
+# tinted in game. Order: rock, ore flecks, tree, herb, fishing ripple.
+NODE = 64
+NODE_PALETTE = {
+    "rock": ["8a8794", "66636f", "45434d"],
+    "fleck": ["ffffff", "e6e6e6", "c8c8c8"],
+    "trunk": ["6b4f36", "523b28", "3b2a1c"],
+    "canopy": ["e8e8e8", "bdbdbd", "8f8f8f"],
+    "leaf": ["f0f0f0", "c4c4c4", "9a9a9a"],
+}
+NODES = [
+    [("rock", "poly", [(12, 50), (10, 36), (18, 24), (30, 18), (44, 22), (54, 34), (54, 50), (40, 56), (22, 56)]),
+     ("rock", "poly", [(18, 26), (30, 20), (38, 26), (30, 34), (20, 34)])],
+    [("fleck", "rect", (20, 38, 24, 41)), ("fleck", "rect", (32, 28, 36, 31)), ("fleck", "rect", (42, 40, 46, 43)),
+     ("fleck", "rect", (28, 46, 31, 48)), ("fleck", "rect", (44, 30, 46, 32))],
+    [("trunk", "rect", (28, 36, 35, 58)), ("canopy", "ellipse", (10, 6, 54, 42)), ("canopy", "ellipse", (6, 18, 30, 44)),
+     ("canopy", "ellipse", (34, 18, 58, 44))],
+    [("leaf", "poly", [(31, 56), (31, 40), (20, 30), (22, 26), (32, 34), (32, 22), (36, 22), (36, 34), (44, 26), (46, 30), (35, 42), (35, 56)]),
+     ("leaf", "ellipse", (29, 16, 39, 26))],
+    [("fleck", "ring", (14, 26, 50, 44), 2), ("fleck", "ring", (24, 31, 40, 39), 1)],
+]
 
 
-def draw_icon(parts):
+def draw_icon(parts, size=None):
+    global ICON
+    saved = ICON
+    if size:
+        ICON = size
+    try:
+        return _draw_icon(parts)
+    finally:
+        ICON = saved
+
+
+def _draw_icon(parts):
     pixels = {}
     for part in parts:
         material, shape, coords = part[0], part[1], part[2]
@@ -602,6 +650,12 @@ def main():
             parts = weapon_icon_parts(WEAPONS[_name])
         icons.paste(draw_icon(parts), (index % ICON_COLUMNS * ICON, index // ICON_COLUMNS * ICON))
     icons.save(os.path.join(ROOT, "icons", "items.png"))
+
+    ICON_PALETTE.update(NODE_PALETTE)
+    nodes = Image.new("RGBA", (len(NODES) * NODE, NODE), (0, 0, 0, 0))
+    for index, parts in enumerate(NODES):
+        nodes.paste(draw_icon(parts, NODE), (index * NODE, 0))
+    nodes.save(os.path.join(ROOT, "sprites", "nodes.png"))
 
 
 if __name__ == "__main__":

@@ -16,3 +16,7 @@ signal mastery_level_up(weapon_type: String, level: int)
 signal player_died(xp_lost: int)
 ## The player picked something up. `item` is the saved form (Item.to_dict()).
 signal item_acquired(item: Dictionary)
+signal profession_level_up(profession: String, level: int)
+## Something was gathered from the world. Keys: resource, item, count.
+signal resource_gathered(info: Dictionary)
+signal item_crafted(recipe_id: String)

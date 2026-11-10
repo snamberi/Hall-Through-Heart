@@ -10,6 +10,8 @@ var items: Array[Item] = []
 var gold := 0
 ## Whether the new-game starting gear has been handed out.
 var starter_given := false
+## Whether the basic gathering tools have been handed out.
+var tools_given := false
 
 
 func _ready() -> void:
@@ -60,6 +62,34 @@ func count_of(item_id: String) -> int:
 	return total
 
 
+## Removes `amount` of a stackable item. Returns false (taking nothing) if
+## the bag holds fewer.
+func take(item_id: String, amount: int) -> bool:
+	if count_of(item_id) < amount:
+		return false
+	for item: Item in items.duplicate():
+		if item.id != item_id or amount <= 0:
+			continue
+		var used := mini(item.count, amount)
+		item.count -= used
+		amount -= used
+		if item.count <= 0:
+			items.erase(item)
+	changed.emit()
+	SaveGame.request_save()
+	return true
+
+
+## The best tool of a kind in the bag ("pickaxe", "hatchet", "rod"), or null.
+func best_tool(kind: String) -> Item:
+	var best: Item = null
+	for item in items:
+		if item.is_tool() and item.definition()["tool"]["kind"] == kind:
+			if best == null or item.definition()["tool"]["tier"] > best.definition()["tool"]["tier"]:
+				best = item
+	return best
+
+
 ## Equipment first, best rarity and level first, then materials by name.
 func sort() -> void:
 	items.sort_custom(func(a: Item, b: Item) -> bool:
@@ -78,6 +108,7 @@ func save_data() -> Dictionary:
 	return {
 		"gold": gold,
 		"starter_given": starter_given,
+		"tools_given": tools_given,
 		"items": items.map(func(item: Item) -> Dictionary: return item.to_dict()),
 	}
 
@@ -85,6 +116,7 @@ func save_data() -> Dictionary:
 func load_data(data: Dictionary) -> void:
 	gold = maxi(int(data.get("gold", 0)), 0)
 	starter_given = bool(data.get("starter_given", false))
+	tools_given = bool(data.get("tools_given", false))
 	items.clear()
 	var saved: Variant = data.get("items", [])
 	if saved is Array:
