@@ -295,17 +295,32 @@ const AFFIXES: Array[Dictionary] = [
 ]
 
 ## What each enemy type can drop. "gold" is [min, max] at level 1.
+## Enemies without an entry use "husk".
 const LOOT_TABLES := {
-	"husk": {
-		"gold": [1, 3],
-		"equipment_chance": 0.1,
-		"materials": [
-			{"id": "husk_fragment", "chance": 0.6, "count": [1, 2]},
-			{"id": "bone", "chance": 0.25, "count": [1, 1]},
-			{"id": "claw", "chance": 0.12, "count": [1, 1]},
-			{"id": "essence", "chance": 0.03, "count": [1, 1]},
-		],
-	},
+	"husk": {"gold": [1, 3], "equipment_chance": 0.1, "materials": [
+		{"id": "husk_fragment", "chance": 0.6, "count": [1, 2]}, {"id": "bone", "chance": 0.25, "count": [1, 1]},
+		{"id": "claw", "chance": 0.12, "count": [1, 1]}, {"id": "essence", "chance": 0.03, "count": [1, 1]}]},
+	"rot_hound": {"gold": [1, 3], "equipment_chance": 0.08, "materials": [
+		{"id": "claw", "chance": 0.45, "count": [1, 2]}, {"id": "bone", "chance": 0.3, "count": [1, 1]}]},
+	"bone_archer": {"gold": [2, 4], "equipment_chance": 0.12, "materials": [
+		{"id": "bone", "chance": 0.7, "count": [1, 3]}, {"id": "essence", "chance": 0.05, "count": [1, 1]}]},
+	"bog_slime": {"gold": [1, 2], "equipment_chance": 0.06, "materials": [
+		{"id": "venom_sac", "chance": 0.3, "count": [1, 1]}, {"id": "healing_herb", "chance": 0.2, "count": [1, 1]}]},
+	"carrion_bat": {"gold": [1, 2], "equipment_chance": 0.06, "materials": [
+		{"id": "claw", "chance": 0.35, "count": [1, 1]}, {"id": "bone", "chance": 0.2, "count": [1, 1]}]},
+	"thorn_stalker": {"gold": [2, 4], "equipment_chance": 0.1, "materials": [
+		{"id": "venom_sac", "chance": 0.45, "count": [1, 2]}, {"id": "claw", "chance": 0.25, "count": [1, 1]}]},
+	"spore_shambler": {"gold": [2, 4], "equipment_chance": 0.1, "materials": [
+		{"id": "poison_mushroom", "chance": 0.6, "count": [1, 2]}, {"id": "rare_root", "chance": 0.08, "count": [1, 1]}]},
+	"rot_cultist": {"gold": [4, 8], "equipment_chance": 0.16, "materials": [
+		{"id": "essence", "chance": 0.25, "count": [1, 1]}, {"id": "mana_flower", "chance": 0.2, "count": [1, 1]}]},
+	"ember_wisp": {"gold": [1, 3], "equipment_chance": 0.05, "materials": [
+		{"id": "ember_core", "chance": 0.3, "count": [1, 1]}]},
+	"ash_wraith": {"gold": [3, 6], "equipment_chance": 0.14, "materials": [
+		{"id": "essence", "chance": 0.4, "count": [1, 2]}, {"id": "enchanted_dust", "chance": 0.15, "count": [1, 1]}]},
+	"crag_golem": {"gold": [5, 10], "equipment_chance": 0.25, "materials": [
+		{"id": "stone", "chance": 0.9, "count": [2, 5]}, {"id": "stone_heart", "chance": 0.2, "count": [1, 1]},
+		{"id": "copper_ore", "chance": 0.4, "count": [1, 3]}]},
 }
 ## How enemy rank changes loot.
 const RANK_LOOT := {

@@ -20,17 +20,34 @@ const ROWS: Array[Dictionary] = [
 @onready var _enemy: Enemy = owner
 
 
+static var _cache: Dictionary = {}
+
+
 func _ready() -> void:
-	sprite_frames = SheetAnimations.build(sheet, frame_size, ROWS)
+	if sheet:
+		rebuild()
+
+
+## Builds the animations from `sheet`; call again after changing it.
+func rebuild() -> void:
+	if not _cache.has(sheet):
+		_cache[sheet] = SheetAnimations.build(sheet, frame_size, ROWS)
+	sprite_frames = _cache[sheet]
 	play("idle")
 
 
 func _process(_delta: float) -> void:
+	if sprite_frames == null:
+		return
 	match _enemy.state:
 		Enemy.State.WINDUP:
 			_play_for("windup", _enemy.windup_time)
 		Enemy.State.LUNGE:
 			_play_for("lunge", _enemy.lunge_time)
+		Enemy.State.RECOVER:
+			# Shooters and slammers show their strike as they recover from it.
+			if animation == "windup":
+				_play_for("lunge", 0.3)
 		Enemy.State.STAGGER:
 			_play_for("hurt", 0.22)
 		Enemy.State.DEAD:

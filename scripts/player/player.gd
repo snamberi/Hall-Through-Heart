@@ -63,6 +63,8 @@ var gather_progress := 0.0
 ## Consecutive basic attacks, for the mastery combo finisher.
 var _combo_count := 0
 var _combo_left := 0.0
+## status id -> {"time", "power", "tick"} for damage over time on the player.
+var _afflictions: Dictionary = {}
 ## Seconds until the Unbreakable talent can save the player again.
 var _unbreakable_left := 0.0
 
@@ -121,6 +123,10 @@ func _physics_process(delta: float) -> void:
 	potion_cooldown_left = maxf(potion_cooldown_left - delta, 0.0)
 	_combo_left = maxf(_combo_left - delta, 0.0)
 	health.heal(stats.get_stat("health_regen") * delta)
+	if not _afflictions.is_empty():
+		_process_afflictions(delta)
+		if state == State.DEAD:
+			return
 
 	match state:
 		State.MOVE:
@@ -372,13 +378,15 @@ func class_change_cost() -> int:
 	return HeroClasses.RESET_COST_PER_LEVEL * leveling.level
 
 
-func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1) -> void:
+## Hurts the player. Returns whether the blow landed (false if it was
+## dodged or the player cannot be hurt right now).
+func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1) -> bool:
 	if is_dead():
-		return
+		return false
 	if _invulnerable_left > 0.0:
 		if state == State.DODGE and talents.has("perfect_dodge"):
 			buffs.add("perfect_dodge", "Perfect Dodge", 5.0, {"critical_chance": {"flat": 0.3}})
-		return
+		return false
 	amount = maxf(amount * (1.0 - stats.damage_reduction(attacker_level)) * stats.get_stat("damage_taken"), 1.0)
 	if amount >= health.current and talents.has("unbreakable") and _unbreakable_left == 0.0:
 		# The killing blow is turned into a near miss.
@@ -390,16 +398,8 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 	health.take_damage(amount)
 	DamageNumber.spawn(get_parent(), global_position, amount, Color(0.95, 0.3, 0.3))
 	if health.is_dead():
-		state = State.DEAD
-		velocity = Vector2.ZERO
-		camera.offset = Vector2.ZERO
-		buffs.clear_all()
-		_visual.modulate.a = 1.0
-		_animator.play_death()
-		var xp_lost := leveling.apply_death_penalty()
-		died.emit(xp_lost)
-		Events.player_died.emit(xp_lost)
-		return
+		_die()
+		return true
 	_invulnerable_left = maxf(_invulnerable_left, hurt_invulnerability)
 	if state == State.GATHER:
 		_stop_gathering()
@@ -407,6 +407,53 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		_animator.play_hurt()
 	var resistance := stats.get_stat("knockback_resistance")
 	velocity = source_position.direction_to(global_position) * 300.0 * (1.0 - resistance)
+	return true
+
+
+## Inflicts a status on the player. Burn, poison, and bleed deal `power`
+## damage per second; chill slows movement by `power` (0 to 1).
+func apply_status(id: String, duration: float, power: float) -> void:
+	if is_dead():
+		return
+	var info: Dictionary = ItemDB.STATUSES[id]
+	if id == "chill":
+		buffs.add("chill", "Chilled", duration, {"move_speed": {"percent": -minf(power, 0.8)}})
+		return
+	var current: Dictionary = _afflictions.get(id, {})
+	_afflictions[id] = {"time": maxf(duration, current.get("time", 0.0)), "power": maxf(power, current.get("power", 0.0)), "tick": current.get("tick", 0.5)}
+	buffs.add(id, info["name"], duration, {})
+
+
+func _die() -> void:
+	state = State.DEAD
+	velocity = Vector2.ZERO
+	camera.offset = Vector2.ZERO
+	gather_target = null
+	_afflictions.clear()
+	buffs.clear_all()
+	_visual.modulate.a = 1.0
+	_animator.play_death()
+	var xp_lost := leveling.apply_death_penalty()
+	died.emit(xp_lost)
+	Events.player_died.emit(xp_lost)
+
+
+## Burn, poison, and bleed tick here; they ignore armour and dodging.
+func _process_afflictions(delta: float) -> void:
+	for id: String in _afflictions.keys():
+		var affliction: Dictionary = _afflictions[id]
+		affliction["time"] -= delta
+		affliction["tick"] -= delta
+		if affliction["tick"] <= 0.0:
+			affliction["tick"] += 0.5
+			var amount: float = maxf(affliction["power"] * 0.5, 1.0)
+			DamageNumber.spawn(get_parent(), global_position, amount, ItemDB.STATUSES[id]["color"])
+			health.take_damage(amount)
+			if health.is_dead():
+				_die()
+				return
+		if affliction["time"] <= 0.0:
+			_afflictions.erase(id)
 
 
 ## Starts rising from the ground at full health. Call after moving the

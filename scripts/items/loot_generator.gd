@@ -54,9 +54,10 @@ static func make_equipment(
 static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dictionary:
 	var items: Array[Item] = []
 	var result := {"gold": 0, "items": items}
-	if not ItemDB.LOOT_TABLES.has(info["id"]):
+	# Pieces of a split enemy drop nothing, so splitting is not a loot farm.
+	if info.get("fragment", false):
 		return result
-	var table: Dictionary = ItemDB.LOOT_TABLES[info["id"]]
+	var table: Dictionary = ItemDB.LOOT_TABLES.get(info["id"], ItemDB.LOOT_TABLES["husk"])
 	var rank: Dictionary = ItemDB.RANK_LOOT.get(info["rank"], ItemDB.RANK_LOOT["normal"])
 	var level: int = info["level"]
 

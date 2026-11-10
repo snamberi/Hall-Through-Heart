@@ -53,6 +53,20 @@ PALETTE = {
     "skin_shade": ["b98a6c"] * 3,
     "boot_cuff": ["6a554a"] * 3,
     # Armour layers are drawn in neutral steel and tinted by tier in game.
+    # Monsters.
+    "stone": ["8a8794", "66636f", "45434d"],
+    "ember": ["ffd86b", "f08a2e", "b8401e"],
+    "robe": ["5a3a6a", "3f2850", "2a1a38"],
+    "cap": ["c05a8a", "8e3a68", "5c2446"],
+    "stalk": ["e8e0c8", "bdb49c", "8c8470"],
+    "hide": ["8a5a4a", "66403a", "44292a"],
+    "chitin": ["4a5040", "33382c", "20241c"],
+    "ghost": ["dfe6ee", "a8b4c2", "70808f"],
+    "wing": ["5a4a5e", "3d3142", "281f2c"],
+    "slime": ["b8f08a", "7cc84a", "4a8a2c"],
+    "glow_red": ["ff5050"] * 3,
+    "glow_cyan": ["8ff0ff"] * 3,
+    "glow_orange": ["ffb347"] * 3,
     "plate": ["f4f6f8", "c2c9d0", "8c96a0"],
     "plate_dark": ["8c96a0", "6c7682", "4e5762"],
     "cape": ["f2f2f2", "c8c8c8", "9a9a9a"],
@@ -199,7 +213,8 @@ def _transform(rig, name, point, pose):
         dx, dy, degrees = pose.get(name, (0, 0, 0))
         px, py = pose.get(name + "_pivot", group["pivot"])
         a = math.radians(degrees)
-        x, y = point[0] - px, point[1] - py
+        sx, sy = pose.get(name + "_scale", (1, 1))
+        x, y = (point[0] - px) * sx, (point[1] - py) * sy
         point = (px + x * math.cos(a) - y * math.sin(a) + dx, py + x * math.sin(a) + y * math.cos(a) + dy)
         name = group["parent"]
     return point
@@ -241,7 +256,11 @@ def blend(a, b, t):
     """Pose between two poses, t from 0 to 1."""
     out = {}
     for key in set(a) | set(b):
-        default = a.get(key, b.get(key)) if key.endswith("_pivot") or key == "shadow" else (0, 0, 0)
+        default = (0, 0, 0)
+        if key.endswith("_pivot") or key == "shadow":
+            default = a.get(key, b.get(key))
+        elif key.endswith("_scale"):
+            default = (1, 1)
         va, vb = a.get(key, default), b.get(key, default)
         out[key] = tuple(x + (y - x) * t for x, y in zip(va, vb))
     return out
@@ -340,6 +359,209 @@ HUSK_ANIMATIONS = [
     ("idle", HUSK_IDLE), ("walk", HUSK_WALK), ("windup", HUSK_WINDUP), ("lunge", HUSK_LUNGE),
     ("hurt", HUSK_HURT), ("death", HUSK_DEATH),
 ]
+
+
+# --- more monsters. Two-legged ones share the husk's group names, so they
+# reuse HUSK_ANIMATIONS; the others have their own rigs and poses.
+def _biped(back_arm, leg_l, leg_r, torso, head, front_arm, pivots=None):
+    pivots = pivots or {}
+    return {
+        "root": dict(parent=None, pivot=(22, 41), parts=[]),
+        "back_arm": dict(parent="torso", pivot=pivots.get("back_arm", (13, 22)), parts=back_arm),
+        "leg_l": dict(parent="root", pivot=(18.5, 34), parts=leg_l),
+        "leg_r": dict(parent="root", pivot=(25.5, 34), parts=leg_r),
+        "torso": dict(parent="root", pivot=(21, 37), parts=torso),
+        "head": dict(parent="torso", pivot=pivots.get("head", (23, 18)), parts=head),
+        "front_arm": dict(parent="torso", pivot=pivots.get("front_arm", (30, 23)), parts=front_arm),
+    }
+
+
+BONE_ARCHER = _biped(
+    back_arm=[("bone", R(13, 20, 14.5, 32))],
+    leg_l=[("bone", R(18, 33, 19.5, 41)), ("bone", R(17, 40, 20.5, 41))],
+    leg_r=[("bone", R(24.5, 33, 26, 41)), ("bone", R(23.5, 40, 27, 41))],
+    torso=[("bone", R(17, 19, 27, 33)), ("void", R(18.5, 22, 25.5, 22.6)), ("void", R(18.5, 25, 25.5, 25.6)),
+           ("void", R(18.5, 28, 25.5, 28.6)), ("void", R(21.6, 21, 22.4, 32))],
+    head=[("bone", E(16, 5, 30, 19)), ("bone", R(19, 17, 27, 20)), ("void", E(18.5, 9, 22.5, 14)), ("void", E(24, 9, 28, 14)),
+          ("glow_red", R(25.6, 11, 26.4, 12)), ("void", R(21, 18, 21.6, 20)), ("void", R(24, 18, 24.6, 20))],
+    front_arm=[("bone", R(29.5, 21, 31, 31)), ("wood", [(32, 14), (35.5, 18), (36.8, 25), (35.5, 32), (32, 36), (33, 32), (34.6, 25), (33, 18)]),
+               ("bone", R(31.6, 14.5, 32.2, 35.5))],
+)
+CRAG_GOLEM = _biped(
+    back_arm=[("stone", [(6, 20), (12, 19), (13, 34), (9, 40), (4, 37)])],
+    leg_l=[("stone", R(14, 33, 20, 41))],
+    leg_r=[("stone", R(24, 33, 30, 41))],
+    torso=[("stone", [(10, 16), (20, 11), (32, 13), (36, 22), (33, 35), (11, 35), (8, 24)]),
+           ("ember", [(18, 22), (22, 20), (26, 23), (23, 28), (19, 27)])],
+    head=[("stone", [(20, 5), (30, 4), (34, 10), (31, 16), (21, 16), (18, 10)]), ("void", R(26, 9, 31, 11)), ("glow_orange", R(28, 9.4, 30, 10.6))],
+    front_arm=[("stone", [(30, 19), (37, 19), (40, 34), (36, 41), (30, 38)])],
+    pivots={"back_arm": (10, 21), "front_arm": (33, 21), "head": (26, 15)},
+)
+ROT_CULTIST = _biped(
+    back_arm=[("robe", R(12, 21, 15, 32))],
+    leg_l=[("robe", R(16, 33, 21, 41))],
+    leg_r=[("robe", R(23, 33, 28, 41))],
+    torso=[("robe", [(16, 19), (28, 19), (31, 36), (13, 36)]), ("bone", R(15, 29, 29, 30))],
+    head=[("robe", E(14, 4, 30, 21)), ("robe", [(16, 8), (12, 3), (20, 5)]), ("void", E(18, 9, 28, 19)),
+          ("eye", R(20, 13, 21, 14)), ("eye", R(25, 13, 26, 14))],
+    front_arm=[("robe", R(29, 21, 32, 30)), ("wood", R(33, 8, 34, 41)), ("eye", E(31, 3, 36, 8))],
+)
+SPORE_SHAMBLER = _biped(
+    back_arm=[("stalk", R(12, 25, 15, 34))],
+    leg_l=[("stalk", R(16, 35, 21, 41))],
+    leg_r=[("stalk", R(23, 35, 28, 41))],
+    torso=[("stalk", [(15, 22), (29, 22), (31, 37), (13, 37)]), ("void", R(25, 27, 28, 29)), ("void", R(26, 32, 30, 33))],
+    head=[("cap", _half_ellipse(22, 22, 17, 17)), ("cap", R(5, 21, 39, 23)), ("stalk", E(10, 10, 15, 14)), ("stalk", E(20, 7, 26, 11)),
+          ("stalk", E(30, 12, 34, 16))],
+    front_arm=[("stalk", R(29, 25, 32, 35))],
+    pivots={"head": (22, 23)},
+)
+
+QUAD_ORDER = ["leg_fl", "leg_bl", "tail", "body", "head", "leg_br", "leg_fr"]
+
+
+def _quad(body, head, tail, leg, head_pivot=(31, 24)):
+    """A four-legged rig. `leg` builds one leg's parts from its x position."""
+    return {
+        "root": dict(parent=None, pivot=(22, 41), parts=[]),
+        "body": dict(parent="root", pivot=(22, 30), parts=body),
+        "head": dict(parent="body", pivot=head_pivot, parts=head),
+        "tail": dict(parent="body", pivot=(10, 26), parts=tail),
+        "leg_bl": dict(parent="body", pivot=(13, 31), parts=leg(11.5)),
+        "leg_br": dict(parent="body", pivot=(16, 31), parts=leg(14.5)),
+        "leg_fl": dict(parent="body", pivot=(27, 31), parts=leg(25.5)),
+        "leg_fr": dict(parent="body", pivot=(30, 31), parts=leg(28.5)),
+    }
+
+
+ROT_HOUND = _quad(
+    body=[("hide", E(8, 20, 34, 33)), ("rib", R(15, 25, 22, 25.6)), ("rib", R(15, 28, 22, 28.6)), ("bone", [(13, 21), (15, 17), (17, 21)]),
+          ("bone", [(19, 20), (21, 16), (23, 20)])],
+    head=[("hide", E(28, 15, 41, 27)), ("hide", [(38, 21), (44, 22), (44, 26), (37, 27)]), ("void", R(38, 25, 44, 26)),
+          ("bone", R(40, 24, 40.6, 26)), ("bone", R(42.5, 24, 43.1, 26)), ("glow_red", R(35, 19, 36.4, 20.4)), ("hide", [(30, 16), (31, 11), (34, 16)])],
+    tail=[("hide", [(10, 24), (4, 19), (3, 21), (9, 28)])],
+    leg=lambda x: [("hide", R(x, 31, x + 3, 40)), ("bone", R(x, 40, x + 4, 41.4))],
+)
+THORN_STALKER = _quad(
+    body=[("chitin", E(5, 16, 26, 32)), ("poison", E(10, 19, 15, 23)), ("poison", E(17, 22, 20, 25)), ("chitin", E(22, 21, 33, 31))],
+    head=[("chitin", E(29, 20, 40, 30)), ("eye", R(35, 23, 36, 24)), ("eye", R(37.5, 24.5, 38.5, 25.5)), ("eye", R(34, 26, 35, 27)),
+          ("bone", [(38, 28), (42, 31), (39, 30)]), ("bone", [(36, 29), (38, 33), (36.5, 31)])],
+    tail=[("chitin", [(9, 20), (5, 14), (7, 13), (11, 19)])],
+    leg=lambda x: [("chitin", [(x + 3, 29), (x - 3, 22), (x - 5, 40), (x - 3.5, 41), (x - 2, 25), (x + 4, 31)])],
+    head_pivot=(30, 25),
+)
+
+FLOAT_ORDER = ["wing_b", "tail", "body", "head", "wing_f"]
+
+
+def _floater(body, head, tail, wing_b, wing_f):
+    return {
+        "root": dict(parent=None, pivot=(22, 28), parts=[]),
+        "body": dict(parent="root", pivot=(22, 26), parts=body),
+        "head": dict(parent="body", pivot=(24, 16), parts=head),
+        "tail": dict(parent="body", pivot=(20, 30), parts=tail),
+        "wing_b": dict(parent="body", pivot=(18, 20), parts=wing_b),
+        "wing_f": dict(parent="body", pivot=(26, 20), parts=wing_f),
+    }
+
+
+ASH_WRAITH = _floater(
+    body=[("ghost", [(14, 16), (30, 16), (32, 30), (12, 30)])],
+    head=[("ghost", E(14, 3, 32, 19)), ("void", E(18, 8, 30, 17)), ("glow_cyan", R(21, 11, 22.4, 12.4)), ("glow_cyan", R(26, 11, 27.4, 12.4))],
+    tail=[("ghost", [(12, 29), (32, 29), (29, 35), (26, 31), (23, 38), (20, 31), (16, 36)])],
+    wing_b=[("ghost", [(15, 18), (9, 22), (5, 30), (8, 30), (12, 25), (16, 22)])],
+    wing_f=[("ghost", [(29, 18), (35, 22), (40, 29), (37, 30), (33, 25), (28, 22)]), ("bone", [(39, 28), (42, 31), (38, 31)])],
+)
+CARRION_BAT = _floater(
+    body=[("wing", E(16, 15, 28, 29))],
+    head=[("wing", E(18, 7, 31, 19)), ("wing", [(19, 9), (18, 3), (23, 8)]), ("wing", [(26, 8), (30, 3), (30, 10)]),
+          ("glow_red", R(23, 12, 24.2, 13.2)), ("glow_red", R(27, 12, 28.2, 13.2)), ("bone", R(24, 16, 24.6, 18)), ("bone", R(27, 16, 27.6, 18))],
+    tail=[("wing", [(19, 27), (25, 27), (22, 33)])],
+    wing_b=[("wing", [(18, 18), (10, 9), (2, 12), (5, 17), (3, 22), (9, 21), (10, 26), (17, 23)])],
+    wing_f=[("wing", [(26, 18), (34, 9), (42, 12), (39, 17), (41, 22), (35, 21), (34, 26), (27, 23)])],
+)
+EMBER_WISP = _floater(
+    body=[("ember", E(13, 13, 31, 31)), ("fire_core", E(18, 17, 27, 26))],
+    head=[("void", R(19, 20, 20.6, 22)), ("void", R(24, 20, 25.6, 22))],
+    tail=[("ember", [(14, 26), (30, 26), (27, 33), (24, 29), (22, 37), (19, 29), (16, 34)])],
+    wing_b=[("ember", [(15, 17), (9, 12), (11, 20), (7, 23), (14, 24)])],
+    wing_f=[("ember", [(29, 17), (35, 11), (33, 20), (38, 22), (30, 24)])],
+)
+
+BOG_SLIME = {
+    "root": dict(parent=None, pivot=(22, 41), parts=[]),
+    "body": dict(parent="root", pivot=(22, 41), parts=[
+        ("slime", E(8, 20, 36, 41)), ("slime", R(8, 31, 36, 41)), ("poison", E(13, 24, 20, 30)),
+        ("void", R(24, 28, 26, 31)), ("void", R(30, 28, 32, 31)), ("void", R(25, 35, 31, 36))]),
+}
+
+# Four-legged poses.
+QUAD_IDLE = [{"body": (0, bob, 0), "tail": (0, 0, 8 * bob)} for bob in (0, 1, 1, 0)]
+QUAD_WALK = cycle(8, lambda s: {
+    "root": (0, -round(abs(s)), 0), "head": (0, 0, 5 * s), "tail": (0, 0, -15 * s),
+    "leg_bl": (0, 0, 30 * s), "leg_fr": (0, 0, 30 * s), "leg_br": (0, 0, -30 * s), "leg_fl": (0, 0, -30 * s)})
+QUAD_WINDUP = [{
+    "root": (-round(3 * t) + (i % 2 if i > 2 else 0), round(3 * t), 0), "body": (0, 0, -8 * t), "head": (0, 0, 14 * t),
+    "leg_bl": (0, 0, -20 * t), "leg_br": (0, 0, -20 * t), "leg_fl": (0, 0, 20 * t), "leg_fr": (0, 0, 20 * t),
+} for i, t in enumerate(k / 5 for k in range(6))]
+QUAD_LUNGE = [{
+    "root": (round(7 * k), -round(5 * k), 0), "body": (0, 0, -10 * k), "head": (0, 0, -8 * k), "tail": (0, 0, 25 * k),
+    "leg_bl": (0, 0, 50 * k), "leg_br": (0, 0, 45 * k), "leg_fl": (0, 0, -55 * k), "leg_fr": (0, 0, -50 * k),
+} for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+QUAD_STAND = {"root_pivot": (22, 41), "shadow": (22, 13, 0)}
+QUAD_REEL = {"root_pivot": (22, 41), "shadow": (22, 13, 0), "root": (-2, 0, 0), "body": (0, 0, -10), "head": (0, 0, -25)}
+QUAD_FALLEN = {"root_pivot": (22, 41), "shadow": (22, 15, 0), "root": (0, -9, 178), "root_pivot": (22, 34), "head": (0, 0, 20),
+               "leg_bl": (0, 0, 25), "leg_br": (0, 0, -20), "leg_fl": (0, 0, 30), "leg_fr": (0, 0, -25)}
+QUAD_HURT = [blend({}, QUAD_REEL, t) for t in (0.7, 1.0, 0.4)]
+QUAD_DEATH = keyframes([(0, dict(QUAD_STAND, root_pivot=(22, 34))), (1, dict(QUAD_REEL, root_pivot=(22, 34))), (5, QUAD_FALLEN), (7, QUAD_FALLEN)])
+QUAD_ANIMATIONS = [("idle", QUAD_IDLE), ("walk", QUAD_WALK), ("windup", QUAD_WINDUP), ("lunge", QUAD_LUNGE), ("hurt", QUAD_HURT), ("death", QUAD_DEATH)]
+
+# Floating poses: the whole body rides HOVER px above the ground.
+HOVER = -9
+
+
+def _hover(dy=0, dx=0, turn=0, flap=0, sway=0, shadow=9):
+    return {"root": (dx, HOVER + dy, turn), "wing_b": (0, 0, flap), "wing_f": (0, 0, -flap), "tail": (0, 0, sway), "shadow": (22, shadow, 0)}
+
+
+FLOAT_IDLE = [_hover(dy, flap=f) for dy, f in ((0, 0), (-1, -18), (-2, -8), (-1, 14))]
+FLOAT_WALK = cycle(8, lambda s: _hover(round(-2 * abs(s)), flap=28 * s, sway=-12 * s, turn=6))
+FLOAT_WINDUP = [_hover(-round(6 * t), dx=-round(2 * t) + (i % 2 if i > 2 else 0), turn=-10 * t, flap=-45 * t, sway=15 * t)
+                for i, t in enumerate(k / 5 for k in range(6))]
+FLOAT_LUNGE = [_hover(round(4 * k) - 4, dx=round(8 * k), turn=22 * k, flap=40 * k, sway=-25 * k) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+FLOAT_HURT = [_hover(dx=-round(3 * t), turn=-14 * t, flap=-25 * t) for t in (0.7, 1.0, 0.4)]
+FLOAT_DEATH = keyframes([(0, _hover()), (1, _hover(dx=-2, turn=-14, flap=-30)), (5, _hover(dy=17, turn=80, flap=55, shadow=7)),
+                         (7, _hover(dy=18, turn=86, flap=60, shadow=7))])
+FLOAT_ANIMATIONS = [("idle", FLOAT_IDLE), ("walk", FLOAT_WALK), ("windup", FLOAT_WINDUP), ("lunge", FLOAT_LUNGE), ("hurt", FLOAT_HURT), ("death", FLOAT_DEATH)]
+
+
+# Slime poses are all squash and stretch.
+def _squash(sx, sy, dx=0, dy=0, shadow=12):
+    return {"root": (dx, dy, 0), "body_scale": (sx, sy), "shadow": (22, shadow * sx, 0)}
+
+
+SLIME_IDLE = [_squash(1.0, 1.0), _squash(1.05, 0.94), _squash(1.08, 0.9), _squash(1.04, 0.96)]
+SLIME_WALK = [_squash(1.15, 0.8), _squash(0.9, 1.15, 1, -2), _squash(0.85, 1.2, 2, -6), _squash(0.9, 1.1, 3, -7),
+              _squash(0.95, 1.05, 3, -5), _squash(1.0, 1.0, 2, -2), _squash(1.2, 0.78, 1), _squash(1.08, 0.92)]
+SLIME_WINDUP = [_squash(1.0 + 0.35 * t, 1.0 - 0.35 * t, (i % 2 if i > 2 else 0)) for i, t in enumerate(k / 5 for k in range(6))]
+SLIME_LUNGE = [_squash(1.0 + 0.3 * k, 1.0 - 0.2 * k, round(7 * k), -round(6 * k)) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+SLIME_HURT = [_squash(1.15, 0.8, -1), _squash(1.25, 0.7, -2), _squash(1.1, 0.9, -1)]
+SLIME_DEATH = [_squash(1.0 + 0.1 * i, max(1.0 - 0.13 * i, 0.12)) for i in range(8)]
+SLIME_ANIMATIONS = [("idle", SLIME_IDLE), ("walk", SLIME_WALK), ("windup", SLIME_WINDUP), ("lunge", SLIME_LUNGE), ("hurt", SLIME_HURT), ("death", SLIME_DEATH)]
+
+# id -> (rig, draw order, animations). Ids match scripts/enemies/enemy_db.gd.
+MONSTERS = {
+    "bone_archer": (BONE_ARCHER, HUSK_ORDER, HUSK_ANIMATIONS),
+    "crag_golem": (CRAG_GOLEM, HUSK_ORDER, HUSK_ANIMATIONS),
+    "rot_cultist": (ROT_CULTIST, HUSK_ORDER, HUSK_ANIMATIONS),
+    "spore_shambler": (SPORE_SHAMBLER, HUSK_ORDER, HUSK_ANIMATIONS),
+    "rot_hound": (ROT_HOUND, QUAD_ORDER, QUAD_ANIMATIONS),
+    "thorn_stalker": (THORN_STALKER, QUAD_ORDER, QUAD_ANIMATIONS),
+    "ash_wraith": (ASH_WRAITH, FLOAT_ORDER, FLOAT_ANIMATIONS),
+    "carrion_bat": (CARRION_BAT, FLOAT_ORDER, FLOAT_ANIMATIONS),
+    "ember_wisp": (EMBER_WISP, FLOAT_ORDER, FLOAT_ANIMATIONS),
+    "bog_slime": (BOG_SLIME, ["body"], SLIME_ANIMATIONS),
+}
 
 
 def draw_sheet(rig, order, animations, shadow=True):
@@ -630,6 +852,9 @@ def main():
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
     draw_sheet(HUMAN, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
     draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
+    os.makedirs(os.path.join(ROOT, "sprites", "enemies"), exist_ok=True)
+    for name, (rig, order, animations) in MONSTERS.items():
+        draw_sheet(rig, order, animations).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
     os.makedirs(os.path.join(ROOT, "sprites", "weapons"), exist_ok=True)
     for name, parts in WEAPONS.items():
         draw_layer_sheet({"sword": parts}).save(os.path.join(ROOT, "sprites", "weapons", name + ".png"))
