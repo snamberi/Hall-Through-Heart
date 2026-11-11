@@ -141,6 +141,7 @@ func harvest(player: Player) -> void:
 	# Ore veins sometimes hold a gem.
 	if kind() == "ore" and randf() < 0.04 + skill * 0.0008:
 		var gem := Item.create(Gems.random_gem(maxi(_data["level"], skill)))
+		Events.codex_event.emit("gems_found", 1)
 		if player.inventory.add(gem):
 			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -44), gem.display_name(), gem.tint(), 13)
 	player.professions.add_xp(profession(), 10.0 + _data["level"] * 2.0)

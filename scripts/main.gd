@@ -70,6 +70,10 @@ func _ready() -> void:
 	codex.name = "Codex"
 	add_child(codex)
 	codex.setup(_player)
+	var book := QuestBook.new()
+	book.name = "QuestBook"
+	add_child(book)
+	book.setup(_player)
 	var settlers := Settlers.new()
 	settlers.name = "Settlers"
 	add_child(settlers)

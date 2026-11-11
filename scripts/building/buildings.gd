@@ -181,6 +181,7 @@ func tend_plot(player: Player, record: Dictionary, seed_id: String = "") -> Stri
 		record["growth"] = 0.0
 		player.professions.add_xp("cooking", 12.0 * data["days"])
 		Events.codex_event.emit("harvests", 1)
+		Events.codex_event.emit("harvest_" + crop, 1)
 	elif not record.get("watered", false):
 		record["watered"] = true
 		Events.splash.emit(Vector2(record["x"], record["y"]))

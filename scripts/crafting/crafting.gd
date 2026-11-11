@@ -103,6 +103,7 @@ static func enchant(player: Player, item: Item) -> String:
 	item.enchant = {"stat": affix["stat"], "kind": affix["kind"], "value": value}
 	player.professions.add_xp("enchanting", 20.0 + item.level * 2.0)
 	_item_changed(player)
+	Events.codex_event.emit("enchants", 1)
 	return ""
 
 
@@ -130,6 +131,7 @@ static func salvage(player: Player, item: Item) -> String:
 	for item_id: String in gains:
 		player.inventory.add(Item.create(item_id, gains[item_id]))
 	player.professions.add_xp("salvaging", 8.0 + item.level * 1.5 + item.rarity * 6.0)
+	Events.codex_event.emit("salvages", 1)
 	return ""
 
 

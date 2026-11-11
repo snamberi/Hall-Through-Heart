@@ -108,9 +108,12 @@ func enter_cave(cave_seed: int, level: int, lair: bool, on_chest: Callable) -> v
 	var random := RandomNumberGenerator.new()
 	random.seed = cave_seed
 	var theme_ids: Array = CAVE_THEMES.keys()
-	var theme: Dictionary = CAVE_THEMES[theme_ids[random.randi_range(0, theme_ids.size() - 1)]]
+	var theme_key: String = theme_ids[random.randi_range(0, theme_ids.size() - 1)]
+	var theme: Dictionary = CAVE_THEMES[theme_key]
 	var cave := Room.new()
 	cave.title = theme["title"] + (" (Lair)" if lair else "")
+	Events.codex_event.emit("caves", 1)
+	Events.codex_event.emit("cave_" + theme_key, 1)
 	var size := Vector2i(random.randi_range(30, 44), random.randi_range(20, 30))
 	var open := _grow_cave(random, size)
 	var water := {}
@@ -436,6 +439,7 @@ func _physics_process(delta: float) -> void:
 	room.add_prop(Prop.create(Prop.Art.PORTAL, room.cell_position(room.entry), 0.0, "Step back through", func(_p: Player) -> void: leave()))
 	if _on_cleared.is_valid():
 		_on_cleared.call()
+		Events.codex_event.emit("portals", 1)
 
 
 func _start_wave() -> void:

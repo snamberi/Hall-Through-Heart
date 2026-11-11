@@ -157,6 +157,7 @@ func _trade(times: int) -> void:
 	if _choice["selling"]:
 		var amount := item.count if times > 1 else 1
 		inventory.add_gold(_choice["price"] * amount)
+		Events.codex_event.emit("sales", 1)
 		if item.is_stackable():
 			inventory.take(item.id, amount)
 		else:
@@ -172,6 +173,7 @@ func _trade(times: int) -> void:
 				break
 			inventory.add_gold(-_choice["price"])
 			inventory.add(bought)
+			Events.codex_event.emit("purchases", 1)
 			if not _choice["entry"]["endless"]:
 				npc.stock.erase(_choice["entry"])
 				break

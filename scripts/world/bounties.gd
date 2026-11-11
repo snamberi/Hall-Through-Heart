@@ -42,7 +42,7 @@ func offers_at(village: Vector2i, day: int) -> Array:
 		var cell := village + Vector2i(Vector2.from_angle(angle) * random.randf_range(55.0, 130.0))
 		cell = _world.generator.find_walkable_near(cell, 24)
 		var level := _world.generator.enemy_level_at(cell) + 2
-		var monster := EnemyDB.pick(_world.generator.tile_type_at(cell), level, true)
+		var monster := EnemyDB.pick(_world.generator.tile_type_at(cell), level, true, false)
 		if monster == "":
 			monster = "husk"
 		var title := "%s%s" % [NAMES_FIRST[random.randi_range(0, NAMES_FIRST.size() - 1)], NAMES_LAST[random.randi_range(0, NAMES_LAST.size() - 1)]]

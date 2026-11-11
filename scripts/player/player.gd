@@ -478,6 +478,7 @@ func use_item(item: Item) -> String:
 		stamina.changed.emit(stamina.current, stamina.max_value)
 	if use.has("buff"):
 		buffs.add(use["buff"], use["name"], use["duration"], use["mods"])
+	Events.codex_event.emit("meals" if int(item.definition().get("icon", 0)) == 48 else "potions", 1)
 	inventory.take(item.id, 1)
 	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), item.tint(), 50.0)
 	return ""

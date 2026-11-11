@@ -34,9 +34,7 @@ func _ready() -> void:
 		if not recipe.is_empty():
 			_advance("craft", recipe["profession"], 1)
 	)
-	if not _loaded:
-		# A new character begins the story.
-		_start(QuestDB.story(QuestDB.STORY_START))
+	# The story now lives in the Quest Book; wardens' jobs stay here.
 
 
 func _physics_process(delta: float) -> void:

@@ -145,6 +145,10 @@ func _ready() -> void:
 		rank = Rank.BOSS
 		brain = BossBrain.new(self, boss_id)
 		enemy_id = BossDB.BOSSES[boss_id]["monster"]
+	if EnemyDB.ENEMIES.get(enemy_id, {}).has("wild"):
+		# Animals are just animals: never Elites, never bosses.
+		rank = Rank.NORMAL
+		modifiers.clear()
 	if rank >= Rank.MINIBOSS:
 		add_to_group("bosses")
 	_data = EnemyDB.ENEMIES[enemy_id]
@@ -238,6 +242,11 @@ func _physics_process(delta: float) -> void:
 	var has_target := target != null and not target.is_dead()
 	var to_target := target.global_position - global_position if has_target else Vector2.ZERO
 	var distance := to_target.length()
+	if is_wild() and _wild_turn(delta, has_target, to_target, distance):
+		if absf(velocity.x) > 1.0:
+			_visual.scale.x = absf(_visual.scale.x) * signf(velocity.x)
+		move_and_slide()
+		return
 
 	match state:
 		State.WANDER:
@@ -415,6 +424,34 @@ func apply_status(id: String, duration: float, power: float, weapon_type: String
 	if weapon_type != "":
 		_last_weapon_type = weapon_type
 	_refresh_status_tint()
+
+
+## A wild animal rather than a monster.
+func is_wild() -> bool:
+	return _data.get("wild", "") != ""
+
+
+## Wild animals graze and wander, start at anything that comes close, and
+## bolt when hurt; those that "defend" turn and fight once struck. Returns
+## true when it has decided the animal's move this frame.
+func _wild_turn(delta: float, has_target: bool, to_target: Vector2, distance: float) -> bool:
+	var hurt := _since_hurt < 5.0
+	if _data["wild"] == "defend" and hurt:
+		return false
+	if state in [State.STAGGER, State.DEAD]:
+		return false
+	var scared := has_target and (hurt or (distance < 90.0 and target.velocity.length() > 160.0))
+	if scared:
+		state = State.CHASE
+		velocity = -to_target.normalized() * _speed * (1.25 if hurt else 0.9) * _ground_speed
+		_avoid_getting_stuck(delta)
+		return true
+	if state != State.WANDER:
+		_pick_wander()
+	velocity = _direction * _speed * 0.3 * _ground_speed
+	if _state_time_left == 0.0:
+		_pick_wander()
+	return true
 
 
 ## Parried: reeling and open to a finisher for a moment.

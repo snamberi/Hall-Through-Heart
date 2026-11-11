@@ -110,4 +110,6 @@ func _try_spawn() -> void:
 	var enemy_id := EnemyDB.pick(_world.generator.tile_type_at(cell), area_level, night == null or night.is_night())
 	if enemy_id == "":
 		return
+	if EnemyDB.ENEMIES[enemy_id].get("wild", "") != "":
+		rank = Enemy.Rank.NORMAL
 	spawn_at(_world.cell_to_world(cell), level, rank, enemy_id)

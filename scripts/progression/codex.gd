@@ -75,12 +75,25 @@ const LORE := {
 	"cinder_imp": "Little devils of the ash fields who throw fire for fun.",
 	"bog_lurker": "A frog the size of a cart, with a tongue that reaches further than you'd think.",
 	"storm_harpy": "Bird-women of the peaks who ride the storm down onto travellers.",
+	"deer": "Shy and swift. The forests are full of them, for now.",
+	"wild_hare": "Quick, nervous, and good in a stew.",
+	"wild_pig": "Mind the temper: it will charge if you hit it.",
+	"mountain_goat": "Sure-footed on the cliffs, and it butts back.",
+	"pheasant": "A bright bird that bursts from the grass.",
+	"desert_lizard": "Sunning on the rocks until something moves.",
+	"snow_fox": "A white ghost of the snowfields, prized for its fur.",
+	"shore_crab": "Snaps at anything that pokes it.",
+	"marsh_toad": "Fat, slow, and singing all night.",
 }
 
 var stats: Dictionary = {}
 var kills: Dictionary = {}
 var boss_kills: Dictionary = {}
 var gathered: Dictionary = {}
+var crafted: Dictionary = {}
+var caught: Dictionary = {}
+## Village centres ("x,y") the player has walked into.
+var villages: Dictionary = {}
 var biomes: Array = []
 var done: Dictionary = {}
 var title := ""
@@ -106,6 +119,7 @@ func setup(player: Player) -> void:
 		count("gathered")
 		if GatherDB.RESOURCES.get(info["resource"], {}).get("kind", "") == "fish":
 			count("fish")
+			caught[info["item"]] = caught.get(info["item"], 0) + int(info.get("count", 1))
 	)
 	Events.biome_discovered.connect(func(biome: String, _xp: int) -> void:
 		if not biome in biomes:
@@ -113,7 +127,17 @@ func setup(player: Player) -> void:
 		stats["biomes"] = biomes.size()
 		_check()
 	)
-	Events.item_crafted.connect(func(_id: String) -> void: count("crafted"))
+	Events.item_crafted.connect(func(id: String) -> void:
+		crafted[id] = crafted.get(id, 0) + 1
+		var recipe := RecipeDB.find(id)
+		if not recipe.is_empty():
+			count("crafted_" + recipe["profession"])
+		count("crafted")
+	)
+	Events.npc_interacted.connect(func(npc: Node) -> void:
+		count("talks")
+		count("talk_" + str(npc.kind))
+	)
 	Events.level_up.connect(func(level: int) -> void:
 		stats["level"] = maxi(stats.get("level", 0), level)
 		_check()
@@ -201,11 +225,12 @@ func _check() -> void:
 
 func save_data() -> Dictionary:
 	return {"stats": stats.duplicate(), "kills": kills.duplicate(), "bosses": boss_kills.duplicate(), "gathered": gathered.duplicate(),
+		"crafted": crafted.duplicate(), "caught": caught.duplicate(), "villages": villages.duplicate(),
 		"biomes": biomes.duplicate(), "done": done.keys(), "title": title}
 
 
 func load_data(data: Dictionary) -> void:
-	for key: String in ["stats", "kills", "bosses", "gathered"]:
+	for key: String in ["stats", "kills", "bosses", "gathered", "crafted", "caught", "villages"]:
 		var saved: Variant = data.get(key, {})
 		var target: Dictionary = saved if saved is Dictionary else {}
 		match key:
@@ -213,9 +238,35 @@ func load_data(data: Dictionary) -> void:
 			"kills": kills = target
 			"bosses": boss_kills = target
 			"gathered": gathered = target
+			"crafted": crafted = target
+			"caught": caught = target
+			"villages": villages = target
 	var saved_biomes: Variant = data.get("biomes", [])
 	biomes = saved_biomes if saved_biomes is Array else []
 	done.clear()
 	for id: Variant in data.get("done", []):
 		done[str(id)] = true
 	title = str(data.get("title", ""))
+
+
+var _place_left := 0.0
+
+
+## Where the player is: villages walked into and islands set foot on.
+func _physics_process(delta: float) -> void:
+	_place_left -= delta
+	if _place_left > 0.0 or _player == null or _player.indoors:
+		return
+	_place_left = 1.0
+	var world: World = _player.get_parent().get_node_or_null("World")
+	if world == null or world.generator == null:
+		return
+	var cell := world.world_to_cell(_player.global_position)
+	var village: Variant = world.generator.village_near(cell)
+	if village != null:
+		var key := "%d,%d" % [village.x, village.y]
+		if not villages.has(key):
+			villages[key] = true
+			set_stat("villages", villages.size())
+	if world.generator.is_island(cell) and not stats.has("islands"):
+		set_stat("islands", 1)

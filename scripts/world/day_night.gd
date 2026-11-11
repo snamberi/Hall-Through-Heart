@@ -65,6 +65,7 @@ func _process(delta: float) -> void:
 	elif not night and was_night and blood_moon:
 		blood_moon = false
 		Events.announcement.emit("THE BLOOD MOON SETS", "")
+		Events.codex_event.emit("blood_moons", 1)
 	_apply()
 
 

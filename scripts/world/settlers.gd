@@ -158,6 +158,8 @@ func morning() -> void:
 		if float(record.get("growth", 0.0)) >= 1.0:
 			var data: Dictionary = Crops.CROPS[record["crop"]]
 			basket.append(Item.create(data["item"], randi_range(data["yield"][0], data["yield"][1])).to_dict())
+			Events.codex_event.emit("harvests", 1)
+			Events.codex_event.emit("harvest_" + record["crop"], 1)
 			basket.append(Item.create(data["seed"], 1).to_dict())
 			record["crop"] = ""
 			record["growth"] = 0.0

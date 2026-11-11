@@ -430,6 +430,7 @@ func _build_camp(cell: Vector2i, key: String, level: int, random: RandomNumberGe
 	var note: String = NOTES[random.randi_range(0, NOTES.size() - 1)]
 	placed.append(Prop.create_decor(Prop.Decor.SIGNPOST, _at(cell + Vector2i(0, 2)), 0.0, "Read the note", func(_p: Player) -> void:
 		Events.announcement.emit("A NOTE", note)
+		Events.codex_event.emit("notes", 1)
 	))
 	var contents: Array = roll_chest(level, 1.2)
 	if random.randf() < 0.3:
