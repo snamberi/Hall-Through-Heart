@@ -108,6 +108,9 @@ var _parry_cooldown := 0.0
 @onready var abilities: AbilityUser = $Abilities
 @onready var buffs: Buffs = $Buffs
 var hotbar: Hotbar
+## Sailing a rowboat: water is crossed quickly and dry.
+var boating := false
+const BOAT_SPEED := 1.35
 @onready var talents: Talents = $Talents
 @onready var professions: Professions = $Professions
 @onready var quests: QuestLog = $Quests
@@ -126,6 +129,10 @@ func _ready() -> void:
 	uniques.name = "Uniques"
 	add_child(uniques)
 	uniques.setup(self)
+	var boat := Boat.new()
+	boat.name = "Boat"
+	add_child(boat)
+	boat.setup(self)
 	hotbar = Hotbar.new()
 	hotbar.name = "Hotbar"
 	add_child(hotbar)
@@ -390,6 +397,16 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 
 ## Uses a consumable from the bag. Returns "" on success or why it failed.
 func use_item(item: Item) -> String:
+	if item.definition().has("boat") and item in inventory.items:
+		return board_boat()
+	if item.definition().has("treasure_map") and item in inventory.items:
+		var hunts: Node = get_parent().get_node_or_null("TreasureMaps")
+		if hunts == null:
+			return "This cannot be used here."
+		var problem: String = hunts.read_map(self)
+		if problem == "":
+			inventory.take(item.id, 1)
+		return problem
 	if not is_dead() and item.is_placeable() and item in inventory.items:
 		if swimming:
 			return "You cannot build while swimming."
@@ -436,6 +453,18 @@ func _read_ground() -> void:
 		return
 	var tile := _world.tile_type_at_position(global_position)
 	_ground_speed = TerrainTiles.speed(tile)
+	if Atmosphere.weather in ["Rain", "Thunderstorm"] and tile in [TerrainTiles.Type.MUD, TerrainTiles.Type.BOG, TerrainTiles.Type.TAR, TerrainTiles.Type.DEAD_GRASS]:
+		# Rain turns soft ground to mire.
+		_ground_speed *= 0.8
+	if boating:
+		if TerrainTiles.is_water(tile):
+			_ground_speed = BOAT_SPEED
+			swimming = false
+			deep_water = false
+			return
+		# Run aground: step out, and the boat goes back in the pack.
+		boating = false
+		Events.splash.emit(global_position)
 	var was_swimming := swimming
 	swimming = TerrainTiles.is_water(tile)
 	deep_water = tile == TerrainTiles.Type.DEEP_WATER
@@ -646,6 +675,28 @@ func _process_afflictions(delta: float) -> void:
 				return
 		if affliction["time"] <= 0.0:
 			_afflictions.erase(id)
+
+
+## Puts the rowboat in the water beside the player and climbs in.
+func board_boat() -> String:
+	if boating:
+		return "You are already afloat."
+	if indoors or _world == null or is_dead() or state != State.MOVE:
+		return "You cannot launch a boat here."
+	var here := _world.world_to_cell(global_position)
+	var best := Vector2i(999999, 0)
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var cell := here + Vector2i(dx, dy)
+			if TerrainTiles.is_water(_world.generator.tile_type_at(cell)) and Vector2(cell - here).length() < Vector2(best - here).length():
+				best = cell
+	if best.x == 999999:
+		return "Stand at the water's edge to launch the boat."
+	global_position = _world.cell_to_world(best)
+	boating = true
+	swimming = false
+	Events.splash.emit(global_position)
+	return ""
 
 
 ## Starts rising from the ground at full health. Call after moving the

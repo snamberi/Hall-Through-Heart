@@ -391,6 +391,8 @@ const ITEMS := {
 	"floor_moss": {"name": "Moss Floor", "icon": 42, "tint": Color("4f7a46"), "floor": TerrainTiles.Type.DARK_GRASS, "material_rarity": 0, "place": "floor", "value": 3, "text": "Lays one tile of floor inside a house. Use it, then click a tile."},
 	"floor_sand": {"name": "Sandstone Floor", "icon": 42, "tint": Color("d8c08a"), "floor": TerrainTiles.Type.SAND, "material_rarity": 0, "place": "floor", "value": 3, "text": "Lays one tile of floor inside a house. Use it, then click a tile."},
 	"floor_snow": {"name": "Snow Floor", "icon": 42, "tint": Color("e6eef6"), "floor": TerrainTiles.Type.SNOW, "material_rarity": 0, "place": "floor", "value": 3, "text": "Lays one tile of floor inside a house. Use it, then click a tile."},
+	"rowboat": {"name": "Rowboat", "icon": 43, "tint": Color("a07850"), "boat": true, "material_rarity": 1, "value": 120, "text": "Use it at the water's edge to sail. Step onto land to stow it again."},
+	"treasure_map": {"name": "Treasure Map", "icon": 53, "tint": Color("e8d098"), "treasure_map": true, "material_rarity": 2, "value": 60, "text": "Read it to mark where something is buried. Then find the spot and dig."},
 	"crafting_table": {"name": "Crafting Table", "icon": 54, "material_rarity": 0, "place": "table", "value": 30, "text": "Stand beside one to craft. Use it from your bag to set it down."},
 	"storage_chest": {"name": "Storage Chest", "icon": 55, "material_rarity": 0, "place": "chest", "value": 50, "text": "Holds 24 stacks. Use it from your bag to set it down."},
 	"bed": {"name": "Bed", "icon": 57, "material_rarity": 0, "place": "bed", "value": 60, "text": "Sleep in it to make this place home. Use it from your bag to set it down."},

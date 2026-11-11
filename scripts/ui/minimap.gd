@@ -85,6 +85,14 @@ func _draw() -> void:
 		var text := "Day %d  -  %s" % [_day_night.day, _day_night.phase()]
 		draw_string_outline(font, Vector2(0, size.y + 16.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, 4, Color.BLACK)
 		draw_string(font, Vector2(0, size.y + 16.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, UITheme.HEADING)
+		# Weather and blood moons, in a line of their own over the map.
+		var sky := Atmosphere.weather
+		if DayNight.blood_moon:
+			sky = "Blood Moon" if sky == "" else sky + "  -  Blood Moon"
+		if sky != "":
+			var color := Color(1.0, 0.45, 0.4) if DayNight.blood_moon else Color(0.75, 0.88, 1.0)
+			draw_string_outline(font, Vector2(-40, -5.0), sky, HORIZONTAL_ALIGNMENT_RIGHT, size.x + 40.0, 13, 4, Color.BLACK)
+			draw_string(font, Vector2(-40, -5.0), sky, HORIZONTAL_ALIGNMENT_RIGHT, size.x + 40.0, 13, color)
 
 
 ## Draws a dot for something `offset` world pixels from the player.

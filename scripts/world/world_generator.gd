@@ -46,6 +46,7 @@ var _temperature := FastNoiseLite.new()
 var _weird := FastNoiseLite.new()
 var _danger := FastNoiseLite.new()
 var _warp := FastNoiseLite.new()
+var _islands := FastNoiseLite.new()
 var _cache: Dictionary = {}
 
 
@@ -59,6 +60,7 @@ func _init(p_seed: int) -> void:
 	_setup(_weird, p_seed + 6007, 0.0017, 2)
 	_setup(_danger, p_seed + 2027, 0.004, 1)
 	_setup(_warp, p_seed + 9001, 0.08, 1)
+	_setup(_islands, p_seed + 7717, 0.03, 2)
 
 
 ## Enemy level for an area. Rises with distance from the start, with pockets
@@ -69,6 +71,8 @@ func enemy_level_at(cell: Vector2i) -> int:
 	var level := 1.0 + distance / LEVEL_DISTANCE_TILES
 	level *= 1.0 + maxf(_danger.get_noise_2d(cell.x, cell.y), 0.0) * 0.8
 	level *= DANGER.get(tile_type_at(cell), 1.0)
+	if is_island(cell):
+		level += 5.0
 	return maxi(roundi(level), 1)
 
 
@@ -183,6 +187,12 @@ func _natural(cell: Vector2i) -> int:
 		temperature = lerpf(-0.05, temperature, smoothstep(HOME_CLIMATE_RADIUS * 0.5, HOME_CLIMATE_RADIUS, distance))
 
 	if elevation < -0.38:
+		# Out in deep water, islands rise here and there.
+		var island := _island_height(x, y, elevation)
+		if island > 0.1:
+			return _island_tile(x, y, island, temperature)
+		if island > 0.0:
+			return T.SHALLOW_WATER
 		return T.DEEP_WATER
 	if elevation < -0.28:
 		return T.SHALLOW_WATER
@@ -202,6 +212,34 @@ func _natural(cell: Vector2i) -> int:
 				if moisture < band[0]:
 					return band[1]
 	return T.DEAD_GRASS
+
+
+## How far above the sea an island stands at a point (0 or less: none).
+## Islands only rise well out in deep water.
+func _island_height(x: float, y: float, elevation: float) -> float:
+	var depth := clampf((-0.38 - elevation) / 0.08, 0.0, 1.0)
+	return (_islands.get_noise_2d(x, y) - 0.42) * 2.5 * depth
+
+
+func _island_tile(x: float, y: float, height: float, temperature: float) -> int:
+	if height < 0.25:
+		return T.SNOW if temperature < -0.24 else T.SAND
+	var moisture := _moisture.get_noise_2d(x * 3.0, y * 3.0)
+	if temperature < -0.24:
+		return T.FROSTPINE
+	if moisture > 0.25:
+		return T.FUNGAL
+	if moisture < -0.25:
+		return T.CRIMSON
+	return T.DARK_GRASS
+
+
+## Whether a tile is on an island out at sea.
+func is_island(cell: Vector2i) -> bool:
+	var x := cell.x + _warp.get_noise_2d(cell.x, cell.y) * 3.0
+	var y := cell.y + _warp.get_noise_2d(cell.x + 500.0, cell.y - 500.0) * 3.0
+	var elevation := _elevation.get_noise_2d(x, y)
+	return elevation < -0.38 and _island_height(x, y, elevation) > 0.1
 
 
 func _setup(noise: FastNoiseLite, noise_seed: int, frequency: float, octaves: int) -> void:

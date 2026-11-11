@@ -87,7 +87,7 @@ func is_tool() -> bool:
 
 
 func is_consumable() -> bool:
-	return definition().has("use")
+	return definition().has("use") or definition().has("boat") or definition().has("treasure_map")
 
 
 ## Things that are set down in the world rather than used up.

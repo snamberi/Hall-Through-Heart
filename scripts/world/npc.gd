@@ -15,6 +15,8 @@ const SELL_SHARE := 0.25
 const STAPLES: Array[String] = ["health_potion", "mana_potion", "stamina_tonic", "grilled_minnow", "copper_ingot", "oak_wood"]
 
 var kind := "merchant"
+## A wandering merchant sells rarer things.
+var wandering := false
 ## What a merchant has for sale: [{"item": Item, "price": int, "endless": bool}].
 var stock: Array[Dictionary] = []
 
@@ -88,6 +90,20 @@ func restock_if_due(player: Player) -> void:
 		var level := maxi(player.leveling.level + randi_range(-2, 1), 1)
 		var gear := LootGenerator.make_equipment(level, LootGenerator.roll_rarity(0.0, 1.0))
 		stock.append({"item": gear, "price": gear.value(), "endless": false})
+	if wandering:
+		var level := player.leveling.level
+		for i in 2:
+			var gem := Item.create(Gems.random_gem(level + 15))
+			stock.append({"item": gem, "price": gem.value() * 2, "endless": false})
+		var map := Item.create("treasure_map")
+		stock.append({"item": map, "price": 150, "endless": false})
+		var boat := Item.create("rowboat")
+		stock.append({"item": boat, "price": 300, "endless": false})
+		var fine := LootGenerator.make_equipment(level, 3)
+		stock.append({"item": fine, "price": fine.value() * 2, "endless": false})
+		if randf() < 0.4:
+			var piece := LootGenerator.make_set_piece(level)
+			stock.append({"item": piece, "price": piece.value() * 3, "endless": false})
 
 
 ## Seconds until the wares change.

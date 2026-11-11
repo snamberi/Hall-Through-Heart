@@ -38,6 +38,14 @@ func _ready() -> void:
 	_day_night.setup(_player)
 	SaveGame.register("world", self)
 
+	var stones := Waystones.new()
+	stones.name = "Waystones"
+	add_child(stones)
+	stones.setup(_world, _player)
+	var hunts := TreasureMaps.new()
+	hunts.name = "TreasureMaps"
+	add_child(hunts)
+	hunts.setup(_world, _player)
 	_world.setup(_active_seed)
 	_instances.setup(_player, _world, _spawner, _loot)
 	_structures.setup(_world, _player, _spawner, _loot, _instances)

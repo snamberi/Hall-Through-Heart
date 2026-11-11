@@ -82,6 +82,7 @@ func setup(player: Player) -> void:
 	_add("shop", ShopMenu.new())
 	_add("quest_board", QuestBoardMenu.new())
 	_add("bounty_board", BountyBoardMenu.new())
+	_add("waystones", WaystoneMenu.new())
 	_add("storage", StorageMenu.new())
 	Events.screen_requested.connect(open)
 	Events.loot_opened.connect(func(container: Dictionary) -> void:

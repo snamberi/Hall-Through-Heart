@@ -9,6 +9,8 @@ const ZOOMS: Array[float] = [1.0, 2.0, 3.0, 5.0, 8.0, 12.0]
 const ICONS := {
 	"village": [Color("f0cf6a"), "Village"], "ruin": [Color("c8c4b8"), "Ruin"], "shrine": [Color("c08cff"), "Shrine"],
 	"cave": [Color("8a8794"), "Cave"], "lair": [Color("e05a5a"), "Lair"], "portal": [Color("9a6cf0"), "Void portal"],
+	"camp": [Color("c0a080"), "Abandoned camp"], "waystone": [Color("8fe0ff"), "Waystone"], "obelisk": [Color("d0b0ff"), "Obelisk"],
+	"merchant": [Color("ffd060"), "Wandering merchant"], "shipwreck": [Color("a08060"), "Shipwreck"], "treasure": [Color("ff4030"), "Buried treasure"],
 	"boss": [Color("ff4d4d"), "World boss"], "dungeon": [Color("b0a0d0"), "Crypt"], "bounty": [Color("ff8a3a"), "Bounty target"],
 	"temple": [Color("ffe8a0"), "The Sanctuary"], "home": [Color("8fd66a"), "Home"], "checkpoint": [Color("ffb060"), "Resting place"],
 }
@@ -187,6 +189,16 @@ func _collect_icons(origin: Vector2i, cells: Vector2i, offset: Vector2, scale: f
 				_icons.append([to_view.call(center), "village"])
 	if _exploration.is_tile_seen(Vector2i.ZERO):
 		_icons.append([to_view.call(Vector2i.ZERO), "temple"])
+	var hunts: TreasureMaps = player.get_parent().get_node_or_null("TreasureMaps")
+	if hunts:
+		for spot: Dictionary in hunts.spots:
+			_icons.append([to_view.call(hunts.cell_of(spot)), "treasure"])
+	var stones: Waystones = player.get_parent().get_node_or_null("Waystones")
+	if stones:
+		for key: String in stones.known:
+			if not key.begins_with("waystone:"):
+				continue
+			_icons.append([to_view.call(stones.cell_of(key)), "waystone"])
 	var bounties: Bounties = player.get_parent().get_node_or_null("Bounties")
 	if bounties:
 		for bounty: Dictionary in bounties.active:
@@ -224,6 +236,14 @@ func _draw_icon(at: Vector2, kind: String) -> void:
 			_view.draw_rect(Rect2(at + Vector2(-7, -7), Vector2(14, 14)), dark)
 			_view.draw_rect(Rect2(at + Vector2(-5, -5), Vector2(10, 10)), color)
 			_view.draw_rect(Rect2(at + Vector2(-2, -1), Vector2(4, 6)), dark)
+		"treasure":
+			_view.draw_line(at + Vector2(-5, -5), at + Vector2(5, 5), dark, 5.0)
+			_view.draw_line(at + Vector2(-5, 5), at + Vector2(5, -5), dark, 5.0)
+			_view.draw_line(at + Vector2(-5, -5), at + Vector2(5, 5), color, 2.5)
+			_view.draw_line(at + Vector2(-5, 5), at + Vector2(5, -5), color, 2.5)
+		"waystone", "obelisk":
+			_view.draw_rect(Rect2(at + Vector2(-4, -8), Vector2(8, 15)), dark)
+			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-2.5, 6), at + Vector2(-2.5, -4), at + Vector2(0, -7), at + Vector2(2.5, -4), at + Vector2(2.5, 6)]), color)
 		"bounty":
 			_view.draw_circle(at, 7.0, dark)
 			_view.draw_circle(at + Vector2(0, -1), 4.5, color)

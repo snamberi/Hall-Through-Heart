@@ -9,7 +9,23 @@ extends Node2D
 
 const T := TerrainTiles.Type
 ## Chance per chunk of each structure, checked in this order.
-const CHANCES: Array[Array] = [["ruin", 0.07], ["shrine", 0.03], ["cave", 0.035], ["lair", 0.03], ["portal", 0.02], ["dungeon", 0.014], ["boss", 0.009]]
+const CHANCES: Array[Array] = [["ruin", 0.07], ["shrine", 0.03], ["cave", 0.035], ["lair", 0.03], ["portal", 0.02], ["dungeon", 0.014], ["boss", 0.009],
+	["camp", 0.04], ["waystone", 0.025], ["obelisk", 0.015], ["merchant", 0.015]]
+## Notes left in abandoned camps.
+const NOTES: Array[String] = [
+	"Day nine. The husks came again at dusk. We burned the fence to keep them back. No fence now.",
+	"To whoever finds this: the stones by the road still wake if you touch them. They took us halfway home.",
+	"Marta says the Heart beats under the world. I say it's the ground settling. We'll see who's right.",
+	"Left the good knife in the crate. If you're reading this, it's yours. We won't be back.",
+	"The bounty board said ten gold for the beast. It took three of us. Ten gold.",
+	"Rain for four days. The bog has crept to the tents. Something moves in it at night.",
+	"Saw lights over the void scar. Not fires. They moved against the wind.",
+	"Buried the rest of the coin where the map says. Burned the copy. Kept this one.",
+	"The old ones built those crypts to keep something in, not out. Remember that.",
+	"If the moon turns red, stay by the fire. Do not go out. Do not answer them.",
+]
+## How far an obelisk shows the land around it, in tiles.
+const OBELISK_SIGHT := 90
 ## Lairs and portals only appear where the area is at least this level.
 const MIN_LEVEL := {"lair": 3, "portal": 4, "dungeon": 4, "boss": 6}
 ## Nothing but the temple within this many tiles of the origin.
@@ -91,7 +107,10 @@ func site_for(chunk: Vector2i) -> Dictionary:
 	random.seed = hash(Vector3i(chunk.x, chunk.y, _world.generator.world_seed + 4242))
 	var cell := chunk * World.CHUNK_SIZE + Vector2i(random.randi_range(4, World.CHUNK_SIZE - 5), random.randi_range(4, World.CHUNK_SIZE - 5))
 	var roll := random.randf()
-	if Vector2(cell).length() > CLEAR_RADIUS and _clear_ground(cell):
+	if Vector2(cell).length() > CLEAR_RADIUS and _world.generator.is_island(cell) and _clear_ground(cell) and roll < 0.4:
+		# Islands keep wrecks, and what the sea did not take.
+		site = {"kind": "shipwreck", "cell": cell, "key": "shipwreck:%d,%d" % [chunk.x, chunk.y], "level": _world.generator.enemy_level_at(cell), "seed": random.randi()}
+	elif Vector2(cell).length() > CLEAR_RADIUS and _clear_ground(cell):
 		var level := _world.generator.enemy_level_at(cell)
 		for entry in CHANCES:
 			roll -= entry[1]
@@ -193,6 +212,7 @@ func _build_temple(placed: Array) -> void:
 	_decor(placed, Prop.Decor.BANNER, Vector2i(-5, 1), 4.0)
 	_decor(placed, Prop.Decor.BANNER, Vector2i(5, 1), 4.0)
 	placed.append(_rest_spot(Prop.Art.ALTAR, Vector2i(0, -3), "the Sanctuary"))
+	placed.append(_waystones().make_stone("sanctuary", "The Sanctuary", Vector2i(3, 4)))
 	# A first weapon for the taking, so nobody has to fight bare-handed for long.
 	if not used.has("temple:sword"):
 		placed.append(_chest(Vector2i(0, -5), "temple:sword", 1, 0.0, [LootGenerator.make_equipment(1, 0, "sword").to_dict(), Item.create("bandage", 3).to_dict()]))
@@ -392,6 +412,100 @@ func _build_boss(cell: Vector2i, key: String, level: int, random: RandomNumberGe
 		Events.boss_defeated.emit(boss_id)
 		SaveGame.request_save()
 	)
+
+
+func _waystones() -> Waystones:
+	return get_parent().get_node("Waystones")
+
+
+## An abandoned camp: a cold fire, a torn tent, crates, and a note.
+func _build_camp(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	_decor(placed, Prop.Decor.TENT, cell + Vector2i(-2, -1), 22.0)
+	var fire := Prop.create(Prop.Art.CAMPFIRE, _at(cell + Vector2i(1, 1)), 11.0)
+	fire.sprite().modulate = Color(0.55, 0.5, 0.5)
+	placed.append(fire)
+	_decor(placed, Prop.Decor.CRATE, cell + Vector2i(2, -1), 10.0)
+	_decor(placed, Prop.Decor.BARREL, cell + Vector2i(3, 0), 10.0)
+	_decor(placed, Prop.Decor.BONES, cell + Vector2i(-1, 2))
+	var note: String = NOTES[random.randi_range(0, NOTES.size() - 1)]
+	placed.append(Prop.create_decor(Prop.Decor.SIGNPOST, _at(cell + Vector2i(0, 2)), 0.0, "Read the note", func(_p: Player) -> void:
+		Events.announcement.emit("A NOTE", note)
+	))
+	var contents: Array = roll_chest(level, 1.2)
+	if random.randf() < 0.3:
+		contents.append(Item.create("treasure_map").to_dict())
+	placed.append(_chest(cell + Vector2i(2, 1), key, level, 1.2, contents))
+
+
+## A waystone in the wilds.
+func _build_waystone(cell: Vector2i, key: String, _level: int, _random: RandomNumberGenerator, placed: Array) -> void:
+	_floor(placed, cell, 1)
+	var biome: String = TerrainTiles.Type.keys()[_world.generator.tile_type_at(cell + Vector2i(2, 2))].capitalize()
+	placed.append(_waystones().make_stone(key, "Waystone (%s, %d, %d)" % [biome, cell.x, cell.y], cell))
+	_decor(placed, Prop.Decor.CANDLES, cell + Vector2i(-1, 1))
+	_decor(placed, Prop.Decor.CANDLES, cell + Vector2i(1, 1))
+
+
+## An ancient obelisk: touching it shows the land for miles around.
+func _build_obelisk(cell: Vector2i, key: String, _level: int, _random: RandomNumberGenerator, placed: Array) -> void:
+	_floor(placed, cell, 2)
+	var read := used.has(key)
+	var obelisk := Prop.create_decor(Prop.Decor.OBELISK, _at(cell), 12.0, "The obelisk is silent" if read else "Lay a hand on the obelisk")
+	obelisk.sprite().scale = Vector2(1.5, 1.5)
+	obelisk.sprite().position.y *= 1.5
+	obelisk.sprite().modulate = Color(0.9, 0.8, 1.0) if not read else Color(0.6, 0.6, 0.65)
+	if not read:
+		obelisk.add_light(0.9, 1.6)
+		obelisk.on_interact = func(player: Player) -> void:
+			if used.has(key):
+				return
+			used[key] = true
+			(get_parent().get_node("Exploration") as Exploration).reveal(cell, OBELISK_SIGHT)
+			player.leveling.add_xp(30 * level_xp(_level), "explore")
+			LightPillar.spawn(get_parent(), _at(cell), Color(0.85, 0.75, 1.0))
+			Events.announcement.emit("THE LAND IS REVEALED", "Your map shows the country around the obelisk")
+			obelisk.prompt_text = "The obelisk is silent"
+			obelisk.on_interact = Callable()
+			SaveGame.request_save()
+	placed.append(obelisk)
+	for index in 4:
+		_decor(placed, Prop.Decor.RUBBLE, cell + Vector2i(Vector2.from_angle(TAU * index / 4.0 + 0.7) * 3.0))
+
+
+static func level_xp(level: int) -> int:
+	return maxi(level, 1)
+
+
+## A wandering merchant's camp: rarer wares than any village stall.
+func _build_merchant(cell: Vector2i, _key: String, _level: int, _random: RandomNumberGenerator, placed: Array) -> void:
+	_decor(placed, Prop.Decor.STALL, cell + Vector2i(0, -1), 18.0)
+	_decor(placed, Prop.Decor.TENT, cell + Vector2i(-3, -1), 22.0)
+	_decor(placed, Prop.Decor.BARREL, cell + Vector2i(2, -1), 10.0)
+	_decor(placed, Prop.Decor.LANTERN, cell + Vector2i(2, 1), 5.0, true)
+	var fire := Prop.create(Prop.Art.CAMPFIRE, _at(cell + Vector2i(-1, 2)), 11.0)
+	fire.add_light(1.0, 2.0)
+	placed.append(fire)
+	var npc := Npc.create("merchant", _at(cell, Vector2(0, 16)))
+	npc.wandering = true
+	placed.append(npc)
+
+
+## A wreck on an island shore: broken planks, spilled cargo, and a sea chest.
+func _build_shipwreck(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	for i in 6:
+		_decor(placed, [Prop.Decor.CRATE, Prop.Decor.BARREL, Prop.Decor.RUBBLE][random.randi_range(0, 2)], cell + Vector2i(random.randi_range(-4, 4), random.randi_range(-3, 3)), 0.0)
+	_decor(placed, Prop.Decor.BANNER, cell + Vector2i(-2, -2), 4.0)
+	_decor(placed, Prop.Decor.BONES, cell + Vector2i(1, 2))
+	var contents: Array = roll_chest(level + 5, 2.5)
+	contents.append(Item.create("treasure_map").to_dict())
+	if random.randf() < 0.25:
+		contents.append(LootGenerator.make_unique(level + 5).to_dict())
+	placed.append(_chest(cell, key, level + 5, 2.5, contents))
+	if not used.has(key + ":guard"):
+		var guard := _spawner.spawn_at(_at(cell + Vector2i(2, 0)), level + 5, Enemy.Rank.CHAMPION, "bog_lurker" if random.randf() < 0.5 else "crimson_fiend")
+		guard.lair_home = _at(cell)
+		placed.append(guard)
+		guard.died.connect(func(_e: Enemy) -> void: used[key + ":guard"] = true)
 
 
 ## A crypt's entrance: steps down into a dungeon of locked rooms.

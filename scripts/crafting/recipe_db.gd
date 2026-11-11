@@ -86,6 +86,7 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "garnet_3", "profession": "blacksmithing", "level": 15, "inputs": {"garnet_2": 3}, "item": "garnet_3", "count": 1, "xp": 54.0},
 	{"id": "garnet_4", "profession": "blacksmithing", "level": 30, "inputs": {"garnet_3": 3}, "item": "garnet_4", "count": 1, "xp": 96.0},
 	{"id": "garnet_5", "profession": "blacksmithing", "level": 45, "inputs": {"garnet_4": 3}, "item": "garnet_5", "count": 1, "xp": 150.0},
+	{"id": "rowboat", "profession": "building", "level": 3, "inputs": {"oak_wood": 25, "copper_ingot": 2, "hound_pelt": 2}, "item": "rowboat", "count": 1, "xp": 60.0},
 	{"id": "storage_chest", "profession": "building", "level": 1, "inputs": {"oak_wood": 8, "copper_ingot": 1}, "item": "storage_chest", "count": 1, "xp": 25.0},
 	{"id": "bed", "profession": "building", "level": 1, "inputs": {"oak_wood": 10, "husk_fragment": 6}, "item": "bed", "count": 1, "xp": 30.0},
 	{"id": "house_kit", "profession": "building", "level": 2, "inputs": {"oak_wood": 30, "stone": 20, "copper_ingot": 4}, "item": "house_kit", "count": 1, "xp": 120.0},

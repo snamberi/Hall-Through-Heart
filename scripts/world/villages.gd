@@ -98,6 +98,9 @@ func _build(center: Vector2i) -> Array:
 	)
 	board.sprite().modulate = Color(1.0, 0.8, 0.7)
 	add.call(board)
+	var stones: Waystones = get_parent().get_node_or_null("Waystones")
+	if stones:
+		add.call(stones.make_stone("village:%d,%d" % [center.x, center.y], "Village (%d, %d)" % [center.x, center.y], center + Vector2i(5, -3)))
 
 	# Lanterns along the roads.
 	for distance in [4, 9, 13]:

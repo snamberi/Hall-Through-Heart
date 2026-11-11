@@ -16,7 +16,7 @@ func _draw() -> void:
 	var font := UITheme.get_theme().default_font
 	var bold := UITheme.bold()
 	# Sit just under the minimap, or at the top when it is hidden.
-	var y := 190.0 if GameSettings.show_minimap else 14.0
+	var y := 202.0 if GameSettings.show_minimap else 14.0
 	var width := size.x
 	for quest in _player.quests.active.slice(0, 4):
 		var objective: Dictionary = quest["objective"]
