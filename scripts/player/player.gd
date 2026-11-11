@@ -60,6 +60,16 @@ var potion_cooldown_left := 0.0
 var gather_target: ResourceNode
 var gather_seconds := 0.0
 var gather_progress := 0.0
+## True while in deep water: slow, and unable to fight or gather.
+var swimming := false
+## True while choosing where to set something down; clicks place it
+## instead of attacking.
+var placing := false
+## True inside a house, cave, or other place off the world map.
+var indoors := false
+## Share of normal speed the ground underfoot allows.
+var _ground_speed := 1.0
+var _world: World
 ## Consecutive basic attacks, for the mastery combo finisher.
 var _combo_count := 0
 var _combo_left := 0.0
@@ -123,6 +133,7 @@ func _physics_process(delta: float) -> void:
 	_unbreakable_left = maxf(_unbreakable_left - delta, 0.0)
 	potion_cooldown_left = maxf(potion_cooldown_left - delta, 0.0)
 	_combo_left = maxf(_combo_left - delta, 0.0)
+	_read_ground()
 	health.heal(stats.get_stat("health_regen") * delta)
 	if not _afflictions.is_empty():
 		_process_afflictions(delta)
@@ -313,6 +324,11 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 
 ## Uses a consumable from the bag. Returns "" on success or why it failed.
 func use_item(item: Item) -> String:
+	if not is_dead() and item.is_placeable() and item in inventory.items:
+		if swimming:
+			return "You cannot build while swimming."
+		Events.placement_requested.emit(item)
+		return ""
 	if is_dead() or not item.is_consumable() or not item in inventory.items:
 		return "This cannot be used."
 	var use: Dictionary = item.definition()["use"]
@@ -341,6 +357,20 @@ func quick_potion() -> void:
 		if item.id == "health_potion":
 			use_item(item)
 			return
+
+
+## Looks at the tile underfoot: how fast it lets the player go, and whether
+## they are swimming.
+func _read_ground() -> void:
+	if _world == null:
+		_world = get_parent().get_node_or_null("World")
+	if _world == null or _world.generator == null or indoors:
+		_ground_speed = 1.0
+		swimming = false
+		return
+	var tile := _world.tile_type_at_position(global_position)
+	_ground_speed = TerrainTiles.speed(tile)
+	swimming = tile == TerrainTiles.Type.DEEP_WATER
 
 
 ## The gatherable node closest to the player and in reach, or null.
@@ -485,7 +515,10 @@ func _process_move(delta: float) -> void:
 	if input != Vector2.ZERO:
 		facing = input.normalized()
 		_face_visual(input.x)
-	velocity = velocity.move_toward(input * stats.get_stat("move_speed"), acceleration * delta)
+	velocity = velocity.move_toward(input * stats.get_stat("move_speed") * _ground_speed, acceleration * delta)
+	if swimming:
+		# Both hands are busy keeping afloat.
+		return
 
 	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0:
 		_try_dodge()
@@ -495,7 +528,11 @@ func _process_move(delta: float) -> void:
 		quick_potion()
 	elif Input.is_action_just_pressed("interact"):
 		_start_gathering()
-	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0:
+	elif Input.is_action_just_pressed("recall_home"):
+		Events.recall_requested.emit()
+	elif Input.is_action_just_pressed("dismantle"):
+		Events.dismantle_requested.emit()
+	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing:
 		attack(aim_direction())
 
 
@@ -549,11 +586,36 @@ func nearest_npc() -> Npc:
 	return best
 
 
+## Whether a crafting table is close enough to work at.
+func near_crafting_table() -> bool:
+	for table in get_tree().get_nodes_in_group("crafting_tables"):
+		if table.global_position.distance_to(global_position) < 150.0:
+			return true
+	return false
+
+
+## The usable prop closest to the player and in reach, or null.
+func nearest_prop() -> Prop:
+	var best: Prop = null
+	var best_distance := INF
+	for node in get_tree().get_nodes_in_group("props"):
+		var distance: float = node.global_position.distance_to(global_position)
+		if distance < node.reach and distance < best_distance:
+			best_distance = distance
+			best = node
+	return best
+
+
 func _start_gathering() -> void:
 	var npc := nearest_npc()
 	if npc:
 		velocity = Vector2.ZERO
 		Events.npc_interacted.emit(npc)
+		return
+	var prop := nearest_prop()
+	if prop:
+		velocity = Vector2.ZERO
+		prop.interact(self)
 		return
 	var node := nearest_resource()
 	if node == null:

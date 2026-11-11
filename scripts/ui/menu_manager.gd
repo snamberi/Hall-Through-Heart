@@ -79,6 +79,12 @@ func setup(player: Player) -> void:
 	_add("journal", JournalMenu.new())
 	_add("shop", ShopMenu.new())
 	_add("quest_board", QuestBoardMenu.new())
+	_add("storage", StorageMenu.new())
+	Events.screen_requested.connect(open)
+	Events.storage_opened.connect(func(building: Dictionary) -> void:
+		(_menus["storage"] as StorageMenu).chest = building
+		open("storage")
+	)
 	Events.npc_interacted.connect(_on_npc_interacted)
 	_add("map", MapMenu.new())
 	_add("pause", PauseMenu.new())

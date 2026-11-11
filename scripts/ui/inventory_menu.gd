@@ -206,8 +206,8 @@ func _refresh_details() -> void:
 	var item := _selected
 	var worn := item != null and _equipped_slot(item) != ""
 	var in_bag := item != null and item in player.inventory.items
-	_primary.disabled = item == null or not (item.is_equipment() or item.is_consumable())
-	_primary.text = "Use" if item and item.is_consumable() else "Equipped  -  click to unequip" if worn else "Equip"
+	_primary.disabled = item == null or not (item.is_equipment() or item.is_consumable() or item.is_placeable())
+	_primary.text = "Place" if item and item.is_placeable() else "Use" if item and item.is_consumable() else "Equipped  -  click to unequip" if worn else "Equip"
 	_discard.disabled = not in_bag
 	_upgrade.disabled = item == null or not item.is_equipment() or not item.is_upgradable() or item.upgrade >= ItemDB.MAX_UPGRADE
 	_enchant.disabled = item == null or not item.is_equipment()
@@ -223,7 +223,7 @@ func _describe(item: Item) -> String:
 	lines.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [item.color().to_html(false), item.display_name()])
 	var rarity: String = ItemDB.RARITIES[item.rarity]["name"]
 	if not item.is_equipment():
-		var kind := "Tool" if item.is_tool() else "Consumable" if item.is_consumable() else "Material"
+		var kind := "Tool" if item.is_tool() else "Consumable" if item.is_consumable() else "Building" if item.is_placeable() else "Material"
 		lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s[/color]" % [item.color().to_html(false), rarity, dim, kind])
 		lines.append("")
 		lines.append("[i][color=#%s]%s[/color][/i]" % [dim, def["text"]])
@@ -302,7 +302,13 @@ func _use_selected() -> void:
 	if _selected == null:
 		return
 	var result := ""
-	if _selected.is_consumable():
+	if _selected.is_placeable():
+		result = player.use_item(_selected)
+		if result == "":
+			# Step out of the menu so the player can choose the spot.
+			PauseMenu.close_menus(self)
+			return
+	elif _selected.is_consumable():
 		result = player.use_item(_selected)
 	elif _selected.is_equipment():
 		var slot := _equipped_slot(_selected)

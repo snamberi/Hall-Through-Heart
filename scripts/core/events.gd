@@ -24,3 +24,15 @@ signal item_crafted(recipe_id: String)
 signal npc_interacted(npc: Node)
 signal quest_completed(title: String, rewards: String)
 signal biome_discovered(biome: String, xp: int)
+## A big message for the middle of the screen (a wave starting, a place entered).
+signal announcement(title: String, detail: String)
+## The player rested somewhere; they will wake there after dying.
+signal checkpoint_set(position: Vector2, place: String)
+## The player opened a storage chest. `building` is its saved record.
+signal storage_opened(building: Dictionary)
+## Something in the world asks for a menu screen to open, by id.
+signal screen_requested(id: String)
+## The player chose to set a placeable item down.
+signal placement_requested(item: Item)
+signal recall_requested
+signal dismantle_requested

@@ -14,11 +14,13 @@ var _world: World
 var _texture: ImageTexture
 var _drawn_cell := Vector2i.MAX
 var _refresh_left := 0.0
+var _day_night: DayNight
 
 
 func setup(player: Player, world: World) -> void:
 	_player = player
 	_world = world
+	_day_night = world.get_parent().get_node_or_null("DayNight")
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	custom_minimum_size = Vector2.ONE * ((RADIUS * 2 + 1) * SCALE + 8.0)
 	GameSettings.changed.connect(func() -> void: visible = GameSettings.show_minimap)
@@ -26,7 +28,11 @@ func setup(player: Player, world: World) -> void:
 
 
 func _process(delta: float) -> void:
-	if not visible or _player == null:
+	if _player == null:
+		return
+	# There is no map of caves and interiors.
+	visible = GameSettings.show_minimap and not _player.indoors
+	if not visible:
 		return
 	_refresh_left -= delta
 	var cell := _world.world_to_cell(_player.global_position)
@@ -68,6 +74,12 @@ func _draw() -> void:
 	_dot(inner, middle, -origin, UITheme.GOLD, 3.0)
 	draw_circle(middle, 3.0, Color.BLACK)
 	draw_circle(middle, 2.0, Color.WHITE)
+	# The day count and time of day, just under the map.
+	if _day_night:
+		var font := UITheme.get_theme().default_font
+		var text := "Day %d  -  %s" % [_day_night.day, _day_night.phase()]
+		draw_string_outline(font, Vector2(0, size.y + 16.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, 4, Color.BLACK)
+		draw_string(font, Vector2(0, size.y + 16.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, UITheme.HEADING)
 
 
 ## Draws a dot for something `offset` world pixels from the player.

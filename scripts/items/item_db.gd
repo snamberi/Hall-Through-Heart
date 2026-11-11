@@ -232,6 +232,14 @@ const ITEMS := {
 	"trout": {"name": "Trout", "icon": 45, "tint": Color("e0a080"), "material_rarity": 1, "text": "Fresh from the black water. Best cooked."},
 	"eel": {"name": "Eel", "icon": 45, "tint": Color("708090"), "material_rarity": 2, "text": "Fresh from the black water. Best cooked."},
 	"enchanted_dust": {"name": "Enchanted Dust", "icon": 52, "tint": Color("ffffff"), "material_rarity": 1, "text": "What is left when magic gear is broken down."},
+	"hound_pelt": {"name": "Hound Pelt", "icon": 13, "tint": Color("8a5a4a"), "material_rarity": 0, "text": "Mangy, but it will cure."},
+	"slime_gel": {"name": "Slime Gel", "icon": 16, "tint": Color("b8f08a"), "material_rarity": 0, "text": "It never quite stops moving."},
+	"bat_wing": {"name": "Bat Wing", "icon": 15, "tint": Color("5a4a5e"), "material_rarity": 0, "text": "Thin as old paper."},
+	"chitin": {"name": "Chitin", "icon": 13, "tint": Color("4a5040"), "material_rarity": 1, "text": "Light, hard plates from a stalker's back."},
+	"spore_cap": {"name": "Spore Cap", "icon": 44, "tint": Color("c05a8a"), "material_rarity": 1, "text": "Keep it away from your face."},
+	"cultist_sigil": {"name": "Cultist Sigil", "icon": 53, "tint": Color("c08cff"), "material_rarity": 1, "text": "A prayer to something that should not answer."},
+	"wraith_cloth": {"name": "Wraith Cloth", "icon": 43, "tint": Color("dfe6ee"), "material_rarity": 2, "text": "Cold to the touch, and weightless."},
+	"heart_shard": {"name": "Heart Shard", "icon": 12, "tint": Color("ff6a7a"), "material_rarity": 3, "text": "A splinter of something vast. It still pulses."},
 	"venom_sac": {"name": "Venom Sac", "icon": 16, "tint": Color("b06ad0"), "material_rarity": 1, "text": "Handle with care."},
 	"ember_core": {"name": "Ember Core", "icon": 16, "tint": Color("f08a2e"), "material_rarity": 2, "text": "Still warm."},
 	"stone_heart": {"name": "Stone Heart", "icon": 42, "tint": Color("8a8794"), "material_rarity": 2, "text": "The slow-beating core of a golem."},
@@ -243,6 +251,11 @@ const ITEMS := {
 	"grilled_minnow": {"name": "Grilled Minnow", "icon": 48, "tint": Color("e0c090"), "material_rarity": 0, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 20.0}, "health_regen": {"flat": 0.5}}}, "text": "+20 maximum HP and regeneration for 5 minutes."},
 	"trout_stew": {"name": "Trout Stew", "icon": 48, "tint": Color("f0a060"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 60.0}, "max_stamina": {"flat": 20.0}}}, "text": "+60 maximum HP and +20 stamina for 5 minutes."},
 	"eel_pie": {"name": "Eel Pie", "icon": 48, "tint": Color("c09060"), "material_rarity": 2, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 100.0}, "physical_damage": {"percent": 0.08}}}, "text": "+100 maximum HP and +8% damage for 5 minutes."},
+	# --- things to place in the world: "place" is the kind of building
+	"crafting_table": {"name": "Crafting Table", "icon": 54, "material_rarity": 0, "place": "table", "value": 30, "text": "Stand beside one to craft. Use it from your bag to set it down."},
+	"storage_chest": {"name": "Storage Chest", "icon": 55, "material_rarity": 0, "place": "chest", "value": 50, "text": "Holds 24 stacks. Use it from your bag to set it down."},
+	"bed": {"name": "Bed", "icon": 57, "material_rarity": 0, "place": "bed", "value": 60, "text": "Sleep in it to make this place home. Use it from your bag to set it down."},
+	"house_kit": {"name": "House Kit", "icon": 56, "material_rarity": 1, "place": "house", "value": 300, "text": "Everything needed to raise a small house. Use it from your bag to choose the spot."},
 	# --- tools: needed to gather; higher tiers reach better materials and work faster
 	"worn_pickaxe": {"name": "Worn Pickaxe", "icon": 49, "tint": Color("9a98a0"), "material_rarity": 0, "tool": {"kind": "pickaxe", "tier": 1, "speed": 1.0}, "text": "Tier 1 pickaxe."},
 	"bronze_pickaxe": {"name": "Bronze Pickaxe", "icon": 49, "tint": Color("c9954a"), "material_rarity": 1, "tool": {"kind": "pickaxe", "tier": 2, "speed": 1.2}, "text": "Tier 2 pickaxe."},
@@ -294,39 +307,39 @@ const AFFIXES: Array[Dictionary] = [
 	{"stat": "endurance", "kind": "flat", "base": 1.0, "per_level": 0.08},
 ]
 
-## What each enemy type can drop. "gold" is [min, max] at level 1.
-## Enemies without an entry use "husk".
+## What each enemy type drops: only its own materials, and now and then a
+## piece of gear that suits it ("gear": [[base id, chance], ...]).
+## "gold" is [min, max] at level 1. Enemies without an entry use "husk".
 const LOOT_TABLES := {
-	"husk": {"gold": [1, 3], "equipment_chance": 0.1, "materials": [
-		{"id": "husk_fragment", "chance": 0.6, "count": [1, 2]}, {"id": "bone", "chance": 0.25, "count": [1, 1]},
-		{"id": "claw", "chance": 0.12, "count": [1, 1]}, {"id": "essence", "chance": 0.03, "count": [1, 1]}]},
-	"rot_hound": {"gold": [1, 3], "equipment_chance": 0.08, "materials": [
-		{"id": "claw", "chance": 0.45, "count": [1, 2]}, {"id": "bone", "chance": 0.3, "count": [1, 1]}]},
-	"bone_archer": {"gold": [2, 4], "equipment_chance": 0.12, "materials": [
-		{"id": "bone", "chance": 0.7, "count": [1, 3]}, {"id": "essence", "chance": 0.05, "count": [1, 1]}]},
-	"bog_slime": {"gold": [1, 2], "equipment_chance": 0.06, "materials": [
-		{"id": "venom_sac", "chance": 0.3, "count": [1, 1]}, {"id": "healing_herb", "chance": 0.2, "count": [1, 1]}]},
-	"carrion_bat": {"gold": [1, 2], "equipment_chance": 0.06, "materials": [
-		{"id": "claw", "chance": 0.35, "count": [1, 1]}, {"id": "bone", "chance": 0.2, "count": [1, 1]}]},
-	"thorn_stalker": {"gold": [2, 4], "equipment_chance": 0.1, "materials": [
-		{"id": "venom_sac", "chance": 0.45, "count": [1, 2]}, {"id": "claw", "chance": 0.25, "count": [1, 1]}]},
-	"spore_shambler": {"gold": [2, 4], "equipment_chance": 0.1, "materials": [
-		{"id": "poison_mushroom", "chance": 0.6, "count": [1, 2]}, {"id": "rare_root", "chance": 0.08, "count": [1, 1]}]},
-	"rot_cultist": {"gold": [4, 8], "equipment_chance": 0.16, "materials": [
-		{"id": "essence", "chance": 0.25, "count": [1, 1]}, {"id": "mana_flower", "chance": 0.2, "count": [1, 1]}]},
-	"ember_wisp": {"gold": [1, 3], "equipment_chance": 0.05, "materials": [
-		{"id": "ember_core", "chance": 0.3, "count": [1, 1]}]},
-	"ash_wraith": {"gold": [3, 6], "equipment_chance": 0.14, "materials": [
-		{"id": "essence", "chance": 0.4, "count": [1, 2]}, {"id": "enchanted_dust", "chance": 0.15, "count": [1, 1]}]},
-	"crag_golem": {"gold": [5, 10], "equipment_chance": 0.25, "materials": [
-		{"id": "stone", "chance": 0.9, "count": [2, 5]}, {"id": "stone_heart", "chance": 0.2, "count": [1, 1]},
-		{"id": "copper_ore", "chance": 0.4, "count": [1, 3]}]},
+	"husk": {"gold": [0, 2], "gear": [["sword", 0.02], ["helmet", 0.015]], "materials": [
+		{"id": "husk_fragment", "chance": 0.35, "count": [1, 1]}, {"id": "bone", "chance": 0.08, "count": [1, 1]}]},
+	"rot_hound": {"gold": [0, 1], "gear": [["boots", 0.02]], "materials": [
+		{"id": "hound_pelt", "chance": 0.3, "count": [1, 1]}, {"id": "claw", "chance": 0.18, "count": [1, 1]}]},
+	"bone_archer": {"gold": [1, 2], "gear": [["bow", 0.03]], "materials": [
+		{"id": "bone", "chance": 0.4, "count": [1, 2]}]},
+	"bog_slime": {"gold": [0, 1], "gear": [["ring", 0.015]], "materials": [
+		{"id": "slime_gel", "chance": 0.35, "count": [1, 1]}, {"id": "venom_sac", "chance": 0.08, "count": [1, 1]}]},
+	"carrion_bat": {"gold": [0, 1], "gear": [["dagger", 0.02]], "materials": [
+		{"id": "bat_wing", "chance": 0.3, "count": [1, 1]}]},
+	"thorn_stalker": {"gold": [1, 2], "gear": [["fang", 0.02], ["greaves", 0.015]], "materials": [
+		{"id": "chitin", "chance": 0.3, "count": [1, 1]}, {"id": "venom_sac", "chance": 0.2, "count": [1, 1]}]},
+	"spore_shambler": {"gold": [1, 2], "gear": [["staff", 0.02]], "materials": [
+		{"id": "spore_cap", "chance": 0.35, "count": [1, 1]}, {"id": "poison_mushroom", "chance": 0.2, "count": [1, 1]}]},
+	"rot_cultist": {"gold": [2, 5], "gear": [["staff", 0.03], ["necklace", 0.02]], "materials": [
+		{"id": "cultist_sigil", "chance": 0.3, "count": [1, 1]}, {"id": "essence", "chance": 0.1, "count": [1, 1]}]},
+	"ember_wisp": {"gold": [0, 1], "gear": [["ember_staff", 0.015]], "materials": [
+		{"id": "ember_core", "chance": 0.25, "count": [1, 1]}]},
+	"ash_wraith": {"gold": [1, 3], "gear": [["relic", 0.01], ["dark_sword", 0.015]], "materials": [
+		{"id": "wraith_cloth", "chance": 0.3, "count": [1, 1]}, {"id": "essence", "chance": 0.15, "count": [1, 1]}]},
+	"crag_golem": {"gold": [3, 6], "gear": [["shield", 0.04], ["chestplate", 0.03]], "materials": [
+		{"id": "stone", "chance": 0.7, "count": [1, 3]}, {"id": "stone_heart", "chance": 0.15, "count": [1, 1]}]},
 }
 ## How enemy rank changes loot.
 const RANK_LOOT := {
 	"normal": {"gold": 1.0, "materials": 1.0, "equipment_chance": 1.0, "rarity_bonus": 0.0},
-	"elite": {"gold": 4.0, "materials": 2.0, "equipment_chance": 6.0, "rarity_bonus": 1.5},
+	"elite": {"gold": 4.0, "materials": 2.0, "equipment_chance": 10.0, "rarity_bonus": 1.5},
 	"champion": {"gold": 10.0, "materials": 3.0, "equipment_chance": 100.0, "rarity_bonus": 4.0},
+	"miniboss": {"gold": 30.0, "materials": 4.0, "equipment_chance": 100.0, "rarity_bonus": 8.0},
 }
 
 static var _icon_cache: Dictionary = {}

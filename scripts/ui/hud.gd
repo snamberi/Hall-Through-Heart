@@ -16,6 +16,7 @@ var _banner_tween: Tween
 @onready var _death_summary: Label = $DeathMessage/Summary
 @onready var _buff_label: Label = $BuffLabel
 @onready var _gather: Control = $Gather
+@onready var _boss_bar: Control = $BossBar
 
 
 func setup(player: Player) -> void:
@@ -48,6 +49,8 @@ func setup(player: Player) -> void:
 		_show_banner("QUEST COMPLETE", "%s  -  %s" % [title, rewards])
 		Audio.play("level_up", -6.0, 0.0)
 	)
+	Events.announcement.connect(_show_banner)
+	_boss_bar.draw.connect(_draw_boss_bar)
 	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
 		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
 	)
@@ -112,6 +115,7 @@ func _process(_delta: float) -> void:
 		lines.append("%s  %ds" % [_player.buffs.active[id]["name"], ceili(_player.buffs.active[id]["time"])])
 	_buff_label.text = "\n".join(lines)
 	_gather.queue_redraw()
+	_boss_bar.queue_redraw()
 
 
 ## The prompt for a gatherable node in reach, and the bar while gathering.
@@ -131,6 +135,12 @@ func _draw_gather() -> void:
 		var talk := "[F]  %s" % npc.prompt()
 		_gather.draw_string_outline(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
 		_gather.draw_string(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.GOLD)
+		return
+	var prop := _player.nearest_prop()
+	if prop:
+		var action := "[F]  %s" % prop.prompt_text if prop.on_interact.is_valid() else prop.prompt_text
+		_gather.draw_string_outline(font, Vector2(0, 16), action, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
+		_gather.draw_string(font, Vector2(0, 16), action, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.GOLD if prop.on_interact.is_valid() else UITheme.DIM)
 		return
 	var node := _player.nearest_resource()
 	if node == null:
@@ -154,3 +164,24 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable) -> void:
 		bar.draw_rect(Rect2(Vector2.ZERO, size), Color("402f1c"), false, 2.0)
 		bar.draw_rect(Rect2(Vector2.ONE, size - Vector2(2, 2)), Color("8a683a"), false, 1.0)
 	)
+
+
+## A wide health bar at the top of the screen for a mini-boss close by.
+func _draw_boss_bar() -> void:
+	var boss: Enemy = null
+	for node in get_tree().get_nodes_in_group("bosses"):
+		if node.global_position.distance_to(_player.global_position) < 700.0:
+			boss = node
+			break
+	if boss == null:
+		return
+	var font := UITheme.bold()
+	var size := _boss_bar.size
+	var title := "%s%s" % [Enemy.RANK_DATA[boss.rank]["title"], boss.display_name]
+	_boss_bar.draw_string_outline(font, Vector2(0, 18), title, HORIZONTAL_ALIGNMENT_CENTER, size.x, 20, 5, Color.BLACK)
+	_boss_bar.draw_string(font, Vector2(0, 18), title, HORIZONTAL_ALIGNMENT_CENTER, size.x, 20, Color(1.0, 0.55, 0.45))
+	var bar := Rect2(0, 26, size.x, 14)
+	_boss_bar.draw_rect(bar, Color(0.04, 0.05, 0.08, 0.9))
+	_boss_bar.draw_rect(Rect2(2, 28, (size.x - 4.0) * boss.health.current / boss.health.max_health, 10), Color(0.8, 0.2, 0.2))
+	_boss_bar.draw_rect(bar, Color("402f1c"), false, 2.0)
+	_boss_bar.draw_rect(bar.grow(-1.0), Color("8a683a"), false, 1.0)

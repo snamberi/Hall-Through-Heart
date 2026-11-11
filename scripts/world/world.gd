@@ -3,10 +3,21 @@ extends Node2D
 ## Streams the endless world in chunks around a target (the player).
 ##
 ## Chunks near the target are built a few per frame; chunks left far behind
-## are freed. Each chunk is its own TileMapLayer.
+## are freed. Each chunk is its own TileMapLayer, with border-blending
+## layers on top.
 
 signal chunk_built(chunk: Vector2i)
 signal chunk_freed(chunk: Vector2i)
+
+## The four sides of a tile, clockwise from the top, and the turn that
+## points a top-edge fringe (or top-right corner) at each.
+const SIDES: Array[Vector2i] = [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+const TURNS: Array[int] = [
+	0,
+	TileSetAtlasSource.TRANSFORM_TRANSPOSE | TileSetAtlasSource.TRANSFORM_FLIP_H,
+	TileSetAtlasSource.TRANSFORM_FLIP_H | TileSetAtlasSource.TRANSFORM_FLIP_V,
+	TileSetAtlasSource.TRANSFORM_TRANSPOSE | TileSetAtlasSource.TRANSFORM_FLIP_V,
+]
 
 ## Chunk width and height, in tiles.
 const CHUNK_SIZE := 16
@@ -41,6 +52,14 @@ func cell_to_world(cell: Vector2i) -> Vector2:
 
 func cell_to_chunk(cell: Vector2i) -> Vector2i:
 	return Vector2i((Vector2(cell) / CHUNK_SIZE).floor())
+
+
+func tile_type_at_position(world_position: Vector2) -> int:
+	return generator.tile_type_at(world_to_cell(world_position))
+
+
+func tile_set() -> TileSet:
+	return _tile_set
 
 
 func loaded_chunk_count() -> int:
@@ -101,12 +120,46 @@ func _build_chunk(chunk: Vector2i) -> void:
 	layer.name = "Chunk_%d_%d" % [chunk.x, chunk.y]
 	layer.tile_set = _tile_set
 	layer.position = Vector2(chunk * CHUNK_SIZE * TerrainTiles.TILE_SIZE)
+	# Four more layers hold the ragged strips that blend each terrain over
+	# its neighbours, one layer per side.
+	var fringes: Array[TileMapLayer] = []
+	for side in 4:
+		var fringe := TileMapLayer.new()
+		fringe.tile_set = _tile_set
+		fringe.collision_enabled = false
+		layer.add_child(fringe)
+		fringes.append(fringe)
+
+	# Terrain for the chunk plus a one-tile border, looked up once.
 	var origin := chunk * CHUNK_SIZE
+	var span := CHUNK_SIZE + 2
+	var types: PackedInt32Array = []
+	types.resize(span * span)
+	for y in span:
+		for x in span:
+			types[y * span + x] = generator.tile_type_at(origin + Vector2i(x - 1, y - 1))
+
 	for y in CHUNK_SIZE:
 		for x in CHUNK_SIZE:
-			var cell := origin + Vector2i(x, y)
-			var atlas := Vector2i(generator.variant_at(cell), generator.tile_type_at(cell))
-			layer.set_cell(Vector2i(x, y), 0, atlas)
+			var here := Vector2i(x, y)
+			var type := types[(y + 1) * span + x + 1]
+			layer.set_cell(here, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(type, generator.variant_at(origin + here)))
+			var rank := TerrainTiles.priority(type)
+			var spills: Array[bool] = [false, false, false, false]
+			for side in 4:
+				var beside: Vector2i = SIDES[side]
+				var other := types[(y + 1 + beside.y) * span + x + 1 + beside.x]
+				if TerrainTiles.priority(other) > rank:
+					spills[side] = true
+					fringes[side].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(0, other), TURNS[side])
+			# A corner piece where only the diagonal neighbour spills over.
+			for side in 4:
+				if spills[side] or spills[(side + 1) % 4]:
+					continue
+				var diagonal: Vector2i = SIDES[side] + SIDES[(side + 1) % 4]
+				var other := types[(y + 1 + diagonal.y) * span + x + 1 + diagonal.x]
+				if TerrainTiles.priority(other) > rank:
+					fringes[side].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(1, other), TURNS[side])
 	add_child(layer)
 	_chunks[chunk] = layer
 	chunk_built.emit(chunk)

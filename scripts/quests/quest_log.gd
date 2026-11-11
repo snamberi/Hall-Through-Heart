@@ -47,7 +47,7 @@ func _physics_process(delta: float) -> void:
 	var world: World = _player.get_parent().get_node_or_null("World")
 	if world and world.generator:
 		var tile := world.generator.tile_type_at(world.world_to_cell(_player.global_position))
-		if not tile in discovered:
+		if not tile in discovered and not tile in TerrainTiles.INTERIOR and not _player.indoors:
 			discovered.append(tile)
 			if discovered.size() > 1:
 				var xp := DISCOVERY_XP * _player.leveling.level

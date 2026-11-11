@@ -68,6 +68,7 @@ var _busy := ""
 var _ghost_left := 0.0
 var _layers: Dictionary[String, AnimatedSprite2D] = {}
 var _aura_color := Color.TRANSPARENT
+var _water: Node2D
 
 static var _frames_cache: Dictionary = {}
 
@@ -78,6 +79,13 @@ func _ready() -> void:
 	sprite_frames = SheetAnimations.build(SHEET, FRAME_SIZE, ROWS)
 	animation_finished.connect(_on_animation_finished)
 	play("idle")
+
+	# The water that hides the lower body while swimming, drawn in front.
+	_water = Node2D.new()
+	_water.z_index = 1
+	_water.visible = false
+	_water.draw.connect(_draw_water)
+	add_child(_water)
 
 	var shader := Shader.new()
 	shader.code = LAYER_SHADER
@@ -100,9 +108,18 @@ func _process(delta: float) -> void:
 			sprite.frame = frame
 	if _aura_color.a > 0.0:
 		queue_redraw()
+	# Sink to the chest while swimming; the water line is drawn over the body.
+	if _player.swimming != _water.visible:
+		_water.visible = _player.swimming
+		position.y = -23.0 + (18.0 if _player.swimming else 0.0)
+		queue_redraw()
+	if _water.visible:
+		_water.queue_redraw()
 
 
 func _draw() -> void:
+	if _player.swimming:
+		return
 	if _aura_color.a <= 0.0:
 		return
 	# A soft pulsing glow on the ground under the feet.
@@ -111,6 +128,16 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, 24.0 + 3.0 * pulse, Color(_aura_color, 0.16 + 0.1 * pulse))
 	draw_arc(Vector2.ZERO, 24.0 + 3.0 * pulse, 0.0, TAU, 32, Color(_aura_color, 0.55), 1.5)
 	draw_set_transform(Vector2.ZERO)
+
+
+func _draw_water() -> void:
+	var deep: Color = TerrainTiles.COLORS[TerrainTiles.Type.DEEP_WATER]
+	var bob := sin(Time.get_ticks_msec() / 260.0)
+	_water.draw_rect(Rect2(-20.0, 6.0, 40.0, 26.0), deep)
+	_water.draw_set_transform(Vector2(0.0, 6.0), 0.0, Vector2(1.0, 0.35))
+	_water.draw_arc(Vector2.ZERO, 16.0 + bob * 2.0, 0.0, TAU, 24, Color("5a7f9a"), 2.0)
+	_water.draw_arc(Vector2.ZERO, 24.0 - bob * 2.0, 0.0, TAU, 24, Color(0.35, 0.5, 0.6, 0.5), 1.5)
+	_water.draw_set_transform(Vector2.ZERO)
 
 
 ## Redraws the visible equipment from what is worn.

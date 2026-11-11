@@ -623,31 +623,46 @@ def weapon_icon_parts(parts):
 
 
 # ----------------------------------------------------------------- tiles
-# Row order must match the Type enum in scripts/world/terrain_tiles.gd.
-# Each row: name, base, light, dark, accent.
+# Row order must match the Type enum in scripts/world/terrain_tiles.gd, so
+# only ever append. Each row: name, style, base, light, dark, accent.
+# Water rows are animated: columns 0-3 and 4-7 are the four frames of two
+# variants. Every other row has eight look-alike variants.
 TILES = [
-    ("deep_water", "141b2b", "1f2a40", "0e1320", "2b3a55"),
-    ("shallow_water", "23364a", "35506a", "1a2838", "4f7088"),
-    ("mud", "3d342c", "51463a", "2b2420", "62574a"),
-    ("ash", "4b4a4e", "5e5d66", "37363b", "d8d2c0"),
-    ("dead_grass", "4a4d32", "6a6c42", "373a27", "86875a"),
-    ("dark_grass", "26382c", "3a5540", "1a281f", "9c3b3b"),
-    ("bog", "2e3528", "46503a", "1c2219", "7a8a4a"),
-    ("rock", "3a3944", "55546a", "17161d", "6c6b82"),
+    ("deep_water", "water", "141b2b", "1f2a40", "0e1320", "33466a"),
+    ("shallow_water", "water", "23364a", "35506a", "1a2838", "5a7f9a"),
+    ("mud", "mud", "3d342c", "51463a", "2b2420", "62574a"),
+    ("ash", "ash", "4b4a4e", "5e5d66", "37363b", "d8d2c0"),
+    ("dead_grass", "grass", "4a4d32", "6a6c42", "373a27", "86875a"),
+    ("dark_grass", "grass", "26382c", "3a5540", "1a281f", "9c3b3b"),
+    ("bog", "bog", "2e3528", "46503a", "1c2219", "7a8a4a"),
+    ("rock", "rock", "3a3944", "55546a", "17161d", "6c6b82"),
+    ("snow", "snow", "c8d0d8", "e6ecf2", "9aa6b4", "ffffff"),
+    ("frostpine", "grass", "3d5a58", "5a7c78", "2a4040", "e6ecf2"),
+    ("salt", "cracked", "8c8a84", "a8a69e", "6a6862", "c8c6be"),
+    ("thorn", "grass", "4a4030", "665a40", "332b20", "8a2c37"),
+    ("crimson", "grass", "4a2830", "6a3a44", "321a20", "c0555a"),
+    ("fungal", "spots", "3a2c4a", "523e66", "281e34", "c05a8a"),
+    ("tar", "tar", "1c1a1e", "2e2a30", "100e12", "4a4450"),
+    ("sand", "sand", "8a7650", "a48e62", "6c5c3e", "c0aa7a"),
+    ("cinder", "cinder", "3a2a28", "503a36", "241a1a", "f08a2e"),
+    ("voidscar", "void", "1a1428", "2a2040", "0e0a18", "9a6cf0"),
+    ("plank", "plank", "6b4f36", "83634a", "4a3626", "523b28"),
+    ("wall", "rock", "2a2630", "3e3848", "0c0a10", "4a4458"),
+    ("cave_floor", "mud", "34323a", "45434c", "24222a", "55535e"),
 ]
 VARIANTS = 8
+WATER_FRAMES = 4
 
 
-def draw_tile(row, variant):
-    name, base, light, dark, accent = TILES[row]
+def draw_tile(row, variant, frame=0):
+    name, style, base, light, dark, accent = TILES[row]
     base, light, dark, accent = rgba(base), rgba(light), rgba(dark), rgba(accent)
     r = random.Random(row * 31 + variant)
     img = Image.new("RGBA", (N, N), base)
     d = ImageDraw.Draw(img)
 
     def put(x, y, c):
-        if 0 <= x < N and 0 <= y < N:
-            img.putpixel((x, y), c)
+        img.putpixel((int(x) % N, int(y) % N), c)
 
     def tuft(c_low, c_tip):
         x, y = r.randrange(2, N - 4), r.randrange(5, N - 1)
@@ -660,13 +675,17 @@ def draw_tile(row, variant):
         d.rectangle((x, y, x + 2, y + 1), fill=dark)
         put(x, y, light)
 
-    def puddle():
+    def puddle(rim=None):
         x, y = r.randrange(3, N - 12), r.randrange(3, N - 8)
         w, h = r.randrange(6, 10), r.randrange(3, 5)
         d.ellipse((x, y, x + w, y + h), fill=dark)
-        d.line((x + 2, y + 1, x + w - 3, y + 1), fill=light)
+        d.line((x + 2, y + 1, x + w - 3, y + 1), fill=rim or light)
 
-    if name == "rock":
+    def crack(colour):
+        x, y = r.randrange(4, N - 14), r.randrange(4, N - 10)
+        d.line((x, y, x + 4, y + 3, x + 6, y + 2, x + 10, y + 6), fill=colour)
+
+    if style == "rock":
         img.paste(dark, (0, 0, N, N))
         y = 1
         while y < N - 2:
@@ -682,48 +701,130 @@ def draw_tile(row, variant):
                 x += w
             y += h
         return img
+    if style == "plank":
+        for y in range(0, N, 11):
+            d.line((0, y, N, y), fill=dark)
+            d.line((0, y + 1, N, y + 1), fill=light)
+            seam = r.randrange(6, N - 6)
+            d.line((seam, y, seam, y + 10), fill=dark)
+            for _ in range(3):
+                put(r.randrange(N), y + r.randrange(3, 10), accent)
+        return img
 
     for _ in range(90):
         put(r.randrange(N), r.randrange(N), light if r.random() < 0.5 else dark)
 
-    if name in ("deep_water", "shallow_water"):
-        for _ in range(4):
-            x, y, w = r.randrange(2, N - 9), r.randrange(3, N - 3), r.randrange(4, 8)
-            d.line((x, y, x + w, y), fill=accent)
-            d.line((x + 2, y + 1, x + w + 1, y + 1), fill=dark)
-    elif name == "mud":
+    if style == "water":
+        # Wave crests drift sideways a few pixels each frame.
+        for _ in range(5):
+            x, y, w = r.randrange(0, N), r.randrange(3, N - 3), r.randrange(4, 9)
+            x += frame * 3 + (2 if frame % 2 else 0)
+            for k in range(w):
+                put(x + k, y + (1 if (k + frame) % 5 == 0 else 0), accent)
+                put(x + k + 2, y + 1, dark)
+    elif style == "mud":
         for _ in range(3):
             pebble()
         puddle()
-    elif name == "ash":
+    elif style == "ash":
         for _ in range(3):
             pebble()
-        x, y = r.randrange(6, N - 14), r.randrange(6, N - 10)
-        d.line((x, y, x + 4, y + 3, x + 6, y + 2, x + 10, y + 6), fill=dark)   # crack
-        if variant == 7:                                                       # a stray bone
+        crack(dark)
+        if variant == 7:
             x, y = r.randrange(6, N - 12), r.randrange(6, N - 8)
             d.line((x, y, x + 5, y + 2), fill=accent)
-            put(x - 1, y - 1, accent)
-            put(x + 6, y + 3, accent)
-    elif name == "dead_grass":
-        for _ in range(8):
-            tuft(dark, accent)
-    elif name == "dark_grass":
+    elif style == "grass":
         for _ in range(9):
             tuft(dark, light)
-        if variant == 7:                                                       # a small mushroom
+        if variant >= 6:
             x, y = r.randrange(6, N - 8), r.randrange(8, N - 6)
-            d.rectangle((x, y, x + 3, y + 1), fill=accent)
-            d.rectangle((x + 1, y + 2, x + 2, y + 3), fill=rgba("d8d2c0"))
-    elif name == "bog":
+            d.rectangle((x, y, x + 2, y + 1), fill=accent)
+            put(x + 1, y + 2, light)
+    elif style == "bog":
         puddle()
         puddle()
         for _ in range(3):
             x, y = r.randrange(3, N - 3), r.randrange(8, N - 2)
             d.line((x, y, x, y - 5), fill=dark)
             put(x, y - 6, accent)
-            put(x, y - 5, accent)
+    elif style == "snow":
+        for _ in range(5):
+            x, y = r.randrange(2, N - 8), r.randrange(3, N - 4)
+            d.line((x, y, x + r.randrange(3, 7), y), fill=accent)
+            d.line((x + 1, y + 1, x + 5, y + 1), fill=dark)
+        if variant >= 6:
+            pebble()
+    elif style == "cracked":
+        for _ in range(4):
+            crack(dark)
+        for _ in range(8):
+            put(r.randrange(N), r.randrange(N), accent)
+    elif style == "spots":
+        for _ in range(5):
+            x, y, w = r.randrange(2, N - 8), r.randrange(2, N - 6), r.randrange(3, 6)
+            d.ellipse((x, y, x + w, y + w - 1), fill=dark)
+        for _ in range(3):
+            x, y = r.randrange(4, N - 6), r.randrange(6, N - 4)
+            d.rectangle((x, y, x + 3, y + 1), fill=accent)
+            d.rectangle((x + 1, y + 2, x + 2, y + 3), fill=light)
+    elif style == "tar":
+        for _ in range(3):
+            puddle(accent)
+        for _ in range(4):
+            x, y = r.randrange(3, N - 4), r.randrange(3, N - 4)
+            d.ellipse((x, y, x + 2, y + 2), outline=accent)
+    elif style == "sand":
+        for _ in range(5):
+            x, y, w = r.randrange(0, N - 12), r.randrange(4, N - 3), r.randrange(8, 16)
+            d.line((x, y, x + w // 2, y - 1, x + w, y), fill=dark)
+            d.line((x + 1, y + 1, x + w - 1, y + 1), fill=light)
+        if variant >= 6:
+            d.line((r.randrange(8, 30), r.randrange(8, 30)) * 2, fill=accent)
+            pebble()
+    elif style == "cinder":
+        for _ in range(3):
+            crack(dark)
+        x, y = r.randrange(4, N - 14), r.randrange(4, N - 10)
+        d.line((x, y, x + 3, y + 3, x + 7, y + 2), fill=accent)
+        for _ in range(3):
+            pebble()
+    elif style == "void":
+        for _ in range(7):
+            put(r.randrange(N), r.randrange(N), accent)
+        crack(light)
+        x, y = r.randrange(6, N - 8), r.randrange(6, N - 8)
+        d.line((x - 2, y, x + 2, y), fill=accent)
+        d.line((x, y - 2, x, y + 2), fill=accent)
     return img
+
+
+def draw_fringes():
+    """Ragged borders: each terrain's texture cut to a rough strip along the
+    top edge (column 0) and a rough corner at the top right (column 1). The
+    game rotates these to blend one terrain over its neighbour."""
+    sheet = Image.new("RGBA", (2 * N, len(TILES) * N), (0, 0, 0, 0))
+    for row in range(len(TILES)):
+        tile = draw_tile(row, 0)
+        edge_colour = tuple(int(c * 0.62) for c in rgba(TILES[row][2])[:3]) + (255,)
+        r = random.Random(row * 7 + 3)
+        depth, depths = 9, []
+        for x in range(N):
+            depth = max(4, min(14, depth + r.choice((-2, -1, -1, 0, 0, 1, 1, 2))))
+            depths.append(depth)
+        # Ease the ends so strips meet neighbours of any depth without a step.
+        for x in range(6):
+            depths[x] = min(depths[x], 5 + x)
+            depths[N - 1 - x] = min(depths[N - 1 - x], 5 + x)
+        for x in range(N):
+            for y in range(depths[x]):
+                sheet.putpixel((x, row * N + y), tile.getpixel((x, y)) if y < depths[x] - 1 else edge_colour)
+        for y in range(N):
+            for x in range(N):
+                reach = 9 + r.choice((-1, 0, 0, 1))
+                dist = math.hypot(N - 1 - x, y)
+                if dist < reach:
+                    sheet.putpixel((N + x, row * N + y), tile.getpixel((x, y)) if dist < reach - 1.2 else edge_colour)
+    return sheet
 
 
 # ----------------------------------------------------------------- icons
@@ -807,6 +908,14 @@ ICONS += [
                 ("dark", "rect", (7, 8, 14, 8)), ("dark", "rect", (7, 11, 14, 11)), ("dark", "rect", (7, 14, 12, 14))]),
 ]
 
+# Icons 54-57: things the player builds and places.
+ICONS += [
+    ("table", [("wood", "rect", (3, 8, 18, 11)), ("wood", "rect", (4, 11, 6, 19)), ("wood", "rect", (15, 11, 17, 19)), ("plate", "rect", (6, 4, 11, 8))]),
+    ("chest", [("wood", "rect", (3, 9, 18, 18)), ("wood", "poly", [(3, 9), (5, 5), (16, 5), (18, 9)]), ("gold", "rect", (3, 11, 18, 12)), ("gold", "rect", (9, 10, 12, 14))]),
+    ("house", [("wood", "rect", (4, 10, 17, 19)), ("red", "poly", [(2, 11), (10.5, 3), (19, 11)]), ("dark", "rect", (9, 14, 12, 19))]),
+    ("bed", [("wood", "rect", (3, 8, 18, 18)), ("red", "rect", (4, 11, 17, 17)), ("bone", "rect", (5, 9, 10, 11))]),
+]
+
 # Things to gather in the world: 64px frames in one row. Pale parts are
 # tinted in game. Order: rock, ore flecks, tree, herb, fishing ripple.
 NODE = 64
@@ -827,6 +936,62 @@ NODES = [
     [("leaf", "poly", [(31, 56), (31, 40), (20, 30), (22, 26), (32, 34), (32, 22), (36, 22), (36, 34), (44, 26), (46, 30), (35, 42), (35, 56)]),
      ("leaf", "ellipse", (29, 16, 39, 26))],
     [("fleck", "ring", (14, 26, 50, 44), 2), ("fleck", "ring", (24, 31, 40, 39), 1)],
+]
+
+
+# Structures and furniture: 64px frames in one row of assets/sprites/props.png.
+# The order is the frame number used in scripts/world/prop.gd - only append.
+PROP_PALETTE = {
+    "pstone": ["a6a2b0", "7c7888", "56525e"],
+    "pdark": ["3a3642", "26232c", "14121a"],
+    "pwood": ["8a6a48", "6b4f36", "4a3626"],
+    "pgold": ["f0cf6a", "c09a3c", "866a26"],
+    "pfire": ["ffd86b", "f08a2e", "b8401e"],
+    "pvoid": ["c9a0f0", "8e5cc8", "5c3690"],
+    "pcloth": ["b3434a", "8a2c37", "5c1c28"],
+    "pbone": ["f2efe2", "cfcbb8", "9b9889"],
+    "pblack": ["0b0a12"] * 3,
+}
+PROPS = [
+    # 0 pillar
+    [("pstone", "rect", (24, 14, 40, 54)), ("pstone", "rect", (20, 8, 44, 15)), ("pstone", "rect", (20, 52, 44, 59)), ("pdark", "rect", (30, 16, 31, 51))],
+    # 1 broken wall
+    [("pstone", "poly", [(10, 58), (10, 34), (18, 30), (22, 38), (30, 26), (38, 32), (44, 24), (54, 36), (54, 58)]),
+     ("pdark", "rect", (12, 44, 52, 45)), ("pdark", "rect", (30, 34, 31, 57))],
+    # 2 chest, closed
+    [("pwood", "rect", (14, 30, 50, 54)), ("pwood", "poly", [(14, 30), (18, 22), (46, 22), (50, 30)]), ("pgold", "rect", (14, 36, 50, 38)),
+     ("pgold", "rect", (29, 33, 35, 42)), ("pdark", "rect", (31, 36, 33, 39))],
+    # 3 chest, open
+    [("pdark", "rect", (16, 26, 48, 36)), ("pwood", "poly", [(14, 26), (18, 12), (46, 12), (50, 26)]), ("pwood", "rect", (14, 34, 50, 54)),
+     ("pgold", "rect", (14, 34, 50, 36)), ("pgold", "ellipse", (22, 28, 30, 34)), ("pgold", "ellipse", (33, 27, 42, 34))],
+    # 4 altar with a flame: a place to rest
+    [("pstone", "poly", [(16, 58), (20, 44), (44, 44), (48, 58)]), ("pstone", "rect", (22, 36, 42, 45)), ("pdark", "rect", (24, 34, 40, 37)),
+     ("pfire", "poly", [(26, 35), (28, 24), (31, 30), (33, 16), (36, 28), (38, 22), (39, 35)])],
+    # 5 cave mouth
+    [("pstone", "poly", [(6, 58), (8, 34), (18, 20), (34, 14), (48, 20), (58, 36), (58, 58)]),
+     ("pblack", "poly", [(18, 58), (19, 40), (26, 30), (36, 28), (44, 34), (46, 58)])],
+    # 6 void portal
+    [("pvoid", "ring", (14, 8, 50, 58), 5), ("pblack", "ellipse", (19, 13, 45, 53)), ("pvoid", "ellipse", (29, 28, 35, 38)),
+     ("pvoid", "rect", (24, 20, 25, 21)), ("pvoid", "rect", (38, 42, 39, 43)), ("pvoid", "rect", (39, 24, 40, 25))],
+    # 7 ladder up and out
+    [("pwood", "rect", (22, 8, 25, 58)), ("pwood", "rect", (39, 8, 42, 58)), ("pwood", "rect", (22, 16, 42, 18)), ("pwood", "rect", (22, 28, 42, 30)),
+     ("pwood", "rect", (22, 40, 42, 42)), ("pwood", "rect", (22, 52, 42, 54))],
+    # 8 crafting table
+    [("pwood", "rect", (12, 30, 52, 38)), ("pwood", "rect", (14, 38, 18, 56)), ("pwood", "rect", (46, 38, 50, 56)), ("pstone", "rect", (18, 24, 28, 30)),
+     ("pstone", "line", (34, 28, 46, 20), 2), ("pwood", "line", (40, 30, 48, 24), 2)],
+    # 9 bed
+    [("pwood", "rect", (12, 26, 52, 54)), ("pcloth", "rect", (14, 34, 50, 52)), ("pbone", "rect", (16, 28, 34, 35)), ("pwood", "rect", (12, 22, 52, 27))],
+    # 10 doorway (the way out of a house)
+    [("pwood", "rect", (18, 12, 46, 58)), ("pdark", "rect", (22, 16, 42, 58)), ("pgold", "rect", (38, 36, 40, 38))],
+    # 11 campfire
+    [("pwood", "line", (16, 52, 46, 44), 4), ("pwood", "line", (18, 44, 48, 52), 4),
+     ("pfire", "poly", [(22, 46), (25, 32), (29, 40), (32, 22), (36, 38), (40, 30), (43, 46)])],
+    # 12 skull totem marking a lair
+    [("pwood", "rect", (30, 26, 34, 58)), ("pbone", "ellipse", (22, 8, 42, 28)), ("pblack", "ellipse", (25, 14, 30, 20)), ("pblack", "ellipse", (34, 14, 39, 20)),
+     ("pbone", "rect", (27, 26, 37, 30))],
+    # 13 house, seen from outside (uses most of the frame)
+    [("pwood", "rect", (6, 30, 58, 60)), ("pcloth", "poly", [(2, 32), (32, 6), (62, 32)]), ("pdark", "rect", (27, 42, 37, 60)),
+     ("pgold", "rect", (34, 50, 35, 51)), ("pdark", "rect", (11, 38, 20, 46)), ("pdark", "rect", (44, 38, 53, 46)), ("pwood", "rect", (6, 30, 58, 32))],
 ]
 
 
@@ -896,9 +1061,14 @@ def main():
         draw_layer_sheet(parts_by_group).save(os.path.join(ROOT, "sprites", "layers", name + ".png"))
     atlas = Image.new("RGBA", (VARIANTS * N, len(TILES) * N))
     for row in range(len(TILES)):
-        for variant in range(VARIANTS):
-            atlas.paste(draw_tile(row, variant), (variant * N, row * N))
+        for column in range(VARIANTS):
+            if TILES[row][1] == "water":
+                tile = draw_tile(row, column // WATER_FRAMES, column % WATER_FRAMES)
+            else:
+                tile = draw_tile(row, column)
+            atlas.paste(tile, (column * N, row * N))
     atlas.save(os.path.join(ROOT, "tiles", "terrain.png"))
+    draw_fringes().save(os.path.join(ROOT, "tiles", "fringes.png"))
 
     os.makedirs(os.path.join(ROOT, "icons"), exist_ok=True)
     rows = (len(ICONS) + ICON_COLUMNS - 1) // ICON_COLUMNS
@@ -914,6 +1084,12 @@ def main():
     for index, parts in enumerate(NODES):
         nodes.paste(draw_icon(parts, NODE), (index * NODE, 0))
     nodes.save(os.path.join(ROOT, "sprites", "nodes.png"))
+
+    ICON_PALETTE.update(PROP_PALETTE)
+    props = Image.new("RGBA", (len(PROPS) * NODE, NODE), (0, 0, 0, 0))
+    for index, parts in enumerate(PROPS):
+        props.paste(draw_icon(parts, NODE), (index * NODE, 0))
+    props.save(os.path.join(ROOT, "sprites", "props.png"))
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ extends CharacterBody2D
 signal died(enemy: Enemy)
 
 enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
-enum Rank { NORMAL, ELITE, CHAMPION }
+enum Rank { NORMAL, ELITE, CHAMPION, MINIBOSS }
 
 ## How each rank changes an enemy. "xp" 3.75 makes an Elite Husk worth 30.
 ## "modifiers" is how many random modifiers the rank rolls.
@@ -17,6 +17,7 @@ const RANK_DATA := {
 	Rank.NORMAL: {"id": "normal", "title": "", "health": 1.0, "damage": 1.0, "xp": 1.0, "size": 1.0, "tint": Color.WHITE, "modifiers": 0},
 	Rank.ELITE: {"id": "elite", "title": "Elite ", "health": 3.0, "damage": 1.4, "xp": 3.75, "size": 1.3, "tint": Color(1.0, 0.8, 0.55), "modifiers": 1},
 	Rank.CHAMPION: {"id": "champion", "title": "Champion ", "health": 6.0, "damage": 1.7, "xp": 9.0, "size": 1.5, "tint": Color(0.85, 0.65, 1.0), "modifiers": 2},
+	Rank.MINIBOSS: {"id": "miniboss", "title": "Ancient ", "health": 16.0, "damage": 2.0, "xp": 30.0, "size": 1.9, "tint": Color(1.0, 0.72, 0.6), "modifiers": 2},
 }
 ## Random modifiers for Elites and Champions. Each changes how the enemy
 ## fights, not just its numbers, and each adds REWARD_PER_MODIFIER to its XP.
@@ -63,6 +64,8 @@ var lunge_time := 0.22
 var is_fragment := false
 ## Ids from MODIFIERS. Rolled for Elites and Champions unless set beforehand.
 var modifiers: Array[String] = []
+## Mini-bosses guard a spot and walk back to it rather than chase forever.
+var lair_home := Vector2.INF
 ## Asks whoever spawned this enemy for a minion (the Summoner modifier).
 signal wants_minion(enemy: Enemy)
 
@@ -100,6 +103,8 @@ func configure(p_level: int, p_rank: Rank = Rank.NORMAL, p_id: String = "husk") 
 
 func _ready() -> void:
 	add_to_group("enemies")
+	if rank == Rank.MINIBOSS:
+		add_to_group("bosses")
 	_data = EnemyDB.ENEMIES[enemy_id]
 	_attack = _data["attack"]
 	_traits = _data["traits"].duplicate()
@@ -126,8 +131,8 @@ func _ready() -> void:
 	_visual.modulate = _tint
 	_animator.sheet = EnemyDB.sheet(enemy_id)
 	_animator.rebuild()
-	if _data.get("flying", false):
-		collision_mask = 0
+	# Walkers are stopped by walls and deep water; fliers by neither.
+	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION | TerrainTiles.WATER_COLLISION
 	_add_nameplate(rank_data, size)
 	health.died.connect(_on_died)
 	_pick_wander()
@@ -174,6 +179,12 @@ func _physics_process(delta: float) -> void:
 		State.CHASE:
 			if not has_target or distance > LEASH_RADIUS:
 				_pick_wander()
+			elif lair_home != Vector2.INF and global_position.distance_to(lair_home) > 520.0:
+				# Too far from the lair: give up the chase and heal on the way back.
+				_pick_wander()
+				_direction = global_position.direction_to(lair_home)
+				_state_time_left = 2.5
+				health.heal(health.max_health * 0.25)
 			elif _in_attack_range(distance):
 				_enter(State.WINDUP, windup_time)
 				velocity = Vector2.ZERO
@@ -508,6 +519,7 @@ func _on_died() -> void:
 	_statuses.clear()
 	_refresh_status_tint()
 	remove_from_group("enemies")
+	remove_from_group("bosses")
 	velocity = Vector2.ZERO
 	queue_redraw()
 	$Collision.set_deferred("disabled", true)
@@ -549,7 +561,7 @@ func _add_nameplate(rank_data: Dictionary, size: float) -> void:
 	label.text = "Lv %d %s%s%s" % [level, prefix, rank_data["title"], display_name]
 	label.add_theme_font_override("font", UITheme.get_theme().default_font)
 	label.add_theme_font_size_override("font_size", 13)
-	var plate_colors: Array[Color] = [Color(0.82, 0.8, 0.74), Color(1.0, 0.82, 0.4), Color(0.85, 0.6, 1.0)]
+	var plate_colors: Array[Color] = [Color(0.82, 0.8, 0.74), Color(1.0, 0.82, 0.4), Color(0.85, 0.6, 1.0), Color(1.0, 0.45, 0.4)]
 	label.add_theme_color_override("font_color", plate_colors[rank])
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)

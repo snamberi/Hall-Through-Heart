@@ -66,7 +66,8 @@ func _on_enemy_died(enemy: Enemy) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _world == null or _player.is_dead():
+	# Rooms off the map are stocked by whoever built them.
+	if _world == null or _player.is_dead() or _player.indoors:
 		return
 	_time_left -= delta
 	if _time_left > 0.0:
@@ -75,10 +76,14 @@ func _physics_process(delta: float) -> void:
 
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
-		if enemy.global_position.distance_to(_player.global_position) > despawn_distance:
+		# Lair guardians stay put; their structure removes them with its chunk.
+		if enemy.lair_home == Vector2.INF and enemy.global_position.distance_to(_player.global_position) > despawn_distance:
 			enemy.queue_free()
 
-	if alive_count() < max_alive:
+	# More things stir after dark.
+	var night: DayNight = get_parent().get_node_or_null("DayNight")
+	var limit := roundi(max_alive * (1.5 if night and night.is_night() else 1.0))
+	if alive_count() < limit:
 		_try_spawn()
 
 
@@ -89,8 +94,8 @@ func _try_spawn() -> void:
 	var cell := _world.world_to_cell(spawn_position)
 	if Vector2(cell).length() < safe_radius_tiles:
 		return
-	# Deep water and rock stay empty; fliers and swimmers pick from the rest.
-	if not _world.generator.is_walkable(cell):
+	# Nothing appears in water or inside rock.
+	if not _world.generator.is_dry_land(cell):
 		return
 	var level := maxi(_world.generator.enemy_level_at(cell) + randi_range(-1, 1), 1)
 	var rank := Enemy.Rank.NORMAL

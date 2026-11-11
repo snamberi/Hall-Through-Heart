@@ -9,6 +9,8 @@ const ENCHANT_SLOTS: Array[String] = ["main_hand", "off_hand", "helmet", "chest"
 
 ## Why a recipe cannot be made right now, or "".
 static func blocked_reason(player: Player, recipe: Dictionary) -> String:
+	if not recipe["id"] in RecipeDB.NO_TABLE and not player.near_crafting_table():
+		return "Stand next to a crafting table."
 	if player.professions.level(recipe["profession"]) < recipe["level"]:
 		return "Requires %s %d." % [Professions.NAMES[recipe["profession"]], recipe["level"]]
 	for item_id: String in recipe["inputs"]:

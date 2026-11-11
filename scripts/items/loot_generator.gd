@@ -71,9 +71,16 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 		if randf() < chance:
 			items.append(Item.create(entry["id"], randi_range(entry["count"][0], entry["count"][1])))
 
-	if randf() < table["equipment_chance"] * rank["equipment_chance"]:
-		var rarity := roll_rarity(magic_find, rank["rarity_bonus"] * bonus)
-		items.append(make_equipment(level, rarity, "", magic_find))
+	if info["rank"] == "miniboss":
+		items.append(Item.create("heart_shard"))
+	# Gear is what that kind of monster would carry, and rare from the
+	# rank and file; Elites and above drop it far more readily.
+	for entry: Array in table.get("gear", []):
+		if randf() < minf(entry[1] * rank["equipment_chance"], 1.0):
+			var base: String = entry[0]
+			var rarity := maxi(roll_rarity(magic_find, rank["rarity_bonus"] * bonus), ItemDB.ITEMS[base].get("min_rarity", 0))
+			items.append(make_equipment(level, rarity, base, magic_find))
+			break
 	return result
 
 

@@ -178,6 +178,9 @@ func _show_details() -> void:
 				lines.append("[color=#%s]Lv %d  %s[/color]" % [(UITheme.TEXT if professions.level("fishing") >= fish[1] else UITheme.DIM).to_html(false), fish[1], ItemDB.ITEMS[fish[0]]["name"]])
 	else:
 		lines.append("[color=#%s]Pick a recipe on the left.[/color]" % dim)
+		if not player.near_crafting_table():
+			lines.append("")
+			lines.append("[color=#%s]You are not next to a crafting table. Only the table itself can be made by hand.[/color]" % UITheme.BAD.to_html(false))
 		if _selected in ["blacksmithing", "enchanting", "salvaging"]:
 			lines.append("")
 			lines.append("[color=#%s]Upgrade, Enchant, and Salvage are buttons on the Inventory screen: select a piece of equipment there.[/color]" % dim)
