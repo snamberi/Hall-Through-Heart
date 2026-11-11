@@ -71,6 +71,7 @@ static func insert(player: Player, item: Item, gem: Item) -> String:
 		return "No such gem."
 	player.inventory.take(gem.id, 1)
 	item.sockets[free] = gem.id
+	Events.codex_event.emit("gems_socketed", 1)
 	player.equipment.changed.emit()
 	player.inventory.changed.emit()
 	return ""

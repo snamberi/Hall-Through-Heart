@@ -52,7 +52,8 @@ const RESOURCES := {
 	"fishing_spot": {"kind": "fish", "item": "minnow", "level": 1, "tier": 1, "tiles": [T.SHALLOW_WATER]},
 }
 ## What a fishing spot can give: [item, fishing level needed, weight].
-const FISH: Array[Array] = [["minnow", 1, 10.0], ["trout", 10, 6.0], ["eel", 25, 3.0]]
+const FISH: Array[Array] = [["minnow", 1, 10.0], ["perch", 5, 8.0], ["trout", 10, 6.0], ["pike", 15, 5.0], ["salmon", 20, 4.0], ["eel", 25, 3.0],
+	["catfish", 30, 3.0], ["glowfin", 40, 1.5], ["golden_carp", 55, 0.4]]
 ## Chance a catch is treasure instead of a fish.
 const TREASURE_CHANCE := 0.05
 ## How many resources each kind tries to place per chunk.

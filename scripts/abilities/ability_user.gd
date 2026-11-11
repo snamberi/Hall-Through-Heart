@@ -160,6 +160,7 @@ func use(id: String) -> bool:
 	_player.mana.spend(mana_cost(id))
 	cooldowns[id] = ability["cooldown"]
 	changed.emit()
+	Events.codex_event.emit("abilities_used", 1)
 	_run(id, ability)
 	return true
 

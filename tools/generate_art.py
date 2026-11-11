@@ -819,6 +819,89 @@ STORM_HARPY = _floater(
     wing_b=[("feather", [(16, 18), (6, 8), (0, 10), (3, 14), (0, 18), (5, 19), (2, 23), (9, 23), (15, 24)]), ("storm", [(6, 8), (0, 10), (5, 10)])],
     wing_f=[("feather", [(28, 18), (38, 8), (44, 10), (41, 14), (44, 18), (39, 19), (42, 23), (35, 23), (29, 24)]), ("storm", [(38, 8), (44, 10), (39, 10)])],
 )
+# Wildlife: animals to hunt for meat and hides.
+DEER = _quad(
+    body=[("hide", E(7, 18, 35, 31)), ("eye_white", E(10, 26, 30, 31.5)), ("eye_white", E(30, 26, 32, 28)), ("hide", [(8, 19), (34, 19), (32, 21), (10, 21)])],
+    head=[("hide", [(30, 22), (33, 13), (37, 11), (40, 13), (42, 17), (40, 19), (37, 18), (35, 23)]), ("void", R(37.6, 13.5, 38.8, 14.7)), ("void", R(41.2, 16.5, 42, 17.3)),
+          ("hide", [(33, 13), (31, 10), (34, 11)]), ("bone", [(35, 11), (33, 5), (31, 2), (33, 3), (34, 6), (36, 2), (36.5, 4), (36, 10)]),
+          ("bone", [(37.5, 11), (39, 5), (41, 2), (40.5, 5), (42.5, 4), (40.5, 7), (38.5, 11.5)])],
+    tail=[("eye_white", [(8, 20), (5, 18), (6, 22)])],
+    leg=lambda x: [("hide", R(x, 29, x + 2.4, 39.5)), ("void", R(x - 0.2, 39.5, x + 2.6, 41.4))],
+    head_pivot=(33, 20),
+)
+WILD_HARE = _quad(
+    body=[("hide", E(12, 27, 30, 38)), ("eye_white", E(14, 33, 26, 38.5))],
+    head=[("hide", E(26, 24, 35, 33)), ("hide", [(28, 26), (27, 15), (29.5, 14.5), (30.5, 25)]), ("hide", [(31, 26), (32, 16), (34, 16), (33.5, 26)]),
+          ("wound", [(28.6, 24), (28.3, 17), (29.2, 17), (29.6, 24)]), ("void", R(31.5, 27, 32.6, 28.1)), ("eye_white", R(34, 30, 35, 31))],
+    tail=[("eye_white", E(10, 28, 15, 33))],
+    leg=lambda x: [("hide", R(x + 2, 36, x + 4.5, 41)), ("eye_white", R(x + 1.5, 40, x + 5, 41.4))],
+    head_pivot=(28, 31),
+)
+WILD_PIG = _quad(
+    body=[("gill", E(6, 20, 34, 35)), ("wound", E(14, 23, 20, 27)), ("bristle", [(10, 21), (14, 18), (18, 21), (22, 18), (26, 21)])],
+    head=[("gill", E(26, 20, 40, 33)), ("gill", E(37, 24, 44, 31)), ("void", R(40, 26, 41, 27)), ("void", R(42.2, 26, 43.2, 27)), ("void", R(32, 23, 33.4, 24.4)),
+          ("gill", [(28, 21), (27, 15), (32, 20)]), ("tooth", [(38, 30), (40, 28), (39, 31)])],
+    tail=[("gill", [(7, 25), (3, 22), (4, 26), (2, 28), (6, 27)])],
+    leg=lambda x: [("gill", R(x, 32, x + 3.5, 40)), ("bristle", R(x, 39.5, x + 3.5, 41.4))],
+)
+MOUNTAIN_GOAT = _quad(
+    body=[("eye_white", E(7, 18, 34, 32)), ("frost_fur", [(10, 28), (14, 34), (18, 29), (22, 35), (26, 29), (30, 34), (32, 28)])],
+    head=[("eye_white", [(30, 22), (33, 14), (38, 13), (42, 17), (41, 22), (37, 22), (34, 25)]), ("void", R(37, 16, 38.2, 17.2)),
+          ("bristle", [(34, 15), (30, 9), (27, 10), (31, 12), (33, 17)]), ("bristle", [(37, 14), (36, 8), (34, 6), (35, 10)]),
+          ("eye_white", [(38, 22), (39, 28), (40, 22)])],
+    tail=[("eye_white", [(8, 20), (5, 18), (6, 22)])],
+    leg=lambda x: [("eye_white", R(x, 29, x + 3, 39.5)), ("bristle", R(x - 0.2, 39.5, x + 3.2, 41.4))],
+    head_pivot=(33, 21),
+)
+PHEASANT = _quad(
+    body=[("hide", E(12, 24, 32, 36)), ("ember", E(16, 26, 28, 33)), ("wing", [(14, 25), (26, 24), (30, 30), (16, 31)]), ("eye_white", R(18, 27, 19, 28)), ("eye_white", R(22, 28, 23, 29))],
+    head=[("glow_cyan", [(28, 26), (31, 17), (35, 16), (37, 19), (34, 21), (32, 27)]), ("blood", E(33.5, 17.5, 36.5, 21)), ("void", R(34.6, 18.4, 35.6, 19.4)),
+          ("guard", [(36.5, 19), (40, 20), (36.5, 21)]), ("eye_white", R(31, 22, 33, 23))],
+    tail=[("hide", [(13, 28), (0, 22), (1, 24), (12, 32)]), ("bristle", [(10, 27), (2, 23), (2.5, 24.5), (10, 29)])],
+    leg=lambda x: [("guard", R(x + 3, 35, x + 4, 41)), ("guard", R(x + 2, 40.6, x + 5.5, 41.4))],
+)
+DESERT_LIZARD = _quad(
+    body=[("sand_chitin", E(8, 30, 32, 38)), ("bristle", R(12, 31, 13, 37)), ("bristle", R(18, 30.5, 19, 38)), ("bristle", R(24, 31, 25, 37)), ("poison", E(14, 32, 16, 34))],
+    head=[("sand_chitin", [(29, 31), (37, 29), (42, 31), (41, 34), (36, 36), (30, 36)]), ("void", R(36, 30.6, 37.2, 31.8)), ("blood", [(41, 33), (45, 32), (45, 33.4), (41, 34)])],
+    tail=[("sand_chitin", [(10, 32), (0, 30), (-2, 31), (2, 33), (10, 36)])],
+    leg=lambda x: [("sand_chitin", [(x, 35), (x + 3, 35), (x + 4, 41), (x, 41)])],
+    head_pivot=(31, 34),
+)
+SNOW_FOX = _quad(
+    body=[("frost_fur", E(10, 24, 32, 34)), ("eye_white", E(14, 29, 28, 34))],
+    head=[("frost_fur", E(27, 20, 37, 30)), ("frost_fur", [(34, 25), (42, 27), (41, 29), (35, 30)]), ("void", R(41.3, 26.6, 42.3, 27.6)), ("void", R(33.5, 23, 34.7, 24.2)),
+          ("frost_fur", [(28, 22), (28, 15), (31.5, 20)]), ("frost_fur", [(32, 21), (34, 14), (35, 21)]), ("wound", [(29, 21), (29, 17), (30.6, 20.5)])],
+    tail=[("frost_fur", [(11, 27), (2, 20), (0, 24), (2, 29), (8, 31), (12, 31)]), ("eye_white", [(2, 20), (0, 24), (2, 23)])],
+    leg=lambda x: [("frost_fur", R(x + 0.5, 32, x + 3, 40)), ("troll", R(x + 0.3, 39.5, x + 3.2, 41.4))],
+    head_pivot=(29, 27),
+)
+SHORE_CRAB = _quad(
+    body=[("blood", E(10, 27, 34, 38)), ("wound", E(14, 30, 30, 37)), ("shine", R(15, 29, 18, 30)), ("eye_white", R(18, 25, 19.5, 28)), ("eye_white", R(25, 25, 26.5, 28)),
+          ("void", R(18.2, 25.2, 19.3, 26.3)), ("void", R(25.2, 25.2, 26.3, 26.3))],
+    head=[("blood", [(30, 30), (36, 24), (41, 24), (42, 28), (38, 31)]), ("blood", [(36, 24), (39, 20), (41, 21), (39, 25)]), ("blood", [(12, 31), (6, 25), (2, 26), (5, 30)])],
+    tail=[],
+    leg=lambda x: [("blood", [(x, 35), (x - 3, 39), (x - 2, 41), (x + 1.5, 37)])],
+    head_pivot=(32, 32),
+)
+MARSH_TOAD = {
+    "root": dict(parent=None, pivot=(22, 41), parts=[]),
+    "body": dict(parent="root", pivot=(22, 41), parts=[
+        ("lurker", E(9, 24, 35, 41)), ("lurker", R(9, 34, 35, 41)), ("eye_white", E(14, 33, 30, 41)), ("poison", E(13, 27, 17, 31)), ("poison", E(26, 29, 29, 32)),
+        ("lurker", E(13, 20, 20, 27)), ("lurker", E(24, 20, 31, 27)), ("glow_orange", E(14.5, 21.5, 18.5, 25.5)), ("glow_orange", E(25.5, 21.5, 29.5, 25.5)),
+        ("void", R(16, 22.5, 17, 24.5)), ("void", R(27, 22.5, 28, 24.5)), ("void", [(16, 30), (28, 30), (27, 31), (17, 31)])]),
+}
+WILDLIFE = {
+    "deer": (DEER, QUAD_ORDER, QUAD_ANIMATIONS),
+    "wild_hare": (WILD_HARE, QUAD_ORDER, QUAD_ANIMATIONS),
+    "wild_pig": (WILD_PIG, QUAD_ORDER, QUAD_ANIMATIONS),
+    "mountain_goat": (MOUNTAIN_GOAT, QUAD_ORDER, QUAD_ANIMATIONS),
+    "pheasant": (PHEASANT, QUAD_ORDER, QUAD_ANIMATIONS),
+    "desert_lizard": (DESERT_LIZARD, QUAD_ORDER, QUAD_ANIMATIONS),
+    "snow_fox": (SNOW_FOX, QUAD_ORDER, QUAD_ANIMATIONS),
+    "shore_crab": (SHORE_CRAB, QUAD_ORDER, QUAD_ANIMATIONS),
+    "marsh_toad": (MARSH_TOAD, ["body"], SLIME_ANIMATIONS),
+}
+
 # Mounts: drawn as quadrupeds, ridden by the player.
 HORSE = _quad(
     body=[("hide", E(5, 17, 37, 31)), ("hide", E(8, 19, 34, 29)), ("belt", [(15, 16), (25, 16), (26, 25), (14, 25)]), ("wrap", [(16, 17), (24, 17), (24.5, 23), (15.5, 23)]),
@@ -1417,6 +1500,8 @@ def main():
         draw_npc(changes, extras).save(os.path.join(ROOT, "sprites", "npc_%s.png" % name))
     os.makedirs(os.path.join(ROOT, "sprites", "enemies"), exist_ok=True)
     for name, (rig, order, animations) in MONSTERS.items():
+        draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
+    for name, (rig, order, animations) in WILDLIFE.items():
         draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
     os.makedirs(os.path.join(ROOT, "sprites", "mounts"), exist_ok=True)
     for name, (rig, order, animations) in MOUNTS.items():

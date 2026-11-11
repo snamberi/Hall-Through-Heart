@@ -20,7 +20,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "abilities", "title": "Abilities", "icon": 27, "action": ""},
 	{"id": "class", "title": "Class", "icon": 6, "action": ""},
 	{"id": "professions", "title": "Professions", "icon": 49, "action": "toggle_professions"},
-	{"id": "journal", "title": "Journal", "icon": 53, "action": "toggle_journal"},
+	{"id": "journal", "title": "Quests", "icon": 41, "action": "toggle_journal"},
 	{"id": "map", "title": "Map", "icon": 12, "action": "toggle_map"},
 	{"id": "codex", "title": "Codex", "icon": 53, "action": "toggle_codex"},
 	{"id": "pets", "title": "Pets", "icon": 36, "action": ""},
@@ -81,7 +81,7 @@ func setup(player: Player) -> void:
 	_add("abilities", AbilitiesMenu.new())
 	_add("class", ClassMenu.new())
 	_add("professions", ProfessionsMenu.new())
-	_add("journal", JournalMenu.new())
+	_add("journal", QuestBookMenu.new())
 	_add("shop", ShopMenu.new())
 	_add("quest_board", QuestBoardMenu.new())
 	_add("bounty_board", BountyBoardMenu.new())

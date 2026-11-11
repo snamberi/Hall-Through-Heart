@@ -100,6 +100,53 @@ const ENEMIES := {
 		"attack": {"kind": "slam", "range": 80.0, "windup": 0.9, "recover": 1.4, "radius": 120.0, "color": Color(1.0, 0.7, 0.4), "knockback": 520.0},
 		"traits": ["armored", "enrage"],
 	},
+	# --- wildlife: animals to hunt. "wild": "flee" runs when hurt; "defend"
+	# fights back once struck. They never come as Elites.
+	"deer": {
+		"active": "day", "wild": "flee", "name": "Deer", "health": 22.0, "damage": 0.0, "speed": 150.0, "xp": 4,
+		"radius": 13.0, "size": 1.05, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.FROSTPINE, T.THORN], "min_level": 1, "weight": 7.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"wild_hare": {
+		"active": "always", "wild": "flee", "name": "Wild Hare", "health": 8.0, "damage": 0.0, "speed": 175.0, "xp": 2,
+		"radius": 9.0, "size": 0.8, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.SNOW, T.MUD, T.SAND], "min_level": 1, "weight": 6.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"wild_pig": {
+		"active": "day", "wild": "defend", "name": "Wild Pig", "health": 30.0, "damage": 6.0, "speed": 120.0, "xp": 5,
+		"radius": 13.0, "size": 1.0, "tiles": [T.DARK_GRASS, T.BOG, T.MUD, T.DEAD_GRASS], "min_level": 1, "weight": 6.0,
+		"attack": {"kind": "lunge", "range": 100.0, "windup": 0.5, "speed": 520.0, "time": 0.24, "recover": 0.9}, "traits": [],
+	},
+	"mountain_goat": {
+		"active": "day", "wild": "defend", "name": "Mountain Goat", "health": 32.0, "damage": 7.0, "speed": 135.0, "xp": 6,
+		"radius": 13.0, "size": 1.0, "tiles": [T.ROCK, T.PEAK, T.SNOW, T.FROSTPINE], "min_level": 2, "weight": 7.0,
+		"attack": {"kind": "lunge", "range": 120.0, "windup": 0.55, "speed": 600.0, "time": 0.24, "recover": 1.0}, "traits": [],
+	},
+	"pheasant": {
+		"active": "day", "wild": "flee", "name": "Pheasant", "health": 9.0, "damage": 0.0, "speed": 160.0, "xp": 2,
+		"radius": 10.0, "size": 0.85, "tiles": [T.DEAD_GRASS, T.THORN, T.DARK_GRASS, T.CRIMSON], "min_level": 1, "weight": 5.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"desert_lizard": {
+		"active": "always", "wild": "flee", "name": "Desert Lizard", "health": 14.0, "damage": 0.0, "speed": 170.0, "xp": 3,
+		"radius": 11.0, "size": 0.95, "tiles": [T.SAND, T.SALT, T.CINDER], "min_level": 1, "weight": 7.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"snow_fox": {
+		"active": "always", "wild": "flee", "name": "Snow Fox", "health": 16.0, "damage": 0.0, "speed": 180.0, "xp": 4,
+		"radius": 11.0, "size": 0.95, "tiles": [T.SNOW, T.FROSTPINE, T.PEAK], "min_level": 1, "weight": 6.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"shore_crab": {
+		"active": "always", "wild": "defend", "name": "Shore Crab", "health": 20.0, "damage": 5.0, "speed": 90.0, "xp": 3,
+		"radius": 12.0, "size": 0.9, "tiles": [T.SAND, T.MUD, T.SALT], "min_level": 1, "weight": 4.0,
+		"attack": {"kind": "lunge", "range": 70.0, "windup": 0.45, "speed": 380.0, "time": 0.2, "recover": 0.8}, "traits": ["armored"],
+	},
+	"marsh_toad": {
+		"active": "always", "wild": "flee", "name": "Marsh Toad", "health": 14.0, "damage": 0.0, "speed": 95.0, "xp": 3,
+		"radius": 12.0, "size": 0.85, "tiles": [T.BOG, T.FUNGAL, T.MUD, T.TAR], "min_level": 1, "weight": 6.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
 	# --- biome families
 	"frost_wolf": {
 		"active": "always", "name": "Frost Wolf", "health": 26.0, "damage": 10.0, "speed": 175.0, "xp": 11,
@@ -189,11 +236,13 @@ static func sheet(id: String) -> Texture2D:
 
 ## Picks which enemy spawns on a tile at an area level, by weight, among
 ## those about at this time of day. Returns "" if nothing fits.
-static func pick(tile: int, area_level: int, night: bool = true) -> String:
+static func pick(tile: int, area_level: int, night: bool = true, wild_ok: bool = true) -> String:
 	var total := 0.0
 	var options: Array[String] = []
 	for id: String in ENEMIES:
 		var data: Dictionary = ENEMIES[id]
+		if not wild_ok and data.has("wild"):
+			continue
 		var active: String = data.get("active", "night")
 		if active != "always" and (active == "night") != night:
 			continue

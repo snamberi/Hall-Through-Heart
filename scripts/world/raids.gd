@@ -92,7 +92,7 @@ func _start_wave() -> void:
 		var angle := randf() * TAU
 		var spot := _world.world_to_cell(home + Vector2.from_angle(angle) * randf_range(560.0, 700.0))
 		spot = _world.generator.find_walkable_near(spot, 6)
-		var id := EnemyDB.pick(_world.generator.tile_type_at(spot), level, true)
+		var id := EnemyDB.pick(_world.generator.tile_type_at(spot), level, true, false)
 		if id == "":
 			id = "husk"
 		var rank := Enemy.Rank.ELITE if randf() < 0.1 * wave else Enemy.Rank.NORMAL
