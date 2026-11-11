@@ -82,7 +82,7 @@ func _physics_process(delta: float) -> void:
 
 	# More things stir after dark.
 	var night: DayNight = get_parent().get_node_or_null("DayNight")
-	var limit := roundi(max_alive * (1.5 if night and night.is_night() else 0.6))
+	var limit := roundi(max_alive * (1.5 if night and night.is_night() else 0.6) * (1.8 if DayNight.blood_moon else 1.0))
 	if alive_count() < limit:
 		_try_spawn()
 
@@ -100,7 +100,7 @@ func _try_spawn() -> void:
 	var level := maxi(_world.generator.enemy_level_at(cell) + randi_range(-1, 1), 1)
 	var rank := Enemy.Rank.NORMAL
 	var roll := randf()
-	var elites: float = Difficulty.value("elites")
+	var elites: float = Difficulty.value("elites") * (3.0 if DayNight.blood_moon else 1.0)
 	if roll < champion_chance * elites and _world.generator.enemy_level_at(cell) >= champion_min_area_level:
 		rank = Enemy.Rank.CHAMPION
 	elif roll < (champion_chance + elite_chance) * elites:

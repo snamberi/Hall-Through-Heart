@@ -93,6 +93,11 @@ func _build(center: Vector2i) -> Array:
 	add.call(fire)
 	add.call(Npc.create("merchant", _at(center + Vector2i(-3, -2), Vector2(0, 16))))
 	add.call(Npc.create("warden", _at(center + Vector2i(-3, 3))))
+	var board := Prop.create_decor(Prop.Decor.SIGNPOST, _at(center + Vector2i(-5, 3)), 6.0, "Read the bounty board", func(_player: Player) -> void:
+		Events.screen_requested.emit("bounty_board")
+	)
+	board.sprite().modulate = Color(1.0, 0.8, 0.7)
+	add.call(board)
 
 	# Lanterns along the roads.
 	for distance in [4, 9, 13]:

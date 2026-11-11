@@ -65,6 +65,10 @@ func _ready() -> void:
 		if problem != "" and problem != "Nothing of yours within reach.":
 			Events.announcement.emit("", problem)
 	)
+	var bounties := Bounties.new()
+	bounties.name = "Bounties"
+	add_child(bounties)
+	bounties.setup(_world, _player, _spawner)
 	$Villages.setup(_world)
 	$Exploration.setup(_player, _world)
 	_resources.setup(_world)

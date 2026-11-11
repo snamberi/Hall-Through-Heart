@@ -318,6 +318,8 @@ const ITEMS := {
 	"trout": {"name": "Trout", "icon": 45, "tint": Color("e0a080"), "material_rarity": 1, "text": "Fresh from the black water. Best cooked."},
 	"eel": {"name": "Eel", "icon": 45, "tint": Color("708090"), "material_rarity": 2, "text": "Fresh from the black water. Best cooked."},
 	"enchanted_dust": {"name": "Enchanted Dust", "icon": 52, "tint": Color("ffffff"), "material_rarity": 1, "text": "What is left when magic gear is broken down."},
+	"boss_trophy": {"name": "Boss Trophy", "icon": 12, "tint": Color("ff6a5a"), "material_rarity": 4, "value": 500, "text": "Proof that a great foe has fallen. Merchants pay well for it."},
+	"dungeon_key": {"name": "Dungeon Key", "icon": 17, "tint": Color("c0a060"), "material_rarity": 1, "value": 0, "text": "Opens one locked door in the dungeon where it was found."},
 	"gold_coins": {"name": "Gold", "icon": 17, "material_rarity": 0, "currency": true, "text": "Coin of a dead kingdom. Still spends."},
 	"hound_pelt": {"name": "Hound Pelt", "icon": 13, "tint": Color("8a5a4a"), "material_rarity": 0, "text": "Mangy, but it will cure."},
 	"slime_gel": {"name": "Slime Gel", "icon": 16, "tint": Color("b8f08a"), "material_rarity": 0, "text": "It never quite stops moving."},
@@ -494,6 +496,7 @@ const RANK_LOOT := {
 	"elite": {"gold": 4.0, "materials": 2.0, "equipment_chance": 10.0, "rarity_bonus": 1.5},
 	"champion": {"gold": 10.0, "materials": 3.0, "equipment_chance": 100.0, "rarity_bonus": 4.0},
 	"miniboss": {"gold": 30.0, "materials": 4.0, "equipment_chance": 100.0, "rarity_bonus": 8.0},
+	"boss": {"gold": 60.0, "materials": 6.0, "equipment_chance": 100.0, "rarity_bonus": 14.0},
 }
 
 static var _icon_cache: Dictionary = {}

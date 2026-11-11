@@ -9,7 +9,7 @@ extends CharacterBody2D
 signal died(enemy: Enemy)
 
 enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
-enum Rank { NORMAL, ELITE, CHAMPION, MINIBOSS }
+enum Rank { NORMAL, ELITE, CHAMPION, MINIBOSS, BOSS }
 
 ## How each rank changes an enemy. "xp" 3.75 makes an Elite Husk worth 30.
 ## "modifiers" is how many random modifiers the rank rolls.
@@ -18,6 +18,7 @@ const RANK_DATA := {
 	Rank.ELITE: {"id": "elite", "title": "Elite ", "health": 3.0, "damage": 1.4, "xp": 3.75, "size": 1.3, "tint": Color(1.0, 0.8, 0.55), "modifiers": 1},
 	Rank.CHAMPION: {"id": "champion", "title": "Champion ", "health": 6.0, "damage": 1.7, "xp": 9.0, "size": 1.5, "tint": Color(0.85, 0.65, 1.0), "modifiers": 2},
 	Rank.MINIBOSS: {"id": "miniboss", "title": "Ancient ", "health": 16.0, "damage": 2.0, "xp": 30.0, "size": 1.9, "tint": Color(1.0, 0.72, 0.6), "modifiers": 2},
+	Rank.BOSS: {"id": "boss", "title": "", "health": 56.0, "damage": 2.3, "xp": 120.0, "size": 1.0, "tint": Color.WHITE, "modifiers": 0},
 }
 ## Random modifiers for Elites and Champions. Each changes how the enemy
 ## fights, not just its numbers, and each adds REWARD_PER_MODIFIER to its XP.
@@ -53,7 +54,7 @@ const THORNS_SHARE := 0.15
 const EVADE_CHANCE := 0.22
 const REWARD_PER_MODIFIER := 0.25
 ## How much of a blow's shove each rank takes.
-const POISE: Array[float] = [0.6, 0.35, 0.2, 0.08]
+const POISE: Array[float] = [0.6, 0.35, 0.2, 0.08, 0.0]
 const FROZEN_AURA_RADIUS := 170.0
 const SUMMON_SECONDS := 8.0
 const SUMMON_LIMIT := 3
@@ -82,6 +83,11 @@ var is_fragment := false
 var modifiers: Array[String] = []
 ## Mini-bosses guard a spot and walk back to it rather than chase forever.
 var lair_home := Vector2.INF
+## Set before adding to the tree to make this a world boss (BossDB id).
+var boss_id := ""
+## A name of its own (bounty marks), shown instead of its kind's.
+var custom_name := ""
+var brain: BossBrain
 ## Asks whoever spawned this enemy for a minion (the Summoner modifier).
 signal wants_minion(enemy: Enemy)
 
@@ -133,12 +139,18 @@ func configure(p_level: int, p_rank: Rank = Rank.NORMAL, p_id: String = "husk") 
 
 func _ready() -> void:
 	add_to_group("enemies")
-	if rank == Rank.MINIBOSS:
+	if boss_id != "":
+		rank = Rank.BOSS
+		brain = BossBrain.new(self, boss_id)
+		enemy_id = BossDB.BOSSES[boss_id]["monster"]
+	if rank >= Rank.MINIBOSS:
 		add_to_group("bosses")
 	_data = EnemyDB.ENEMIES[enemy_id]
 	_attack = _data["attack"]
-	_traits = _data["traits"].duplicate()
-	display_name = _data["name"]
+	_traits = _data["traits"].duplicate() if boss_id == "" else []
+	display_name = _data["name"] if boss_id == "" else BossDB.BOSSES[boss_id]["name"]
+	if custom_name != "":
+		display_name = custom_name
 	var rolls: int = RANK_DATA[rank]["modifiers"]
 	if modifiers.is_empty() and rolls > 0 and not is_fragment:
 		var pool: Array = MODIFIERS.keys()
@@ -152,6 +164,8 @@ func _ready() -> void:
 	var rank_data: Dictionary = RANK_DATA[rank]
 	var giant := "giant" in modifiers
 	var size: float = rank_data["size"] * _data["size"] * (0.62 if is_fragment else 1.0) * (1.3 if giant else 1.0)
+	if boss_id != "":
+		size = BossDB.BOSSES[boss_id]["size"]
 	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0) * Difficulty.value("health") * (1.6 if giant else 1.0)
 	health.current = health.max_health
 	_damage = _data["damage"] * rank_data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1)) * (0.6 if is_fragment else 1.0)
@@ -161,7 +175,10 @@ func _ready() -> void:
 	if "shielded" in modifiers:
 		shield_max = health.max_health * SHIELD_SHARE
 		shield = shield_max
-	_tint = rank_data["tint"]
+	_tint = rank_data["tint"] if boss_id == "" else BossDB.BOSSES[boss_id]["tint"]
+	if boss_id != "":
+		health.max_health *= BossDB.BOSSES[boss_id]["health"]
+		health.current = health.max_health
 	body_radius = _data["radius"] * size
 	_visual.scale = Vector2(size, size)
 	_visual.modulate = _tint
@@ -178,7 +195,7 @@ func _ready() -> void:
 ## Experience this enemy is worth at its level and rank.
 func xp_value() -> int:
 	var value: float = _data["xp"] * RANK_DATA[rank]["xp"] * pow(level, XP_LEVEL_EXPONENT) * (1.0 + REWARD_PER_MODIFIER * modifiers.size())
-	return maxi(roundi(value * (0.3 if is_fragment else 1.0) * Difficulty.value("xp")), 1)
+	return maxi(roundi(value * (0.3 if is_fragment else 1.0) * Difficulty.value("xp") * (1.5 if DayNight.blood_moon else 1.0)), 1)
 
 
 func has_trait(id: String) -> bool:
@@ -207,6 +224,12 @@ func _physics_process(delta: float) -> void:
 		health.heal(health.max_health * 0.04 * delta)
 	if not modifiers.is_empty():
 		_update_modifiers(delta)
+	if brain and state != State.STAGGER:
+		brain.physics(delta)
+		if absf(velocity.x) > 1.0:
+			_visual.scale.x = absf(_visual.scale.x) * signf(velocity.x)
+		move_and_slide()
+		return
 	var has_target := target != null and not target.is_dead()
 	var to_target := target.global_position - global_position if has_target else Vector2.ZERO
 	var distance := to_target.length()
@@ -284,6 +307,9 @@ func _draw() -> void:
 			if modifiers[index] == "frozen_aura":
 				draw_arc(Vector2.ZERO, FROZEN_AURA_RADIUS, 0.0, TAU, 48, Color(ring, 0.25), 1.5)
 			draw_set_transform(Vector2.ZERO)
+	if brain and state != State.DEAD:
+		brain.draw()
+		return
 	# The ground marker for an area attack, filling in as the wind-up runs out.
 	if state != State.WINDUP or not is_area_attack():
 		return
@@ -381,7 +407,7 @@ func apply_status(id: String, duration: float, power: float, weapon_type: String
 func stun(seconds: float) -> void:
 	if state == State.DEAD:
 		return
-	_enter(State.STAGGER, seconds * (0.4 if rank == Rank.MINIBOSS else 1.0))
+	_enter(State.STAGGER, seconds * (0.4 if rank >= Rank.MINIBOSS else 1.0))
 	velocity = Vector2.ZERO
 	_visual.modulate = Color(0.7, 0.9, 1.3)
 	var tween := create_tween()
@@ -697,7 +723,7 @@ func _add_nameplate(rank_data: Dictionary, size: float) -> void:
 	label.text = "Lv %d %s%s%s" % [level, prefix, rank_data["title"], display_name]
 	label.add_theme_font_override("font", UITheme.get_theme().default_font)
 	label.add_theme_font_size_override("font_size", 13)
-	var plate_colors: Array[Color] = [Color(0.82, 0.8, 0.74), Color(1.0, 0.82, 0.4), Color(0.85, 0.6, 1.0), Color(1.0, 0.45, 0.4)]
+	var plate_colors: Array[Color] = [Color(0.82, 0.8, 0.74), Color(1.0, 0.82, 0.4), Color(0.85, 0.6, 1.0), Color(1.0, 0.45, 0.4), Color(1.0, 0.3, 0.25)]
 	label.add_theme_color_override("font_color", plate_colors[rank])
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)

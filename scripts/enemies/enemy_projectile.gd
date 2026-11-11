@@ -17,7 +17,7 @@ var _flying := false
 var _travelled := 0.0
 
 
-static func fire(from: Enemy, target: Player, attack: Dictionary, damage: float) -> void:
+static func fire(from: Enemy, target: Player, attack: Dictionary, damage: float, direction: Vector2 = Vector2.ZERO) -> void:
 	var shot := EnemyProjectile.new()
 	shot._target = target
 	shot._owner_enemy = from
@@ -26,7 +26,7 @@ static func fire(from: Enemy, target: Player, attack: Dictionary, damage: float)
 	shot._level = from.level
 	shot._status = attack.get("status", {})
 	shot.position = from.global_position + Vector2(0, -16)
-	shot._direction = shot.position.direction_to(target.global_position + Vector2(0, -14))
+	shot._direction = direction.normalized() if direction != Vector2.ZERO else shot.position.direction_to(target.global_position + Vector2(0, -14))
 	shot.rotation = shot._direction.angle()
 	shot.z_index = 30
 	var sprite := Sprite2D.new()

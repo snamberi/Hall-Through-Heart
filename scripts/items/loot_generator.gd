@@ -67,7 +67,7 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 	var level: int = info["level"]
 
 	# Each modifier on an Elite or Champion sweetens what it drops.
-	var bonus: float = (1.0 + Enemy.REWARD_PER_MODIFIER * info.get("modifiers", 0)) * float(Difficulty.value("loot"))
+	var bonus: float = (1.0 + Enemy.REWARD_PER_MODIFIER * info.get("modifiers", 0)) * float(Difficulty.value("loot")) * (2.0 if DayNight.blood_moon else 1.0)
 	var gold: float = randf_range(table["gold"][0], table["gold"][1]) * pow(level, 0.9) * rank["gold"] * bonus
 	result["gold"] = maxi(roundi(gold), 1)
 

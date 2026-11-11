@@ -9,9 +9,9 @@ extends Node2D
 
 const T := TerrainTiles.Type
 ## Chance per chunk of each structure, checked in this order.
-const CHANCES: Array[Array] = [["ruin", 0.07], ["shrine", 0.03], ["cave", 0.035], ["lair", 0.03], ["portal", 0.02]]
+const CHANCES: Array[Array] = [["ruin", 0.07], ["shrine", 0.03], ["cave", 0.035], ["lair", 0.03], ["portal", 0.02], ["dungeon", 0.014], ["boss", 0.009]]
 ## Lairs and portals only appear where the area is at least this level.
-const MIN_LEVEL := {"lair": 3, "portal": 4}
+const MIN_LEVEL := {"lair": 3, "portal": 4, "dungeon": 4, "boss": 6}
 ## Nothing but the temple within this many tiles of the origin.
 const CLEAR_RADIUS := 26.0
 ## How far a structure's grounds reach, in tiles: nothing grows inside.
@@ -23,6 +23,8 @@ const LAIR_BOSSES := {T.ASH: "crag_golem", T.CINDER: "crag_golem", T.SALT: "crag
 
 ## Keys of structures already used up, e.g. "lair:12,-3".
 var used: Dictionary = {}
+## World boss arena key -> the day its boss was last beaten.
+var boss_days: Dictionary = {}
 ## What is still inside each structure chest: key -> [saved items].
 var chests: Dictionary = {}
 
@@ -50,7 +52,7 @@ func setup(world: World, player: Player, spawner: EnemySpawner, loot: Node2D, in
 
 
 func save_data() -> Dictionary:
-	return {"used": used.keys(), "chests": chests.duplicate(true)}
+	return {"used": used.keys(), "chests": chests.duplicate(true), "boss_days": boss_days.duplicate()}
 
 
 func load_data(data: Dictionary) -> void:
@@ -59,6 +61,8 @@ func load_data(data: Dictionary) -> void:
 		used[str(key)] = true
 	var saved: Variant = data.get("chests", {})
 	chests = saved if saved is Dictionary else {}
+	var days: Variant = data.get("boss_days", {})
+	boss_days = days if days is Dictionary else {}
 
 
 ## What a chest holds: a few materials and gold, sometimes a potion, and gear
@@ -337,6 +341,79 @@ func _build_portal(cell: Vector2i, key: String, level: int, random: RandomNumber
 	tween.tween_property(portal.sprite(), "scale", Vector2(1.08, 1.08), 0.8)
 	tween.tween_property(portal.sprite(), "scale", Vector2(0.95, 0.95), 0.8)
 	placed.append(portal)
+
+
+## A world boss's arena: a paved ring of braziers and banners. The boss
+## waits in the middle, and comes back some days after it is beaten.
+func _build_boss(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	var boss_id := BossDB.for_tile(_world.generator.tile_type_at(cell))
+	var data: Dictionary = BossDB.BOSSES[boss_id]
+	_floor(placed, cell, 5)
+	for index in 10:
+		var spot := cell + Vector2i(Vector2.from_angle(TAU * index / 10.0) * 6.0)
+		if index % 2 == 0:
+			_decor(placed, Prop.Decor.BRAZIER, spot, 10.0, true)
+		else:
+			_decor(placed, Prop.Decor.OBELISK, spot, 10.0)
+	_decor(placed, Prop.Decor.BANNER, cell + Vector2i(-2, -6), 4.0)
+	_decor(placed, Prop.Decor.BANNER, cell + Vector2i(2, -6), 4.0)
+	for i in 4:
+		_decor(placed, Prop.Decor.BONES, cell + Vector2i(random.randi_range(-4, 4), random.randi_range(-4, 4)))
+	var day: int = (get_parent().get_node("DayNight") as DayNight).day
+	var beaten: int = int(boss_days.get(key, -999))
+	var sign := Prop.create_decor(Prop.Decor.SIGNPOST, _at(cell + Vector2i(0, 7)), 0.0, "%s's arena" % data["name"] if day - beaten >= BossDB.RESPAWN_DAYS else "%s returns in %d days" % [data["name"], BossDB.RESPAWN_DAYS - (day - beaten)])
+	placed.append(sign)
+	if day - beaten < BossDB.RESPAWN_DAYS:
+		# Treasure left behind is still waiting.
+		var left_key := "%s:%d" % [key, beaten]
+		if chests.has(left_key) and not (chests[left_key] as Array).is_empty():
+			placed.append(_chest(cell, left_key, level, 3.0))
+		return
+	var boss: Enemy = _spawner.enemy_scene.instantiate()
+	boss.boss_id = boss_id
+	boss.position = _at(cell)
+	boss.target = _player
+	boss.configure(level + 3, Enemy.Rank.BOSS, data["monster"])
+	boss.lair_home = _at(cell)
+	boss.wants_minion.connect(func(from: Enemy) -> void:
+		_spawner.spawn_at(from.global_position + Vector2.from_angle(randf() * TAU) * 70.0, from.level, Enemy.Rank.NORMAL, from.enemy_id)
+	)
+	_spawner.add_child(boss)
+	placed.append(boss)
+	boss.died.connect(func(_enemy: Enemy) -> void:
+		var now: int = (get_parent().get_node("DayNight") as DayNight).day
+		boss_days[key] = now
+		var chest_key := "%s:%d" % [key, now]
+		var chest := _chest(cell, chest_key, level, 3.0, BossDB.drops(boss_id, level + 3))
+		add_child(chest)
+		placed.append(chest)
+		LightPillar.spawn(get_parent(), _at(cell), data["color"])
+		Events.announcement.emit("%s HAS FALLEN" % (data["name"] as String).to_upper(), "Its treasure lies in the arena")
+		Events.boss_defeated.emit(boss_id)
+		SaveGame.request_save()
+	)
+
+
+## A crypt's entrance: steps down into a dungeon of locked rooms.
+func _build_dungeon(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	var dungeon_seed := random.randi()
+	var boss_id := BossDB.for_tile(_world.generator.tile_type_at(cell))
+	_floor(placed, cell, 3)
+	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(-2, -1), 10.0)
+	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(2, -1), 10.0)
+	_decor(placed, Prop.Decor.STATUE, cell + Vector2i(-3, 1), 12.0)
+	_decor(placed, Prop.Decor.STATUE, cell + Vector2i(3, 1), 12.0)
+	_decor(placed, Prop.Decor.BRAZIER, cell + Vector2i(-1, 2), 8.0, true)
+	_decor(placed, Prop.Decor.BRAZIER, cell + Vector2i(1, 2), 8.0, true)
+	var cleared := used.has(key + ":cleared")
+	var entrance := Prop.create(Prop.Art.CAVE, _at(cell), 0.0, "Descend into the crypt" + ("  (cleared)" if cleared else ""), func(_player: Player) -> void:
+		_instances.enter_dungeon(dungeon_seed, level + 1, boss_id, func() -> void:
+			used[key + ":cleared"] = true
+			SaveGame.request_save()
+		)
+	)
+	entrance.sprite().modulate = Color(0.7, 0.65, 0.8)
+	placed.append(entrance)
 
 
 ## A chest whose contents are rolled the first time it is opened (or given

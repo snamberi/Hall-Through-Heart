@@ -9,6 +9,7 @@ const ZOOMS: Array[float] = [1.0, 2.0, 3.0, 5.0, 8.0, 12.0]
 const ICONS := {
 	"village": [Color("f0cf6a"), "Village"], "ruin": [Color("c8c4b8"), "Ruin"], "shrine": [Color("c08cff"), "Shrine"],
 	"cave": [Color("8a8794"), "Cave"], "lair": [Color("e05a5a"), "Lair"], "portal": [Color("9a6cf0"), "Void portal"],
+	"boss": [Color("ff4d4d"), "World boss"], "dungeon": [Color("b0a0d0"), "Crypt"], "bounty": [Color("ff8a3a"), "Bounty target"],
 	"temple": [Color("ffe8a0"), "The Sanctuary"], "home": [Color("8fd66a"), "Home"], "checkpoint": [Color("ffb060"), "Resting place"],
 }
 
@@ -186,6 +187,10 @@ func _collect_icons(origin: Vector2i, cells: Vector2i, offset: Vector2, scale: f
 				_icons.append([to_view.call(center), "village"])
 	if _exploration.is_tile_seen(Vector2i.ZERO):
 		_icons.append([to_view.call(Vector2i.ZERO), "temple"])
+	var bounties: Bounties = player.get_parent().get_node_or_null("Bounties")
+	if bounties:
+		for bounty: Dictionary in bounties.active:
+			_icons.append([to_view.call(bounties.cell_of(bounty)), "bounty"])
 	var buildings: Buildings = player.get_parent().get_node("Buildings")
 	if not buildings.home.is_empty():
 		_icons.append([to_view.call(_world.world_to_cell(Vector2(buildings.home["position"][0], buildings.home["position"][1]))), "home"])
@@ -212,6 +217,17 @@ func _draw_icon(at: Vector2, kind: String) -> void:
 			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-8, 5), at + Vector2(0, -7), at + Vector2(8, 5)]), dark)
 			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-6, 4), at + Vector2(0, -5), at + Vector2(6, 4)]), color)
 			_view.draw_rect(Rect2(at + Vector2(-2, 0), Vector2(4, 4)), dark)
+		"boss":
+			_view.draw_circle(at, 8.0, dark)
+			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-6, 3), at + Vector2(-6, -5), at + Vector2(-3, -1), at + Vector2(0, -6), at + Vector2(3, -1), at + Vector2(6, -5), at + Vector2(6, 3)]), color)
+		"dungeon":
+			_view.draw_rect(Rect2(at + Vector2(-7, -7), Vector2(14, 14)), dark)
+			_view.draw_rect(Rect2(at + Vector2(-5, -5), Vector2(10, 10)), color)
+			_view.draw_rect(Rect2(at + Vector2(-2, -1), Vector2(4, 6)), dark)
+		"bounty":
+			_view.draw_circle(at, 7.0, dark)
+			_view.draw_circle(at + Vector2(0, -1), 4.5, color)
+			_view.draw_line(at + Vector2(-5, 5), at + Vector2(5, -5), dark, 1.5)
 		"portal":
 			_view.draw_circle(at, 7.0, dark)
 			_view.draw_arc(at, 4.5, 0.0, TAU, 16, color, 2.5)
