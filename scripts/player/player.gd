@@ -65,6 +65,12 @@ var swimming := false
 ## True while choosing where to set something down; clicks place it
 ## instead of attacking.
 var placing := false
+## True in deep water: slower still.
+var deep_water := false
+## Seconds since the player was last hurt; health returns by itself after 5.
+var since_hurt := 99.0
+var _height_zoom := 2.0
+var _unstick_left := 0.0
 ## True inside a house, cave, or other place off the world map.
 var indoors := false
 ## Share of normal speed the ground underfoot allows.
@@ -134,7 +140,13 @@ func _physics_process(delta: float) -> void:
 	potion_cooldown_left = maxf(potion_cooldown_left - delta, 0.0)
 	_combo_left = maxf(_combo_left - delta, 0.0)
 	_read_ground()
-	health.heal(stats.get_stat("health_regen") * delta)
+	since_hurt += delta
+	# Natural healing starts once the player has gone 5 seconds unhurt.
+	if since_hurt > 5.0:
+		health.heal((health.max_health * 0.02 + stats.get_stat("health_regen")) * delta)
+	if state == State.MOVE or state == State.ATTACK:
+		camera.zoom = camera.zoom.lerp(Vector2(_height_zoom, _height_zoom), 1.5 * delta)
+	_unstick(delta)
 	if not _afflictions.is_empty():
 		_process_afflictions(delta)
 		if state == State.DEAD:
@@ -370,7 +382,35 @@ func _read_ground() -> void:
 		return
 	var tile := _world.tile_type_at_position(global_position)
 	_ground_speed = TerrainTiles.speed(tile)
-	swimming = tile == TerrainTiles.Type.DEEP_WATER
+	var was_swimming := swimming
+	swimming = TerrainTiles.is_water(tile)
+	deep_water = tile == TerrainTiles.Type.DEEP_WATER
+	if swimming != was_swimming:
+		Events.splash.emit(global_position)
+	# Climbing gives a wider view.
+	_height_zoom = 1.7 if tile == TerrainTiles.Type.PEAK else 1.82 if tile == TerrainTiles.Type.ROCK else 2.0
+
+
+## A safety net: if the player ever ends up inside a wall (a cave edge,
+## say), put them on the nearest open floor.
+func _unstick(delta: float) -> void:
+	_unstick_left -= delta
+	if _unstick_left > 0.0 or not indoors:
+		return
+	_unstick_left = 0.25
+	var instances: Instances = get_parent().get_node_or_null("Instances")
+	if instances == null or not instances.is_inside():
+		return
+	var room := instances.room
+	var cell := Vector2i(((global_position - Room.ORIGIN) / TerrainTiles.TILE_SIZE).floor())
+	if room.is_floor(cell):
+		return
+	var best := room.entry
+	for candidate in room.cells:
+		if room.is_floor(candidate) and (candidate - cell).length_squared() < (best - cell).length_squared():
+			best = candidate
+	global_position = room.cell_position(best)
+	velocity = Vector2.ZERO
 
 
 ## The gatherable node closest to the player and in reach, or null.
@@ -418,7 +458,8 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		if state == State.DODGE and talents.has("perfect_dodge"):
 			buffs.add("perfect_dodge", "Perfect Dodge", 5.0, {"critical_chance": {"flat": 0.3}})
 		return false
-	amount = maxf(amount * (1.0 - stats.damage_reduction(attacker_level)) * stats.get_stat("damage_taken"), 1.0)
+	amount = maxf(amount * (1.0 - stats.damage_reduction(attacker_level)) * stats.get_stat("damage_taken") * Difficulty.damage_to_player(), 1.0)
+	since_hurt = 0.0
 	if amount >= health.current and talents.has("unbreakable") and _unbreakable_left == 0.0:
 		# The killing blow is turned into a near miss.
 		_unbreakable_left = 120.0
@@ -480,6 +521,7 @@ func _process_afflictions(delta: float) -> void:
 			var amount: float = maxf(affliction["power"] * 0.5, 1.0)
 			DamageNumber.spawn(get_parent(), global_position, amount, ItemDB.STATUSES[id]["color"])
 			health.take_damage(amount)
+			since_hurt = 0.0
 			if health.is_dead():
 				_die()
 				return
@@ -516,11 +558,11 @@ func _process_move(delta: float) -> void:
 		facing = input.normalized()
 		_face_visual(input.x)
 	velocity = velocity.move_toward(input * stats.get_stat("move_speed") * _ground_speed, acceleration * delta)
-	if swimming:
+	if deep_water:
 		# Both hands are busy keeping afloat.
 		return
 
-	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0:
+	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0 and not swimming:
 		_try_dodge()
 	elif abilities.try_use_pressed():
 		pass

@@ -16,7 +16,7 @@ const MIN_LEVEL := {"lair": 3, "portal": 4}
 const CLEAR_RADIUS := 26.0
 ## Monsters that can rule a lair, by the ground it stands on.
 const LAIR_BOSSES := {T.ASH: "crag_golem", T.CINDER: "crag_golem", T.SALT: "crag_golem", T.BOG: "spore_shambler", T.FUNGAL: "spore_shambler",
-	T.DARK_GRASS: "thorn_stalker", T.THORN: "thorn_stalker", T.SNOW: "ash_wraith", T.VOIDSCAR: "ash_wraith", T.SAND: "bone_archer"}
+	T.ROCK: "crag_golem", T.PEAK: "ash_wraith", T.DARK_GRASS: "thorn_stalker", T.THORN: "thorn_stalker", T.SNOW: "ash_wraith", T.VOIDSCAR: "ash_wraith", T.SAND: "bone_archer"}
 
 ## Keys of structures already used up, e.g. "ruin:12,-3".
 var used: Dictionary = {}
@@ -183,7 +183,7 @@ func _build_lair(cell: Vector2i, key: String, level: int, _random: RandomNumberG
 
 func _build_cave(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
 	var cave_seed := random.randi()
-	var lair := random.randf() < 0.4 and not used.has(key + ":boss")
+	var lair := random.randf() < 0.12 and not used.has(key + ":boss")
 	placed.append(Prop.create(Prop.Art.CAVE, _at(cell), 0.0, "Enter the cave", func(_player: Player) -> void:
 		_instances.enter_cave(cave_seed, level, lair and not used.has(key + ":boss"), func() -> void:
 			used[key + ":boss"] = true

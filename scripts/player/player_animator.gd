@@ -69,6 +69,7 @@ var _ghost_left := 0.0
 var _layers: Dictionary[String, AnimatedSprite2D] = {}
 var _aura_color := Color.TRANSPARENT
 var _water: Node2D
+var _ripple_left := 0.0
 
 static var _frames_cache: Dictionary = {}
 
@@ -86,6 +87,7 @@ func _ready() -> void:
 	_water.visible = false
 	_water.draw.connect(_draw_water)
 	add_child(_water)
+	Events.splash.connect(_on_splash)
 
 	var shader := Shader.new()
 	shader.code = LAYER_SHADER
@@ -108,13 +110,23 @@ func _process(delta: float) -> void:
 			sprite.frame = frame
 	if _aura_color.a > 0.0:
 		queue_redraw()
-	# Sink to the chest while swimming; the water line is drawn over the body.
-	if _player.swimming != _water.visible:
-		_water.visible = _player.swimming
-		position.y = -23.0 + (18.0 if _player.swimming else 0.0)
-		queue_redraw()
-	if _water.visible:
+	# Sink while swimming (deeper in deep water) and bob with each stroke;
+	# the water line is drawn over the body.
+	_water.visible = _player.swimming
+	if _player.swimming:
+		var sink := 19.0 if _player.deep_water else 13.0
+		var bob := sin(Time.get_ticks_msec() / 220.0) * 1.5
+		position.y = -23.0 + sink + bob
+		# The waterline sits a little below the shoulders whatever the depth.
+		_water.position.y = 19.0 - sink
 		_water.queue_redraw()
+		_ripple_left -= delta
+		if _ripple_left <= 0.0 and _player.velocity.length() > 30.0:
+			_ripple_left = 0.22
+			_spawn_ripple()
+	elif position.y != -23.0:
+		position.y = -23.0
+		_water.position.y = 0.0
 
 
 func _draw() -> void:
@@ -131,13 +143,73 @@ func _draw() -> void:
 
 
 func _draw_water() -> void:
-	var deep: Color = TerrainTiles.COLORS[TerrainTiles.Type.DEEP_WATER]
-	var bob := sin(Time.get_ticks_msec() / 260.0)
-	_water.draw_rect(Rect2(-20.0, 6.0, 40.0, 26.0), deep)
-	_water.draw_set_transform(Vector2(0.0, 6.0), 0.0, Vector2(1.0, 0.35))
-	_water.draw_arc(Vector2.ZERO, 16.0 + bob * 2.0, 0.0, TAU, 24, Color("5a7f9a"), 2.0)
-	_water.draw_arc(Vector2.ZERO, 24.0 - bob * 2.0, 0.0, TAU, 24, Color(0.35, 0.5, 0.6, 0.5), 1.5)
+	var deep := _player.deep_water
+	var colour: Color = TerrainTiles.COLORS[TerrainTiles.Type.DEEP_WATER if deep else TerrainTiles.Type.SHALLOW_WATER]
+	var t := Time.get_ticks_msec() / 1000.0
+	var line := 0.0
+	# The water in front of the body, with a wavy top edge.
+	var surface := PackedVector2Array()
+	for i in 11:
+		var x := -22.0 + i * 4.4
+		surface.append(Vector2(x, line + sin(t * 5.0 + i * 0.9) * 1.2))
+	surface.append(Vector2(22.0, line + 30.0))
+	surface.append(Vector2(-22.0, line + 30.0))
+	_water.draw_colored_polygon(surface, Color(colour, 0.94))
+	for i in 10:
+		_water.draw_line(surface[i], surface[i + 1], Color(0.75, 0.88, 0.95, 0.85), 1.5)
+	# Rings spreading from the swimmer.
+	_water.draw_set_transform(Vector2(0.0, line), 0.0, Vector2(1.0, 0.32))
+	for k in 2:
+		var phase := fposmod(t * 0.9 + k * 0.5, 1.0)
+		_water.draw_arc(Vector2.ZERO, 14.0 + phase * 16.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.6 * (1.0 - phase)), 1.5)
 	_water.draw_set_transform(Vector2.ZERO)
+	# A few bubbles in deep water.
+	if deep:
+		for k in 3:
+			var rise := fposmod(t * 0.7 + k * 0.33, 1.0)
+			_water.draw_circle(Vector2(-8.0 + k * 8.0, line + 16.0 - rise * 14.0), 1.2, Color(0.8, 0.92, 1.0, 0.7 * (1.0 - rise)))
+
+
+## A ring left behind on the water as the player swims.
+func _spawn_ripple() -> void:
+	var ring := Node2D.new()
+	ring.global_position = _player.global_position + Vector2(0, 2)
+	ring.z_index = -1
+	var radius := [6.0]
+	ring.draw.connect(func() -> void:
+		ring.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.4))
+		ring.draw_arc(Vector2.ZERO, radius[0], 0.0, TAU, 24, Color(0.75, 0.88, 0.95, 0.7), 1.5)
+	)
+	_player.get_parent().add_child(ring)
+	var tween := ring.create_tween().set_parallel()
+	tween.tween_method(func(r: float) -> void:
+		radius[0] = r
+		ring.queue_redraw()
+	, 6.0, 26.0, 0.8)
+	tween.tween_property(ring, "modulate:a", 0.0, 0.8)
+	tween.chain().tween_callback(ring.queue_free)
+
+
+func _on_splash(at: Vector2) -> void:
+	var drops := CPUParticles2D.new()
+	drops.amount = 16
+	drops.lifetime = 0.5
+	drops.one_shot = true
+	drops.explosiveness = 1.0
+	drops.direction = Vector2.UP
+	drops.spread = 60.0
+	drops.gravity = Vector2(0, 520)
+	drops.initial_velocity_min = 90.0
+	drops.initial_velocity_max = 170.0
+	drops.scale_amount_min = 2.0
+	drops.scale_amount_max = 3.0
+	drops.color = Color(0.75, 0.88, 0.97)
+	drops.global_position = at
+	drops.z_index = 5
+	_player.get_parent().add_child(drops)
+	drops.emitting = true
+	get_tree().create_timer(1.0).timeout.connect(drops.queue_free)
+	Audio.play("swing", -10.0, 0.3)
 
 
 ## Redraws the visible equipment from what is worn.
@@ -210,6 +282,11 @@ func _choose_animation(delta: float) -> void:
 		return
 	var speed := _player.velocity.length()
 	speed_scale = 1.0
+	if _player.swimming:
+		# A slow paddling stroke, still while treading water.
+		speed_scale = 0.55 if speed > 20.0 else 0.25
+		_loop("walk")
+		return
 	if speed > RUN_SPEED:
 		# Legs keep pace with how fast the player actually moves.
 		speed_scale = clampf(speed / 200.0, 0.7, 1.8)

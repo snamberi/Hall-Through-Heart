@@ -16,7 +16,7 @@ const KINDS := {
 	"fish": {"profession": "fishing", "tool": "rod", "verb": "Fish", "seconds": 3.2, "frame": 4},
 }
 const T := TerrainTiles.Type
-const ROCKY: Array[int] = [T.ASH, T.MUD, T.DEAD_GRASS, T.SALT, T.SAND, T.CINDER, T.SNOW, T.VOIDSCAR, T.CAVE_FLOOR]
+const ROCKY: Array[int] = [T.ROCK, T.PEAK, T.ASH, T.MUD, T.DEAD_GRASS, T.SALT, T.SAND, T.CINDER, T.SNOW, T.VOIDSCAR, T.CAVE_FLOOR]
 const WOODED: Array[int] = [T.DARK_GRASS, T.DEAD_GRASS, T.FROSTPINE, T.THORN, T.CRIMSON, T.FUNGAL]
 
 const RESOURCES := {

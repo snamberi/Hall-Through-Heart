@@ -8,7 +8,7 @@ signal left
 
 const T := TerrainTiles.Type
 const CAVE_SIZE := Vector2i(34, 24)
-const CAVE_MONSTERS: Array[String] = ["carrion_bat", "bog_slime", "thorn_stalker", "rot_hound", "crag_golem"]
+const CAVE_MONSTERS: Array[String] = ["carrion_bat", "bog_slime", "thorn_stalker", "rot_hound", "crag_golem", "bone_archer", "spore_shambler", "ash_wraith"]
 const VOID_MONSTERS: Array[String] = ["ash_wraith", "rot_cultist", "ember_wisp", "husk", "bone_archer"]
 const ARENA_RADIUS := 8
 

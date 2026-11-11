@@ -36,6 +36,10 @@ var _queue: Array[Vector2i] = []
 var _center := Vector2i.MAX
 
 
+func _ready() -> void:
+	add_to_group("world")
+
+
 func setup(world_seed: int) -> void:
 	generator = WorldGenerator.new(world_seed)
 	_tile_set = TerrainTiles.build_tileset()
@@ -123,7 +127,7 @@ func _build_chunk(chunk: Vector2i) -> void:
 	# Four more layers hold the ragged strips that blend each terrain over
 	# its neighbours, one layer per side.
 	var fringes: Array[TileMapLayer] = []
-	for side in 4:
+	for side in 5:
 		var fringe := TileMapLayer.new()
 		fringe.tile_set = _tile_set
 		fringe.collision_enabled = false
@@ -152,6 +156,12 @@ func _build_chunk(chunk: Vector2i) -> void:
 				if TerrainTiles.priority(other) > rank:
 					spills[side] = true
 					fringes[side].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(0, other), TURNS[side])
+			# A cliff face where high ground drops away to the south.
+			var above := types[y * span + x + 1]
+			if above in TerrainTiles.HIGH and not type in TerrainTiles.HIGH:
+				fringes[4].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(2, above))
+			elif above == TerrainTiles.Type.PEAK and type == TerrainTiles.Type.ROCK:
+				fringes[4].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(2, above))
 			# A corner piece where only the diagonal neighbour spills over.
 			for side in 4:
 				if spills[side] or spills[(side + 1) % 4]:

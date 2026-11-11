@@ -44,12 +44,14 @@ var _cache: Dictionary = {}
 
 func _init(p_seed: int) -> void:
 	world_seed = p_seed
-	_setup(_elevation, p_seed, 0.009, 5)
-	_setup(_moisture, p_seed + 1013, 0.006, 3)
-	_setup(_temperature, p_seed + 4051, 0.0022, 2)
-	_setup(_weird, p_seed + 6007, 0.004, 2)
+	# Low frequencies make broad regions: a biome is often a few hundred
+	# tiles across.
+	_setup(_elevation, p_seed, 0.0034, 5)
+	_setup(_moisture, p_seed + 1013, 0.0021, 3)
+	_setup(_temperature, p_seed + 4051, 0.0009, 2)
+	_setup(_weird, p_seed + 6007, 0.0017, 2)
 	_setup(_danger, p_seed + 2027, 0.004, 1)
-	_setup(_warp, p_seed + 9001, 0.11, 1)
+	_setup(_warp, p_seed + 9001, 0.08, 1)
 
 
 ## Enemy level for an area. Rises with distance from the start, with pockets
@@ -104,8 +106,8 @@ func find_walkable_near(cell: Vector2i, max_radius: int = 64) -> Vector2i:
 
 func _compute(cell: Vector2i) -> int:
 	# Nudge where we sample so borders wander by a tile or two.
-	var x := cell.x + _warp.get_noise_2d(cell.x, cell.y) * 2.2
-	var y := cell.y + _warp.get_noise_2d(cell.x + 500.0, cell.y - 500.0) * 2.2
+	var x := cell.x + _warp.get_noise_2d(cell.x, cell.y) * 3.0
+	var y := cell.y + _warp.get_noise_2d(cell.x + 500.0, cell.y - 500.0) * 3.0
 	var distance := Vector2(cell).length()
 	var elevation := _elevation.get_noise_2d(x, y)
 	if distance < SANCTUARY_OUTER:
@@ -121,7 +123,9 @@ func _compute(cell: Vector2i) -> int:
 	if elevation < -0.23:
 		# The shore takes after the climate.
 		return T.SNOW if temperature < -0.24 else T.SAND if temperature > 0.34 else T.MUD
-	if elevation > 0.45:
+	if elevation > 0.56:
+		return T.PEAK
+	if elevation > 0.42:
 		return T.ROCK
 	if distance > VOIDSCAR_MIN_DISTANCE and _weird.get_noise_2d(x, y) > 0.62:
 		return T.VOIDSCAR

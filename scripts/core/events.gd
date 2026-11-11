@@ -36,3 +36,5 @@ signal screen_requested(id: String)
 signal placement_requested(item: Item)
 signal recall_requested
 signal dismantle_requested
+## Something went into or out of water here.
+signal splash(at: Vector2)

@@ -635,7 +635,7 @@ TILES = [
     ("dead_grass", "grass", "4a4d32", "6a6c42", "373a27", "86875a"),
     ("dark_grass", "grass", "26382c", "3a5540", "1a281f", "9c3b3b"),
     ("bog", "bog", "2e3528", "46503a", "1c2219", "7a8a4a"),
-    ("rock", "rock", "3a3944", "55546a", "17161d", "6c6b82"),
+    ("mountain", "mountain", "5a5560", "77727e", "3a3640", "8f8a96"),
     ("snow", "snow", "c8d0d8", "e6ecf2", "9aa6b4", "ffffff"),
     ("frostpine", "grass", "3d5a58", "5a7c78", "2a4040", "e6ecf2"),
     ("salt", "cracked", "8c8a84", "a8a69e", "6a6862", "c8c6be"),
@@ -649,6 +649,7 @@ TILES = [
     ("plank", "plank", "6b4f36", "83634a", "4a3626", "523b28"),
     ("wall", "rock", "2a2630", "3e3848", "0c0a10", "4a4458"),
     ("cave_floor", "mud", "34323a", "45434c", "24222a", "55535e"),
+    ("peak", "peak", "7c7986", "a4a2ae", "55525e", "eef2f6"),
 ]
 VARIANTS = 8
 WATER_FRAMES = 4
@@ -700,6 +701,25 @@ def draw_tile(row, variant, frame=0):
                     put(x + r.randrange(2, max(3, w - 3)), y + r.randrange(2, max(3, h - 3)), accent)
                 x += w
             y += h
+        return img
+    if style in ("mountain", "peak"):
+        # Broken rock in tilted strata, with scree and, up high, snow.
+        for _ in range(110):
+            put(r.randrange(N), r.randrange(N), light if r.random() < 0.45 else dark)
+        for _ in range(4):
+            x, y = r.randrange(0, N - 10), r.randrange(4, N - 4)
+            w = r.randrange(8, 16)
+            d.line((x, y, x + w, y - 3), fill=dark)
+            d.line((x, y + 1, x + w, y - 2), fill=light)
+        for _ in range(4):
+            x, y = r.randrange(2, N - 5), r.randrange(2, N - 4)
+            d.polygon([(x, y + 3), (x + 2, y), (x + 4, y + 3)], fill=light)
+            put(x + 2, y + 3, dark)
+        if style == "peak" and variant % 3 == 0:
+            # Now and then a drift of snow lodged in the rock.
+            x, y = r.randrange(4, N - 16), r.randrange(4, N - 8)
+            d.polygon([(x, y + 5), (x + 4, y + 1), (x + 12, y), (x + 15, y + 4), (x + 9, y + 6)], fill=accent)
+            d.line((x + 2, y + 6, x + 13, y + 6), fill=light)
         return img
     if style == "plank":
         for y in range(0, N, 11):
@@ -802,7 +822,7 @@ def draw_fringes():
     """Ragged borders: each terrain's texture cut to a rough strip along the
     top edge (column 0) and a rough corner at the top right (column 1). The
     game rotates these to blend one terrain over its neighbour."""
-    sheet = Image.new("RGBA", (2 * N, len(TILES) * N), (0, 0, 0, 0))
+    sheet = Image.new("RGBA", (3 * N, len(TILES) * N), (0, 0, 0, 0))
     for row in range(len(TILES)):
         tile = draw_tile(row, 0)
         edge_colour = tuple(int(c * 0.62) for c in rgba(TILES[row][2])[:3]) + (255,)
@@ -824,6 +844,18 @@ def draw_fringes():
                 dist = math.hypot(N - 1 - x, y)
                 if dist < reach:
                     sheet.putpixel((N + x, row * N + y), tile.getpixel((x, y)) if dist < reach - 1.2 else edge_colour)
+        # Column 2: the cliff face a high terrain shows on the tile below it.
+        if TILES[row][1] in ("mountain", "peak"):
+            face = [rgba(c) for c in ("4a4650", "3a3640", "2c2932", "201e25")]
+            for x in range(N):
+                height = 14 + int(3 * math.sin(x * 0.7 + row)) + r.choice((0, 0, 1))
+                for y in range(height):
+                    shade = face[min(3, y * 4 // height)]
+                    if (x + y // 3) % 7 == 0:
+                        shade = face[3]
+                    sheet.putpixel((2 * N + x, row * N + y), shade)
+                for y in range(height, height + 6):
+                    sheet.putpixel((2 * N + x, row * N + y), (0, 0, 0, 90 - (y - height) * 14))
     return sheet
 
 

@@ -38,6 +38,8 @@ const MODIFIERS := {
 	"berserker": {"name": "Berserker", "color": Color(1.0, 0.3, 0.3), "traits": ["enrage"]},
 }
 const REWARD_PER_MODIFIER := 0.25
+## How much of a blow's shove each rank takes.
+const POISE: Array[float] = [0.6, 0.35, 0.2, 0.08]
 const FROZEN_AURA_RADIUS := 170.0
 const SUMMON_SECONDS := 8.0
 const SUMMON_LIMIT := 3
@@ -83,6 +85,16 @@ var _last_weapon_type := ""
 var _since_hurt := 99.0
 var _blink_left := 3.0
 var _aura_left := 0.0
+## Seconds until a hit can interrupt this enemy again.
+var _stagger_cooldown := 0.0
+## Walkers slow down in water; the ground is checked a few times a second.
+var _ground_speed := 1.0
+var _ground_left := 0.0
+var in_water := false
+## Chasing but not getting anywhere: try a way round.
+var _stuck_time := 0.0
+var _detour := Vector2.ZERO
+var _detour_left := 0.0
 var _summon_left := SUMMON_SECONDS
 var _minions := 0
 var _weave := 0.0
@@ -121,18 +133,18 @@ func _ready() -> void:
 	lunge_time = _attack.get("time", 0.25)
 	var rank_data: Dictionary = RANK_DATA[rank]
 	var size: float = rank_data["size"] * _data["size"] * (0.62 if is_fragment else 1.0)
-	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0)
+	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0) * Difficulty.value("health")
 	health.current = health.max_health
 	_damage = _data["damage"] * rank_data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1)) * (0.6 if is_fragment else 1.0)
-	_speed = _data["speed"] * (1.4 if "swift" in modifiers else 1.0)
+	_speed = _data["speed"] * (1.4 if "swift" in modifiers else 1.0) * Difficulty.value("speed")
 	_tint = rank_data["tint"]
 	body_radius = _data["radius"] * size
 	_visual.scale = Vector2(size, size)
 	_visual.modulate = _tint
 	_animator.sheet = EnemyDB.sheet(enemy_id)
 	_animator.rebuild()
-	# Walkers are stopped by walls and deep water; fliers by neither.
-	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION | TerrainTiles.WATER_COLLISION
+	# Walkers are stopped by walls; fliers by nothing.
+	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION
 	_add_nameplate(rank_data, size)
 	health.died.connect(_on_died)
 	_pick_wander()
@@ -141,7 +153,7 @@ func _ready() -> void:
 ## Experience this enemy is worth at its level and rank.
 func xp_value() -> int:
 	var value: float = _data["xp"] * RANK_DATA[rank]["xp"] * pow(level, XP_LEVEL_EXPONENT) * (1.0 + REWARD_PER_MODIFIER * modifiers.size())
-	return maxi(roundi(value * (0.3 if is_fragment else 1.0)), 1)
+	return maxi(roundi(value * (0.3 if is_fragment else 1.0) * Difficulty.value("xp")), 1)
 
 
 func has_trait(id: String) -> bool:
@@ -158,6 +170,8 @@ func _physics_process(delta: float) -> void:
 		return
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
 	_since_hurt += delta
+	_stagger_cooldown = maxf(_stagger_cooldown - delta, 0.0)
+	_read_ground(delta)
 	_update_statuses(delta)
 	if state == State.DEAD:
 		return
@@ -171,8 +185,8 @@ func _physics_process(delta: float) -> void:
 
 	match state:
 		State.WANDER:
-			velocity = _direction * _speed * 0.4
-			if has_target and distance < AGGRO_RADIUS:
+			velocity = _direction * _speed * 0.4 * _ground_speed
+			if has_target and distance < AGGRO_RADIUS and (not Difficulty.monsters_passive() or _since_hurt < 30.0):
 				state = State.CHASE
 			elif _state_time_left == 0.0:
 				_pick_wander()
@@ -190,7 +204,8 @@ func _physics_process(delta: float) -> void:
 				velocity = Vector2.ZERO
 				_visual.modulate = Color(1.8, 0.5, 0.5)
 			else:
-				velocity = _chase_velocity(to_target, distance, delta)
+				velocity = _chase_velocity(to_target, distance, delta) * _ground_speed
+				_avoid_getting_stuck(delta)
 				_try_blink(delta, to_target, distance)
 		State.WINDUP:
 			velocity = Vector2.ZERO
@@ -203,7 +218,7 @@ func _physics_process(delta: float) -> void:
 				_has_hit = false
 				_strike(has_target)
 		State.LUNGE:
-			velocity = _direction * _attack.get("speed", 400.0) * _speed_multiplier()
+			velocity = _direction * _attack.get("speed", 400.0) * _speed_multiplier() * _ground_speed
 			if has_target and not _has_hit and distance < body_radius + 13.0:
 				_has_hit = true
 				_hit_target(_current_damage())
@@ -266,13 +281,20 @@ func take_damage(
 	var dealt := health.take_damage(amount)
 	if health.is_dead():
 		return dealt
-	# Heavy enemies and ones mid-attack are harder to interrupt.
-	var steady := has_trait("armored") or (state == State.WINDUP and is_area_attack())
-	if not steady:
-		_enter(State.STAGGER, 0.22)
+	# Poise: a blow only interrupts an enemy that is not mid-attack and has
+	# not just been staggered, and big or armoured enemies shrug off most of
+	# the shove. Without this, quick swings could lock an enemy in place.
+	var resist: float = POISE[rank] * (0.5 if has_trait("armored") else 1.0)
+	var shove := knockback * resist
+	var attacking := state == State.WINDUP or state == State.LUNGE
+	if not attacking and _stagger_cooldown == 0.0 and shove.length() > 110.0:
+		_enter(State.STAGGER, 0.18)
+		_stagger_cooldown = 1.1
 		_visual.modulate = _tint
-		velocity = knockback
+		velocity = shove * 0.6
 		queue_redraw()
+	elif not attacking:
+		velocity += shove * 0.15
 	_flash()
 	return dealt
 
@@ -448,6 +470,41 @@ func _death_effects() -> void:
 			target.take_damage(_damage * 1.5, global_position, level)
 	if "poisonous" in modifiers and target:
 		HazardZone.spawn(get_parent(), global_position, target, 100.0, 5.0, MODIFIERS["poisonous"]["color"], {"status": "poison", "duration": 3.0, "power": 0.3}, _damage)
+
+
+## Water slows walkers to a wade; fliers do not care.
+func _read_ground(delta: float) -> void:
+	_ground_left -= delta
+	if _ground_left > 0.0:
+		return
+	_ground_left = 0.25
+	var world: World = get_tree().get_first_node_in_group("world")
+	# Rooms off the map are far above the world; their ground is never water.
+	if world == null or _data.get("flying", false) or global_position.y < Room.ORIGIN.y / 2.0:
+		_ground_speed = 1.0
+		in_water = false
+		return
+	var tile := world.tile_type_at_position(global_position)
+	in_water = TerrainTiles.is_water(tile)
+	_ground_speed = 0.55 if in_water else 1.0
+	_visual.position.y = 10.0 if in_water else 0.0
+
+
+## If chasing has not moved the enemy for a while, it heads off sideways
+## for a moment to get around whatever is in the way.
+func _avoid_getting_stuck(delta: float) -> void:
+	if _detour_left > 0.0:
+		_detour_left -= delta
+		velocity = _detour * _speed * _ground_speed
+		return
+	if velocity.length() > 20.0 and get_real_velocity().length() < 6.0:
+		_stuck_time += delta
+	else:
+		_stuck_time = 0.0
+	if _stuck_time > 0.5:
+		_stuck_time = 0.0
+		_detour = velocity.normalized().rotated(PI / 2.0 * (1.0 if randf() < 0.5 else -1.0))
+		_detour_left = 0.7
 
 
 # --- internals
