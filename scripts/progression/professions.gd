@@ -6,20 +6,20 @@ signal changed
 
 const MAX_LEVEL := 100
 const GATHERING: Array[String] = ["mining", "woodcutting", "herbalism", "fishing"]
-const CRAFTING: Array[String] = ["blacksmithing", "alchemy", "cooking", "enchanting", "salvaging"]
+const CRAFTING: Array[String] = ["building", "blacksmithing", "alchemy", "cooking", "enchanting", "salvaging"]
 const NAMES := {
 	"mining": "Mining", "woodcutting": "Woodcutting", "herbalism": "Herbalism", "fishing": "Fishing",
-	"blacksmithing": "Blacksmithing", "alchemy": "Alchemy", "cooking": "Cooking",
+	"building": "Building", "blacksmithing": "Blacksmithing", "alchemy": "Alchemy", "cooking": "Cooking",
 	"enchanting": "Enchanting", "salvaging": "Salvaging",
 }
 const ICONS := {
 	"mining": 49, "woodcutting": 50, "herbalism": 44, "fishing": 51,
-	"blacksmithing": 46, "alchemy": 47, "cooking": 48, "enchanting": 52, "salvaging": 2,
+	"building": 54, "blacksmithing": 46, "alchemy": 47, "cooking": 48, "enchanting": 52, "salvaging": 2,
 }
 const TITLES := {
 	"mining": "Master Miner", "woodcutting": "Master Woodcutter", "herbalism": "Master Herbalist",
 	"fishing": "Master Angler", "blacksmithing": "Master Smith", "alchemy": "Master Alchemist",
-	"cooking": "Master Cook", "enchanting": "Master Enchanter", "salvaging": "Master Salvager",
+	"cooking": "Master Cook", "building": "Master Builder", "enchanting": "Master Enchanter", "salvaging": "Master Salvager",
 }
 ## Gathering is this much faster per level, and this likely per level to yield double.
 const SPEED_PER_LEVEL := 0.01

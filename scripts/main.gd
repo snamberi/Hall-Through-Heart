@@ -49,6 +49,21 @@ func _ready() -> void:
 		_checkpoint_name = place
 		SaveGame.request_save()
 	)
+	var buildings: Buildings = $Buildings
+	buildings.setup(_player, _instances)
+	$Builder.setup(buildings, _player)
+	Events.recall_requested.connect(func() -> void:
+		var problem := buildings.recall_problem()
+		if problem != "":
+			Events.announcement.emit("", problem)
+		else:
+			buildings.recall()
+	)
+	Events.dismantle_requested.connect(func() -> void:
+		var problem := buildings.dismantle_nearest()
+		if problem != "" and problem != "Nothing of yours within reach.":
+			Events.announcement.emit("", problem)
+	)
 	_resources.setup(_world)
 	$Npcs.setup(_world)
 	_place_player_at_start()
@@ -91,3 +106,13 @@ func _on_player_died(xp_lost: int) -> void:
 	_place_player_at_start()
 	_hud.hide_death()
 	await _cinematic.play_rebirth(_player)
+
+
+## Everything listening to the global event hubs belongs to this scene, so
+## drop those connections when the scene goes (back to the title screen, or
+## a new game) rather than leave them pointing at freed nodes.
+func _exit_tree() -> void:
+	for hub: Object in [Events, GameSettings]:
+		for signal_info in hub.get_signal_list():
+			for connection in hub.get_signal_connection_list(signal_info["name"]):
+				hub.disconnect(signal_info["name"], connection["callable"])

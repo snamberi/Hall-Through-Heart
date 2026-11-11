@@ -251,6 +251,11 @@ const ITEMS := {
 	"grilled_minnow": {"name": "Grilled Minnow", "icon": 48, "tint": Color("e0c090"), "material_rarity": 0, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 20.0}, "health_regen": {"flat": 0.5}}}, "text": "+20 maximum HP and regeneration for 5 minutes."},
 	"trout_stew": {"name": "Trout Stew", "icon": 48, "tint": Color("f0a060"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 60.0}, "max_stamina": {"flat": 20.0}}}, "text": "+60 maximum HP and +20 stamina for 5 minutes."},
 	"eel_pie": {"name": "Eel Pie", "icon": 48, "tint": Color("c09060"), "material_rarity": 2, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 100.0}, "physical_damage": {"percent": 0.08}}}, "text": "+100 maximum HP and +8% damage for 5 minutes."},
+	# --- things to place in the world: "place" is the kind of building
+	"crafting_table": {"name": "Crafting Table", "icon": 54, "material_rarity": 0, "place": "table", "value": 30, "text": "Stand beside one to craft. Use it from your bag to set it down."},
+	"storage_chest": {"name": "Storage Chest", "icon": 55, "material_rarity": 0, "place": "chest", "value": 50, "text": "Holds 24 stacks. Use it from your bag to set it down."},
+	"bed": {"name": "Bed", "icon": 57, "material_rarity": 0, "place": "bed", "value": 60, "text": "Sleep in it to make this place home. Use it from your bag to set it down."},
+	"house_kit": {"name": "House Kit", "icon": 56, "material_rarity": 1, "place": "house", "value": 300, "text": "Everything needed to raise a small house. Use it from your bag to choose the spot."},
 	# --- tools: needed to gather; higher tiers reach better materials and work faster
 	"worn_pickaxe": {"name": "Worn Pickaxe", "icon": 49, "tint": Color("9a98a0"), "material_rarity": 0, "tool": {"kind": "pickaxe", "tier": 1, "speed": 1.0}, "text": "Tier 1 pickaxe."},
 	"bronze_pickaxe": {"name": "Bronze Pickaxe", "icon": 49, "tint": Color("c9954a"), "material_rarity": 1, "tool": {"kind": "pickaxe", "tier": 2, "speed": 1.2}, "text": "Tier 2 pickaxe."},

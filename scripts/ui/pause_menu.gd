@@ -13,6 +13,7 @@ const CONTROLS: Array[Array] = [
 	["Inventory", "E"],
 	["Attributes / Talents / Professions", "C / K / P"],
 	["Journal", "J"],
+	["Recall home / take down a building", "H / X"],
 	["Pause", "Esc"],
 	["Debug screen", "F3"],
 ]
@@ -116,7 +117,12 @@ func _add_check(parent: Control, title: String, on_toggled: Callable) -> CheckBo
 
 
 func _close() -> void:
-	var node := get_parent()
+	close_menus(self)
+
+
+## Finds the menu manager above a screen and closes it.
+static func close_menus(from: Node) -> void:
+	var node := from.get_parent()
 	while node and not node.has_method("close"):
 		node = node.get_parent()
 	if node:
@@ -128,9 +134,12 @@ func _save() -> void:
 	_status.text = "Saved."
 
 
+## Saves and goes back to the title screen.
 func _quit() -> void:
 	SaveGame.save_now()
-	get_tree().quit()
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	get_tree().change_scene_to_file("res://scenes/menu.tscn")
 
 
 func _on_new_game() -> void:

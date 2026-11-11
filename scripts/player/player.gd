@@ -62,6 +62,9 @@ var gather_seconds := 0.0
 var gather_progress := 0.0
 ## True while in deep water: slow, and unable to fight or gather.
 var swimming := false
+## True while choosing where to set something down; clicks place it
+## instead of attacking.
+var placing := false
 ## True inside a house, cave, or other place off the world map.
 var indoors := false
 ## Share of normal speed the ground underfoot allows.
@@ -321,6 +324,11 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 
 ## Uses a consumable from the bag. Returns "" on success or why it failed.
 func use_item(item: Item) -> String:
+	if not is_dead() and item.is_placeable() and item in inventory.items:
+		if swimming:
+			return "You cannot build while swimming."
+		Events.placement_requested.emit(item)
+		return ""
 	if is_dead() or not item.is_consumable() or not item in inventory.items:
 		return "This cannot be used."
 	var use: Dictionary = item.definition()["use"]
@@ -520,7 +528,11 @@ func _process_move(delta: float) -> void:
 		quick_potion()
 	elif Input.is_action_just_pressed("interact"):
 		_start_gathering()
-	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0:
+	elif Input.is_action_just_pressed("recall_home"):
+		Events.recall_requested.emit()
+	elif Input.is_action_just_pressed("dismantle"):
+		Events.dismantle_requested.emit()
+	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing:
 		attack(aim_direction())
 
 
@@ -574,13 +586,21 @@ func nearest_npc() -> Npc:
 	return best
 
 
+## Whether a crafting table is close enough to work at.
+func near_crafting_table() -> bool:
+	for table in get_tree().get_nodes_in_group("crafting_tables"):
+		if table.global_position.distance_to(global_position) < 150.0:
+			return true
+	return false
+
+
 ## The usable prop closest to the player and in reach, or null.
 func nearest_prop() -> Prop:
 	var best: Prop = null
-	var best_distance := Prop.REACH
+	var best_distance := INF
 	for node in get_tree().get_nodes_in_group("props"):
 		var distance: float = node.global_position.distance_to(global_position)
-		if distance < best_distance:
+		if distance < node.reach and distance < best_distance:
 			best_distance = distance
 			best = node
 	return best

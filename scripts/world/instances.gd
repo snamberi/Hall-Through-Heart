@@ -106,7 +106,7 @@ func enter_cave(cave_seed: int, level: int, lair: bool, on_chest: Callable) -> v
 		var cell: Vector2i = far[random.randi_range(0, far.size() - 1)]
 		var id := GatherDB.pick("ore", T.CAVE_FLOOR, level + 8, random)
 		if id != "" and cell != cave.entry:
-			cave.add_child(ResourceNode.create(id, cell, cave.cell_position(cell)))
+			cave.add_prop(ResourceNode.create(id, cell, cave.cell_position(cell)))
 	var roomy := far.slice(0, far.size() * 2 / 3)
 	for i in random.randi_range(6, 9):
 		var options := CAVE_MONSTERS.filter(func(id: String) -> bool: return EnemyDB.ENEMIES[id]["min_level"] <= level + 2)

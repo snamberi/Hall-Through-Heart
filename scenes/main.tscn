@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
@@ -18,6 +18,8 @@
 [ext_resource type="Script" path="res://scripts/world/day_night.gd" id="17_daynight"]
 [ext_resource type="Script" path="res://scripts/world/structures.gd" id="18_structures"]
 [ext_resource type="Script" path="res://scripts/world/instances.gd" id="19_instances"]
+[ext_resource type="Script" path="res://scripts/building/buildings.gd" id="20_buildings"]
+[ext_resource type="Script" path="res://scripts/building/builder.gd" id="21_builder"]
 
 [node name="Main" type="Node2D"]
 y_sort_enabled = true
@@ -41,6 +43,13 @@ script = ExtResource("18_structures")
 [node name="Instances" type="Node2D" parent="."]
 y_sort_enabled = true
 script = ExtResource("19_instances")
+
+[node name="Buildings" type="Node2D" parent="."]
+y_sort_enabled = true
+script = ExtResource("20_buildings")
+
+[node name="Builder" type="Node2D" parent="."]
+script = ExtResource("21_builder")
 
 [node name="Npcs" type="Node2D" parent="."]
 y_sort_enabled = true

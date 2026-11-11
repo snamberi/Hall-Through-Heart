@@ -76,6 +76,11 @@ func is_consumable() -> bool:
 	return definition().has("use")
 
 
+## Things that are set down in the world rather than used up.
+func is_placeable() -> bool:
+	return definition().has("place")
+
+
 func is_stackable() -> bool:
 	return not is_equipment() and not is_tool()
 

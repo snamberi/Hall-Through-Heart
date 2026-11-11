@@ -13,6 +13,8 @@ enum Art { PILLAR, WALL, CHEST, CHEST_OPEN, ALTAR, CAVE, PORTAL, LADDER, TABLE, 
 var prompt_text := ""
 ## Called with the player when they interact.
 var on_interact: Callable
+## How close the player must be to use it; big things reach further.
+var reach := REACH
 ## Free text for whoever placed this (a structure key, a kind name).
 var tag := ""
 

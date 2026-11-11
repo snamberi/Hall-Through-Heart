@@ -55,9 +55,11 @@ func floor_by_distance() -> Array[Vector2i]:
 	return result
 
 
-func add_prop(prop: Prop) -> Prop:
-	add_child(prop)
-	return prop
+## Adds something placed at a world position (as cell_position gives).
+func add_prop(node: Node2D) -> Node2D:
+	node.position -= position
+	add_child(node)
+	return node
 
 
 func living_enemies() -> int:

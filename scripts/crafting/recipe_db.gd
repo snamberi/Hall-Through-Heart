@@ -24,7 +24,13 @@ const TOOL_TIERS: Array[Array] = [
 	["bronze", 5, "bronze_ingot", "oak_wood"], ["iron", 10, "iron_ingot", "oak_wood"],
 	["mithril", 40, "mithril_ingot", "ancient_wood"], ["adamantite", 65, "adamantite_ingot", "ancient_wood"],
 ]
+## Recipes that can be made with bare hands, away from a crafting table.
+const NO_TABLE: Array[String] = ["crafting_table"]
 const HAND_WRITTEN: Array[Dictionary] = [
+	{"id": "crafting_table", "profession": "building", "level": 1, "inputs": {"oak_wood": 6, "stone": 4}, "item": "crafting_table", "count": 1, "xp": 20.0},
+	{"id": "storage_chest", "profession": "building", "level": 1, "inputs": {"oak_wood": 8, "copper_ingot": 1}, "item": "storage_chest", "count": 1, "xp": 25.0},
+	{"id": "bed", "profession": "building", "level": 1, "inputs": {"oak_wood": 10, "husk_fragment": 6}, "item": "bed", "count": 1, "xp": 30.0},
+	{"id": "house_kit", "profession": "building", "level": 2, "inputs": {"oak_wood": 30, "stone": 20, "copper_ingot": 4}, "item": "house_kit", "count": 1, "xp": 120.0},
 	{"id": "bronze_ingot", "profession": "blacksmithing", "level": 5, "inputs": {"copper_ore": 2, "tin_ore": 1}, "item": "bronze_ingot", "count": 1, "xp": 14.0},
 	{"id": "health_potion", "profession": "alchemy", "level": 1, "inputs": {"healing_herb": 2}, "item": "health_potion", "count": 1, "xp": 10.0},
 	{"id": "stamina_tonic", "profession": "alchemy", "level": 5, "inputs": {"healing_herb": 1, "poison_mushroom": 1}, "item": "stamina_tonic", "count": 1, "xp": 16.0},

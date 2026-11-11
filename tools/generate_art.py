@@ -908,6 +908,14 @@ ICONS += [
                 ("dark", "rect", (7, 8, 14, 8)), ("dark", "rect", (7, 11, 14, 11)), ("dark", "rect", (7, 14, 12, 14))]),
 ]
 
+# Icons 54-57: things the player builds and places.
+ICONS += [
+    ("table", [("wood", "rect", (3, 8, 18, 11)), ("wood", "rect", (4, 11, 6, 19)), ("wood", "rect", (15, 11, 17, 19)), ("plate", "rect", (6, 4, 11, 8))]),
+    ("chest", [("wood", "rect", (3, 9, 18, 18)), ("wood", "poly", [(3, 9), (5, 5), (16, 5), (18, 9)]), ("gold", "rect", (3, 11, 18, 12)), ("gold", "rect", (9, 10, 12, 14))]),
+    ("house", [("wood", "rect", (4, 10, 17, 19)), ("red", "poly", [(2, 11), (10.5, 3), (19, 11)]), ("dark", "rect", (9, 14, 12, 19))]),
+    ("bed", [("wood", "rect", (3, 8, 18, 18)), ("red", "rect", (4, 11, 17, 17)), ("bone", "rect", (5, 9, 10, 11))]),
+]
+
 # Things to gather in the world: 64px frames in one row. Pale parts are
 # tinted in game. Order: rock, ore flecks, tree, herb, fishing ripple.
 NODE = 64
