@@ -12,6 +12,7 @@ var _attribute_values: Dictionary[String, Label] = {}
 var _attribute_previews: Dictionary[String, Label] = {}
 var _buttons: Array[Button] = []
 var _stat_values: Dictionary[String, Label] = {}
+var _stat_names: Dictionary = {}
 
 
 func _build() -> void:
@@ -65,7 +66,9 @@ func _build() -> void:
 	stat_grid.add_theme_constant_override("v_separation", 3)
 	right.add_child(stat_grid)
 	for entry in CharacterStats.DISPLAY:
-		stat_grid.add_child(make_label(entry["name"], 15, Color(0.72, 0.7, 0.64)))
+		var name_label := make_label(entry["name"], 15, Color(0.72, 0.7, 0.64))
+		_stat_names[entry["id"]] = name_label
+		stat_grid.add_child(name_label)
 		_stat_values[entry["id"]] = make_label("", 15)
 		_stat_values[entry["id"]].horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_stat_values[entry["id"]].custom_minimum_size.x = 70.0
@@ -94,6 +97,9 @@ func refresh() -> void:
 	for entry in CharacterStats.DISPLAY:
 		var value := player.stats.get_stat(entry["id"])
 		_stat_values[entry["id"]].text = CharacterStats.format_value(entry["format"], value)
+		var shown: bool = not entry.get("hide_zero", false) or absf(value) > 0.0001
+		_stat_values[entry["id"]].visible = shown
+		_stat_names[entry["id"]].visible = shown
 
 
 func _spend_button(text: String, id: String, amount: int) -> Button:

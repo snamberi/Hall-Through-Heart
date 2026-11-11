@@ -38,9 +38,12 @@ var _details: RichTextLabel
 var _primary: Button
 var _upgrade: Button
 var _enchant: Button
+var _socket: Button
 var _salvage: Button
 var _discard: Button
 var _message: Label
+var _hand_row: HBoxContainer
+var _hand_buttons: Dictionary[String, Button] = {}
 
 var _selected: Item
 var _hovered: Item
@@ -57,6 +60,7 @@ func _build() -> void:
 	# --- left: the bag
 	var bag_panel := UITheme.inset_panel()
 	columns.add_child(bag_panel)
+	bag_panel.custom_minimum_size.y = 520.0
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 12)
 	bag_panel.add_child(left)
@@ -97,9 +101,34 @@ func _build() -> void:
 	bag_actions.add_child(_discard)
 	bag_actions.add_child(UITheme.button("Sort", func() -> void: player.inventory.sort(), 130.0))
 
+	# Simple things that need no workbench.
+	left.add_child(UITheme.heading("Craft by hand", 16))
+	_hand_row = HBoxContainer.new()
+	_hand_row.add_theme_constant_override("separation", 6)
+	left.add_child(_hand_row)
+	for recipe_id in RecipeDB.NO_TABLE:
+		var recipe := RecipeDB.find(recipe_id)
+		var button := Button.new()
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = Vector2(98.0, 44.0)
+		button.add_theme_font_size_override("font_size", 12)
+		button.text = RecipeDB.display_name(recipe)
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD
+		button.pressed.connect(func() -> void: _report(Crafting.craft(player, recipe)))
+		button.mouse_entered.connect(func() -> void:
+			var needs: PackedStringArray = []
+			for item_id: String in recipe["inputs"]:
+				needs.append("%d %s" % [recipe["inputs"][item_id], ItemDB.ITEMS[item_id]["name"]])
+			_message.add_theme_color_override("font_color", UITheme.DIM)
+			_message.text = "%s needs %s" % [RecipeDB.display_name(recipe), ", ".join(needs)]
+		)
+		_hand_row.add_child(button)
+		_hand_buttons[recipe_id] = button
+
 	# --- middle: the character and what they wear
 	var doll_panel := UITheme.inset_panel()
 	columns.add_child(doll_panel)
+	doll_panel.custom_minimum_size.y = 520.0
 	var doll := CharacterPreview.new()
 	doll.custom_minimum_size = Vector2(330.0, 400.0)
 	doll.setup(player)
@@ -125,6 +154,7 @@ func _build() -> void:
 	# --- right: details and actions
 	var detail_panel := UITheme.inset_panel()
 	columns.add_child(detail_panel)
+	detail_panel.custom_minimum_size.y = 520.0
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 8)
 	right.custom_minimum_size = Vector2(310.0, 0.0)
@@ -140,15 +170,21 @@ func _build() -> void:
 	_detail_frame.add_child(_detail_icon)
 	_details = RichTextLabel.new()
 	_details.bbcode_enabled = true
-	_details.fit_content = true
-	_details.scroll_active = false
-	_details.custom_minimum_size = Vector2(310.0, 250.0)
+	# A fixed box so the screen keeps its size whatever is shown.
+	_details.fit_content = false
+	_details.scroll_active = true
+	_details.custom_minimum_size = Vector2(310.0, 270.0)
+	_details.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_details.add_theme_font_size_override("normal_font_size", 14)
 	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(_details)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(spacer)
+	var hint := UITheme.label("Hover an item and press %s to put it on the hotbar." % "/".join(range(1, Hotbar.SIZE + 1).map(func(i: int) -> String: return GameSettings.describe("hotbar_%d" % i).split(" / ")[0])), 12, UITheme.DIM)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint.custom_minimum_size = Vector2(310.0, 18.0)
+	right.add_child(hint)
 	_message = UITheme.label("", 13, UITheme.BAD)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_message.custom_minimum_size = Vector2(310.0, 20.0)
@@ -161,7 +197,9 @@ func _build() -> void:
 	_upgrade = UITheme.button("Upgrade", func() -> void: _act(Crafting.upgrade), 99.0)
 	_enchant = UITheme.button("Enchant", func() -> void: _act(Crafting.enchant), 99.0)
 	_salvage = UITheme.button("Salvage", func() -> void: _act(Crafting.salvage), 99.0)
-	for button: Button in [_upgrade, _enchant, _salvage]:
+	_socket = UITheme.button("Gems", _open_gems, 99.0)
+	for button: Button in [_upgrade, _enchant, _salvage, _socket]:
+		button.custom_minimum_size.x = 74.0
 		smith.add_child(button)
 
 	player.inventory.changed.connect(refresh_if_open)
@@ -174,6 +212,8 @@ func refresh() -> void:
 	if _selected and not _selected in inventory.items and _equipped_slot(_selected) == "":
 		_selected = null
 	_count.text = "%d / %d" % [inventory.items.size(), Inventory.CAPACITY]
+	for recipe_id in _hand_buttons:
+		_hand_buttons[recipe_id].disabled = Crafting.blocked_reason(player, RecipeDB.find(recipe_id)) != ""
 	_gold.text = "%d gold" % inventory.gold
 	for index in Inventory.CAPACITY:
 		var item := _bag_item(index)
@@ -212,6 +252,7 @@ func _refresh_details() -> void:
 	_upgrade.disabled = item == null or not item.is_equipment() or not item.is_upgradable() or item.upgrade >= ItemDB.MAX_UPGRADE
 	_enchant.disabled = item == null or not item.is_equipment()
 	_salvage.disabled = not in_bag or not item.is_equipment()
+	_socket.disabled = item == null or not item.is_equipment() or item.sockets.is_empty()
 
 
 ## BBCode description of an item.
@@ -258,12 +299,32 @@ func _describe(item: Item) -> String:
 		lines.append("[color=#%s]Inflicts %s: %s for %.1fs[/color]" % [status["color"].to_html(false), status["name"], detail, effect["duration"]])
 	if def.has("life_steal"):
 		lines.append("[color=#%s]Heals you for %d%% of damage dealt[/color]" % [UITheme.GOOD.to_html(false), roundi(def["life_steal"] * 100.0)])
+	if def.has("unique"):
+		lines.append("[color=#ff9a2e]Unique: %s[/color]" % Uniques.TEXT[def["unique"]])
 	for modifier in item.implicit_modifiers():
 		lines.append("[color=#%s]+[/color] %s" % [UITheme.HEADING.to_html(false), ItemDB.describe_modifier(modifier)])
 	for modifier in item.mods:
 		lines.append("[color=#%s]+[/color] [color=#%s]%s[/color]" % [UITheme.HEADING.to_html(false), UITheme.INFO.to_html(false), ItemDB.describe_modifier(modifier)])
 	if not item.enchant.is_empty():
 		lines.append("[color=#c08cff]+ %s  (enchanted)[/color]" % ItemDB.describe_modifier(item.enchant))
+	for gem in item.sockets:
+		if gem == "":
+			lines.append("[color=#%s]<> Empty socket[/color]" % dim)
+		else:
+			lines.append("[color=#%s]<> %s: %s[/color]" % [(ItemDB.ITEMS[gem]["tint"] as Color).to_html(false), ItemDB.ITEMS[gem]["name"], ItemDB.describe_modifier(Gems.modifier(gem, item.slot()))])
+	if item.set_id != "":
+		var set_data: Dictionary = ItemDB.ITEM_SETS[item.set_id]
+		var worn: int = player.equipment.named_set_counts().get(item.set_id, 0)
+		lines.append("")
+		lines.append("[color=#%s]%s set  (%d / %d worn)[/color]" % [ItemDB.SET_COLOR.to_html(false), set_data["name"], worn, set_data["pieces"].size()])
+		for needed: int in set_data["bonuses"]:
+			var parts: PackedStringArray = []
+			for stat: String in set_data["bonuses"][needed]:
+				for kind: String in set_data["bonuses"][needed][stat]:
+					var value: float = set_data["bonuses"][needed][stat][kind]
+					var text_part := ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": absf(value)})
+					parts.append(text_part if value >= 0.0 else "-" + text_part.substr(1))
+			lines.append("[color=#%s](%d) %s[/color]" % [ItemDB.SET_COLOR.to_html(false) if worn >= needed else dim, needed, ", ".join(parts)])
 	if _equipped_slot(item) == "":
 		var current := player.equipment.get_item(player.equipment.target_slot(item))
 		if current:
@@ -330,6 +391,44 @@ func _report(result: String) -> void:
 	else:
 		_message.text = _costs(_selected)
 		_message.add_theme_color_override("font_color", UITheme.DIM)
+
+
+## A small window listing the gems in the bag that fit the selected item.
+func _open_gems() -> void:
+	var item := _selected
+	if item == null:
+		return
+	var popup := PopupPanel.new()
+	popup.add_theme_stylebox_override("panel", UITheme.get_theme().get_stylebox("panel", "PanelContainer"))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	popup.add_child(box)
+	box.add_child(UITheme.heading("Gems for %s" % item.display_name(), 18))
+	var free := item.sockets.count("")
+	box.add_child(UITheme.label("%d of %d sockets empty" % [free, item.sockets.size()], 14, UITheme.DIM))
+	var seen := {}
+	for gem in player.inventory.items:
+		if gem == null or not gem.definition().has("gem") or seen.has(gem.id):
+			continue
+		seen[gem.id] = true
+		var button := UITheme.button("%s  ->  %s" % [gem.display_name(), ItemDB.describe_modifier(Gems.modifier(gem.id, item.slot()))], func() -> void:
+			_report(Gems.insert(player, item, gem))
+			popup.hide()
+		, 360.0)
+		button.icon = gem.icon()
+		button.add_theme_color_override("icon_normal_color", gem.tint())
+		button.disabled = free == 0
+		box.add_child(button)
+	if seen.is_empty():
+		box.add_child(UITheme.label("You have no gems. Mine ore or beat strong foes.", 14, UITheme.DIM))
+	box.add_child(UITheme.button("Remove all gems  (%d gold)" % (Gems.REMOVE_COST_PER_LEVEL * item.level), func() -> void:
+		_report(Gems.remove_all(player, item))
+		popup.hide()
+	, 360.0))
+	box.add_child(UITheme.button("Close", popup.hide, 360.0))
+	add_child(popup)
+	popup.popup_centered()
+	popup.popup_hide.connect(popup.queue_free)
 
 
 func _discard_selected() -> void:
@@ -403,3 +502,19 @@ func _style_button(button: Button, item: Item) -> void:
 	button.add_theme_stylebox_override("hover", hover)
 	button.icon = item.icon() if item else null
 	_tint_icon(button, item.tint() if item else Color.WHITE)
+
+
+## Hotbar keys put the hovered (or selected) item in that slot.
+func _input(event: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
+	var item := _hovered if _hovered else _selected
+	if item == null:
+		return
+	for index in Hotbar.SIZE:
+		if event.is_action_pressed("hotbar_%d" % (index + 1)):
+			player.hotbar.assign(index, item.id)
+			_message.add_theme_color_override("font_color", UITheme.GOOD)
+			_message.text = "%s is on hotbar slot %d." % [item.display_name(), index + 1]
+			get_viewport().set_input_as_handled()
+			return

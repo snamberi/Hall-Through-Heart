@@ -9,7 +9,7 @@ extends CharacterBody2D
 signal died(enemy: Enemy)
 
 enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
-enum Rank { NORMAL, ELITE, CHAMPION, MINIBOSS }
+enum Rank { NORMAL, ELITE, CHAMPION, MINIBOSS, BOSS }
 
 ## How each rank changes an enemy. "xp" 3.75 makes an Elite Husk worth 30.
 ## "modifiers" is how many random modifiers the rank rolls.
@@ -18,6 +18,7 @@ const RANK_DATA := {
 	Rank.ELITE: {"id": "elite", "title": "Elite ", "health": 3.0, "damage": 1.4, "xp": 3.75, "size": 1.3, "tint": Color(1.0, 0.8, 0.55), "modifiers": 1},
 	Rank.CHAMPION: {"id": "champion", "title": "Champion ", "health": 6.0, "damage": 1.7, "xp": 9.0, "size": 1.5, "tint": Color(0.85, 0.65, 1.0), "modifiers": 2},
 	Rank.MINIBOSS: {"id": "miniboss", "title": "Ancient ", "health": 16.0, "damage": 2.0, "xp": 30.0, "size": 1.9, "tint": Color(1.0, 0.72, 0.6), "modifiers": 2},
+	Rank.BOSS: {"id": "boss", "title": "", "health": 56.0, "damage": 2.3, "xp": 120.0, "size": 1.0, "tint": Color.WHITE, "modifiers": 0},
 }
 ## Random modifiers for Elites and Champions. Each changes how the enemy
 ## fights, not just its numbers, and each adds REWARD_PER_MODIFIER to its XP.
@@ -36,8 +37,24 @@ const MODIFIERS := {
 	"regenerating": {"name": "Regenerating", "color": Color(0.5, 0.9, 0.6), "traits": ["regen"]},
 	"summoner": {"name": "Summoner", "color": Color(0.75, 0.55, 1.0)},
 	"berserker": {"name": "Berserker", "color": Color(1.0, 0.3, 0.3), "traits": ["enrage"]},
+	"shielded": {"name": "Shielded", "color": Color(0.55, 0.8, 1.0)},
+	"thorns": {"name": "Thorned", "color": Color(0.75, 0.6, 0.35)},
+	"evasive": {"name": "Evasive", "color": Color(0.85, 0.85, 0.95)},
+	"giant": {"name": "Giant", "color": Color(0.9, 0.7, 0.5)},
+	"splitting": {"name": "Splitting", "color": Color(0.5, 0.95, 0.7), "traits": ["split"]},
+	"teleporting": {"name": "Phasing", "color": Color(0.65, 0.75, 1.0), "traits": ["blink"]},
+	"molten": {"name": "Molten", "color": Color(1.0, 0.4, 0.15)},
+	"bloodletter": {"name": "Bloodletter", "color": Color(0.9, 0.15, 0.2), "touch": {"status": "bleed", "duration": 4.0, "power": 0.35}},
 }
+## Shielded enemies carry a barrier worth this share of their health, which
+## comes back after a while without being hit.
+const SHIELD_SHARE := 0.35
+const SHIELD_REGEN_DELAY := 5.0
+const THORNS_SHARE := 0.15
+const EVADE_CHANCE := 0.22
 const REWARD_PER_MODIFIER := 0.25
+## How much of a blow's shove each rank takes.
+const POISE: Array[float] = [0.6, 0.35, 0.2, 0.08, 0.0]
 const FROZEN_AURA_RADIUS := 170.0
 const SUMMON_SECONDS := 8.0
 const SUMMON_LIMIT := 3
@@ -66,6 +83,11 @@ var is_fragment := false
 var modifiers: Array[String] = []
 ## Mini-bosses guard a spot and walk back to it rather than chase forever.
 var lair_home := Vector2.INF
+## Set before adding to the tree to make this a world boss (BossDB id).
+var boss_id := ""
+## A name of its own (bounty marks), shown instead of its kind's.
+var custom_name := ""
+var brain: BossBrain
 ## Asks whoever spawned this enemy for a minion (the Summoner modifier).
 signal wants_minion(enemy: Enemy)
 
@@ -83,6 +105,20 @@ var _last_weapon_type := ""
 var _since_hurt := 99.0
 var _blink_left := 3.0
 var _aura_left := 0.0
+## Seconds until a hit can interrupt this enemy again.
+var _stagger_cooldown := 0.0
+## Walkers slow down in water; the ground is checked a few times a second.
+var _ground_speed := 1.0
+var _ground_left := 0.0
+var in_water := false
+## Chasing but not getting anywhere: try a way round.
+var _stuck_time := 0.0
+var _detour := Vector2.ZERO
+var _detour_left := 0.0
+## The Shielded modifier's barrier, used up before health.
+var shield := 0.0
+var shield_max := 0.0
+var _molten_left := 0.0
 var _summon_left := SUMMON_SECONDS
 var _minions := 0
 var _weave := 0.0
@@ -103,12 +139,18 @@ func configure(p_level: int, p_rank: Rank = Rank.NORMAL, p_id: String = "husk") 
 
 func _ready() -> void:
 	add_to_group("enemies")
-	if rank == Rank.MINIBOSS:
+	if boss_id != "":
+		rank = Rank.BOSS
+		brain = BossBrain.new(self, boss_id)
+		enemy_id = BossDB.BOSSES[boss_id]["monster"]
+	if rank >= Rank.MINIBOSS:
 		add_to_group("bosses")
 	_data = EnemyDB.ENEMIES[enemy_id]
 	_attack = _data["attack"]
-	_traits = _data["traits"].duplicate()
-	display_name = _data["name"]
+	_traits = _data["traits"].duplicate() if boss_id == "" else []
+	display_name = _data["name"] if boss_id == "" else BossDB.BOSSES[boss_id]["name"]
+	if custom_name != "":
+		display_name = custom_name
 	var rolls: int = RANK_DATA[rank]["modifiers"]
 	if modifiers.is_empty() and rolls > 0 and not is_fragment:
 		var pool: Array = MODIFIERS.keys()
@@ -120,20 +162,32 @@ func _ready() -> void:
 	windup_time = _attack["windup"] * (0.75 if "swift" in modifiers else 1.0)
 	lunge_time = _attack.get("time", 0.25)
 	var rank_data: Dictionary = RANK_DATA[rank]
-	var size: float = rank_data["size"] * _data["size"] * (0.62 if is_fragment else 1.0)
-	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0)
+	var giant := "giant" in modifiers
+	var size: float = rank_data["size"] * _data["size"] * (0.62 if is_fragment else 1.0) * (1.3 if giant else 1.0)
+	if boss_id != "":
+		size = BossDB.BOSSES[boss_id]["size"]
+	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0) * Difficulty.value("health") * (1.6 if giant else 1.0)
 	health.current = health.max_health
 	_damage = _data["damage"] * rank_data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1)) * (0.6 if is_fragment else 1.0)
-	_speed = _data["speed"] * (1.4 if "swift" in modifiers else 1.0)
-	_tint = rank_data["tint"]
+	_speed = _data["speed"] * (1.4 if "swift" in modifiers else 1.0) * (0.85 if giant else 1.0) * Difficulty.value("speed")
+	if giant:
+		_damage *= 1.3
+	if "shielded" in modifiers:
+		shield_max = health.max_health * SHIELD_SHARE
+		shield = shield_max
+	_tint = rank_data["tint"] if boss_id == "" else BossDB.BOSSES[boss_id]["tint"]
+	if boss_id != "":
+		health.max_health *= BossDB.BOSSES[boss_id]["health"]
+		health.current = health.max_health
 	body_radius = _data["radius"] * size
 	_visual.scale = Vector2(size, size)
 	_visual.modulate = _tint
 	_animator.sheet = EnemyDB.sheet(enemy_id)
 	_animator.rebuild()
-	# Walkers are stopped by walls and deep water; fliers by neither.
-	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION | TerrainTiles.WATER_COLLISION
+	# Walkers are stopped by walls; fliers by nothing.
+	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION
 	_add_nameplate(rank_data, size)
+	StatusFX.attach(self, func() -> Array: return _statuses.keys(), 40.0 * size, body_radius)
 	health.died.connect(_on_died)
 	_pick_wander()
 
@@ -141,7 +195,7 @@ func _ready() -> void:
 ## Experience this enemy is worth at its level and rank.
 func xp_value() -> int:
 	var value: float = _data["xp"] * RANK_DATA[rank]["xp"] * pow(level, XP_LEVEL_EXPONENT) * (1.0 + REWARD_PER_MODIFIER * modifiers.size())
-	return maxi(roundi(value * (0.3 if is_fragment else 1.0)), 1)
+	return maxi(roundi(value * (0.3 if is_fragment else 1.0) * Difficulty.value("xp") * (1.5 if DayNight.blood_moon else 1.0)), 1)
 
 
 func has_trait(id: String) -> bool:
@@ -158,21 +212,32 @@ func _physics_process(delta: float) -> void:
 		return
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
 	_since_hurt += delta
+	_stagger_cooldown = maxf(_stagger_cooldown - delta, 0.0)
+	_read_ground(delta)
 	_update_statuses(delta)
 	if state == State.DEAD:
 		return
+	if shield_max > 0.0 and _since_hurt > SHIELD_REGEN_DELAY and shield < shield_max:
+		shield = minf(shield + shield_max * 0.25 * delta, shield_max)
+		queue_redraw()
 	if has_trait("regen") and _since_hurt > 3.0:
 		health.heal(health.max_health * 0.04 * delta)
 	if not modifiers.is_empty():
 		_update_modifiers(delta)
+	if brain and state != State.STAGGER:
+		brain.physics(delta)
+		if absf(velocity.x) > 1.0:
+			_visual.scale.x = absf(_visual.scale.x) * signf(velocity.x)
+		move_and_slide()
+		return
 	var has_target := target != null and not target.is_dead()
 	var to_target := target.global_position - global_position if has_target else Vector2.ZERO
 	var distance := to_target.length()
 
 	match state:
 		State.WANDER:
-			velocity = _direction * _speed * 0.4
-			if has_target and distance < AGGRO_RADIUS:
+			velocity = _direction * _speed * 0.4 * _ground_speed
+			if has_target and distance < AGGRO_RADIUS and (not Difficulty.monsters_passive() or _since_hurt < 30.0):
 				state = State.CHASE
 			elif _state_time_left == 0.0:
 				_pick_wander()
@@ -190,7 +255,8 @@ func _physics_process(delta: float) -> void:
 				velocity = Vector2.ZERO
 				_visual.modulate = Color(1.8, 0.5, 0.5)
 			else:
-				velocity = _chase_velocity(to_target, distance, delta)
+				velocity = _chase_velocity(to_target, distance, delta) * _ground_speed
+				_avoid_getting_stuck(delta)
 				_try_blink(delta, to_target, distance)
 		State.WINDUP:
 			velocity = Vector2.ZERO
@@ -203,7 +269,7 @@ func _physics_process(delta: float) -> void:
 				_has_hit = false
 				_strike(has_target)
 		State.LUNGE:
-			velocity = _direction * _attack.get("speed", 400.0) * _speed_multiplier()
+			velocity = _direction * _attack.get("speed", 400.0) * _speed_multiplier() * _ground_speed
 			if has_target and not _has_hit and distance < body_radius + 13.0:
 				_has_hit = true
 				_hit_target(_current_damage())
@@ -234,9 +300,16 @@ func _draw() -> void:
 			var ring: Color = MODIFIERS[modifiers[index]]["color"]
 			draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
 			draw_arc(Vector2.ZERO, body_radius + 9.0 + index * 5.0, 0.0, TAU, 28, Color(ring, 0.9), 2.0)
+			if modifiers[index] == "shielded" and shield > 0.0:
+				draw_set_transform(Vector2(0, -body_radius), 0.0, Vector2.ONE)
+				draw_arc(Vector2.ZERO, body_radius + 14.0, 0.0, TAU, 32, Color(ring, 0.35 + 0.45 * shield / shield_max), 2.5)
+				draw_circle(Vector2.ZERO, body_radius + 13.0, Color(ring, 0.07))
 			if modifiers[index] == "frozen_aura":
 				draw_arc(Vector2.ZERO, FROZEN_AURA_RADIUS, 0.0, TAU, 48, Color(ring, 0.25), 1.5)
 			draw_set_transform(Vector2.ZERO)
+	if brain and state != State.DEAD:
+		brain.draw()
+		return
 	# The ground marker for an area attack, filling in as the wind-up runs out.
 	if state != State.WINDUP or not is_area_attack():
 		return
@@ -251,12 +324,42 @@ func _draw() -> void:
 
 ## Returns the health actually removed, so callers can reward real damage only.
 func take_damage(
-	amount: float, knockback: Vector2, critical: bool = false, weapon_type: String = ""
+	amount: float, knockback: Vector2, critical: bool = false, weapon_type: String = "", element: String = ""
 ) -> float:
 	if state == State.DEAD:
 		return 0.0
+	if element != "":
+		# Elemental damage riding on a blow: its own coloured number, and no
+		# extra shove, dodge, or thorns.
+		if shield > 0.0:
+			var soaked := minf(shield, amount)
+			shield -= soaked
+			amount -= soaked
+		if amount <= 0.0:
+			return 0.0
+		DamageNumber.spawn(get_parent(), global_position + Vector2(randf_range(-10, 10), -12), amount, Elements.color(element), critical)
+		_since_hurt = 0.0
+		return health.take_damage(amount)
 	if has_trait("armored"):
 		amount *= 0.65
+	if "evasive" in modifiers and state != State.WINDUP and randf() < EVADE_CHANCE:
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -30), "Evaded", Color(0.85, 0.85, 0.95), 13)
+		velocity = knockback.normalized().rotated(PI / 2.0 * (1 if randf() < 0.5 else -1)) * 260.0
+		return 0.0
+	if "thorns" in modifiers and target and not target.is_dead() and weapon_type not in ["bows", "staves"]:
+		target.take_damage(amount * THORNS_SHARE, global_position, level)
+	if shield > 0.0:
+		var absorbed := minf(shield, amount)
+		shield -= absorbed
+		amount -= absorbed
+		_since_hurt = 0.0
+		HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), MODIFIERS["shielded"]["color"], shield <= 0.0)
+		if shield <= 0.0:
+			RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), MODIFIERS["shielded"]["color"], 50.0)
+		queue_redraw()
+		if amount <= 0.0:
+			DamageNumber.spawn(get_parent(), global_position, absorbed, MODIFIERS["shielded"]["color"])
+			return 0.0
 	var color := Color(1.0, 0.8, 0.25) if critical else Color(0.95, 0.9, 0.75)
 	DamageNumber.spawn(get_parent(), global_position, amount, color, critical)
 	_last_weapon_type = weapon_type
@@ -266,13 +369,20 @@ func take_damage(
 	var dealt := health.take_damage(amount)
 	if health.is_dead():
 		return dealt
-	# Heavy enemies and ones mid-attack are harder to interrupt.
-	var steady := has_trait("armored") or (state == State.WINDUP and is_area_attack())
-	if not steady:
-		_enter(State.STAGGER, 0.22)
+	# Poise: a blow only interrupts an enemy that is not mid-attack and has
+	# not just been staggered, and big or armoured enemies shrug off most of
+	# the shove. Without this, quick swings could lock an enemy in place.
+	var resist: float = POISE[rank] * (0.5 if has_trait("armored") else 1.0)
+	var shove := knockback * resist
+	var attacking := state == State.WINDUP or state == State.LUNGE
+	if not attacking and _stagger_cooldown == 0.0 and shove.length() > 110.0:
+		_enter(State.STAGGER, 0.18)
+		_stagger_cooldown = 1.1
 		_visual.modulate = _tint
-		velocity = knockback
+		velocity = shove * 0.6
 		queue_redraw()
+	elif not attacking:
+		velocity += shove * 0.15
 	_flash()
 	return dealt
 
@@ -291,6 +401,18 @@ func apply_status(id: String, duration: float, power: float, weapon_type: String
 	if weapon_type != "":
 		_last_weapon_type = weapon_type
 	_refresh_status_tint()
+
+
+## Freezes the enemy in place. Bosses shake it off sooner.
+func stun(seconds: float) -> void:
+	if state == State.DEAD:
+		return
+	_enter(State.STAGGER, seconds * (0.4 if rank >= Rank.MINIBOSS else 1.0))
+	velocity = Vector2.ZERO
+	_visual.modulate = Color(0.7, 0.9, 1.3)
+	var tween := create_tween()
+	tween.tween_interval(seconds)
+	tween.tween_callback(func() -> void: _visual.modulate = _tint)
 
 
 func has_status(id: String) -> bool:
@@ -345,7 +467,7 @@ func _blast() -> void:
 ## Damages the player and applies this enemy's on-hit status. Returns whether
 ## the blow landed (it may have been dodged).
 func _hit_target(amount: float) -> bool:
-	if not target.take_damage(amount, global_position, level):
+	if not target.take_damage(amount, global_position, level, Elements.attack_element(enemy_id)):
 		return false
 	on_dealt_damage(amount)
 	var effects: Array = [_data.get("touch", {}), _attack.get("status", {}) if _attack["kind"] != "shoot" else {}]
@@ -429,6 +551,11 @@ func _update_modifiers(delta: float) -> void:
 			_aura_left = 0.5
 			if target.global_position.distance_to(global_position) < FROZEN_AURA_RADIUS:
 				target.apply_status("chill", 1.0, 0.3)
+	if "molten" in modifiers and has_target and velocity.length() > 20.0:
+		_molten_left -= delta
+		if _molten_left <= 0.0:
+			_molten_left = 0.7
+			HazardZone.spawn(get_parent(), global_position, target, 34.0, 3.0, MODIFIERS["molten"]["color"], {"status": "burn", "duration": 2.0, "power": 0.25}, _damage * 0.5)
 	if "summoner" in modifiers and has_target and state == State.CHASE:
 		_summon_left -= delta
 		if _summon_left <= 0.0 and _minions < SUMMON_LIMIT:
@@ -448,6 +575,41 @@ func _death_effects() -> void:
 			target.take_damage(_damage * 1.5, global_position, level)
 	if "poisonous" in modifiers and target:
 		HazardZone.spawn(get_parent(), global_position, target, 100.0, 5.0, MODIFIERS["poisonous"]["color"], {"status": "poison", "duration": 3.0, "power": 0.3}, _damage)
+
+
+## Water slows walkers to a wade; fliers do not care.
+func _read_ground(delta: float) -> void:
+	_ground_left -= delta
+	if _ground_left > 0.0:
+		return
+	_ground_left = 0.25
+	var world: World = get_tree().get_first_node_in_group("world")
+	# Rooms off the map are far above the world; their ground is never water.
+	if world == null or _data.get("flying", false) or global_position.y < Room.ORIGIN.y / 2.0:
+		_ground_speed = 1.0
+		in_water = false
+		return
+	var tile := world.tile_type_at_position(global_position)
+	in_water = TerrainTiles.is_water(tile)
+	_ground_speed = 0.55 if in_water else 1.0
+	_visual.position.y = 10.0 if in_water else 0.0
+
+
+## If chasing has not moved the enemy for a while, it heads off sideways
+## for a moment to get around whatever is in the way.
+func _avoid_getting_stuck(delta: float) -> void:
+	if _detour_left > 0.0:
+		_detour_left -= delta
+		velocity = _detour * _speed * _ground_speed
+		return
+	if velocity.length() > 20.0 and get_real_velocity().length() < 6.0:
+		_stuck_time += delta
+	else:
+		_stuck_time = 0.0
+	if _stuck_time > 0.5:
+		_stuck_time = 0.0
+		_detour = velocity.normalized().rotated(PI / 2.0 * (1.0 if randf() < 0.5 else -1.0))
+		_detour_left = 0.7
 
 
 # --- internals
@@ -561,7 +723,7 @@ func _add_nameplate(rank_data: Dictionary, size: float) -> void:
 	label.text = "Lv %d %s%s%s" % [level, prefix, rank_data["title"], display_name]
 	label.add_theme_font_override("font", UITheme.get_theme().default_font)
 	label.add_theme_font_size_override("font_size", 13)
-	var plate_colors: Array[Color] = [Color(0.82, 0.8, 0.74), Color(1.0, 0.82, 0.4), Color(0.85, 0.6, 1.0), Color(1.0, 0.45, 0.4)]
+	var plate_colors: Array[Color] = [Color(0.82, 0.8, 0.74), Color(1.0, 0.82, 0.4), Color(0.85, 0.6, 1.0), Color(1.0, 0.45, 0.4), Color(1.0, 0.3, 0.25)]
 	label.add_theme_color_override("font_color", plate_colors[rank])
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)

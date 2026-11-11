@@ -20,34 +20,38 @@ const WATER_COLLISION := 8
 enum Type {
 	DEEP_WATER, SHALLOW_WATER, MUD, ASH, DEAD_GRASS, DARK_GRASS, BOG, ROCK,
 	SNOW, FROSTPINE, SALT, THORN, CRIMSON, FUNGAL, TAR, SAND, CINDER, VOIDSCAR,
-	PLANK, WALL, CAVE_FLOOR,
+	PLANK, WALL, CAVE_FLOOR, PEAK, PATH,
 }
 
 const NAMES: Array[String] = [
-	"Black Water", "Shallows", "Mudflats", "Ashen Waste", "Withered Fields", "Gloomwood", "Rotmire", "Cragstone",
+	"Black Water", "Shallows", "Mudflats", "Ashen Waste", "Withered Fields", "Gloomwood", "Rotmire", "Mountains",
 	"Frostfields", "Frostpine", "Pale Flats", "Thornheath", "Crimson Moor", "Sporewood", "Tar Mire", "Bone Desert",
-	"Cinderlands", "Voidscar", "Floorboards", "Stone Wall", "Cavern",
+	"Cinderlands", "Voidscar", "Floorboards", "Stone Wall", "Cavern", "High Peaks", "Village Road",
 ]
 
 ## Flat colour for each type, for maps and previews.
 const COLORS: Array[Color] = [
-	Color("141b2b"), Color("23364a"), Color("3d342c"), Color("4b4a4e"), Color("4a4d32"), Color("26382c"), Color("2e3528"), Color("3a3944"),
+	Color("141b2b"), Color("23364a"), Color("3d342c"), Color("4b4a4e"), Color("4a4d32"), Color("26382c"), Color("2e3528"), Color("5a5560"),
 	Color("c8d0d8"), Color("3d5a58"), Color("8c8a84"), Color("4a4030"), Color("4a2830"), Color("3a2c4a"), Color("1c1a1e"), Color("8a7650"),
-	Color("3a2a28"), Color("1a1428"), Color("6b4f36"), Color("2a2630"), Color("34323a"),
+	Color("3a2a28"), Color("1a1428"), Color("6b4f36"), Color("2a2630"), Color("34323a"), Color("8a8794"), Color("7a6448"),
 ]
 
-## Tiles nothing can pass through.
-const SOLID: Array[int] = [Type.ROCK, Type.WALL]
+## Tiles nothing can pass through. Only walls inside buildings and caves:
+## out in the world, mountains are climbed rather than walked around.
+const SOLID: Array[int] = [Type.WALL]
+## High ground: drawn with a cliff face on its lower edge.
+const HIGH: Array[int] = [Type.ROCK, Type.PEAK]
 const WATER: Array[int] = [Type.DEEP_WATER, Type.SHALLOW_WATER]
 ## Types that only exist indoors and underground, never in the open world.
-const INTERIOR: Array[int] = [Type.PLANK, Type.WALL, Type.CAVE_FLOOR]
+const INTERIOR: Array[int] = [Type.PLANK, Type.WALL, Type.CAVE_FLOOR, Type.PATH]
 ## How fast the player moves on a tile, as a share of normal speed.
-const SPEED := {Type.DEEP_WATER: 0.55, Type.SHALLOW_WATER: 0.82, Type.TAR: 0.6, Type.SNOW: 0.92, Type.BOG: 0.92}
+const SPEED := {Type.DEEP_WATER: 0.5, Type.SHALLOW_WATER: 0.7, Type.TAR: 0.6, Type.SNOW: 0.92, Type.BOG: 0.92,
+	Type.ROCK: 0.82, Type.PEAK: 0.68}
 ## Where two terrains meet, the one later in this list spills over the other.
 const OVERLAP_ORDER: Array[int] = [
-	Type.DEEP_WATER, Type.SHALLOW_WATER, Type.TAR, Type.MUD, Type.SAND, Type.SALT, Type.ASH, Type.CINDER, Type.VOIDSCAR,
+	Type.DEEP_WATER, Type.SHALLOW_WATER, Type.TAR, Type.PATH, Type.MUD, Type.SAND, Type.SALT, Type.ASH, Type.CINDER, Type.VOIDSCAR,
 	Type.BOG, Type.DEAD_GRASS, Type.THORN, Type.CRIMSON, Type.FUNGAL, Type.DARK_GRASS, Type.FROSTPINE, Type.SNOW,
-	Type.CAVE_FLOOR, Type.PLANK, Type.ROCK, Type.WALL,
+	Type.CAVE_FLOOR, Type.PLANK, Type.ROCK, Type.PEAK, Type.WALL,
 ]
 const WATER_FRAMES := 4
 const WATER_FRAME_SECONDS := 0.4
@@ -113,7 +117,7 @@ static func build_tileset() -> TileSet:
 				source.set_tile_animation_frames_count(coords, WATER_FRAMES)
 				for frame in WATER_FRAMES:
 					source.set_tile_animation_frame_duration(coords, frame, WATER_FRAME_SECONDS)
-			var physics_layer := 0 if is_solid(type) else 1 if type == Type.DEEP_WATER else -1
+			var physics_layer := 0 if is_solid(type) else -1
 			if physics_layer >= 0:
 				var data := source.get_tile_data(coords, 0)
 				data.add_collision_polygon(physics_layer)
@@ -126,4 +130,6 @@ static func build_tileset() -> TileSet:
 	for type in Type.size():
 		fringes.create_tile(Vector2i(0, type))
 		fringes.create_tile(Vector2i(1, type))
+		if type in HIGH:
+			fringes.create_tile(Vector2i(2, type))
 	return tile_set

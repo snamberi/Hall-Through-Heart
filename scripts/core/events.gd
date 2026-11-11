@@ -8,6 +8,7 @@ extends Node
 signal damage_dealt(weapon_type: String, amount: float)
 ## An enemy died. Keys: id, name, level, rank, xp, position, weapon_type.
 signal enemy_killed(info: Dictionary)
+signal boss_defeated(boss_id: String)
 signal xp_gained(amount: int, source: String)
 signal level_up(level: int)
 ## Every tenth level.
@@ -36,3 +37,7 @@ signal screen_requested(id: String)
 signal placement_requested(item: Item)
 signal recall_requested
 signal dismantle_requested
+## Something went into or out of water here.
+signal splash(at: Vector2)
+## A loot chest was opened: {"items": [saved items], "title", "take_only"}.
+signal loot_opened(container: Dictionary)

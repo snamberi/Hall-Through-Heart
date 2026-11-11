@@ -6,23 +6,27 @@ extends GameMenu
 var chest: Dictionary = {}
 
 var _title: Label
+var _heading: Label
 var _chest_list: VBoxContainer
 var _bag_list: VBoxContainer
 var _message: Label
 
 
 func _build() -> void:
-	var heading := UITheme.heading("STORAGE", 30)
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	content.add_child(heading)
+	_heading = UITheme.heading("STORAGE", 30)
+	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(_heading)
 	_title = UITheme.label("", 14, UITheme.DIM)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(_title)
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 14)
 	content.add_child(columns)
-	_chest_list = _column(columns, "In the chest")
+	_chest_list = _column(columns, "Inside")
 	_bag_list = _column(columns, "In your bag")
+	var take_all := UITheme.button("Take everything", _take_all, 240.0)
+	take_all.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	content.add_child(take_all)
 	_message = UITheme.label("", 14, UITheme.BAD)
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(_message)
@@ -32,7 +36,9 @@ func refresh() -> void:
 	if chest.is_empty():
 		return
 	var stored: Array = chest["items"]
-	_title.text = "%d of %d slots used. Click an item to move it across." % [stored.size(), Buildings.CHEST_SLOTS]
+	var take_only: bool = chest.get("take_only", false)
+	_heading.text = str(chest.get("title", "Storage")).to_upper()
+	_title.text = "Click an item to take it." if take_only else "%d of %d slots used. Click an item to move it across." % [stored.size(), Buildings.CHEST_SLOTS]
 	for list: VBoxContainer in [_chest_list, _bag_list]:
 		for child in list.get_children():
 			child.queue_free()
@@ -41,11 +47,13 @@ func refresh() -> void:
 		if item:
 			_chest_list.add_child(_row(item, func() -> void: _take(saved)))
 	for item in player.inventory.items:
-		_bag_list.add_child(_row(item, func() -> void: _store(item)))
+		var row := _row(item, func() -> void: _store(item))
+		row.disabled = take_only
+		_bag_list.add_child(row)
 
 
 func _store(item: Item) -> void:
-	if chest.is_empty():
+	if chest.is_empty() or chest.get("take_only", false):
 		return
 	var stored: Array = chest["items"]
 	_message.text = ""
@@ -111,3 +119,15 @@ func _row(item: Item, action: Callable) -> Button:
 		button.add_theme_color_override(state, item.tint())
 	button.pressed.connect(action)
 	return button
+
+
+func _take_all() -> void:
+	if chest.is_empty():
+		return
+	for saved: Dictionary in (chest["items"] as Array).duplicate():
+		var item := Item.from_dict(saved)
+		if item == null or not player.inventory.add(item):
+			_message.text = "Inventory is full."
+			break
+		(chest["items"] as Array).erase(saved)
+	_changed()

@@ -23,9 +23,9 @@ func _ready() -> void:
 	SaveGame.register("leveling", self)
 
 
-## Experience needed to go from `from_level` to the next: 25, 76, 145, 232, 337...
+## Experience needed to go from `from_level` to the next: 29, 87, 167, 267, 388...
 static func xp_required(from_level: int) -> int:
-	return 9 * from_level * from_level + 24 * from_level - 8
+	return roundi((9 * from_level * from_level + 24 * from_level - 8) * 1.15)
 
 
 func xp_to_next() -> int:
@@ -59,7 +59,7 @@ func add_xp(amount: int, source: String = "") -> void:
 
 ## Removes part of the progress toward the next level. Returns the XP lost.
 func apply_death_penalty() -> int:
-	var lost := roundi(xp * DEATH_XP_LOSS)
+	var lost := roundi(xp * float(Difficulty.value("death_loss")))
 	xp -= lost
 	xp_changed.emit(xp, xp_to_next())
 	SaveGame.request_save()

@@ -11,10 +11,34 @@ const KINDS := {
 	"chest": {"item": "storage_chest", "art": Prop.Art.CHEST, "solid": 12.0, "prompt": "Open storage"},
 	"bed": {"item": "bed", "art": Prop.Art.BED, "solid": 13.0, "prompt": "Sleep here and make this home"},
 	"house": {"item": "house_kit", "art": Prop.Art.HOUSE, "solid": 34.0, "prompt": "Enter your house"},
+	"torch": {"item": "torch", "decor": Prop.Decor.LANTERN, "solid": 0.0, "prompt": "", "light": true},
+	"rug": {"item": "rug", "decor": Prop.Decor.RUG, "solid": 0.0, "flat": true},
+	"bookshelf": {"item": "bookshelf", "decor": Prop.Decor.SHELF, "solid": 12.0},
+	"potted_plant": {"item": "potted_plant", "decor": Prop.Decor.PLANT_POT, "solid": 8.0},
+	"dining_table": {"item": "dining_table", "decor": Prop.Decor.TABLE, "solid": 14.0},
+	"chair": {"item": "chair", "decor": Prop.Decor.CHAIR, "solid": 0.0},
+	"candles": {"item": "candles", "decor": Prop.Decor.CANDLES, "solid": 0.0, "light": true},
+	"wall_banner": {"item": "wall_banner", "decor": Prop.Decor.BANNER, "solid": 6.0},
+	"barrel": {"item": "barrel", "decor": Prop.Decor.BARREL, "solid": 10.0},
+	"crate": {"item": "crate", "decor": Prop.Decor.CRATE, "solid": 10.0},
+	"stone_statue": {"item": "stone_statue", "decor": Prop.Decor.STATUE, "solid": 14.0},
+	"brazier": {"item": "brazier", "decor": Prop.Decor.BRAZIER, "solid": 10.0, "light": true},
+	"fence": {"item": "fence", "decor": Prop.Decor.FENCE, "solid": 12.0},
+	"lantern_post": {"item": "lantern_post", "decor": Prop.Decor.LANTERN, "solid": 6.0, "light": true},
+	## One tile of floor inside a house; the record keeps the item and tile.
+	"floor": {"item": "", "solid": 0.0, "flat": true},
 }
+## Inside of a house by tier, in tiles, not counting the walls.
+const HOUSE_SIZES := {1: Vector2i(9, 6), 2: Vector2i(13, 8), 3: Vector2i(17, 11)}
+const MAX_TIER := 3
+## What it takes to raise a house to each tier.
+const UPGRADE_COSTS := {
+	2: {"oak_wood": 40, "stone": 40, "iron_ingot": 6},
+	3: {"oak_wood": 80, "stone": 80, "silver_ingot": 8},
+}
+## How big the house looks from outside at each tier.
+const HOUSE_SCALE := {1: 2.0, 2: 2.35, 3: 2.7}
 const CHEST_SLOTS := 24
-## Inside of a house, in tiles, not counting the walls.
-const HOUSE_SIZE := Vector2i(9, 6)
 ## Seconds between uses of the recall home.
 const RECALL_COOLDOWN := 300.0
 
@@ -42,11 +66,6 @@ func setup(player: Player, instances: Instances) -> void:
 	for record in records:
 		if record["where"] == "world":
 			_spawn(record)
-	# A table at the Sanctuary so nobody starts stuck.
-	var table := Prop.create(Prop.Art.TABLE, Vector2(-4.5, 2.5) * TerrainTiles.TILE_SIZE, 13.0, KINDS["table"]["prompt"],
-		func(_p: Player) -> void: Events.screen_requested.emit("professions"))
-	table.add_to_group("crafting_tables")
-	add_child(table)
 
 
 func _physics_process(delta: float) -> void:
@@ -72,6 +91,10 @@ func placement_problem(kind: String, at: Vector2) -> String:
 			return "Not inside a house"
 		if not _instances.room.is_floor(_room_cell(at)):
 			return "Needs open floor"
+		if kind == "floor":
+			return "" if at.distance_to(_player.global_position) <= 5.0 * TerrainTiles.TILE_SIZE else "Too far away"
+	elif kind == "floor":
+		return "Floors go inside a house"
 	else:
 		var world: World = get_parent().get_node("World")
 		var reach := 1 if kind == "house" else 0
@@ -79,20 +102,40 @@ func placement_problem(kind: String, at: Vector2) -> String:
 			for x in range(-reach, reach + 1):
 				if not world.generator.is_dry_land(world.world_to_cell(at) + Vector2i(x, y)):
 					return "Needs dry, open ground"
-	var gap := 90.0 if kind == "house" else 40.0
-	for group: String in ["props", "npcs", "resource_nodes", "crafting_tables"]:
-		for node in get_tree().get_nodes_in_group(group):
-			if node.global_position.distance_to(at) < gap:
-				return "Something is in the way"
-	if at.distance_to(_player.global_position) < 30.0:
+	var gap := 90.0 if kind == "house" else 30.0 if _instances.is_inside() else 40.0
+	if not KINDS[kind].get("flat", false):
+		for group: String in ["props", "npcs", "resource_nodes", "crafting_tables"]:
+			for node in get_tree().get_nodes_in_group(group):
+				if node.global_position.distance_to(at) < gap and not (node is Prop and node.get_meta("flat", false)):
+					return "Something is in the way"
+	if at.distance_to(_player.global_position) < 30.0 and KINDS[kind]["solid"] > 0.0:
 		return "You are standing there"
 	return ""
 
 
 ## Sets a building down. The caller has already checked placement_problem.
-func place(kind: String, at: Vector2) -> void:
+func place(kind: String, at: Vector2, item_id: String = "") -> void:
 	var where := current_place()
 	var record := {"id": _next_id, "kind": kind, "where": where, "x": at.x, "y": at.y, "items": []}
+	if kind == "house":
+		record["tier"] = 1
+	if kind == "floor":
+		var cell := _room_cell(at)
+		# A new floor replaces the one already there, and hands it back.
+		for old in records.duplicate():
+			if old["kind"] == "floor" and old["where"] == where and int(old["x"]) == cell.x and int(old["y"]) == cell.y:
+				records.erase(old)
+				_player.inventory.add(Item.create(old["item"]))
+		record["item"] = item_id
+		record["tile"] = ItemDB.ITEMS[item_id]["floor"]
+		record["x"] = cell.x
+		record["y"] = cell.y
+		_next_id += 1
+		records.append(record)
+		_instances.room.set_tile(cell, record["tile"])
+		_player.professions.add_xp("building", 2.0)
+		SaveGame.request_save()
+		return
 	if where != "world":
 		var cell := _room_cell(at)
 		record["x"] = cell.x
@@ -121,8 +164,11 @@ func dismantle_nearest() -> String:
 		return "Nothing of yours within reach."
 	if not (best["items"] as Array).is_empty():
 		return "Empty the chest first."
-	if best["kind"] == "house" and not records.filter(func(r: Dictionary) -> bool: return r["where"] == "house:%d" % best["id"]).is_empty():
+	if best["kind"] == "house" and not records.filter(func(r: Dictionary) -> bool: return r["where"] == "house:%d" % best["id"] and r["kind"] != "floor").is_empty():
 		return "Clear out the house first."
+	if best["kind"] == "house":
+		# Floors and upgrades are lost with the house.
+		records = records.filter(func(r: Dictionary) -> bool: return r["where"] != "house:%d" % best["id"])
 	if not _player.inventory.add(Item.create(KINDS[best["kind"]]["item"])):
 		return "Inventory is full."
 	_props[best["id"]].queue_free()
@@ -182,20 +228,76 @@ func load_data(data: Dictionary) -> void:
 
 ## Builds a house's inside and takes the player in.
 func enter_house(record: Dictionary) -> void:
+	var tier: int = clampi(int(record.get("tier", 1)), 1, MAX_TIER)
+	var size: Vector2i = HOUSE_SIZES[tier]
 	var house := Room.new()
-	house.title = "Home"
+	house.title = "Home  -  %s" % ["Cottage", "House", "Manor"][tier - 1]
 	house.set_meta("house", record["id"])
-	for y in range(-1, HOUSE_SIZE.y + 1):
-		for x in range(-1, HOUSE_SIZE.x + 1):
-			var wall := x < 0 or y < 0 or x >= HOUSE_SIZE.x or y >= HOUSE_SIZE.y
+	var place := "house:%d" % record["id"]
+	for y in range(-1, size.y + 1):
+		for x in range(-1, size.x + 1):
+			var wall := x < 0 or y < 0 or x >= size.x or y >= size.y
 			house.cells[Vector2i(x, y)] = TerrainTiles.Type.WALL if wall else TerrainTiles.Type.PLANK
-	house.entry = Vector2i(HOUSE_SIZE.x / 2, HOUSE_SIZE.y - 1)
+	for floor_record in records:
+		if floor_record["where"] == place and floor_record["kind"] == "floor":
+			var cell := Vector2i(int(floor_record["x"]), int(floor_record["y"]))
+			if house.is_floor(cell):
+				house.cells[cell] = int(floor_record["tile"])
+	house.entry = Vector2i(size.x / 2, size.y - 1)
 	house.build((get_parent().get_node("World") as World).tile_set())
+	_room_props.clear()
 	_instances.enter(house)
-	house.add_prop(Prop.create(Prop.Art.DOOR, house.cell_position(Vector2i(HOUSE_SIZE.x / 2, HOUSE_SIZE.y)) + Vector2(0, 6), 0.0, "Leave the house", func(_p: Player) -> void: _instances.leave()))
+	house.add_prop(Prop.create(Prop.Art.DOOR, house.cell_position(Vector2i(size.x / 2, size.y)) + Vector2(0, 6), 0.0, "Leave the house", func(_p: Player) -> void: _instances.leave()))
+	# The house plans by the door: what the next tier needs.
+	var plans := Prop.create_decor(Prop.Decor.SIGNPOST, house.cell_position(Vector2i(size.x / 2 - 2, size.y - 1)), 0.0, upgrade_prompt(record), func(_p: Player) -> void:
+		var problem := upgrade_house(record)
+		if problem != "":
+			Events.announcement.emit("CANNOT UPGRADE", problem)
+	)
+	house.add_prop(plans)
 	for inside in records:
-		if inside["where"] == "house:%d" % record["id"]:
+		if inside["where"] == place and inside["kind"] != "floor":
 			_spawn(inside)
+
+
+func upgrade_prompt(record: Dictionary) -> String:
+	var tier := int(record.get("tier", 1))
+	if tier >= MAX_TIER:
+		return "A manor: as large as a house can grow"
+	var parts: PackedStringArray = []
+	for id: String in UPGRADE_COSTS[tier + 1]:
+		if UPGRADE_COSTS[tier + 1][id] > 0:
+			parts.append("%d %s" % [UPGRADE_COSTS[tier + 1][id], ItemDB.ITEMS[id]["name"]])
+	return "Enlarge the house (%s)" % ", ".join(parts)
+
+
+## Raises a house one tier, taking the materials. Returns "" or why not.
+func upgrade_house(record: Dictionary) -> String:
+	var tier := int(record.get("tier", 1))
+	if tier >= MAX_TIER:
+		return "This house is as large as it can be."
+	var cost: Dictionary = UPGRADE_COSTS[tier + 1]
+	var missing: PackedStringArray = []
+	for id: String in cost:
+		if _player.inventory.count_of(id) < cost[id]:
+			missing.append("%d %s" % [cost[id] - _player.inventory.count_of(id), ItemDB.ITEMS[id]["name"]])
+	if not missing.is_empty():
+		return "Still need " + ", ".join(missing)
+	for id: String in cost:
+		if cost[id] > 0:
+			_player.inventory.take(id, cost[id])
+	record["tier"] = tier + 1
+	_player.professions.add_xp("building", 150.0 * tier)
+	SaveGame.request_save()
+	if is_instance_valid(_props.get(record["id"])):
+		_props[record["id"]].queue_free()
+	_props.erase(record["id"])
+	# The bigger house outside.
+	_spawn(record)
+	if current_place() == "house:%d" % record["id"]:
+		enter_house(record)
+	Events.announcement.emit("HOUSE ENLARGED", ["", "Cottage", "House", "Manor"][record["tier"]])
+	return ""
 
 
 func _room_cell(at: Vector2) -> Vector2i:
@@ -205,15 +307,32 @@ func _room_cell(at: Vector2) -> Vector2i:
 ## Makes the prop for a record, in the world or in the room being shown.
 func _spawn(record: Dictionary) -> void:
 	var kind: Dictionary = KINDS[record["kind"]]
+	if record["kind"] == "floor":
+		return
 	var in_room: bool = record["where"] != "world"
 	if in_room and (not _instances.is_inside() or current_place() != record["where"]):
 		return
 	var at := _instances.room.cell_position(Vector2i(int(record["x"]), int(record["y"]))) if in_room else Vector2(record["x"], record["y"])
-	var prop := Prop.create(kind["art"], at, kind["solid"], kind["prompt"], _use.bind(record))
+	var prop: Prop
+	if kind.has("decor"):
+		prop = Prop.create_decor(kind["decor"], at, kind["solid"])
+		if kind.get("light", false):
+			prop.add_light()
+		if kind.get("flat", false):
+			prop.set_meta("flat", true)
+			prop.z_index = -5
+		# Your own scenery still counts as yours for taking down.
+		prop.add_to_group("my_buildings")
+	else:
+		prop = Prop.create(kind["art"], at, kind["solid"], kind["prompt"], _use.bind(record))
 	if record["kind"] == "house":
-		prop.sprite().scale = Vector2(2.0, 2.0)
-		prop.sprite().position.y = -50.0
-		prop.reach = 110.0
+		var tier: int = clampi(int(record.get("tier", 1)), 1, MAX_TIER)
+		prop.sprite().scale = Vector2.ONE * HOUSE_SCALE[tier]
+		prop.sprite().position.y = -25.0 * HOUSE_SCALE[tier]
+		if not in_room:
+			var world: World = get_parent().get_node("World")
+			HouseStyles.dress(prop, world.tile_type_at_position(at), str(record.get("style", "")))
+		prop.reach = 110.0 + 20.0 * (int(record.get("tier", 1)) - 1)
 	if record["kind"] == "table":
 		prop.add_to_group("crafting_tables")
 	_props[record["id"]] = prop

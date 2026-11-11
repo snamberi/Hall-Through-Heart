@@ -17,10 +17,11 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "attributes", "title": "Attributes", "icon": 38, "action": "toggle_character"},
 	{"id": "mastery", "title": "Mastery", "icon": 0, "action": ""},
 	{"id": "talents", "title": "Talents", "icon": 28, "action": "toggle_talents"},
+	{"id": "abilities", "title": "Abilities", "icon": 27, "action": ""},
 	{"id": "class", "title": "Class", "icon": 6, "action": ""},
 	{"id": "professions", "title": "Professions", "icon": 49, "action": "toggle_professions"},
 	{"id": "journal", "title": "Journal", "icon": 53, "action": "toggle_journal"},
-	{"id": "map", "title": "Map", "icon": 12, "action": ""},
+	{"id": "map", "title": "Map", "icon": 12, "action": "toggle_map"},
 	{"id": "pause", "title": "Settings", "icon": 5, "action": ""},
 ]
 
@@ -74,13 +75,19 @@ func setup(player: Player) -> void:
 	_add("attributes", CharacterMenu.new())
 	_add("mastery", MasteryMenu.new())
 	_add("talents", TalentMenu.new())
+	_add("abilities", AbilitiesMenu.new())
 	_add("class", ClassMenu.new())
 	_add("professions", ProfessionsMenu.new())
 	_add("journal", JournalMenu.new())
 	_add("shop", ShopMenu.new())
 	_add("quest_board", QuestBoardMenu.new())
+	_add("bounty_board", BountyBoardMenu.new())
 	_add("storage", StorageMenu.new())
 	Events.screen_requested.connect(open)
+	Events.loot_opened.connect(func(container: Dictionary) -> void:
+		(_menus["storage"] as StorageMenu).chest = container
+		open("storage")
+	)
 	Events.storage_opened.connect(func(building: Dictionary) -> void:
 		(_menus["storage"] as StorageMenu).chest = building
 		open("storage")
@@ -88,6 +95,7 @@ func setup(player: Player) -> void:
 	Events.npc_interacted.connect(_on_npc_interacted)
 	_add("map", MapMenu.new())
 	_add("pause", PauseMenu.new())
+	_add("settings", SettingsMenu.new())
 
 
 func is_open() -> bool:
@@ -133,6 +141,9 @@ func _show(id: String) -> void:
 
 ## Talking to someone opens their screen.
 func _on_npc_interacted(npc: Node) -> void:
+	if npc.kind == "villager":
+		Events.announcement.emit("", "\"%s\"" % npc.say_something())
+		return
 	if npc.kind == "merchant":
 		(_menus["shop"] as ShopMenu).npc = npc
 		open("shop")

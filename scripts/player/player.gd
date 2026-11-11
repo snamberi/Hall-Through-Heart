@@ -54,6 +54,9 @@ var _attack_cooldown_left := 0.0
 var _dodge_cooldown_left := 0.0
 var _invulnerable_left := 0.0
 var _dodge_direction := Vector2.ZERO
+## The level the class was chosen at, and ranks learned in its tree.
+var class_chosen_at := 10
+var class_ranks: Dictionary = {}
 ## Seconds until another potion can be drunk.
 var potion_cooldown_left := 0.0
 ## The node being gathered from, how long it takes, and how far along.
@@ -65,6 +68,12 @@ var swimming := false
 ## True while choosing where to set something down; clicks place it
 ## instead of attacking.
 var placing := false
+## True in deep water: slower still.
+var deep_water := false
+## Seconds since the player was last hurt; health returns by itself after 5.
+var since_hurt := 99.0
+var _height_zoom := 2.0
+var _unstick_left := 0.0
 ## True inside a house, cave, or other place off the world map.
 var indoors := false
 ## Share of normal speed the ground underfoot allows.
@@ -89,6 +98,7 @@ var _unbreakable_left := 0.0
 @onready var equipment: Equipment = $Equipment
 @onready var abilities: AbilityUser = $Abilities
 @onready var buffs: Buffs = $Buffs
+var hotbar: Hotbar
 @onready var talents: Talents = $Talents
 @onready var professions: Professions = $Professions
 @onready var quests: QuestLog = $Quests
@@ -102,13 +112,21 @@ func _ready() -> void:
 	SaveGame.register("character", self)
 	stats.setup(attributes, mastery)
 	buffs.setup(stats)
+	StatusFX.attach(self, active_statuses, 44.0, 12.0)
+	var uniques := Uniques.new()
+	uniques.name = "Uniques"
+	add_child(uniques)
+	uniques.setup(self)
+	hotbar = Hotbar.new()
+	hotbar.name = "Hotbar"
+	add_child(hotbar)
 	talents.setup(leveling, stats)
 	_apply_class()
 	equipment.setup(inventory, leveling, attributes)
 	if not inventory.starter_given:
-		# A new character starts empty-handed with a sword in the bag.
+		# A new character starts with nothing in hand; the first sword waits
+		# in a chest at the Sanctuary.
 		inventory.starter_given = true
-		inventory.add(LootGenerator.make_equipment(1, 0, "sword"))
 	if not inventory.tools_given:
 		# Older saves get the gathering tools too.
 		inventory.tools_given = true
@@ -134,7 +152,14 @@ func _physics_process(delta: float) -> void:
 	potion_cooldown_left = maxf(potion_cooldown_left - delta, 0.0)
 	_combo_left = maxf(_combo_left - delta, 0.0)
 	_read_ground()
-	health.heal(stats.get_stat("health_regen") * delta)
+	since_hurt += delta
+	# Natural healing starts once the player has gone 5 seconds unhurt.
+	var undying := talents.has("undying")
+	if since_hurt > (2.0 if undying else 5.0):
+		health.heal((health.max_health * (0.04 if undying else 0.02) + stats.get_stat("health_regen")) * delta)
+	if state == State.MOVE or state == State.ATTACK:
+		camera.zoom = camera.zoom.lerp(Vector2(_height_zoom, _height_zoom), 1.5 * delta)
+	_unstick(delta)
 	if not _afflictions.is_empty():
 		_process_afflictions(delta)
 		if state == State.DEAD:
@@ -193,6 +218,10 @@ func attack(direction: Vector2) -> void:
 		var config: Dictionary = weapon["projectile"].duplicate()
 		config["knockback"] = weapon["knockback"]
 		Projectile.fire(self, direction, config, _weapon_multiplier() * multiplier)
+		var extra := Uniques.extra_projectiles(self)
+		for index in extra:
+			var spread := deg_to_rad(12.0) * (1 if index % 2 == 0 else -1) * (index / 2 + 1)
+			Projectile.fire(self, direction.rotated(spread), config, _weapon_multiplier() * multiplier * 0.6)
 		return
 	show_slash(direction, reach, weapon["arc"] * (1.2 if multiplier > 1.0 else 1.0))
 	strike_arc(direction, reach, weapon["arc"], multiplier, weapon["knockback"])
@@ -261,6 +290,8 @@ func weapon_color() -> Color:
 
 ## Short camera jolt for heavy impacts.
 func shake_camera(strength: float = 6.0) -> void:
+	if not GameSettings.screen_shake:
+		return
 	var tween := create_tween()
 	for i in 5:
 		var offset := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * strength * (1.0 - i / 5.0)
@@ -305,10 +336,21 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 		damage *= stats.get_stat("critical_damage")
 	if talents.has("berserker") and health.current < health.max_health * 0.35:
 		damage *= 1.4
+	if talents.has("executioner") and enemy.health.current < enemy.health.max_health * 0.3:
+		damage *= 1.4
 	var type := weapon_type
 	var dealt := enemy.take_damage(damage, knockback, critical, type)
 	if dealt <= 0.0:
 		return
+	# Elemental damage rides on top of the blow, against the monster's
+	# weaknesses and resistances.
+	for element in Elements.LIST:
+		var extra := stats.get_stat(element + "_damage")
+		if extra <= 0.0 or enemy.health.is_dead():
+			continue
+		extra *= multiplier * (stats.get_stat("critical_damage") if critical else 1.0) * Elements.multiplier(enemy.enemy_id, element)
+		dealt += enemy.take_damage(extra, Vector2.ZERO, critical, type, element)
+	Uniques.on_hit(self, enemy, damage)
 	Events.damage_dealt.emit(type, dealt)
 	var weapon := equipment.get_item("main_hand")
 	var def: Dictionary = weapon.definition() if weapon else {}
@@ -370,7 +412,35 @@ func _read_ground() -> void:
 		return
 	var tile := _world.tile_type_at_position(global_position)
 	_ground_speed = TerrainTiles.speed(tile)
-	swimming = tile == TerrainTiles.Type.DEEP_WATER
+	var was_swimming := swimming
+	swimming = TerrainTiles.is_water(tile)
+	deep_water = tile == TerrainTiles.Type.DEEP_WATER
+	if swimming != was_swimming:
+		Events.splash.emit(global_position)
+	# Climbing gives a wider view.
+	_height_zoom = 1.7 if tile == TerrainTiles.Type.PEAK else 1.82 if tile == TerrainTiles.Type.ROCK else 2.0
+
+
+## A safety net: if the player ever ends up inside a wall (a cave edge,
+## say), put them on the nearest open floor.
+func _unstick(delta: float) -> void:
+	_unstick_left -= delta
+	if _unstick_left > 0.0 or not indoors:
+		return
+	_unstick_left = 0.25
+	var instances: Instances = get_parent().get_node_or_null("Instances")
+	if instances == null or not instances.is_inside():
+		return
+	var room := instances.room
+	var cell := Vector2i(((global_position - Room.ORIGIN) / TerrainTiles.TILE_SIZE).floor())
+	if room.is_floor(cell):
+		return
+	var best := room.entry
+	for candidate in room.cells:
+		if room.is_floor(candidate) and (candidate - cell).length_squared() < (best - cell).length_squared():
+			best = candidate
+	global_position = room.cell_position(best)
+	velocity = Vector2.ZERO
 
 
 ## The gatherable node closest to the player and in reach, or null.
@@ -385,18 +455,16 @@ func nearest_resource() -> ResourceNode:
 	return best
 
 
-## Chooses a class. Returns "" on success or why it was refused.
+## Chooses a class, for good. Returns "" on success or why it was refused.
 func choose_class(id: String) -> String:
 	if not HeroClasses.CLASSES.has(id) or id == "adventurer":
 		return "Unknown class."
 	if leveling.level < HeroClasses.CHOICE_LEVEL:
 		return "Requires level %d." % HeroClasses.CHOICE_LEVEL
 	if class_id != "adventurer":
-		var cost := class_change_cost()
-		if inventory.gold < cost:
-			return "Changing class costs %d gold." % cost
-		inventory.add_gold(-cost)
+		return "Your path is already chosen."
 	class_id = id
+	class_chosen_at = leveling.level
 	_apply_class()
 	_on_equipment_changed()
 	class_changed.emit()
@@ -405,20 +473,77 @@ func choose_class(id: String) -> String:
 	return ""
 
 
-func class_change_cost() -> int:
-	return HeroClasses.RESET_COST_PER_LEVEL * leveling.level
+## Class points earned so far: one on choosing, then one every few levels.
+func class_points_total() -> int:
+	if class_id == "adventurer":
+		return 0
+	return 1 + maxi(leveling.level - class_chosen_at, 0) / HeroClasses.CLASS_POINT_LEVELS
+
+
+func class_points_free() -> int:
+	var spent := 0
+	for id: String in class_ranks:
+		spent += class_ranks[id]
+	return class_points_total() - spent
+
+
+## Whether a class ability or passive has been learned.
+func has_class_node(id: String) -> bool:
+	return class_ranks.get(id, 0) > 0
+
+
+## Why a class tree node cannot be learned now, or "".
+func class_node_problem(id: String) -> String:
+	if class_id == "adventurer":
+		return "Choose a class first."
+	var tree: Dictionary = HeroClasses.TREES[class_id]
+	for column: String in ["abilities", "passives"]:
+		var entries: Array = tree[column]
+		for index in entries.size():
+			var entry: Array = entries[index]
+			if entry[0] != id:
+				continue
+			var max_rank: int = 1 if column == "abilities" else entry[2]
+			if class_ranks.get(id, 0) >= max_rank:
+				return "Fully learned."
+			if index > 0 and not has_class_node(entries[index - 1][0]):
+				return "Learn the one above first."
+			if column == "abilities" and leveling.level < entry[1]:
+				return "Requires level %d." % entry[1]
+			if class_points_free() <= 0:
+				return "No class points."
+			return ""
+	return "Not part of your class."
+
+
+func learn_class_node(id: String) -> bool:
+	if class_node_problem(id) != "":
+		return false
+	class_ranks[id] = class_ranks.get(id, 0) + 1
+	_apply_class()
+	abilities.changed.emit()
+	class_changed.emit()
+	SaveGame.request_save()
+	return true
 
 
 ## Hurts the player. Returns whether the blow landed (false if it was
 ## dodged or the player cannot be hurt right now).
-func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1) -> bool:
+func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1, element: String = "") -> bool:
 	if is_dead():
 		return false
 	if _invulnerable_left > 0.0:
 		if state == State.DODGE and talents.has("perfect_dodge"):
 			buffs.add("perfect_dodge", "Perfect Dodge", 5.0, {"critical_chance": {"flat": 0.3}})
 		return false
-	amount = maxf(amount * (1.0 - stats.damage_reduction(attacker_level)) * stats.get_stat("damage_taken"), 1.0)
+	if element != "":
+		# Part of the blow is the attacker's element; resistance turns it away.
+		amount *= 1.0 - Elements.ATTACK_SHARE * Elements.resistance(stats, element)
+	amount = maxf(amount * (1.0 - stats.damage_reduction(attacker_level)) * stats.get_stat("damage_taken") * Difficulty.damage_to_player(), 1.0)
+	amount = Uniques.on_hurt(self, amount)
+	if talents.has("last_stand") and health.current < health.max_health * 0.3:
+		amount *= 0.7
+	since_hurt = 0.0
 	if amount >= health.current and talents.has("unbreakable") and _unbreakable_left == 0.0:
 		# The killing blow is turned into a near miss.
 		_unbreakable_left = 120.0
@@ -439,6 +564,14 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 	var resistance := stats.get_stat("knockback_resistance")
 	velocity = source_position.direction_to(global_position) * 300.0 * (1.0 - resistance)
 	return true
+
+
+## Statuses on the player now, for the effects drawn around them.
+func active_statuses() -> Array:
+	var ids: Array = _afflictions.keys()
+	if buffs.active.has("chill"):
+		ids.append("chill")
+	return ids
 
 
 ## Inflicts a status on the player. Burn, poison, and bleed deal `power`
@@ -480,6 +613,7 @@ func _process_afflictions(delta: float) -> void:
 			var amount: float = maxf(affliction["power"] * 0.5, 1.0)
 			DamageNumber.spawn(get_parent(), global_position, amount, ItemDB.STATUSES[id]["color"])
 			health.take_damage(amount)
+			since_hurt = 0.0
 			if health.is_dead():
 				_die()
 				return
@@ -502,11 +636,21 @@ func begin_rebirth() -> void:
 
 
 func save_data() -> Dictionary:
-	return {"class_id": class_id, "show_helmet": show_helmet}
+	return {"class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate()}
 
 
 func load_data(data: Dictionary) -> void:
 	class_id = str(data.get("class_id", class_id))
+	class_chosen_at = int(data.get("class_chosen_at", HeroClasses.CHOICE_LEVEL))
+	var saved_ranks: Variant = data.get("class_ranks", {})
+	class_ranks.clear()
+	if saved_ranks is Dictionary:
+		for id: String in saved_ranks:
+			class_ranks[id] = int(saved_ranks[id])
+	# Classes chosen before trees existed keep their two abilities.
+	if class_id != "adventurer" and class_ranks.is_empty() and not data.has("class_ranks"):
+		for entry: Array in HeroClasses.TREES[class_id]["abilities"].slice(0, 2):
+			class_ranks[entry[0]] = 1
 	show_helmet = bool(data.get("show_helmet", true))
 
 
@@ -516,11 +660,11 @@ func _process_move(delta: float) -> void:
 		facing = input.normalized()
 		_face_visual(input.x)
 	velocity = velocity.move_toward(input * stats.get_stat("move_speed") * _ground_speed, acceleration * delta)
-	if swimming:
+	if deep_water:
 		# Both hands are busy keeping afloat.
 		return
 
-	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0:
+	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0 and not swimming:
 		_try_dodge()
 	elif abilities.try_use_pressed():
 		pass
@@ -541,6 +685,11 @@ func _try_dodge() -> void:
 	if not stamina.spend(cost):
 		return
 	_dodge_direction = facing
+	var start := global_position
+	get_tree().create_timer(dodge_duration).timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			Uniques.on_dodge(self, start, global_position)
+	)
 	state = State.DODGE
 	_state_time_left = dodge_duration
 	_dodge_cooldown_left = dodge_cooldown / stats.get_stat("dodge_efficiency")
@@ -656,6 +805,17 @@ func _apply_class() -> void:
 	if not HeroClasses.CLASSES.has(class_id):
 		class_id = "adventurer"
 	stats.set_modifiers("class", HeroClasses.CLASSES[class_id]["mods"])
+	# Passives learned in the class tree.
+	var totals := {}
+	if HeroClasses.TREES.has(class_id):
+		for entry: Array in HeroClasses.TREES[class_id]["passives"]:
+			var ranks: int = class_ranks.get(entry[0], 0)
+			for stat: String in entry[3]:
+				if not totals.has(stat):
+					totals[stat] = {"flat": 0.0, "percent": 0.0}
+				for kind: String in entry[3][stat]:
+					totals[stat][kind] += entry[3][stat][kind] * ranks
+	stats.set_modifiers("class_tree", totals)
 
 
 ## Extra scaling for the weapon in hand: magic weapons use magic damage.

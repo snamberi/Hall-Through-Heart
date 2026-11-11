@@ -1,21 +1,33 @@
 class_name AbilityUser
 extends Node
-## Lets the player use their abilities (keys 1-5).
+## The player's abilities: which are known, the eight on the bar (two sets
+## of four, switched with a key), and using them with keys 1-4.
 ##
-## The first slots hold the abilities of the weapon type in hand; the rest
-## hold the player's class abilities. Cooldowns are tracked per ability, so they
-## keep running while a different weapon is out.
+## Weapon abilities are known through mastery and only work with that kind
+## of weapon in hand; class abilities are learned in the class tree.
+## Cooldowns are tracked per ability, so they keep running while unequipped.
 
 signal changed
 
 ## ability id -> seconds left
 var cooldowns: Dictionary[String, float] = {}
+## What sits in each of the eight slots ("" for empty).
+var loadout: Array[String] = []
+## Which set of four the keys use: 0 or 1.
+var active_set := 0
 
 @onready var _player: Player = get_parent()
 
 
 func _ready() -> void:
-	Events.mastery_level_up.connect(func(_type: String, _level: int) -> void: changed.emit())
+	loadout.resize(AbilityDB.SLOTS)
+	loadout.fill("")
+	SaveGame.register("abilities", self)
+	Events.mastery_level_up.connect(func(_type: String, _level: int) -> void:
+		_fill_empty_slots()
+		changed.emit()
+	)
+	changed.connect(_fill_empty_slots)
 
 
 func _physics_process(delta: float) -> void:
@@ -25,18 +37,51 @@ func _physics_process(delta: float) -> void:
 			cooldowns.erase(id)
 
 
-## Ability ids on the bar right now, one per slot.
+## Every ability the player has: weapon abilities their mastery has reached
+## (for any weapon), and class abilities learned in their tree.
+func known() -> Array[String]:
+	var ids: Array[String] = []
+	for id: String in AbilityDB.ABILITIES:
+		var ability: Dictionary = AbilityDB.ABILITIES[id]
+		if ability.has("class"):
+			if ability["class"] == _player.class_id and _player.has_class_node(id):
+				ids.append(id)
+		elif rank(id) > 0:
+			ids.append(id)
+	return ids
+
+
+## The four abilities the keys use right now.
 func slots() -> Array[String]:
-	var ids := AbilityDB.for_weapon(_player.weapon_type).slice(0, AbilityDB.WEAPON_SLOTS)
-	var class_abilities: Array = HeroClasses.CLASSES[_player.class_id]["abilities"]
-	for id: String in class_abilities:
-		ids.append(id)
-	return ids.slice(0, AbilityDB.SLOTS)
+	return loadout.slice(active_set * AbilityDB.SET_SIZE, (active_set + 1) * AbilityDB.SET_SIZE)
+
+
+func switch_set() -> void:
+	active_set = (active_set + 1) % AbilityDB.SETS
+	changed.emit()
+
+
+## Puts an ability in a slot (0-7), moving it if it was already elsewhere.
+func assign(slot: int, id: String) -> void:
+	var previous := loadout.find(id)
+	if previous != -1:
+		loadout[previous] = loadout[slot]
+	loadout[slot] = id
+	changed.emit()
+	SaveGame.request_save()
+
+
+func clear_slot(slot: int) -> void:
+	loadout[slot] = ""
+	changed.emit()
+	SaveGame.request_save()
 
 
 func rank(id: String) -> int:
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
 	if ability.has("class"):
+		if ability["class"] != _player.class_id or not _player.has_class_node(id):
+			return 0
 		return AbilityDB.rank(id, _player.leveling.level)
 	return AbilityDB.rank(id, _player.mastery.levels.get(ability["weapon"], 1))
 
@@ -51,8 +96,13 @@ func mana_cost(id: String) -> float:
 
 ## Why an ability cannot be used right now, or "" if it can.
 func blocked_reason(id: String) -> String:
+	if id == "":
+		return "empty"
 	if rank(id) == 0:
 		return "locked"
+	var ability: Dictionary = AbilityDB.ABILITIES[id]
+	if ability.has("weapon") and ability["weapon"] != _player.weapon_type:
+		return "weapon"
 	if cooldowns.has(id):
 		return "cooldown"
 	if _player.stamina.current < stamina_cost(id):
@@ -62,18 +112,48 @@ func blocked_reason(id: String) -> String:
 	return ""
 
 
-## Called by the player each frame while free to act. Uses the first ability
-## whose key was just pressed; returns whether one started.
+## Called by the player each frame while free to act. Uses the ability whose
+## key was just pressed, or switches set; returns whether one started.
 func try_use_pressed() -> bool:
+	if Input.is_action_just_pressed("ability_swap"):
+		switch_set()
+		return false
 	var ids := slots()
 	for index in ids.size():
-		if Input.is_action_just_pressed("ability_%d" % (index + 1)):
+		var action := "ability_%d" % (index + 1)
+		if InputMap.has_action(action) and Input.is_action_just_pressed(action):
 			return use(ids[index])
 	return false
 
 
+func save_data() -> Dictionary:
+	return {"loadout": loadout.duplicate(), "active_set": active_set}
+
+
+func load_data(data: Dictionary) -> void:
+	var saved: Variant = data.get("loadout", [])
+	if saved is Array:
+		for index in mini(saved.size(), AbilityDB.SLOTS):
+			var id := str(saved[index])
+			loadout[index] = id if AbilityDB.ABILITIES.has(id) else ""
+	active_set = clampi(int(data.get("active_set", 0)), 0, AbilityDB.SETS - 1)
+
+
+## New abilities go into the first free slots by themselves.
+func _fill_empty_slots() -> void:
+	if loadout.is_empty() or _player == null or not _player.is_node_ready():
+		return
+	for id in known():
+		if id in loadout:
+			continue
+		var free := loadout.find("")
+		if free == -1:
+			return
+		loadout[free] = id
+
+
 func use(id: String) -> bool:
-	if _player.state != Player.State.MOVE or blocked_reason(id) != "":
+	if id == "" or _player.state != Player.State.MOVE or blocked_reason(id) != "":
 		return false
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
 	_player.stamina.spend(stamina_cost(id))

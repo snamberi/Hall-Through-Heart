@@ -26,6 +26,7 @@ var _checkpoint_name := START_NAME
 
 
 func _ready() -> void:
+	Difficulty.current = str(SaveGame.get_section("meta").get("difficulty", "normal"))
 	_active_seed = world_seed
 	if _active_seed == 0:
 		_active_seed = int(SaveGame.get_section("world").get("seed", 0))
@@ -64,7 +65,14 @@ func _ready() -> void:
 		if problem != "" and problem != "Nothing of yours within reach.":
 			Events.announcement.emit("", problem)
 	)
+	var bounties := Bounties.new()
+	bounties.name = "Bounties"
+	add_child(bounties)
+	bounties.setup(_world, _player, _spawner)
+	$Villages.setup(_world)
+	$Exploration.setup(_player, _world)
 	_resources.setup(_world)
+	$Atmosphere.setup(_player, _world, _day_night)
 	$Npcs.setup(_world)
 	_place_player_at_start()
 	_world.target = _player

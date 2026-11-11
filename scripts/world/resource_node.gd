@@ -9,6 +9,8 @@ const FRAMES := 5
 const REACH := 62.0
 
 var resource_id := ""
+## Which tree or bush from the flora sheet to show, or -1 for the default look.
+var tall_look := -1
 var cell := Vector2i.ZERO
 
 var _data: Dictionary
@@ -28,29 +30,43 @@ func _ready() -> void:
 	_data = GatherDB.RESOURCES[resource_id]
 	_kind = GatherDB.KINDS[_data["kind"]]
 	var tint := GatherDB.color(resource_id)
-	var sprite := _sprite(_kind["frame"], Color.WHITE)
-	match _data["kind"]:
-		"ore":
-			# A plain boulder with flecks in the ore's colour.
-			_sprite(1, tint)
-		"tree":
-			sprite.modulate = tint.lerp(Color(0.25, 0.42, 0.28), 0.65)
-			sprite.position.y = -40.0
-		"herb":
-			sprite.modulate = tint
-			sprite.scale = Vector2(0.6, 0.6)
-			sprite.position.y = -14.0
-		"fish":
-			sprite.modulate = Color(0.75, 0.9, 1.0, 0.8)
-			sprite.position.y = 0.0
-			var tween := create_tween().set_loops()
-			tween.tween_property(sprite, "scale", Vector2(1.15, 1.15), 0.9)
-			tween.tween_property(sprite, "scale", Vector2(0.9, 0.9), 0.9)
-	if _data["kind"] in ["ore", "tree"]:
+	var solid := 0.0
+	if tall_look >= 0 or _data.has("tall"):
+		# A tree or bush from the flora sheet.
+		var sprite := Sprite2D.new()
+		sprite.texture = Flora.TALL
+		sprite.region_enabled = true
+		sprite.region_rect = Flora.tall_region(tall_look if tall_look >= 0 else _data["tall"])
+		sprite.position.y = -42.0
+		sprite.flip_h = hash(cell) % 2 == 0
+		add_child(sprite)
+		solid = 9.0 if _data["kind"] == "tree" else 0.0
+	elif _data.has("flora"):
+		var plant := Sprite2D.new()
+		plant.texture = Flora.SMALL
+		plant.region_enabled = true
+		plant.region_rect = Flora.small_region(_data["flora"])
+		plant.position.y = -14.0
+		plant.scale = Vector2(1.25, 1.25)
+		add_child(plant)
+	else:
+		var sprite := _sprite(_kind["frame"], Color.WHITE)
+		match _data["kind"]:
+			"ore":
+				# A plain boulder with flecks in the ore's colour.
+				_sprite(1, tint)
+				solid = 14.0
+			"fish":
+				sprite.modulate = Color(0.75, 0.9, 1.0, 0.8)
+				sprite.position.y = 0.0
+				var tween := create_tween().set_loops()
+				tween.tween_property(sprite, "scale", Vector2(1.15, 1.15), 0.9)
+				tween.tween_property(sprite, "scale", Vector2(0.9, 0.9), 0.9)
+	if solid > 0.0:
 		var body := StaticBody2D.new()
 		var shape := CollisionShape2D.new()
 		var circle := CircleShape2D.new()
-		circle.radius = 14.0 if _data["kind"] == "ore" else 8.0
+		circle.radius = solid
 		shape.shape = circle
 		body.add_child(shape)
 		add_child(body)
@@ -84,7 +100,7 @@ func blocked_reason(player: Player) -> String:
 
 ## Seconds of work for this player to gather it.
 func gather_seconds(player: Player) -> float:
-	var speed := player.professions.speed_multiplier(profession())
+	var speed := player.professions.speed_multiplier(profession()) * player.stats.get_stat("gather_speed")
 	if _kind["tool"] != "":
 		speed *= player.inventory.best_tool(_kind["tool"]).definition()["tool"]["speed"]
 	if kind() == "ore":
@@ -114,6 +130,11 @@ func harvest(player: Player) -> void:
 		else:
 			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -30), "Inventory full", UITheme.BAD, 12)
 			return
+	# Ore veins sometimes hold a gem.
+	if kind() == "ore" and randf() < 0.04 + skill * 0.0008:
+		var gem := Item.create(Gems.random_gem(maxi(_data["level"], skill)))
+		if player.inventory.add(gem):
+			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -44), gem.display_name(), gem.tint(), 13)
 	player.professions.add_xp(profession(), 10.0 + _data["level"] * 2.0)
 	harvested.emit(self)
 	queue_free()

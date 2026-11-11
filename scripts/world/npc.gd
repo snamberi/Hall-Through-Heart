@@ -6,6 +6,7 @@ const REACH := 66.0
 const KINDS := {
 	"merchant": {"name": "Merchant", "prompt": "Trade with the Merchant", "sheet": "res://assets/sprites/npc_merchant.png"},
 	"warden": {"name": "Warden", "prompt": "Ask the Warden for work", "sheet": "res://assets/sprites/npc_warden.png"},
+	"villager": {"name": "Villager", "prompt": "Talk", "sheet": "res://assets/sprites/npc_merchant.png"},
 }
 ## A merchant's wares change this often, in seconds.
 const RESTOCK_SECONDS := 600.0
@@ -18,6 +19,12 @@ var kind := "merchant"
 var stock: Array[Dictionary] = []
 
 var _stocked_at := -RESTOCK_SECONDS
+## Villagers: what they might say, and where they wander from.
+var lines: Array[String] = []
+var home := Vector2.ZERO
+var _sprite: AnimatedSprite2D
+var _walk_to := Vector2.ZERO
+var _think := 0.0
 
 
 static func create(p_kind: String, at: Vector2) -> Npc:
@@ -30,10 +37,15 @@ static func create(p_kind: String, at: Vector2) -> Npc:
 func _ready() -> void:
 	add_to_group("npcs")
 	var sprite := AnimatedSprite2D.new()
+	_sprite = sprite
 	sprite.sprite_frames = SheetAnimations.build(load(KINDS[kind]["sheet"]), 96, [{"name": "idle", "frames": 4, "fps": 5.0, "loop": true}])
 	sprite.position = Vector2(0, -23)
 	sprite.play("idle")
 	add_child(sprite)
+	if kind == "villager":
+		# Each villager dresses a little differently.
+		sprite.modulate = Color.from_hsv(randf(), 0.25, 1.0).lerp(Color.WHITE, 0.4)
+		_walk_to = position
 
 	var label := Label.new()
 	label.text = KINDS[kind]["name"]
@@ -86,3 +98,21 @@ func restock_in() -> float:
 ## Gold a merchant pays for one of an item.
 static func sell_price(item: Item) -> int:
 	return maxi(roundi(item.value() * SELL_SHARE), 1)
+
+
+func _process(delta: float) -> void:
+	if kind != "villager":
+		return
+	_think -= delta
+	if _think <= 0.0:
+		_think = randf_range(2.0, 6.0)
+		_walk_to = home + Vector2.from_angle(randf() * TAU) * randf_range(0.0, 160.0)
+	var step := _walk_to - position
+	if step.length() > 4.0:
+		position += step.normalized() * 34.0 * delta
+		_sprite.flip_h = step.x < 0.0
+
+
+## A villager's passing remark.
+func say_something() -> String:
+	return lines.pick_random() if not lines.is_empty() else "..."

@@ -29,6 +29,11 @@ static func make_equipment(
 	item.id = base_id if base_id != "" else _random_base(rarity)
 	item.level = maxi(level, 1)
 	item.rarity = rarity
+	if ItemDB.ITEMS[item.id].has("unique"):
+		item.rarity = 4
+		rarity = 4
+	for index in Gems.roll_sockets(rarity):
+		item.sockets.append("")
 
 	var slot := item.slot()
 	var pool: Array[Dictionary] = []
@@ -62,7 +67,7 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 	var level: int = info["level"]
 
 	# Each modifier on an Elite or Champion sweetens what it drops.
-	var bonus: float = 1.0 + Enemy.REWARD_PER_MODIFIER * info.get("modifiers", 0)
+	var bonus: float = (1.0 + Enemy.REWARD_PER_MODIFIER * info.get("modifiers", 0)) * float(Difficulty.value("loot")) * (2.0 if DayNight.blood_moon else 1.0)
 	var gold: float = randf_range(table["gold"][0], table["gold"][1]) * pow(level, 0.9) * rank["gold"] * bonus
 	result["gold"] = maxi(roundi(gold), 1)
 
@@ -73,6 +78,12 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 
 	if info["rank"] == "miniboss":
 		items.append(Item.create("heart_shard"))
+	var extra := roll_special(level, info["rank"], magic_find, bonus)
+	if extra:
+		items.append(extra)
+	# Gems from the tougher monsters.
+	if randf() < {"normal": 0.004, "elite": 0.06, "champion": 0.2, "miniboss": 0.6}.get(info["rank"], 0.0) * (1.0 + magic_find):
+		items.append(Item.create(Gems.random_gem(level)))
 	# Gear is what that kind of monster would carry, and rare from the
 	# rank and file; Elites and above drop it far more readily.
 	for entry: Array in table.get("gear", []):
@@ -84,12 +95,50 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 	return result
 
 
+## Chance of a set piece and of a unique, by rank.
+const SET_CHANCE := {"normal": 0.0, "elite": 0.006, "champion": 0.05, "miniboss": 0.25, "boss": 0.6}
+const UNIQUE_CHANCE := {"normal": 0.0, "elite": 0.002, "champion": 0.015, "miniboss": 0.06, "boss": 0.25}
+
+
+## A set piece or a unique, now and then. Returns null most of the time.
+static func roll_special(level: int, rank: String, magic_find: float = 0.0, bonus: float = 1.0) -> Item:
+	var luck := (1.0 + magic_find) * bonus
+	if randf() < UNIQUE_CHANCE.get(rank, 0.0) * luck:
+		return make_unique(level)
+	if randf() < SET_CHANCE.get(rank, 0.0) * luck:
+		return make_set_piece(level)
+	return null
+
+
+static func unique_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for item_id: String in ItemDB.ITEMS:
+		if ItemDB.ITEMS[item_id].has("unique"):
+			ids.append(item_id)
+	return ids
+
+
+static func make_unique(level: int, item_id: String = "") -> Item:
+	var ids := unique_ids()
+	return make_equipment(level, 4, item_id if item_id != "" else ids[randi() % ids.size()])
+
+
+## A piece of a named set at Epic power. Leave set_id empty for any set.
+static func make_set_piece(level: int, set_id: String = "") -> Item:
+	var sets: Array = ItemDB.ITEM_SETS.keys()
+	var chosen: String = set_id if set_id != "" else sets[randi() % sets.size()]
+	var pieces: Array = ItemDB.ITEM_SETS[chosen]["pieces"]
+	var item := make_equipment(level, 3, pieces[randi() % pieces.size()])
+	item.set_id = chosen
+	return item
+
+
 static func _random_base(rarity: int) -> String:
 	var ids: Array[String] = []
 	var total := 0.0
 	for item_id: String in ItemDB.ITEMS:
 		var def: Dictionary = ItemDB.ITEMS[item_id]
-		if def.has("slot") and rarity >= def.get("min_rarity", 0):
+		if def.has("slot") and rarity >= def.get("min_rarity", 0) and def.get("drop_weight", 1.0) > 0.0:
 			ids.append(item_id)
 			total += def["drop_weight"]
 	var roll := randf() * total

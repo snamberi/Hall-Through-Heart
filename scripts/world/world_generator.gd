@@ -30,6 +30,13 @@ const CLIMATES: Array[Array] = [
 const DANGER := {T.ASH: 1.15, T.BOG: 1.1, T.SALT: 1.1, T.SNOW: 1.1, T.FROSTPINE: 1.1, T.THORN: 1.15, T.CRIMSON: 1.2,
 	T.FUNGAL: 1.2, T.TAR: 1.2, T.SAND: 1.15, T.CINDER: 1.3, T.VOIDSCAR: 1.6}
 const CACHE_LIMIT := 120000
+## Villages: at most one per VILLAGE_REGION square of tiles, on cleared land
+## VILLAGE_RADIUS tiles across with roads through the middle. One always
+## stands about FIRST_VILLAGE_DISTANCE tiles from the start.
+const VILLAGE_REGION := 190
+const VILLAGE_CHANCE := 0.55
+const VILLAGE_RADIUS := 15.0
+const FIRST_VILLAGE_DISTANCE := 300.0
 
 var world_seed: int
 
@@ -44,12 +51,14 @@ var _cache: Dictionary = {}
 
 func _init(p_seed: int) -> void:
 	world_seed = p_seed
-	_setup(_elevation, p_seed, 0.009, 5)
-	_setup(_moisture, p_seed + 1013, 0.006, 3)
-	_setup(_temperature, p_seed + 4051, 0.0022, 2)
-	_setup(_weird, p_seed + 6007, 0.004, 2)
+	# Low frequencies make broad regions: a biome is often a few hundred
+	# tiles across.
+	_setup(_elevation, p_seed, 0.0034, 5)
+	_setup(_moisture, p_seed + 1013, 0.0021, 3)
+	_setup(_temperature, p_seed + 4051, 0.0009, 2)
+	_setup(_weird, p_seed + 6007, 0.0017, 2)
 	_setup(_danger, p_seed + 2027, 0.004, 1)
-	_setup(_warp, p_seed + 9001, 0.11, 1)
+	_setup(_warp, p_seed + 9001, 0.08, 1)
 
 
 ## Enemy level for an area. Rises with distance from the start, with pockets
@@ -102,10 +111,69 @@ func find_walkable_near(cell: Vector2i, max_radius: int = 64) -> Vector2i:
 	return cell
 
 
+## The middle of the village in a region, or null if it has none.
+func village_center(region: Vector2i) -> Variant:
+	var first := first_village()
+	if Vector2i((Vector2(first) / VILLAGE_REGION).floor()) == region:
+		return first
+	if region == Vector2i.ZERO or region == Vector2i(-1, 0) or region == Vector2i(0, -1) or region == Vector2i(-1, -1):
+		return null
+	var random := RandomNumberGenerator.new()
+	random.seed = hash(Vector3i(region.x, region.y, world_seed + 515))
+	if random.randf() > VILLAGE_CHANCE:
+		return null
+	var center := region * VILLAGE_REGION + Vector2i(random.randi_range(30, VILLAGE_REGION - 30), random.randi_range(30, VILLAGE_REGION - 30))
+	# Not in the middle of a lake or on a peak.
+	if _base_elevation(center) < -0.2 or _base_elevation(center) > 0.4:
+		return null
+	return center
+
+
+## The village everyone can find: a set distance from the start in a
+## direction picked by the seed.
+func first_village() -> Vector2i:
+	var angle := float(posmod(world_seed, 3600)) / 3600.0 * TAU
+	return Vector2i(Vector2.from_angle(angle) * FIRST_VILLAGE_DISTANCE)
+
+
+## The village a tile belongs to, or null.
+func village_near(cell: Vector2i) -> Variant:
+	var region := Vector2i((Vector2(cell) / VILLAGE_REGION).floor())
+	var center: Variant = village_center(region)
+	if center != null and Vector2(cell - center).length() <= VILLAGE_RADIUS + 2.0:
+		return center
+	return null
+
+
+func _base_elevation(cell: Vector2i) -> float:
+	return _elevation.get_noise_2d(cell.x, cell.y)
+
+
 func _compute(cell: Vector2i) -> int:
+	var village: Variant = village_near(cell)
+	if village != null:
+		return _village_tile(cell, village)
+	return _natural(cell)
+
+
+## Inside a village: roads crossing the middle, and the land's own ground,
+## never water or mountain.
+func _village_tile(cell: Vector2i, center: Vector2i) -> int:
+	var offset := cell - center
+	var distance := Vector2(offset).length()
+	if distance <= VILLAGE_RADIUS and (absi(offset.x) <= 1 or absi(offset.y) <= 1 or (distance > 5.5 and distance < 7.0)):
+		return T.PATH
+	var natural := _natural(cell)
+	if TerrainTiles.is_water(natural) or natural in TerrainTiles.HIGH or natural == T.VOIDSCAR:
+		var temperature := _temperature.get_noise_2d(cell.x, cell.y)
+		return T.SNOW if temperature < -0.24 else T.SAND if temperature > 0.34 else T.DEAD_GRASS
+	return natural
+
+
+func _natural(cell: Vector2i) -> int:
 	# Nudge where we sample so borders wander by a tile or two.
-	var x := cell.x + _warp.get_noise_2d(cell.x, cell.y) * 2.2
-	var y := cell.y + _warp.get_noise_2d(cell.x + 500.0, cell.y - 500.0) * 2.2
+	var x := cell.x + _warp.get_noise_2d(cell.x, cell.y) * 3.0
+	var y := cell.y + _warp.get_noise_2d(cell.x + 500.0, cell.y - 500.0) * 3.0
 	var distance := Vector2(cell).length()
 	var elevation := _elevation.get_noise_2d(x, y)
 	if distance < SANCTUARY_OUTER:
@@ -121,7 +189,9 @@ func _compute(cell: Vector2i) -> int:
 	if elevation < -0.23:
 		# The shore takes after the climate.
 		return T.SNOW if temperature < -0.24 else T.SAND if temperature > 0.34 else T.MUD
-	if elevation > 0.45:
+	if elevation > 0.56:
+		return T.PEAK
+	if elevation > 0.42:
 		return T.ROCK
 	if distance > VOIDSCAR_MIN_DISTANCE and _weird.get_noise_2d(x, y) > 0.62:
 		return T.VOIDSCAR

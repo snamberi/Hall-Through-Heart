@@ -15,6 +15,12 @@ const SKY: Array[Array] = [
 ]
 const PHASES: Array[Array] = [[0.22, "Night"], [0.32, "Dawn"], [0.45, "Morning"], [0.58, "Midday"], [0.7, "Afternoon"], [0.82, "Dusk"], [1.0, "Night"]]
 
+## True through a blood moon night: more monsters, more Elites, more loot.
+static var blood_moon := false
+## One night in this many (after the third day) may be a blood moon.
+const BLOOD_MOON_ODDS := 5
+const BLOOD_SKY := Color(0.62, 0.22, 0.24)
+
 ## Days start at 1. `time` runs 0 to 1 through the day; a new game starts in the morning.
 var day := 1
 var time := 0.36
@@ -44,12 +50,31 @@ func setup(player: Player) -> void:
 
 
 func _process(delta: float) -> void:
+	var was_night := is_night()
 	time += delta / DAY_SECONDS
 	if time >= 1.0:
 		time -= 1.0
 		day += 1
 		day_changed.emit(day)
+	var night := is_night()
+	if night and not was_night and not indoors:
+		blood_moon = blood_moon_tonight()
+		if blood_moon:
+			Events.announcement.emit("A BLOOD MOON RISES", "Monsters swarm in greater numbers, and drop richer spoils")
+			Audio.play("level_up", -4.0, 0.0)
+	elif not night and was_night and blood_moon:
+		blood_moon = false
+		Events.announcement.emit("THE BLOOD MOON SETS", "")
 	_apply()
+
+
+## Whether tonight is a blood moon: decided by the day number, so it is the
+## same if the game is reloaded.
+func blood_moon_tonight() -> bool:
+	if day < 3:
+		return false
+	var night_of := day if time > 0.5 else day - 1
+	return posmod(hash(night_of * 7919 + 17), BLOOD_MOON_ODDS) == 0
 
 
 ## How dark it is: 0 in full daylight, 1 in the dead of night.
@@ -77,7 +102,10 @@ func _sky() -> Color:
 
 
 func _apply() -> void:
-	color = Color(0.82, 0.8, 0.78) if indoors else _sky()
+	var sky := _sky()
+	if blood_moon:
+		sky = sky.lerp(BLOOD_SKY, darkness() * 0.7)
+	color = Color(0.82, 0.8, 0.78) if indoors else sky
 	if _light:
 		_light.energy = 0.55 if indoors else darkness() * 0.9
 		_light.enabled = _light.energy > 0.02

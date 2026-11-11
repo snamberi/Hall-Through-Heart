@@ -230,12 +230,77 @@ const ABILITIES := {
 		"status": {"status": "chill", "duration": 3.0, "power": 0.4}, "color": Color(0.6, 0.9, 1.0),
 		"text": "Release stored magic in a freezing ring.",
 	},
+	# --- class abilities learned deeper in each class tree
+	"war_stomp": {
+		"name": "War Stomp", "class": "warrior", "level": 30, "icon": 28, "shape": "slam",
+		"damage": 2.6, "stamina": 30.0, "cooldown": 9.0, "radius": 130.0, "distance": 0.0, "knockback": 700.0,
+		"status": {"status": "chill", "duration": 2.0, "power": 0.6}, "text": "Stamp the ground, battering and staggering everything nearby.",
+	},
+	"blade_storm": {
+		"name": "Blade Storm", "class": "warrior", "level": 45, "icon": 27, "shape": "spin",
+		"damage": 1.5, "stamina": 45.0, "cooldown": 14.0, "radius": 120.0, "hits": 4, "knockback": 260.0,
+		"text": "Become a whirl of steel for a moment.",
+	},
+	"guardian_charge": {
+		"name": "Guardian Charge", "class": "guardian", "level": 30, "icon": 29, "shape": "dash",
+		"damage": 2.0, "stamina": 25.0, "cooldown": 8.0, "distance": 260.0, "radius": 50.0, "knockback": 700.0,
+		"text": "Charge forward, flattening anything in the way.",
+	},
+	"bastion": {
+		"name": "Bastion", "class": "guardian", "level": 45, "icon": 5, "shape": "buff",
+		"stamina": 30.0, "cooldown": 30.0, "duration": 5.0, "mods": {"damage_taken": {"percent": -0.7}, "knockback_resistance": {"flat": 1.0}},
+		"color": Color(0.9, 0.85, 0.5), "text": "Take 70% less damage for 5 seconds and cannot be moved.",
+	},
+	"multishot": {
+		"name": "Multishot", "class": "ranger", "level": 30, "icon": 31, "shape": "shot",
+		"damage": 1.3, "stamina": 25.0, "cooldown": 6.0, "count": 3, "spread": 18.0,
+		"projectile": {"sprite": 0, "speed": 880.0, "radius": 11.0, "range": 600.0, "pierce": true, "knockback": 200.0},
+		"text": "Three piercing arrows at once.",
+	},
+	"rain_of_arrows": {
+		"name": "Rain of Arrows", "class": "ranger", "level": 45, "icon": 31, "shape": "slam",
+		"damage": 3.0, "stamina": 40.0, "cooldown": 14.0, "radius": 150.0, "distance": 220.0, "knockback": 200.0,
+		"text": "Darken the sky over a spot ahead of you.",
+	},
+	"smoke_bomb": {
+		"name": "Smoke Bomb", "class": "assassin", "level": 30, "icon": 29, "shape": "buff",
+		"stamina": 20.0, "cooldown": 18.0, "duration": 6.0, "mods": {"dodge_efficiency": {"percent": 0.6}, "move_speed": {"percent": 0.25}, "critical_chance": {"flat": 0.15}},
+		"color": Color(0.6, 0.6, 0.65), "text": "Vanish in smoke: faster, slipperier, and deadlier for 6 seconds.",
+	},
+	"death_mark": {
+		"name": "Death Mark", "class": "assassin", "level": 45, "icon": 15, "shape": "buff",
+		"stamina": 30.0, "cooldown": 30.0, "duration": 8.0, "mods": {"critical_damage": {"flat": 1.0}},
+		"color": Color(0.8, 0.2, 0.25), "text": "Critical hits deal double extra damage for 8 seconds.",
+	},
+	"arcane_missiles": {
+		"name": "Arcane Missiles", "class": "mage", "level": 30, "icon": 30, "shape": "shot", "magic": true,
+		"damage": 1.0, "mana": 25.0, "cooldown": 6.0, "count": 5, "spread": 30.0,
+		"projectile": {"sprite": 1, "speed": 640.0, "radius": 12.0, "range": 560.0, "knockback": 120.0, "color": Color(0.75, 0.55, 1.0)},
+		"text": "A spray of five seeking bolts.",
+	},
+	"blizzard": {
+		"name": "Blizzard", "class": "mage", "level": 45, "icon": 27, "shape": "slam", "magic": true,
+		"damage": 3.4, "mana": 45.0, "cooldown": 16.0, "radius": 170.0, "distance": 200.0, "knockback": 300.0,
+		"status": {"status": "chill", "duration": 4.0, "power": 0.6}, "color": Color(0.7, 0.9, 1.0),
+		"text": "A howling storm of ice over a wide area.",
+	},
+	"arcane_dash": {
+		"name": "Arcane Dash", "class": "spellblade", "level": 30, "icon": 29, "shape": "dash", "magic": true,
+		"damage": 1.6, "mana": 15.0, "cooldown": 6.0, "distance": 240.0, "radius": 46.0, "knockback": 200.0, "color": Color(0.75, 0.55, 1.0),
+		"text": "Blink forward through a line of foes.",
+	},
+	"storm_blade": {
+		"name": "Storm Blade", "class": "spellblade", "level": 45, "icon": 37, "shape": "chain", "magic": true,
+		"damage": 2.2, "stamina": 15.0, "mana": 25.0, "cooldown": 10.0, "targets": 6, "reach": 300.0, "jump": 200.0,
+		"color": Color(0.7, 0.85, 1.0), "text": "Lightning leaps from your blade through six enemies.",
+	},
 }
 
 ## Number of ability slots on the bar.
-const SLOTS := 5
-## How many of the slots hold weapon abilities; the rest hold class abilities.
-const WEAPON_SLOTS := 3
+## Abilities on the bar: two sets of SET_SIZE, switched with a key.
+const SET_SIZE := 4
+const SETS := 2
+const SLOTS := SET_SIZE * SETS
 
 
 ## Ability ids for a weapon type, in unlock order.

@@ -1,8 +1,7 @@
 class_name NpcSpawner
 extends Node2D
-## Puts people in the world: a merchant and a warden at the Sanctuary, and
-## the same pair at a camp in each REGION x REGION block of tiles, placed
-## from the world seed.
+## Puts the merchant and warden at the Sanctuary. Everyone else lives in
+## villages (see Villages).
 
 const REGION := 96
 const SANCTUARY := {"merchant": Vector2i(3, -2), "warden": Vector2i(-3, -2)}
@@ -38,11 +37,6 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 	for kind: String in SANCTUARY:
 		if bounds.has_point(SANCTUARY[kind]):
 			placed.append(_place(kind, SANCTUARY[kind]))
-	var region := Vector2i((Vector2(origin) / REGION).floor())
-	var camp: Variant = camp_cell(region)
-	if camp != null and bounds.has_point(camp):
-		placed.append(_place("merchant", camp))
-		placed.append(_place("warden", camp + Vector2i(4, 0)))
 	_by_chunk[chunk] = placed
 
 

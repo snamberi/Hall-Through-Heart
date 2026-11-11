@@ -28,6 +28,16 @@ const DISPLAY: Array[Dictionary] = [
 	{"id": "magic_find", "name": "Magic find", "format": "bonus_percent"},
 	{"id": "gold_find", "name": "Gold found", "format": "percent"},
 	{"id": "mining_efficiency", "name": "Mining efficiency", "format": "percent"},
+	{"id": "fire_damage", "name": "Fire damage", "format": "number", "hide_zero": true},
+	{"id": "frost_damage", "name": "Frost damage", "format": "number", "hide_zero": true},
+	{"id": "poison_damage", "name": "Poison damage", "format": "number", "hide_zero": true},
+	{"id": "shadow_damage", "name": "Shadow damage", "format": "number", "hide_zero": true},
+	{"id": "holy_damage", "name": "Holy damage", "format": "number", "hide_zero": true},
+	{"id": "fire_resist", "name": "Fire resistance", "format": "percent", "hide_zero": true},
+	{"id": "frost_resist", "name": "Frost resistance", "format": "percent", "hide_zero": true},
+	{"id": "poison_resist", "name": "Poison resistance", "format": "percent", "hide_zero": true},
+	{"id": "shadow_resist", "name": "Shadow resistance", "format": "percent", "hide_zero": true},
+	{"id": "holy_resist", "name": "Holy resistance", "format": "percent", "hide_zero": true},
 ]
 
 ## Bare-handed damage; weapons add their own on top.
@@ -168,7 +178,7 @@ func _base(id: String) -> float:
 			return 0.005 * _points("luck")
 		"mining_efficiency":
 			return 1.0
-		"damage_taken", "gold_find", "dodge_distance":
+		"damage_taken", "gold_find", "dodge_distance", "gather_speed":
 			return 1.0
 		"stamina_regen":
 			return 22.0

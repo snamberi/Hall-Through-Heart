@@ -14,6 +14,10 @@ var mods: Array[Dictionary] = []
 var upgrade := 0
 ## The enchantment on this item: one modifier {"stat", "kind", "value"}, or empty.
 var enchant: Dictionary = {}
+## Gem ids set into this item; "" is an empty socket.
+var sockets: Array[String] = []
+## The named set this piece belongs to (ItemDB.ITEM_SETS), or "".
+var set_id := ""
 
 
 static func create(item_id: String, p_count: int = 1) -> Item:
@@ -42,6 +46,11 @@ static func from_dict(data: Dictionary) -> Item:
 			"kind": str(saved_enchant.get("kind", "flat")),
 			"value": float(saved_enchant["value"]),
 		}
+	var saved_sockets: Variant = data.get("sockets", [])
+	if saved_sockets is Array:
+		for gem: Variant in saved_sockets:
+			item.sockets.append(str(gem) if ItemDB.ITEMS.has(str(gem)) else "")
+	item.set_id = str(data.get("set", "")) if ItemDB.ITEM_SETS.has(str(data.get("set", ""))) else ""
 	var saved_mods: Variant = data.get("mods", [])
 	if saved_mods is Array:
 		for mod: Variant in saved_mods:
@@ -57,7 +66,12 @@ static func from_dict(data: Dictionary) -> Item:
 func to_dict() -> Dictionary:
 	if not is_equipment():
 		return {"id": id, "count": count}
-	return {"id": id, "rarity": rarity, "level": level, "upgrade": upgrade, "mods": mods.duplicate(true), "enchant": enchant.duplicate()}
+	var data := {"id": id, "rarity": rarity, "level": level, "upgrade": upgrade, "mods": mods.duplicate(true), "enchant": enchant.duplicate()}
+	if not sockets.is_empty():
+		data["sockets"] = sockets.duplicate()
+	if set_id != "":
+		data["set"] = set_id
+	return data
 
 
 func definition() -> Dictionary:
@@ -117,16 +131,26 @@ func slot() -> String:
 func display_name() -> String:
 	var def := definition()
 	var text: String = def["name"]
-	if def.get("tiered", false):
+	if set_id != "":
+		text = "%s %s" % [ItemDB.ITEM_SETS[set_id]["name"], text]
+	elif def.get("tiered", false):
 		text = "%s %s" % [ItemDB.tier_name(level), text]
 	return "%s +%d" % [text, upgrade] if upgrade > 0 else text
 
 
 func color() -> Color:
-	return ItemDB.RARITIES[rarity]["color"]
+	return ItemDB.SET_COLOR if set_id != "" else ItemDB.RARITIES[rarity]["color"]
+
+
+func is_unique() -> bool:
+	return definition().has("unique")
 
 
 func icon() -> Texture2D:
+	if definition().has("flora"):
+		return Flora.small_texture(definition()["flora"])
+	if definition().has("decor"):
+		return Prop.decor_icon(definition()["decor"])
 	return ItemDB.icon(definition()["icon"])
 
 
@@ -161,6 +185,9 @@ func all_modifiers() -> Array[Dictionary]:
 	result.append_array(mods)
 	if not enchant.is_empty():
 		result.append(enchant)
+	for gem in sockets:
+		if gem != "":
+			result.append(Gems.modifier(gem, slot()))
 	return result
 
 

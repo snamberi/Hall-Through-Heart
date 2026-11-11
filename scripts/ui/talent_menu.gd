@@ -1,155 +1,180 @@
 class_name TalentMenu
 extends GameMenu
-## The talent trees: pick a tree, then click nodes to spend talent points.
+## The talent tree on a canvas: drag to look around, scroll to zoom, hover a
+## talent to read it, click to learn a rank.
 
-const CELL := Vector2(150.0, 92.0)
-const NODE_SIZE := 62.0
-const KIND_NAMES := {"minor": "Minor talent", "major": "Major talent", "keystone": "Keystone"}
+const RADIUS := {"minor": 15.0, "major": 20.0, "keystone": 24.0, "milestone": 26.0}
 
 var _points: Label
-var _tree_buttons: Dictionary[String, Button] = {}
-var _graph: Control
-var _node_buttons: Dictionary[String, Button] = {}
-var _rank_labels: Dictionary[String, Label] = {}
+var _canvas: Control
 var _details: RichTextLabel
-var _tree := "offense"
-var _shown := ""
+var _offset := Vector2.ZERO
+var _zoom := 0.85
+var _dragging := false
+var _dragged := 0.0
+var _hovered := ""
+var _font: Font
+var _icons: Dictionary = {}
 
 
 func _build() -> void:
+	_font = UITheme.get_theme().default_font
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 28)
 	content.add_child(top)
-	top.add_child(UITheme.heading("Talents", 28))
+	top.add_child(UITheme.heading("TALENTS", 30))
 	_points = UITheme.label("", 18, UITheme.GOLD)
 	_points.size_flags_vertical = Control.SIZE_SHRINK_END
 	top.add_child(_points)
-
-	var trees := HBoxContainer.new()
-	trees.add_theme_constant_override("separation", 8)
-	content.add_child(trees)
-	for tree in TalentDB.TREES:
-		var button := Button.new()
-		button.text = " " + tree["name"]
-		button.icon = ItemDB.icon(tree["icon"])
-		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
-		button.custom_minimum_size = Vector2(124.0, 38.0)
-		button.add_theme_constant_override("icon_max_width", 22)
-		button.pressed.connect(_show_tree.bind(tree["id"]))
-		trees.add_child(button)
-		_tree_buttons[tree["id"]] = button
-
+	top.add_child(UITheme.label("Drag to look around   Scroll to zoom   Click to learn", 14, UITheme.DIM))
 	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 28)
+	columns.add_theme_constant_override("separation", 12)
 	content.add_child(columns)
 	var frame := UITheme.inset_panel()
 	columns.add_child(frame)
-	_graph = Control.new()
-	_graph.custom_minimum_size = Vector2(CELL.x * 3, CELL.y * 4 + 6.0)
-	_graph.draw.connect(_draw_links)
-	frame.add_child(_graph)
-
-	for id: String in TalentDB.NODES:
-		var node: Dictionary = TalentDB.NODES[id]
-		var big: bool = node["kind"] != "minor"
-		var size := NODE_SIZE + (10.0 if big else 0.0)
-		var button := Button.new()
-		button.icon = ItemDB.icon(node["icon"])
-		button.expand_icon = true
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.focus_mode = Control.FOCUS_NONE
-		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		button.custom_minimum_size = Vector2(size, size)
-		button.size = Vector2(size, size)
-		button.position = _center(id) - Vector2(size, size) / 2.0
-		button.pressed.connect(func() -> void:
-			player.talents.learn(id)
-			_describe(id)
-		)
-		button.mouse_entered.connect(_describe.bind(id))
-		_graph.add_child(button)
-		_node_buttons[id] = button
-		var rank := UITheme.label("", 13)
-		rank.add_theme_color_override("font_outline_color", Color.BLACK)
-		rank.add_theme_constant_override("outline_size", 4)
-		rank.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		rank.position = Vector2(size - 30.0, size - 20.0)
-		button.add_child(rank)
-		_rank_labels[id] = rank
-
+	_canvas = Control.new()
+	_canvas.custom_minimum_size = Vector2(840, 540)
+	_canvas.clip_contents = true
+	_canvas.mouse_filter = Control.MOUSE_FILTER_STOP
+	_canvas.draw.connect(_draw_tree)
+	_canvas.gui_input.connect(_on_input)
+	frame.add_child(_canvas)
 	var side := UITheme.inset_panel()
 	columns.add_child(side)
 	_details = RichTextLabel.new()
 	_details.bbcode_enabled = true
-	_details.fit_content = true
 	_details.scroll_active = false
-	_details.custom_minimum_size = Vector2(300.0, 300.0)
+	_details.custom_minimum_size = Vector2(300, 540)
+	_details.add_theme_font_size_override("normal_font_size", 15)
 	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	side.add_child(_details)
-
 	player.talents.changed.connect(refresh_if_open)
 
 
 func refresh() -> void:
-	_points.text = "Talent points: %d      Spent: %d" % [player.leveling.talent_points, player.talents.spent_points()]
-	for tree in _tree_buttons:
-		_tree_buttons[tree].set_pressed_no_signal(tree == _tree)
-	for id in _node_buttons:
-		var node: Dictionary = TalentDB.NODES[id]
-		var button := _node_buttons[id]
-		button.visible = node["tree"] == _tree
-		var rank := player.talents.rank(id)
-		_rank_labels[id].text = "%d/%d" % [rank, node["max"]]
-		var reason := player.talents.blocked_reason(id)
-		var locked := reason.begins_with("Requires")
-		button.modulate = Color(0.45, 0.45, 0.5) if locked else Color.WHITE
-		_rank_labels[id].add_theme_color_override("font_color", UITheme.GOLD if rank >= node["max"] else UITheme.GOOD if rank > 0 else UITheme.TEXT)
-	_graph.queue_redraw()
-	_describe(_shown if _shown != "" and TalentDB.NODES[_shown]["tree"] == _tree else "")
+	_points.text = "Points: %d      Spent: %d" % [player.leveling.talent_points, player.talents.spent_points()]
+	_describe(_hovered)
+	_canvas.queue_redraw()
 
 
-func _show_tree(tree: String) -> void:
-	_tree = tree
-	_shown = ""
-	refresh()
+func _to_screen(id: String) -> Vector2:
+	# The tree is drawn with the Heart a little below the middle.
+	return _canvas.size / 2.0 + Vector2(0, 40) + (TalentDB.position(id) + _offset) * _zoom
 
 
-func _center(id: String) -> Vector2:
-	var pos: Vector2i = TalentDB.NODES[id]["pos"]
-	return Vector2((pos.x + 0.5) * CELL.x, (pos.y + 0.5) * CELL.y + 3.0)
+func _node_at(point: Vector2) -> String:
+	for id: String in TalentDB.NODES:
+		if _to_screen(id).distance_to(point) < RADIUS[TalentDB.NODES[id]["kind"]] * _zoom + 4.0:
+			return id
+	return ""
 
 
-func _draw_links() -> void:
-	for id in TalentDB.nodes_in(_tree):
-		for required: String in TalentDB.NODES[id].get("requires", []):
-			var open := player.talents.has(required)
-			var color := UITheme.HEADING if open else Color(0.3, 0.3, 0.36)
-			_graph.draw_line(_center(required), _center(id), color, 3.0 if open else 2.0)
+func _on_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				_dragging = true
+				_dragged = 0.0
+			else:
+				_dragging = false
+				# A click that did not drag learns the talent under the mouse.
+				if _dragged < 6.0:
+					var id := _node_at(event.position)
+					if id != "" and player.talents.learn(id):
+						Audio.play("level_up", -12.0, 0.1)
+		elif event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			_zoom = clampf(_zoom * (1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.89), 0.45, 1.6)
+			_canvas.queue_redraw()
+	elif event is InputEventMouseMotion:
+		if _dragging:
+			_dragged += event.relative.length()
+			_offset += event.relative / _zoom
+			_canvas.queue_redraw()
+		var id := _node_at(event.position)
+		if id != _hovered:
+			_hovered = id
+			_describe(id)
+			_canvas.queue_redraw()
+
+
+func _draw_tree() -> void:
+	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), Color("0b0d15"))
+	var talents := player.talents
+	# Faint rings for each distance out.
+	for ring in range(1, 8):
+		_canvas.draw_arc(_to_screen("awakened_heart"), ring * TalentDB.STEP * _zoom, 0.0, TAU, 96, Color(1, 1, 1, 0.03), 1.0)
+	for edge: Array in TalentDB.edges():
+		var both: bool = talents.has(edge[0]) and talents.has(edge[1])
+		var either: bool = talents.has(edge[0]) or talents.has(edge[1])
+		var color := UITheme.GOLD if both else Color(0.55, 0.5, 0.4, 0.8) if either else Color(0.28, 0.28, 0.34)
+		_canvas.draw_line(_to_screen(edge[0]), _to_screen(edge[1]), color, (4.0 if both else 2.5) * _zoom)
+	for id: String in TalentDB.NODES:
+		_draw_node(id)
+	# Branch names, near the top of each branch.
+	for branch: String in TalentDB.BRANCHES:
+		var info: Array = TalentDB.BRANCHES[branch]
+		var at := _canvas.size / 2.0 + Vector2(0, 40) + (Vector2.from_angle(info[1]) * TalentDB.STEP * 3.0 + Vector2.from_angle(info[1] + PI / 2.0) * 44.0 + _offset) * _zoom
+		_canvas.draw_string_outline(UITheme.bold(), at - Vector2(60, 0), info[0], HORIZONTAL_ALIGNMENT_CENTER, 120, 15, 4, Color.BLACK)
+		_canvas.draw_string(UITheme.bold(), at - Vector2(60, 0), info[0], HORIZONTAL_ALIGNMENT_CENTER, 120, 15, info[2])
+
+
+func _draw_node(id: String) -> void:
+	var node: Dictionary = TalentDB.NODES[id]
+	var talents := player.talents
+	var at := _to_screen(id)
+	var radius: float = RADIUS[node["kind"]] * _zoom
+	var rank := talents.rank(id)
+	var reachable := talents.reachable(id)
+	var tint: Color = TalentDB.BRANCHES[node["branch"]][2] if node["branch"] != "" else Color("ff6a7a")
+	var face := tint.darkened(0.55) if rank > 0 else Color("1a1c26") if reachable else Color("12131a")
+	# Milestones and keystones get a heavier rim.
+	var rim := UITheme.GOLD if node["kind"] in ["milestone", "keystone"] else Color("8a683a")
+	if rank == 0 and not reachable:
+		rim = rim.darkened(0.6)
+	if id == _hovered:
+		_canvas.draw_circle(at, radius + 7.0 * _zoom, Color(tint, 0.25))
+	if node["kind"] == "keystone":
+		var diamond := PackedVector2Array([at + Vector2(0, -radius - 4), at + Vector2(radius + 4, 0), at + Vector2(0, radius + 4), at + Vector2(-radius - 4, 0)])
+		_canvas.draw_colored_polygon(diamond, rim)
+		_canvas.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -radius), at + Vector2(radius, 0), at + Vector2(0, radius), at + Vector2(-radius, 0)]), face)
+	else:
+		_canvas.draw_circle(at, radius + 3.0 * _zoom, rim)
+		_canvas.draw_circle(at, radius, face)
+		if node["kind"] == "milestone":
+			_canvas.draw_arc(at, radius + 6.0 * _zoom, 0.0, TAU, 32, Color(rim, 0.6), 1.5)
+	var icon := ItemDB.icon(node["icon"])
+	var size := radius * 1.3
+	var shade := Color.WHITE if rank > 0 else Color(0.75, 0.75, 0.8) if reachable else Color(0.35, 0.35, 0.4)
+	_canvas.draw_texture_rect(icon, Rect2(at - Vector2(size, size) / 2.0, Vector2(size, size)), false, shade)
+	if node["max"] > 1:
+		var label := "%d/%d" % [rank, node["max"]]
+		_canvas.draw_string_outline(_font, at + Vector2(-20, radius + 14.0 * _zoom), label, HORIZONTAL_ALIGNMENT_CENTER, 40, 12, 4, Color.BLACK)
+		_canvas.draw_string(_font, at + Vector2(-20, radius + 14.0 * _zoom), label, HORIZONTAL_ALIGNMENT_CENTER, 40, 12, UITheme.GOLD if rank >= node["max"] else UITheme.TEXT)
 
 
 func _describe(id: String) -> void:
-	_shown = id
 	if id == "":
-		_details.text = "[color=#%s]Hover a talent to see what it does. Click to learn a rank.\n\nYou earn one talent point every two levels.[/color]" % UITheme.DIM.to_html(false)
+		_details.text = "[color=#%s]Every path starts at the Awakened Heart in the middle. Learn a talent and its neighbours open up.\n\nGold-rimmed milestones are big. They open after 10, 20, 30, and 40 points are spent in the tree.\n\nYou earn a talent point every two levels.[/color]" % UITheme.DIM.to_html(false)
 		return
 	var node: Dictionary = TalentDB.NODES[id]
 	var rank := player.talents.rank(id)
+	var kinds := {"minor": "Talent", "major": "Major talent", "keystone": "Keystone", "milestone": "Milestone"}
 	var lines: PackedStringArray = []
-	lines.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [UITheme.HEADING.to_html(false), node["name"]])
-	lines.append("[color=#%s]%s  -  rank %d / %d[/color]" % [UITheme.DIM.to_html(false), KIND_NAMES[node["kind"]], rank, node["max"]])
+	var tint: Color = TalentDB.BRANCHES[node["branch"]][2] if node["branch"] != "" else Color("ff6a7a")
+	lines.append("[font_size=22][color=#%s]%s[/color][/font_size]" % [UITheme.HEADING.to_html(false), node["name"]])
+	var branch_name: String = TalentDB.BRANCHES[node["branch"]][0] if node["branch"] != "" else "The Heart"
+	lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s  -  rank %d / %d[/color]" % [tint.to_html(false), branch_name, UITheme.DIM.to_html(false), kinds[node["kind"]], rank, node["max"]])
 	if rank > 0:
 		lines.append("")
-		lines.append("[color=#%s]Now:[/color]" % UITheme.DIM.to_html(false))
 		for line in TalentDB.describe(id, rank):
 			lines.append("[color=#%s]%s[/color]" % [UITheme.GOOD.to_html(false), line])
 	if rank < node["max"]:
 		lines.append("")
-		lines.append("[color=#%s]Next rank:[/color]" % UITheme.DIM.to_html(false))
+		lines.append("[color=#%s]%s[/color]" % [UITheme.DIM.to_html(false), "Next rank:" if rank > 0 else "Gives:"])
 		for line in TalentDB.describe(id, rank + 1):
 			lines.append(line)
-	var reason := player.talents.blocked_reason(id)
-	if reason != "" and rank < node["max"]:
-		lines.append("")
-		lines.append("[color=#%s]%s[/color]" % [UITheme.BAD.to_html(false), reason])
+		var reason := player.talents.blocked_reason(id)
+		if reason != "":
+			lines.append("")
+			lines.append("[color=#%s]%s[/color]" % [UITheme.BAD.to_html(false), reason])
 	_details.text = "\n".join(lines)

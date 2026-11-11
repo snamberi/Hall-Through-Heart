@@ -16,7 +16,7 @@ const KINDS := {
 	"fish": {"profession": "fishing", "tool": "rod", "verb": "Fish", "seconds": 3.2, "frame": 4},
 }
 const T := TerrainTiles.Type
-const ROCKY: Array[int] = [T.ASH, T.MUD, T.DEAD_GRASS, T.SALT, T.SAND, T.CINDER, T.SNOW, T.VOIDSCAR, T.CAVE_FLOOR]
+const ROCKY: Array[int] = [T.ROCK, T.PEAK, T.ASH, T.MUD, T.DEAD_GRASS, T.SALT, T.SAND, T.CINDER, T.SNOW, T.VOIDSCAR, T.CAVE_FLOOR]
 const WOODED: Array[int] = [T.DARK_GRASS, T.DEAD_GRASS, T.FROSTPINE, T.THORN, T.CRIMSON, T.FUNGAL]
 
 const RESOURCES := {
@@ -35,10 +35,20 @@ const RESOURCES := {
 	"pine": {"kind": "tree", "item": "pine_wood", "level": 10, "tier": 1, "tiles": WOODED},
 	"ancient_tree": {"kind": "tree", "item": "ancient_wood", "level": 30, "tier": 3, "tiles": WOODED},
 	"spirit_tree": {"kind": "tree", "item": "spiritwood", "level": 60, "tier": 4, "tiles": WOODED},
-	"healing_herb": {"kind": "herb", "item": "healing_herb", "level": 1, "tier": 0, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.BOG, T.CRIMSON, T.FROSTPINE]},
-	"poison_mushroom": {"kind": "herb", "item": "poison_mushroom", "level": 5, "tier": 0, "tiles": [T.BOG, T.DARK_GRASS, T.FUNGAL, T.TAR]},
-	"mana_flower": {"kind": "herb", "item": "mana_flower", "level": 10, "tier": 0, "tiles": [T.DARK_GRASS, T.ASH, T.SNOW, T.VOIDSCAR]},
-	"rare_root": {"kind": "herb", "item": "rare_root", "level": 30, "tier": 0, "tiles": [T.BOG, T.MUD, T.THORN, T.FUNGAL]},
+	"healing_herb": {"kind": "herb", "item": "healing_herb", "level": 1, "tier": 0, "flora": 20, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.BOG, T.CRIMSON, T.FROSTPINE]},
+	"poison_mushroom": {"kind": "herb", "item": "poison_mushroom", "level": 5, "tier": 0, "flora": 22, "tiles": [T.BOG, T.DARK_GRASS, T.FUNGAL, T.TAR]},
+	"mana_flower": {"kind": "herb", "item": "mana_flower", "level": 10, "tier": 0, "flora": 21, "tiles": [T.DARK_GRASS, T.ASH, T.SNOW, T.VOIDSCAR]},
+	"rare_root": {"kind": "herb", "item": "rare_root", "level": 30, "tier": 0, "flora": 23, "tiles": [T.BOG, T.MUD, T.THORN, T.FUNGAL]},
+	"frost_lily": {"kind": "herb", "item": "frost_lily", "level": 15, "tier": 0, "flora": 24, "tiles": [T.SNOW, T.FROSTPINE, T.PEAK]},
+	"bloodcap": {"kind": "herb", "item": "bloodcap", "level": 20, "tier": 0, "flora": 25, "tiles": [T.CRIMSON, T.THORN]},
+	"glowshroom": {"kind": "herb", "item": "glowshroom", "level": 18, "tier": 0, "flora": 26, "tiles": [T.FUNGAL, T.CAVE_FLOOR, T.BOG]},
+	"desert_aloe": {"kind": "herb", "item": "desert_aloe", "level": 12, "tier": 0, "flora": 27, "tiles": [T.SAND, T.SALT]},
+	"emberbloom": {"kind": "herb", "item": "emberbloom", "level": 25, "tier": 0, "flora": 28, "tiles": [T.CINDER, T.ASH]},
+	"void_bloom": {"kind": "herb", "item": "void_bloom", "level": 40, "tier": 0, "flora": 29, "tiles": [T.VOIDSCAR]},
+	"saltweed": {"kind": "herb", "item": "saltweed", "level": 8, "tier": 0, "flora": 30, "tiles": [T.SALT, T.SAND]},
+	# Bushes are placed with the woods rather than picked from this list.
+	"berry_bush": {"kind": "herb", "item": "wild_berries", "level": 1, "tier": 0, "tall": 15, "tiles": []},
+	"thornberry_bush": {"kind": "herb", "item": "thornberries", "level": 10, "tier": 0, "tall": 17, "tiles": []},
 	"fishing_spot": {"kind": "fish", "item": "minnow", "level": 1, "tier": 1, "tiles": [T.SHALLOW_WATER]},
 }
 ## What a fishing spot can give: [item, fishing level needed, weight].
@@ -46,13 +56,15 @@ const FISH: Array[Array] = [["minnow", 1, 10.0], ["trout", 10, 6.0], ["eel", 25,
 ## Chance a catch is treasure instead of a fish.
 const TREASURE_CHANCE := 0.05
 ## How many resources each kind tries to place per chunk.
-const PER_CHUNK := {"ore": 2, "tree": 3, "herb": 3, "fish": 1}
+const PER_CHUNK := {"ore": 2, "herb": 3, "fish": 1}
 
 
 static func display_name(id: String) -> String:
 	if RESOURCES[id]["kind"] == "fish":
 		return "Fishing Spot"
 	var name: String = ItemDB.ITEMS[RESOURCES[id]["item"]]["name"]
+	if RESOURCES[id].has("tall") and RESOURCES[id]["kind"] == "herb":
+		return name + " Bush"
 	return name.trim_suffix(" Ore").trim_suffix(" Wood") + (" Tree" if RESOURCES[id]["kind"] == "tree" else " Vein" if RESOURCES[id]["kind"] == "ore" and id != "stone" else "")
 
 
