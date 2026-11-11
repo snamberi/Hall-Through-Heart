@@ -28,7 +28,11 @@ func setup(player: Player, world: World) -> void:
 
 
 func _process(delta: float) -> void:
-	if not visible or _player == null:
+	if _player == null:
+		return
+	# There is no map of caves and interiors.
+	visible = GameSettings.show_minimap and not _player.indoors
+	if not visible:
 		return
 	_refresh_left -= delta
 	var cell := _world.world_to_cell(_player.global_position)

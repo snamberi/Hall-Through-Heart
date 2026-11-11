@@ -7,12 +7,17 @@ const START_NAME := "the Sanctuary"
 @export var world_seed := 0
 
 var _active_seed := 0
+## Where the player wakes after dying; INF until they rest somewhere.
+var _checkpoint := Vector2.INF
+var _checkpoint_name := START_NAME
 
 @onready var _world: World = $World
 @onready var _player: Player = $Player
 @onready var _spawner: EnemySpawner = $Enemies
 @onready var _resources: ResourceSpawner = $Resources
 @onready var _day_night: DayNight = $DayNight
+@onready var _instances: Instances = $Instances
+@onready var _structures: Structures = $Structures
 @onready var _loot: Node2D = $Loot
 @onready var _cinematic: CanvasLayer = $Cinematic
 @onready var _hud: CanvasLayer = $HUD
@@ -33,6 +38,17 @@ func _ready() -> void:
 	SaveGame.register("world", self)
 
 	_world.setup(_active_seed)
+	_instances.setup(_player, _world, _spawner, _loot)
+	_structures.setup(_world, _player, _spawner, _loot, _instances)
+	if saved_world.has("checkpoint"):
+		var point: Array = saved_world["checkpoint"]
+		_checkpoint = Vector2(point[0], point[1])
+		_checkpoint_name = str(saved_world.get("checkpoint_name", START_NAME))
+	Events.checkpoint_set.connect(func(at: Vector2, place: String) -> void:
+		_checkpoint = at
+		_checkpoint_name = place
+		SaveGame.request_save()
+	)
 	_resources.setup(_world)
 	$Npcs.setup(_world)
 	_place_player_at_start()
@@ -46,22 +62,32 @@ func _ready() -> void:
 
 
 func save_data() -> Dictionary:
-	return {"seed": _active_seed, "day": _day_night.day, "time": _day_night.time}
+	var data := {"seed": _active_seed, "day": _day_night.day, "time": _day_night.time}
+	if _checkpoint != Vector2.INF:
+		data["checkpoint"] = [_checkpoint.x, _checkpoint.y]
+		data["checkpoint_name"] = _checkpoint_name
+	return data
 
 
 func load_data(_data: Dictionary) -> void:
 	pass  # The seed is read in _ready, before the world is built.
 
 
+## Puts the player where they wake: the last place they rested, or the
+## Sanctuary. Brings them out of any cave or interior first.
 func _place_player_at_start() -> void:
-	var spawn_cell := _world.generator.find_walkable_near(Vector2i.ZERO)
-	_player.global_position = _world.cell_to_world(spawn_cell)
+	var spawn := _checkpoint
+	if spawn == Vector2.INF:
+		spawn = _world.cell_to_world(_world.generator.find_walkable_near(Vector2i.ZERO))
+	if _instances.is_inside():
+		_instances.leave(spawn)
+	_player.global_position = spawn
 	_player.camera.reset_smoothing()
 	_world.load_around_now(_player.global_position)
 
 
 func _on_player_died(xp_lost: int) -> void:
-	await _cinematic.play_death(_player, _hud.show_death.bind(xp_lost, START_NAME))
+	await _cinematic.play_death(_player, _hud.show_death.bind(xp_lost, _checkpoint_name))
 	_place_player_at_start()
 	_hud.hide_death()
 	await _cinematic.play_rebirth(_player)

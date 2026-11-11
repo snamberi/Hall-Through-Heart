@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
@@ -16,6 +16,8 @@
 [ext_resource type="Script" path="res://scripts/world/npc_spawner.gd" id="15_npcs"]
 [ext_resource type="Script" path="res://scripts/ui/quest_tracker.gd" id="16_tracker"]
 [ext_resource type="Script" path="res://scripts/world/day_night.gd" id="17_daynight"]
+[ext_resource type="Script" path="res://scripts/world/structures.gd" id="18_structures"]
+[ext_resource type="Script" path="res://scripts/world/instances.gd" id="19_instances"]
 
 [node name="Main" type="Node2D"]
 y_sort_enabled = true
@@ -31,6 +33,14 @@ script = ExtResource("2_world")
 [node name="Resources" type="Node2D" parent="."]
 y_sort_enabled = true
 script = ExtResource("13_resources")
+
+[node name="Structures" type="Node2D" parent="."]
+y_sort_enabled = true
+script = ExtResource("18_structures")
+
+[node name="Instances" type="Node2D" parent="."]
+y_sort_enabled = true
+script = ExtResource("19_instances")
 
 [node name="Npcs" type="Node2D" parent="."]
 y_sort_enabled = true
@@ -209,6 +219,18 @@ offset_right = 200.0
 offset_bottom = -102.0
 grow_horizontal = 2
 grow_vertical = 0
+mouse_filter = 2
+
+[node name="BossBar" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -260.0
+offset_top = 14.0
+offset_right = 260.0
+offset_bottom = 60.0
+grow_horizontal = 2
 mouse_filter = 2
 
 [node name="QuestTracker" type="Control" parent="HUD"]

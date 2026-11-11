@@ -574,11 +574,28 @@ func nearest_npc() -> Npc:
 	return best
 
 
+## The usable prop closest to the player and in reach, or null.
+func nearest_prop() -> Prop:
+	var best: Prop = null
+	var best_distance := Prop.REACH
+	for node in get_tree().get_nodes_in_group("props"):
+		var distance: float = node.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = node
+	return best
+
+
 func _start_gathering() -> void:
 	var npc := nearest_npc()
 	if npc:
 		velocity = Vector2.ZERO
 		Events.npc_interacted.emit(npc)
+		return
+	var prop := nearest_prop()
+	if prop:
+		velocity = Vector2.ZERO
+		prop.interact(self)
 		return
 	var node := nearest_resource()
 	if node == null:

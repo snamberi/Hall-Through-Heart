@@ -66,7 +66,8 @@ func _on_enemy_died(enemy: Enemy) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _world == null or _player.is_dead():
+	# Rooms off the map are stocked by whoever built them.
+	if _world == null or _player.is_dead() or _player.indoors:
 		return
 	_time_left -= delta
 	if _time_left > 0.0:
@@ -75,7 +76,8 @@ func _physics_process(delta: float) -> void:
 
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
-		if enemy.global_position.distance_to(_player.global_position) > despawn_distance:
+		# Lair guardians stay put; their structure removes them with its chunk.
+		if enemy.lair_home == Vector2.INF and enemy.global_position.distance_to(_player.global_position) > despawn_distance:
 			enemy.queue_free()
 
 	# More things stir after dark.

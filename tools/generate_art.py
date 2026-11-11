@@ -931,6 +931,62 @@ NODES = [
 ]
 
 
+# Structures and furniture: 64px frames in one row of assets/sprites/props.png.
+# The order is the frame number used in scripts/world/prop.gd - only append.
+PROP_PALETTE = {
+    "pstone": ["a6a2b0", "7c7888", "56525e"],
+    "pdark": ["3a3642", "26232c", "14121a"],
+    "pwood": ["8a6a48", "6b4f36", "4a3626"],
+    "pgold": ["f0cf6a", "c09a3c", "866a26"],
+    "pfire": ["ffd86b", "f08a2e", "b8401e"],
+    "pvoid": ["c9a0f0", "8e5cc8", "5c3690"],
+    "pcloth": ["b3434a", "8a2c37", "5c1c28"],
+    "pbone": ["f2efe2", "cfcbb8", "9b9889"],
+    "pblack": ["0b0a12"] * 3,
+}
+PROPS = [
+    # 0 pillar
+    [("pstone", "rect", (24, 14, 40, 54)), ("pstone", "rect", (20, 8, 44, 15)), ("pstone", "rect", (20, 52, 44, 59)), ("pdark", "rect", (30, 16, 31, 51))],
+    # 1 broken wall
+    [("pstone", "poly", [(10, 58), (10, 34), (18, 30), (22, 38), (30, 26), (38, 32), (44, 24), (54, 36), (54, 58)]),
+     ("pdark", "rect", (12, 44, 52, 45)), ("pdark", "rect", (30, 34, 31, 57))],
+    # 2 chest, closed
+    [("pwood", "rect", (14, 30, 50, 54)), ("pwood", "poly", [(14, 30), (18, 22), (46, 22), (50, 30)]), ("pgold", "rect", (14, 36, 50, 38)),
+     ("pgold", "rect", (29, 33, 35, 42)), ("pdark", "rect", (31, 36, 33, 39))],
+    # 3 chest, open
+    [("pdark", "rect", (16, 26, 48, 36)), ("pwood", "poly", [(14, 26), (18, 12), (46, 12), (50, 26)]), ("pwood", "rect", (14, 34, 50, 54)),
+     ("pgold", "rect", (14, 34, 50, 36)), ("pgold", "ellipse", (22, 28, 30, 34)), ("pgold", "ellipse", (33, 27, 42, 34))],
+    # 4 altar with a flame: a place to rest
+    [("pstone", "poly", [(16, 58), (20, 44), (44, 44), (48, 58)]), ("pstone", "rect", (22, 36, 42, 45)), ("pdark", "rect", (24, 34, 40, 37)),
+     ("pfire", "poly", [(26, 35), (28, 24), (31, 30), (33, 16), (36, 28), (38, 22), (39, 35)])],
+    # 5 cave mouth
+    [("pstone", "poly", [(6, 58), (8, 34), (18, 20), (34, 14), (48, 20), (58, 36), (58, 58)]),
+     ("pblack", "poly", [(18, 58), (19, 40), (26, 30), (36, 28), (44, 34), (46, 58)])],
+    # 6 void portal
+    [("pvoid", "ring", (14, 8, 50, 58), 5), ("pblack", "ellipse", (19, 13, 45, 53)), ("pvoid", "ellipse", (29, 28, 35, 38)),
+     ("pvoid", "rect", (24, 20, 25, 21)), ("pvoid", "rect", (38, 42, 39, 43)), ("pvoid", "rect", (39, 24, 40, 25))],
+    # 7 ladder up and out
+    [("pwood", "rect", (22, 8, 25, 58)), ("pwood", "rect", (39, 8, 42, 58)), ("pwood", "rect", (22, 16, 42, 18)), ("pwood", "rect", (22, 28, 42, 30)),
+     ("pwood", "rect", (22, 40, 42, 42)), ("pwood", "rect", (22, 52, 42, 54))],
+    # 8 crafting table
+    [("pwood", "rect", (12, 30, 52, 38)), ("pwood", "rect", (14, 38, 18, 56)), ("pwood", "rect", (46, 38, 50, 56)), ("pstone", "rect", (18, 24, 28, 30)),
+     ("pstone", "line", (34, 28, 46, 20), 2), ("pwood", "line", (40, 30, 48, 24), 2)],
+    # 9 bed
+    [("pwood", "rect", (12, 26, 52, 54)), ("pcloth", "rect", (14, 34, 50, 52)), ("pbone", "rect", (16, 28, 34, 35)), ("pwood", "rect", (12, 22, 52, 27))],
+    # 10 doorway (the way out of a house)
+    [("pwood", "rect", (18, 12, 46, 58)), ("pdark", "rect", (22, 16, 42, 58)), ("pgold", "rect", (38, 36, 40, 38))],
+    # 11 campfire
+    [("pwood", "line", (16, 52, 46, 44), 4), ("pwood", "line", (18, 44, 48, 52), 4),
+     ("pfire", "poly", [(22, 46), (25, 32), (29, 40), (32, 22), (36, 38), (40, 30), (43, 46)])],
+    # 12 skull totem marking a lair
+    [("pwood", "rect", (30, 26, 34, 58)), ("pbone", "ellipse", (22, 8, 42, 28)), ("pblack", "ellipse", (25, 14, 30, 20)), ("pblack", "ellipse", (34, 14, 39, 20)),
+     ("pbone", "rect", (27, 26, 37, 30))],
+    # 13 house, seen from outside (uses most of the frame)
+    [("pwood", "rect", (6, 30, 58, 60)), ("pcloth", "poly", [(2, 32), (32, 6), (62, 32)]), ("pdark", "rect", (27, 42, 37, 60)),
+     ("pgold", "rect", (34, 50, 35, 51)), ("pdark", "rect", (11, 38, 20, 46)), ("pdark", "rect", (44, 38, 53, 46)), ("pwood", "rect", (6, 30, 58, 32))],
+]
+
+
 def draw_icon(parts, size=None):
     global ICON
     saved = ICON
@@ -1020,6 +1076,12 @@ def main():
     for index, parts in enumerate(NODES):
         nodes.paste(draw_icon(parts, NODE), (index * NODE, 0))
     nodes.save(os.path.join(ROOT, "sprites", "nodes.png"))
+
+    ICON_PALETTE.update(PROP_PALETTE)
+    props = Image.new("RGBA", (len(PROPS) * NODE, NODE), (0, 0, 0, 0))
+    for index, parts in enumerate(PROPS):
+        props.paste(draw_icon(parts, NODE), (index * NODE, 0))
+    props.save(os.path.join(ROOT, "sprites", "props.png"))
 
 
 if __name__ == "__main__":
