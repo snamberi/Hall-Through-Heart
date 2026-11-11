@@ -100,7 +100,7 @@ func blocked_reason(player: Player) -> String:
 
 ## Seconds of work for this player to gather it.
 func gather_seconds(player: Player) -> float:
-	var speed := player.professions.speed_multiplier(profession())
+	var speed := player.professions.speed_multiplier(profession()) * player.stats.get_stat("gather_speed")
 	if _kind["tool"] != "":
 		speed *= player.inventory.best_tool(_kind["tool"]).definition()["tool"]["speed"]
 	if kind() == "ore":

@@ -17,6 +17,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "attributes", "title": "Attributes", "icon": 38, "action": "toggle_character"},
 	{"id": "mastery", "title": "Mastery", "icon": 0, "action": ""},
 	{"id": "talents", "title": "Talents", "icon": 28, "action": "toggle_talents"},
+	{"id": "abilities", "title": "Abilities", "icon": 27, "action": ""},
 	{"id": "class", "title": "Class", "icon": 6, "action": ""},
 	{"id": "professions", "title": "Professions", "icon": 49, "action": "toggle_professions"},
 	{"id": "journal", "title": "Journal", "icon": 53, "action": "toggle_journal"},
@@ -74,6 +75,7 @@ func setup(player: Player) -> void:
 	_add("attributes", CharacterMenu.new())
 	_add("mastery", MasteryMenu.new())
 	_add("talents", TalentMenu.new())
+	_add("abilities", AbilitiesMenu.new())
 	_add("class", ClassMenu.new())
 	_add("professions", ProfessionsMenu.new())
 	_add("journal", JournalMenu.new())

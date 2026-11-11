@@ -54,6 +54,9 @@ var _attack_cooldown_left := 0.0
 var _dodge_cooldown_left := 0.0
 var _invulnerable_left := 0.0
 var _dodge_direction := Vector2.ZERO
+## The level the class was chosen at, and ranks learned in its tree.
+var class_chosen_at := 10
+var class_ranks: Dictionary = {}
 ## Seconds until another potion can be drunk.
 var potion_cooldown_left := 0.0
 ## The node being gathered from, how long it takes, and how far along.
@@ -108,6 +111,7 @@ func _ready() -> void:
 	SaveGame.register("character", self)
 	stats.setup(attributes, mastery)
 	buffs.setup(stats)
+	StatusFX.attach(self, active_statuses, 44.0, 12.0)
 	talents.setup(leveling, stats)
 	_apply_class()
 	equipment.setup(inventory, leveling, attributes)
@@ -142,8 +146,9 @@ func _physics_process(delta: float) -> void:
 	_read_ground()
 	since_hurt += delta
 	# Natural healing starts once the player has gone 5 seconds unhurt.
-	if since_hurt > 5.0:
-		health.heal((health.max_health * 0.02 + stats.get_stat("health_regen")) * delta)
+	var undying := talents.has("undying")
+	if since_hurt > (2.0 if undying else 5.0):
+		health.heal((health.max_health * (0.04 if undying else 0.02) + stats.get_stat("health_regen")) * delta)
 	if state == State.MOVE or state == State.ATTACK:
 		camera.zoom = camera.zoom.lerp(Vector2(_height_zoom, _height_zoom), 1.5 * delta)
 	_unstick(delta)
@@ -319,6 +324,8 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 		damage *= stats.get_stat("critical_damage")
 	if talents.has("berserker") and health.current < health.max_health * 0.35:
 		damage *= 1.4
+	if talents.has("executioner") and enemy.health.current < enemy.health.max_health * 0.3:
+		damage *= 1.4
 	var type := weapon_type
 	var dealt := enemy.take_damage(damage, knockback, critical, type)
 	if dealt <= 0.0:
@@ -427,18 +434,16 @@ func nearest_resource() -> ResourceNode:
 	return best
 
 
-## Chooses a class. Returns "" on success or why it was refused.
+## Chooses a class, for good. Returns "" on success or why it was refused.
 func choose_class(id: String) -> String:
 	if not HeroClasses.CLASSES.has(id) or id == "adventurer":
 		return "Unknown class."
 	if leveling.level < HeroClasses.CHOICE_LEVEL:
 		return "Requires level %d." % HeroClasses.CHOICE_LEVEL
 	if class_id != "adventurer":
-		var cost := class_change_cost()
-		if inventory.gold < cost:
-			return "Changing class costs %d gold." % cost
-		inventory.add_gold(-cost)
+		return "Your path is already chosen."
 	class_id = id
+	class_chosen_at = leveling.level
 	_apply_class()
 	_on_equipment_changed()
 	class_changed.emit()
@@ -447,8 +452,58 @@ func choose_class(id: String) -> String:
 	return ""
 
 
-func class_change_cost() -> int:
-	return HeroClasses.RESET_COST_PER_LEVEL * leveling.level
+## Class points earned so far: one on choosing, then one every few levels.
+func class_points_total() -> int:
+	if class_id == "adventurer":
+		return 0
+	return 1 + maxi(leveling.level - class_chosen_at, 0) / HeroClasses.CLASS_POINT_LEVELS
+
+
+func class_points_free() -> int:
+	var spent := 0
+	for id: String in class_ranks:
+		spent += class_ranks[id]
+	return class_points_total() - spent
+
+
+## Whether a class ability or passive has been learned.
+func has_class_node(id: String) -> bool:
+	return class_ranks.get(id, 0) > 0
+
+
+## Why a class tree node cannot be learned now, or "".
+func class_node_problem(id: String) -> String:
+	if class_id == "adventurer":
+		return "Choose a class first."
+	var tree: Dictionary = HeroClasses.TREES[class_id]
+	for column: String in ["abilities", "passives"]:
+		var entries: Array = tree[column]
+		for index in entries.size():
+			var entry: Array = entries[index]
+			if entry[0] != id:
+				continue
+			var max_rank: int = 1 if column == "abilities" else entry[2]
+			if class_ranks.get(id, 0) >= max_rank:
+				return "Fully learned."
+			if index > 0 and not has_class_node(entries[index - 1][0]):
+				return "Learn the one above first."
+			if column == "abilities" and leveling.level < entry[1]:
+				return "Requires level %d." % entry[1]
+			if class_points_free() <= 0:
+				return "No class points."
+			return ""
+	return "Not part of your class."
+
+
+func learn_class_node(id: String) -> bool:
+	if class_node_problem(id) != "":
+		return false
+	class_ranks[id] = class_ranks.get(id, 0) + 1
+	_apply_class()
+	abilities.changed.emit()
+	class_changed.emit()
+	SaveGame.request_save()
+	return true
 
 
 ## Hurts the player. Returns whether the blow landed (false if it was
@@ -461,6 +516,8 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 			buffs.add("perfect_dodge", "Perfect Dodge", 5.0, {"critical_chance": {"flat": 0.3}})
 		return false
 	amount = maxf(amount * (1.0 - stats.damage_reduction(attacker_level)) * stats.get_stat("damage_taken") * Difficulty.damage_to_player(), 1.0)
+	if talents.has("last_stand") and health.current < health.max_health * 0.3:
+		amount *= 0.7
 	since_hurt = 0.0
 	if amount >= health.current and talents.has("unbreakable") and _unbreakable_left == 0.0:
 		# The killing blow is turned into a near miss.
@@ -482,6 +539,14 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 	var resistance := stats.get_stat("knockback_resistance")
 	velocity = source_position.direction_to(global_position) * 300.0 * (1.0 - resistance)
 	return true
+
+
+## Statuses on the player now, for the effects drawn around them.
+func active_statuses() -> Array:
+	var ids: Array = _afflictions.keys()
+	if buffs.active.has("chill"):
+		ids.append("chill")
+	return ids
 
 
 ## Inflicts a status on the player. Burn, poison, and bleed deal `power`
@@ -546,11 +611,21 @@ func begin_rebirth() -> void:
 
 
 func save_data() -> Dictionary:
-	return {"class_id": class_id, "show_helmet": show_helmet}
+	return {"class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate()}
 
 
 func load_data(data: Dictionary) -> void:
 	class_id = str(data.get("class_id", class_id))
+	class_chosen_at = int(data.get("class_chosen_at", HeroClasses.CHOICE_LEVEL))
+	var saved_ranks: Variant = data.get("class_ranks", {})
+	class_ranks.clear()
+	if saved_ranks is Dictionary:
+		for id: String in saved_ranks:
+			class_ranks[id] = int(saved_ranks[id])
+	# Classes chosen before trees existed keep their two abilities.
+	if class_id != "adventurer" and class_ranks.is_empty() and not data.has("class_ranks"):
+		for entry: Array in HeroClasses.TREES[class_id]["abilities"].slice(0, 2):
+			class_ranks[entry[0]] = 1
 	show_helmet = bool(data.get("show_helmet", true))
 
 
@@ -700,6 +775,17 @@ func _apply_class() -> void:
 	if not HeroClasses.CLASSES.has(class_id):
 		class_id = "adventurer"
 	stats.set_modifiers("class", HeroClasses.CLASSES[class_id]["mods"])
+	# Passives learned in the class tree.
+	var totals := {}
+	if HeroClasses.TREES.has(class_id):
+		for entry: Array in HeroClasses.TREES[class_id]["passives"]:
+			var ranks: int = class_ranks.get(entry[0], 0)
+			for stat: String in entry[3]:
+				if not totals.has(stat):
+					totals[stat] = {"flat": 0.0, "percent": 0.0}
+				for kind: String in entry[3][stat]:
+					totals[stat][kind] += entry[3][stat][kind] * ranks
+	stats.set_modifiers("class_tree", totals)
 
 
 ## Extra scaling for the weapon in hand: magic weapons use magic damage.

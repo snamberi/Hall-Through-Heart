@@ -23,13 +23,16 @@ func setup(player: Player) -> void:
 	_player = player
 	UITheme.apply(self)
 	_bind(_health_bar, Color(0.72, 0.13, 0.17), 35, func() -> float:
-		return player.health.current / player.health.max_health)
+		return player.health.current / player.health.max_health, func() -> String:
+		return "%d / %d" % [ceili(player.health.current), ceili(player.health.max_health)])
 	_bind(_xp_bar, Color(0.95, 0.76, 0.3), -1, func() -> float:
 		return float(player.leveling.xp) / player.leveling.xp_to_next())
 	_bind(_stamina_bar, Color(0.85, 0.7, 0.25), 37, func() -> float:
-		return player.stamina.current / player.stamina.max_value)
+		return player.stamina.current / player.stamina.max_value, func() -> String:
+		return "%d / %d" % [roundi(player.stamina.current), roundi(player.stamina.max_value)])
 	_bind(_mana_bar, Color(0.25, 0.5, 0.95), 36, func() -> float:
-		return player.mana.current / player.mana.max_value)
+		return player.mana.current / player.mana.max_value, func() -> String:
+		return "%d / %d" % [roundi(player.mana.current), roundi(player.mana.max_value)])
 	$Minimap.setup(player, player.get_parent().get_node("World"))
 	player.health.changed.connect(func(_c: float, _m: float) -> void: _health_bar.queue_redraw())
 	player.stamina.changed.connect(func(_c: float, _m: float) -> void: _stamina_bar.queue_redraw())
@@ -116,6 +119,9 @@ func _process(_delta: float) -> void:
 	_buff_label.text = "\n".join(lines)
 	_gather.queue_redraw()
 	_boss_bar.queue_redraw()
+	_health_bar.queue_redraw()
+	_stamina_bar.queue_redraw()
+	_mana_bar.queue_redraw()
 
 
 ## The prompt for a gatherable node in reach, and the bar while gathering.
@@ -151,37 +157,145 @@ func _draw_gather() -> void:
 	_gather.draw_string(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.TEXT if reason == "" else UITheme.BAD)
 
 
-## Draws `bar` as a framed gauge with an optional icon to its left.
-func _bind(bar: Control, fill: Color, icon: int, fraction: Callable) -> void:
+## Draws `bar` as an ornate gauge: a dark trough, the fill with a sheen and
+## a slow "chip" trail showing what was just lost, bronze frame with corner
+## studs, the icon in a little medallion and the numbers on top.
+func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Callable = Callable()) -> void:
+	var trail := {"value": 1.0}
 	bar.draw.connect(func() -> void:
 		var size := bar.size
-		if icon >= 0:
-			bar.draw_texture_rect(ItemDB.icon(icon), Rect2(-26.0, size.y / 2.0 - 11.0, 22.0, 22.0), false)
-		bar.draw_rect(Rect2(Vector2.ZERO, size), Color(0.04, 0.05, 0.08, 0.9))
-		var width: float = (size.x - 4.0) * clampf(fraction.call(), 0.0, 1.0)
-		bar.draw_rect(Rect2(Vector2(2, 2), Vector2(width, size.y - 4.0)), fill)
-		bar.draw_rect(Rect2(Vector2(2, 2), Vector2(width, (size.y - 4.0) * 0.35)), fill.lightened(0.25))
+		var share := clampf(fraction.call(), 0.0, 1.0)
+		trail["value"] = maxf(share, move_toward(trail["value"], share, get_process_delta_time() * 0.6))
+		var inner := Rect2(Vector2(3, 3), size - Vector2(6, 6))
+		bar.draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.02, 0.04, 0.92))
+		bar.draw_rect(inner, fill.darkened(0.82))
+		bar.draw_rect(Rect2(inner.position, Vector2(inner.size.x * trail["value"], inner.size.y)), Color(1.0, 0.92, 0.8, 0.55))
+		var filled := Rect2(inner.position, Vector2(inner.size.x * share, inner.size.y))
+		bar.draw_rect(filled, fill)
+		bar.draw_rect(Rect2(filled.position, Vector2(filled.size.x, filled.size.y * 0.35)), fill.lightened(0.3))
+		bar.draw_rect(Rect2(filled.position + Vector2(0, filled.size.y * 0.75), Vector2(filled.size.x, filled.size.y * 0.25)), fill.darkened(0.3))
+		# A light glint sweeping along the fill.
+		var sweep := fmod(Time.get_ticks_msec() / 1400.0, 1.6) - 0.3
+		if share > 0.02 and sweep > 0.0 and sweep < 1.0:
+			var x := inner.position.x + inner.size.x * share * sweep
+			bar.draw_rect(Rect2(x, inner.position.y, 4.0, inner.size.y), Color(1, 1, 1, 0.22))
+		# Tick marks every tenth.
+		for tick in range(1, 10):
+			var tx := inner.position.x + inner.size.x * tick / 10.0
+			bar.draw_line(Vector2(tx, inner.end.y - 3.0), Vector2(tx, inner.end.y), Color(0, 0, 0, 0.45), 1.0)
 		bar.draw_rect(Rect2(Vector2.ZERO, size), Color("402f1c"), false, 2.0)
-		bar.draw_rect(Rect2(Vector2.ONE, size - Vector2(2, 2)), Color("8a683a"), false, 1.0)
+		bar.draw_rect(Rect2(Vector2(1.5, 1.5), size - Vector2(3, 3)), Color("b08a4a"), false, 1.0)
+		for corner: Vector2 in [Vector2(0, 0), Vector2(size.x, 0), Vector2(0, size.y), Vector2(size.x, size.y)]:
+			bar.draw_circle(corner, 3.0, Color("402f1c"))
+			bar.draw_circle(corner, 2.0, Color("d9b26a"))
+		if icon >= 0:
+			var medal := Vector2(-16.0, size.y / 2.0)
+			var radius := maxf(size.y / 2.0 + 3.0, 11.0)
+			bar.draw_circle(medal, radius + 2.0, Color("402f1c"))
+			bar.draw_circle(medal, radius, Color(0.07, 0.08, 0.13))
+			bar.draw_arc(medal, radius, 0.0, TAU, 24, Color("b08a4a"), 1.5)
+			bar.draw_texture_rect(ItemDB.icon(icon), Rect2(medal - Vector2(radius - 3.0, radius - 3.0), Vector2(radius - 3.0, radius - 3.0) * 2.0), false)
+		if values.is_valid() and size.y >= 14.0:
+			var font := UITheme.get_theme().default_font
+			var text: String = values.call()
+			var font_size := int(clampf(size.y - 6.0, 10.0, 15.0))
+			var y := size.y / 2.0 + font_size * 0.36
+			bar.draw_string_outline(font, Vector2(0, y), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, font_size, 3, Color.BLACK)
+			bar.draw_string(font, Vector2(0, y), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, font_size, Color(1, 0.97, 0.9))
 	)
 
 
-## A wide health bar at the top of the screen for a mini-boss close by.
+## The boss bar: the boss's face in a framed medallion, its name and title
+## on a banner, an ornate bar with a chip trail, and its modifiers below.
+var _boss_trail := 1.0
+var _boss_seen: Enemy = null
+var _portraits: Dictionary = {}
+
+
 func _draw_boss_bar() -> void:
 	var boss: Enemy = null
 	for node in get_tree().get_nodes_in_group("bosses"):
-		if node.global_position.distance_to(_player.global_position) < 700.0:
+		if node.global_position.distance_to(_player.global_position) < 700.0 and not node.health.is_dead():
 			boss = node
 			break
 	if boss == null:
+		_boss_seen = null
 		return
+	if boss != _boss_seen:
+		_boss_seen = boss
+		_boss_trail = 1.0
 	var font := UITheme.bold()
 	var size := _boss_bar.size
-	var title := "%s%s" % [Enemy.RANK_DATA[boss.rank]["title"], boss.display_name]
-	_boss_bar.draw_string_outline(font, Vector2(0, 18), title, HORIZONTAL_ALIGNMENT_CENTER, size.x, 20, 5, Color.BLACK)
-	_boss_bar.draw_string(font, Vector2(0, 18), title, HORIZONTAL_ALIGNMENT_CENTER, size.x, 20, Color(1.0, 0.55, 0.45))
-	var bar := Rect2(0, 26, size.x, 14)
-	_boss_bar.draw_rect(bar, Color(0.04, 0.05, 0.08, 0.9))
-	_boss_bar.draw_rect(Rect2(2, 28, (size.x - 4.0) * boss.health.current / boss.health.max_health, 10), Color(0.8, 0.2, 0.2))
-	_boss_bar.draw_rect(bar, Color("402f1c"), false, 2.0)
-	_boss_bar.draw_rect(bar.grow(-1.0), Color("8a683a"), false, 1.0)
+	var share := clampf(boss.health.current / boss.health.max_health, 0.0, 1.0)
+	_boss_trail = maxf(share, move_toward(_boss_trail, share, get_process_delta_time() * 0.35))
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 260.0)
+	var bar := Rect2(54, 28, size.x - 62.0, 18)
+	# Banner behind the name.
+	var banner := Rect2(bar.position.x + 40.0, 2, bar.size.x - 80.0, 24)
+	_boss_bar.draw_rect(banner, Color(0.12, 0.03, 0.04, 0.85))
+	_boss_bar.draw_rect(banner, Color("8a683a"), false, 1.0)
+	var title := "%s%s   Lv %d" % [Enemy.RANK_DATA[boss.rank]["title"], boss.display_name, boss.level]
+	_boss_bar.draw_string_outline(font, Vector2(banner.position.x, 20), title, HORIZONTAL_ALIGNMENT_CENTER, banner.size.x, 19, 5, Color.BLACK)
+	_boss_bar.draw_string(font, Vector2(banner.position.x, 20), title, HORIZONTAL_ALIGNMENT_CENTER, banner.size.x, 19, Color(1.0, 0.6, 0.48))
+	# The bar.
+	_boss_bar.draw_rect(bar.grow(3.0), Color(0.02, 0.02, 0.04, 0.95))
+	_boss_bar.draw_rect(bar, Color(0.18, 0.03, 0.04))
+	_boss_bar.draw_rect(Rect2(bar.position, Vector2(bar.size.x * _boss_trail, bar.size.y)), Color(1.0, 0.85, 0.6, 0.6))
+	var fill := Color(0.78, 0.1, 0.12).lerp(Color(0.95, 0.25, 0.15), pulse * (1.0 - share))
+	_boss_bar.draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, bar.size.y)), fill)
+	_boss_bar.draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, bar.size.y * 0.35)), fill.lightened(0.3))
+	if boss.shield > 0.0:
+		_boss_bar.draw_rect(Rect2(bar.position + Vector2(0, bar.size.y - 5.0), Vector2(bar.size.x * boss.shield / boss.shield_max, 5.0)), Color(0.55, 0.8, 1.0))
+	for quarter in [0.25, 0.5, 0.75]:
+		var x: float = bar.position.x + bar.size.x * quarter
+		_boss_bar.draw_line(Vector2(x, bar.position.y), Vector2(x, bar.end.y), Color(0, 0, 0, 0.6), 2.0)
+	_boss_bar.draw_rect(bar.grow(3.0), Color("402f1c"), false, 3.0)
+	_boss_bar.draw_rect(bar.grow(1.0), Color("d9b26a"), false, 1.0)
+	# Spikes on the right end.
+	var tip := Vector2(bar.end.x + 3.0, bar.get_center().y)
+	_boss_bar.draw_colored_polygon(PackedVector2Array([tip + Vector2(0, -9), tip + Vector2(14, 0), tip + Vector2(0, 9)]), Color("402f1c"))
+	_boss_bar.draw_colored_polygon(PackedVector2Array([tip + Vector2(0, -5), tip + Vector2(9, 0), tip + Vector2(0, 5)]), Color("d9b26a"))
+	var numbers := "%d / %d" % [ceili(boss.health.current), ceili(boss.health.max_health)]
+	_boss_bar.draw_string_outline(UITheme.get_theme().default_font, Vector2(bar.position.x, bar.position.y + 14), numbers, HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 13, 3, Color.BLACK)
+	_boss_bar.draw_string(UITheme.get_theme().default_font, Vector2(bar.position.x, bar.position.y + 14), numbers, HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 13, Color.WHITE)
+	# The face, in a medallion overlapping the bar's left end.
+	var center := Vector2(30, 34)
+	_boss_bar.draw_circle(center, 31.0, Color("402f1c"))
+	_boss_bar.draw_circle(center, 28.0, Color(0.1, 0.04, 0.06))
+	_boss_bar.draw_circle(center, 28.0, Color(0.9, 0.2, 0.15, 0.15 + 0.2 * pulse))
+	var face := _portrait(boss.enemy_id)
+	if face:
+		_boss_bar.draw_texture_rect(face, Rect2(center - Vector2(25, 25), Vector2(50, 50)), false)
+	_boss_bar.draw_arc(center, 28.0, 0.0, TAU, 40, Color("d9b26a"), 2.0)
+	_boss_bar.draw_arc(center, 31.0, 0.0, TAU, 40, Color("8a683a"), 1.0)
+	# Modifiers in their colours under the bar.
+	var names: PackedStringArray = []
+	for id in boss.modifiers:
+		names.append(Enemy.MODIFIERS[id]["name"])
+	if not names.is_empty():
+		var text := "  -  ".join(names)
+		_boss_bar.draw_string_outline(UITheme.get_theme().default_font, Vector2(bar.position.x, bar.end.y + 18), text, HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 13, 3, Color.BLACK)
+		_boss_bar.draw_string(UITheme.get_theme().default_font, Vector2(bar.position.x, bar.end.y + 18), text, HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 13, Color(0.95, 0.8, 0.6))
+
+
+## The upper part of the first idle frame of an enemy's sheet.
+func _portrait(id: String) -> Texture2D:
+	if _portraits.has(id):
+		return _portraits[id]
+	var sheet := EnemyDB.sheet(id)
+	var face: Texture2D = null
+	if sheet:
+		# Find the creature inside the first frame and frame its upper part.
+		var frame := Rect2i(0, 0, 96, 96)
+		var image := sheet.get_image()
+		if image:
+			var used := image.get_region(frame).get_used_rect()
+			var side := maxi(mini(used.size.x, used.size.y), 16)
+			side = mini(side, maxi(used.size.x, 16))
+			frame = Rect2i(used.position.x + (used.size.x - side) / 2, used.position.y, side, side)
+		var atlas := AtlasTexture.new()
+		atlas.atlas = sheet
+		atlas.region = Rect2(frame)
+		face = atlas
+	_portraits[id] = face
+	return face

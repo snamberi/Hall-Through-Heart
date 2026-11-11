@@ -36,7 +36,21 @@ const MODIFIERS := {
 	"regenerating": {"name": "Regenerating", "color": Color(0.5, 0.9, 0.6), "traits": ["regen"]},
 	"summoner": {"name": "Summoner", "color": Color(0.75, 0.55, 1.0)},
 	"berserker": {"name": "Berserker", "color": Color(1.0, 0.3, 0.3), "traits": ["enrage"]},
+	"shielded": {"name": "Shielded", "color": Color(0.55, 0.8, 1.0)},
+	"thorns": {"name": "Thorned", "color": Color(0.75, 0.6, 0.35)},
+	"evasive": {"name": "Evasive", "color": Color(0.85, 0.85, 0.95)},
+	"giant": {"name": "Giant", "color": Color(0.9, 0.7, 0.5)},
+	"splitting": {"name": "Splitting", "color": Color(0.5, 0.95, 0.7), "traits": ["split"]},
+	"teleporting": {"name": "Phasing", "color": Color(0.65, 0.75, 1.0), "traits": ["blink"]},
+	"molten": {"name": "Molten", "color": Color(1.0, 0.4, 0.15)},
+	"bloodletter": {"name": "Bloodletter", "color": Color(0.9, 0.15, 0.2), "touch": {"status": "bleed", "duration": 4.0, "power": 0.35}},
 }
+## Shielded enemies carry a barrier worth this share of their health, which
+## comes back after a while without being hit.
+const SHIELD_SHARE := 0.35
+const SHIELD_REGEN_DELAY := 5.0
+const THORNS_SHARE := 0.15
+const EVADE_CHANCE := 0.22
 const REWARD_PER_MODIFIER := 0.25
 ## How much of a blow's shove each rank takes.
 const POISE: Array[float] = [0.6, 0.35, 0.2, 0.08]
@@ -95,6 +109,10 @@ var in_water := false
 var _stuck_time := 0.0
 var _detour := Vector2.ZERO
 var _detour_left := 0.0
+## The Shielded modifier's barrier, used up before health.
+var shield := 0.0
+var shield_max := 0.0
+var _molten_left := 0.0
 var _summon_left := SUMMON_SECONDS
 var _minions := 0
 var _weave := 0.0
@@ -132,11 +150,17 @@ func _ready() -> void:
 	windup_time = _attack["windup"] * (0.75 if "swift" in modifiers else 1.0)
 	lunge_time = _attack.get("time", 0.25)
 	var rank_data: Dictionary = RANK_DATA[rank]
-	var size: float = rank_data["size"] * _data["size"] * (0.62 if is_fragment else 1.0)
-	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0) * Difficulty.value("health")
+	var giant := "giant" in modifiers
+	var size: float = rank_data["size"] * _data["size"] * (0.62 if is_fragment else 1.0) * (1.3 if giant else 1.0)
+	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0) * Difficulty.value("health") * (1.6 if giant else 1.0)
 	health.current = health.max_health
 	_damage = _data["damage"] * rank_data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1)) * (0.6 if is_fragment else 1.0)
-	_speed = _data["speed"] * (1.4 if "swift" in modifiers else 1.0) * Difficulty.value("speed")
+	_speed = _data["speed"] * (1.4 if "swift" in modifiers else 1.0) * (0.85 if giant else 1.0) * Difficulty.value("speed")
+	if giant:
+		_damage *= 1.3
+	if "shielded" in modifiers:
+		shield_max = health.max_health * SHIELD_SHARE
+		shield = shield_max
 	_tint = rank_data["tint"]
 	body_radius = _data["radius"] * size
 	_visual.scale = Vector2(size, size)
@@ -146,6 +170,7 @@ func _ready() -> void:
 	# Walkers are stopped by walls; fliers by nothing.
 	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION
 	_add_nameplate(rank_data, size)
+	StatusFX.attach(self, func() -> Array: return _statuses.keys(), 40.0 * size, body_radius)
 	health.died.connect(_on_died)
 	_pick_wander()
 
@@ -175,6 +200,9 @@ func _physics_process(delta: float) -> void:
 	_update_statuses(delta)
 	if state == State.DEAD:
 		return
+	if shield_max > 0.0 and _since_hurt > SHIELD_REGEN_DELAY and shield < shield_max:
+		shield = minf(shield + shield_max * 0.25 * delta, shield_max)
+		queue_redraw()
 	if has_trait("regen") and _since_hurt > 3.0:
 		health.heal(health.max_health * 0.04 * delta)
 	if not modifiers.is_empty():
@@ -249,6 +277,10 @@ func _draw() -> void:
 			var ring: Color = MODIFIERS[modifiers[index]]["color"]
 			draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
 			draw_arc(Vector2.ZERO, body_radius + 9.0 + index * 5.0, 0.0, TAU, 28, Color(ring, 0.9), 2.0)
+			if modifiers[index] == "shielded" and shield > 0.0:
+				draw_set_transform(Vector2(0, -body_radius), 0.0, Vector2.ONE)
+				draw_arc(Vector2.ZERO, body_radius + 14.0, 0.0, TAU, 32, Color(ring, 0.35 + 0.45 * shield / shield_max), 2.5)
+				draw_circle(Vector2.ZERO, body_radius + 13.0, Color(ring, 0.07))
 			if modifiers[index] == "frozen_aura":
 				draw_arc(Vector2.ZERO, FROZEN_AURA_RADIUS, 0.0, TAU, 48, Color(ring, 0.25), 1.5)
 			draw_set_transform(Vector2.ZERO)
@@ -272,6 +304,24 @@ func take_damage(
 		return 0.0
 	if has_trait("armored"):
 		amount *= 0.65
+	if "evasive" in modifiers and state != State.WINDUP and randf() < EVADE_CHANCE:
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -30), "Evaded", Color(0.85, 0.85, 0.95), 13)
+		velocity = knockback.normalized().rotated(PI / 2.0 * (1 if randf() < 0.5 else -1)) * 260.0
+		return 0.0
+	if "thorns" in modifiers and target and not target.is_dead() and weapon_type not in ["bows", "staves"]:
+		target.take_damage(amount * THORNS_SHARE, global_position, level)
+	if shield > 0.0:
+		var absorbed := minf(shield, amount)
+		shield -= absorbed
+		amount -= absorbed
+		_since_hurt = 0.0
+		HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), MODIFIERS["shielded"]["color"], shield <= 0.0)
+		if shield <= 0.0:
+			RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), MODIFIERS["shielded"]["color"], 50.0)
+		queue_redraw()
+		if amount <= 0.0:
+			DamageNumber.spawn(get_parent(), global_position, absorbed, MODIFIERS["shielded"]["color"])
+			return 0.0
 	var color := Color(1.0, 0.8, 0.25) if critical else Color(0.95, 0.9, 0.75)
 	DamageNumber.spawn(get_parent(), global_position, amount, color, critical)
 	_last_weapon_type = weapon_type
@@ -451,6 +501,11 @@ func _update_modifiers(delta: float) -> void:
 			_aura_left = 0.5
 			if target.global_position.distance_to(global_position) < FROZEN_AURA_RADIUS:
 				target.apply_status("chill", 1.0, 0.3)
+	if "molten" in modifiers and has_target and velocity.length() > 20.0:
+		_molten_left -= delta
+		if _molten_left <= 0.0:
+			_molten_left = 0.7
+			HazardZone.spawn(get_parent(), global_position, target, 34.0, 3.0, MODIFIERS["molten"]["color"], {"status": "burn", "duration": 2.0, "power": 0.25}, _damage * 0.5)
 	if "summoner" in modifiers and has_target and state == State.CHASE:
 		_summon_left -= delta
 		if _summon_left <= 0.0 and _minions < SUMMON_LIMIT:

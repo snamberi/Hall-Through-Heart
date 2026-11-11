@@ -168,7 +168,7 @@ func _base(id: String) -> float:
 			return 0.005 * _points("luck")
 		"mining_efficiency":
 			return 1.0
-		"damage_taken", "gold_find", "dodge_distance":
+		"damage_taken", "gold_find", "dodge_distance", "gather_speed":
 			return 1.0
 		"stamina_regen":
 			return 22.0
