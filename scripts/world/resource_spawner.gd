@@ -91,6 +91,13 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 					_place_node(placed, "thornberry_bush", cell, bush, jitter)
 				else:
 					placed.append(_scenery(bush, _world.cell_to_world(cell) + jitter, 0.0))
+			# Ground detail uses its own hash, so it never moves anything else.
+			var detail := absi(hash(Vector3i(cell.x, cell.y, 77)))
+			if detail % 100 < 7 and biome.has("decals"):
+				var decals: Array = biome["decals"]
+				cover.decals.append([_world.cell_to_world(cell) + Vector2(detail % 23 - 11, detail / 23 % 19 - 9), decals[detail / 437 % decals.size()], detail % 2 == 0])
+			if used.has(cell):
+				continue
 			elif random.randf() < biome["cover"]:
 				var ground: Array = biome["ground"]
 				for k in (1 if random.randf() < 0.6 else 2):

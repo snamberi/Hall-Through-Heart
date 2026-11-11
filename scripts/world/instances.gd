@@ -252,6 +252,7 @@ func enter_dungeon(dungeon_seed: int, level: int, boss_id: String, on_cleared: C
 	var random := RandomNumberGenerator.new()
 	random.seed = dungeon_seed
 	var crypt := Room.new()
+	crypt.wall_style = "stone"
 	crypt.title = "Crypt of %s" % (BossDB.BOSSES[boss_id]["name"] as String).trim_prefix("The ")
 	# A wandering line of rooms on a grid.
 	var count := random.randi_range(4, 6)
@@ -403,6 +404,7 @@ func enter_arena(arena_seed: int, level: int, on_cleared: Callable) -> void:
 	var random := RandomNumberGenerator.new()
 	random.seed = arena_seed
 	var arena := Room.new()
+	arena.wall_style = "void"
 	arena.title = "The Void"
 	for y in range(-ARENA_RADIUS - 1, ARENA_RADIUS + 2):
 		for x in range(-ARENA_RADIUS - 1, ARENA_RADIUS + 2):

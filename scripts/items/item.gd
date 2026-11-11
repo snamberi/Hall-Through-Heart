@@ -104,6 +104,11 @@ func tint() -> Color:
 	return definition().get("tint", Color.WHITE)
 
 
+## The colour to draw the icon in: white for icons that carry their own.
+func icon_tint() -> Color:
+	return Color.WHITE if int(definition().get("icon", 0)) >= ItemDB.NATURAL_ICONS_FROM else tint()
+
+
 ## What a merchant charges for one of this item, in gold.
 func value() -> int:
 	var def := definition()
@@ -151,6 +156,8 @@ func icon() -> Texture2D:
 		return Flora.small_texture(definition()["flora"])
 	if definition().has("decor"):
 		return Prop.decor_icon(definition()["decor"])
+	if int(definition().get("icon", 0)) >= ItemDB.NATURAL_ICONS_FROM:
+		return ItemDB.tinted_icon(definition()["icon"], tint())
 	return ItemDB.icon(definition()["icon"])
 
 

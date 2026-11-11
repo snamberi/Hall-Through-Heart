@@ -37,7 +37,7 @@ func _draw() -> void:
 			var count := hotbar.count_in(index)
 			var definition: Dictionary = ItemDB.ITEMS[id]
 			var item := Item.create(id) if count == 0 else hotbar.item_in(index)
-			draw_texture_rect(item.icon(), rect.grow(-8.0), false, Color.WHITE if count > 0 else Color(0.4, 0.4, 0.45, 0.8))
+			draw_texture_rect(item.icon(), rect.grow(-8.0), false, item.icon_tint() if count > 0 else Color(0.4, 0.4, 0.45, 0.8))
 			if count > 1 or definition.has("place") or definition.has("use"):
 				var text := str(count)
 				draw_string_outline(font, rect.position + Vector2(0, SLOT - 4.0), text, HORIZONTAL_ALIGNMENT_RIGHT, SLOT - 4.0, 13, 3, Color.BLACK)

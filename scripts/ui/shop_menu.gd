@@ -109,7 +109,7 @@ func _row(item: Item, price: int, selling: bool, entry: Dictionary) -> Button:
 	button.add_theme_constant_override("icon_max_width", 20)
 	button.add_theme_color_override("font_color", item.color())
 	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color"]:
-		button.add_theme_color_override(state, item.tint())
+		button.add_theme_color_override(state, item.icon_tint())
 	button.pressed.connect(func() -> void:
 		_choice = {"item": item, "price": price, "selling": selling, "entry": entry}
 		_message.text = ""

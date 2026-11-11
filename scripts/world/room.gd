@@ -12,8 +12,11 @@ var cells: Dictionary[Vector2i, int] = {}
 var entry := Vector2i.ZERO
 ## Enemies that belong to this room, so they can be cleared with it.
 var enemies: Array = []
+## How the walls' faces look: "rock", "stone", "wood" or "void".
+var wall_style := "rock"
 
 var _layer: TileMapLayer
+var _faces: WallFaces
 
 
 func _init() -> void:
@@ -34,6 +37,10 @@ func build(tile_set: TileSet) -> void:
 	add_child(_layer)
 	for cell in cells:
 		_layer.set_cell(cell, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(cells[cell], posmod(hash(cell), 8)))
+	_faces = WallFaces.new()
+	_faces.room = self
+	_faces.style = wall_style
+	add_child(_faces)
 
 
 ## World position of the middle of a room cell.
@@ -46,6 +53,8 @@ func set_tile(cell: Vector2i, type: int) -> void:
 	cells[cell] = type
 	if _layer:
 		_layer.set_cell(cell, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(type, posmod(hash(cell), 8)))
+	if _faces:
+		_faces.queue_redraw()
 
 
 func is_floor(cell: Vector2i) -> bool:

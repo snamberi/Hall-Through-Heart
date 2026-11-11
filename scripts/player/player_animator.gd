@@ -21,6 +21,7 @@ const ROWS: Array[Dictionary] = [
 	{"name": "hurt", "frames": 3, "fps": 12.0, "loop": false},
 	{"name": "death", "frames": 8, "fps": 10.0, "loop": false},
 	{"name": "rebirth", "frames": 8, "fps": 8.0, "loop": false},
+	{"name": "ride", "frames": 4, "fps": 5.0, "loop": true},
 ]
 ## Below this speed the player walks rather than runs, in pixels/second.
 const RUN_SPEED := 150.0
@@ -318,6 +319,11 @@ func _choose_animation(delta: float) -> void:
 		return
 	var speed := _player.velocity.length()
 	speed_scale = 1.0
+	if _player.mount_id != "":
+		# Sitting astride, bobbing faster as the mount picks up pace.
+		speed_scale = 2.2 if speed > 20.0 else 1.0
+		_loop("ride")
+		return
 	if _player.swimming:
 		# A slow paddling stroke, still while treading water.
 		speed_scale = 0.55 if speed > 20.0 else 0.25

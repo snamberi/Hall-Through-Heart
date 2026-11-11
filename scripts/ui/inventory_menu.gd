@@ -239,7 +239,7 @@ func _refresh_details() -> void:
 		_details.text = "[color=#%s]Select an item to see what it does.\n\nRight-click an item to equip or use it at once.[/color]" % UITheme.DIM.to_html(false)
 	else:
 		_detail_icon.texture = shown.icon()
-		_detail_icon.modulate = shown.tint()
+		_detail_icon.modulate = shown.icon_tint()
 		_detail_frame.add_theme_stylebox_override("panel", _frame_style(shown, false))
 		_details.text = _describe(shown)
 
@@ -501,7 +501,7 @@ func _style_button(button: Button, item: Item) -> void:
 	button.add_theme_stylebox_override("pressed", style)
 	button.add_theme_stylebox_override("hover", hover)
 	button.icon = item.icon() if item else null
-	_tint_icon(button, item.tint() if item else Color.WHITE)
+	_tint_icon(button, item.icon_tint() if item else Color.WHITE)
 
 
 ## Hotbar keys put the hovered (or selected) item in that slot.

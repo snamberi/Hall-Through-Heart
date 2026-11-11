@@ -248,10 +248,15 @@ LAYERS = {
         ("plate_dark", [(14.2, 32.6), (29.8, 32.6), (30, 35), (14, 35)])]},
     "shoulders": {"torso": [("plate", E(10.5, 23.5, 16.5, 28)), ("plate", E(27.5, 23.5, 33.5, 28))]},
     "cape": {"torso": [("cape", [(14.5, 25), (29.5, 25), (34, 40), (10, 40)])]},
-    # A deep cowl for the Reaper look: covers the hair, leaves the face in shadow.
+    # A cowl for the Reaper look: hugs the head, falls to the shoulders,
+    # and leaves the face in shadow. Pale parts take the look's colour.
     "hood": {"head": [
-        ("cape", _half_ellipse(22, 16, 13.5, 14)), ("cape", [(8.5, 15), (35.5, 15), (34, 27), (30, 27), (31, 17), (13, 17), (14, 27), (10, 27)]),
-        ("cape", [(20, 2.5), (24, 2.5), (22, -1)]), ("plate_dark", [(13, 16), (31, 16), (30.5, 19), (13.5, 19)])]},
+        ("cape", [(9, 26), (9.5, 13), (13, 5.5), (18, 2.5), (22, 1.5), (26.5, 2.5), (31.5, 5.5), (34.5, 13), (35, 26), (31.5, 27.5), (31, 16), (28, 11.5),
+                  (22, 10), (16, 11.5), (13, 16), (12.5, 27.5)]),
+        ("plate_dark", [(13, 16), (16, 11.5), (22, 10), (28, 11.5), (31, 16), (30.5, 18), (26, 15), (22, 14), (18, 15), (13.5, 18)]),
+        ("plate_dark", [(11, 13), (14.5, 7), (15.5, 7.5), (12.5, 14)]), ("plate_dark", [(33, 13), (29.5, 7), (28.5, 7.5), (31.5, 14)]),
+        ("plate_dark", R(10, 22, 11.2, 26)), ("plate_dark", R(32.8, 22, 34, 26)),
+        ("plate", [(19, 3), (25, 3), (23.5, 5), (20.5, 5)])]},
 }
 
 
@@ -391,6 +396,9 @@ HUMAN_IDLE = [{"torso": (0, bob, 0)} for bob in (0, 1, 1, 0)]
 HUMAN_WALK = cycle(8, lambda s: {
     "root": (0, -round(abs(s)), 0),
     "leg_l": (0, 0, 22 * s), "leg_r": (0, 0, -22 * s), "arm_l": (0, 0, -18 * s), "arm_r": (0, 0, 10 * s)})
+# Sitting astride a mount: thighs forward, a gentle bob.
+HUMAN_RIDE = [{"root": (0, 2 + bob, 0), "leg_l": (2, -2, -75), "leg_r": (2, -2, -70), "torso": (0, 0, 3), "arm_l": (0, 0, -20), "arm_r": (0, 0, -35)}
+              for bob in (0, 1, 1, 0)]
 HUMAN_RUN = cycle(8, lambda s: {
     "root": (0, -round(abs(s) * 2), 0), "torso": (1, 0, 7), "head": (0, 0, -4),
     "leg_l": (0, 0, 38 * s), "leg_r": (0, 0, -38 * s), "arm_l": (0, 0, -35 * s), "arm_r": (0, 0, 18 * s)})
@@ -457,7 +465,7 @@ HUSK_DEATH = keyframes([(0, HUSK_STAND), (1, HUSK_REEL), (5, HUSK_FALLEN), (7, H
 HUMAN_ANIMATIONS = [
     ("idle", HUMAN_IDLE), ("walk", HUMAN_WALK), ("run", HUMAN_RUN), ("attack", HUMAN_ATTACK),
     ("heavy", HUMAN_HEAVY), ("dodge", HUMAN_DODGE), ("hurt", HUMAN_HURT),
-    ("death", HUMAN_DEATH), ("rebirth", HUMAN_REBIRTH),
+    ("death", HUMAN_DEATH), ("rebirth", HUMAN_REBIRTH), ("ride", HUMAN_RIDE),
 ]
 HUSK_ANIMATIONS = [
     ("idle", HUSK_IDLE), ("walk", HUSK_WALK), ("windup", HUSK_WINDUP), ("lunge", HUSK_LUNGE),
@@ -1087,20 +1095,19 @@ def draw_tile(row, variant, frame=0):
         d.line((x, y, x + 4, y + 3, x + 6, y + 2, x + 10, y + 6), fill=colour)
 
     if style == "rock":
-        img.paste(dark, (0, 0, N, N))
-        y = 1
-        while y < N - 2:
-            h = min(r.choice((9, 10, 11)), N - 1 - y)
-            x = 1
-            while x < N - 2:
-                w = min(r.choice((10, 13, 16)), N - 1 - x)
-                d.rectangle((x, y, x + w - 2, y + h - 2), fill=base)
-                d.line((x, y, x + w - 2, y), fill=light)
-                d.line((x, y, x, y + h - 3), fill=light)
-                if r.random() < 0.4:
-                    put(x + r.randrange(2, max(3, w - 3)), y + r.randrange(2, max(3, h - 3)), accent)
-                x += w
-            y += h
+        # The top of a wall seen from above: rough, dark rock, lit faintly
+        # from the top-left, with cracks. Its front face is drawn in game.
+        img.paste(base, (0, 0, N, N))
+        for _ in range(7):
+            x, y, w, h = r.randrange(-6, N), r.randrange(-6, N), r.randrange(8, 18), r.randrange(6, 14)
+            d.ellipse((x, y, x + w, y + h), fill=dark)
+            d.arc((x, y, x + w, y + h), 180, 270, fill=light)
+        for _ in range(140):
+            put(r.randrange(N), r.randrange(N), light if r.random() < 0.3 else dark)
+        for _ in range(3):
+            crack(dark)
+        for _ in range(6):
+            put(r.randrange(N), r.randrange(N), accent)
         return img
     if style in ("mountain", "peak"):
         # Broken rock in tilted strata, with scree and, up high, snow.
@@ -1285,6 +1292,13 @@ ICON_PALETTE = {
     "red": ["e0555a", "b3242e", "7a1620"],
     "purple": ["c9a0f0", "8e5cc8", "5c3690"],
     "dark": ["0b0a12"] * 3,
+    "meat_raw": ["f08a8a", "c8505a", "8a2a34"], "meat": ["d88a52", "a85e32", "6e3a1c"], "crust": ["f0c070", "c89048", "8a5e2a"],
+    "bowl": ["9a7a58", "74563c", "4c3626"], "carrot": ["ffa040", "e0701e", "a04a10"], "leaf": ["9ad870", "5aa04a", "3a7030"],
+    "potato": ["e0c090", "b89660", "806040"], "pumpkin": ["ffaa48", "e07818", "a04a08"], "wheat": ["f8e090", "d8b458", "a08038"],
+    "berry": ["f06a8a", "c0304a", "7a1a30"], "fur": ["d8b898", "a8845e", "6e5038"], "feather": ["f0e8d8", "c0b098", "887868"],
+    "shell": ["f8906a", "d05a40", "8a3a28"], "scale": ["c0d898", "8aa868", "5a6e44"], "wool": ["fcf8f2", "dcd6cc", "aca69c"],
+    "soup": ["f0c070", "d89040", "a06020"], "fish": ["d8b080", "b08050", "7a5430"], "seed": ["e8d090", "b89a58", "7a6438"],
+    "mush": ["e86a6a", "b83a40", "7a2028"], "stalk": ["f4ecd8", "d4c8a8", "a09478"], "plate": ["e8e8f0", "b8b8c8", "88889a"],
 }
 ICONS = [
     ("sword", [("metal", "line", (6, 15, 17, 4), 3), ("gold", "line", (4, 13, 9, 18), 2), ("wood", "line", (3, 19, 5, 17), 2)]),
@@ -1363,6 +1377,36 @@ ICONS += [("gem", [("plate", "poly", [(6, 5), (16, 5), (20, 10), (11, 20), (2, 1
                    ("plate", "poly", [(8, 5), (14, 5), (12, 10), (10, 10)]), ("bone", "rect", (7, 6, 8, 7))])]
 # Icons 60-65: unique weapons.
 ICONS += [(name, None) for name in ["stormcaller", "splitshot", "wispkeeper", "bloodthirst", "frostbite", "sunfang"]]
+# Icons 66-91: food, produce and animal materials, in their own colours.
+ICONS += [
+    ("raw_meat", [("meat_raw", "poly", [(3, 9), (8, 4), (15, 4), (19, 8), (18, 15), (12, 19), (5, 17)]), ("wool", "ellipse", (8, 8, 13, 12)), ("bone", "ellipse", (9, 9, 12, 11))]),
+    ("roast", [("bone", "line", (4, 18, 9, 13), 2), ("bone", "ellipse", (2, 16, 6, 20)), ("meat", "ellipse", (6, 3, 19, 15)), ("crust", "ellipse", (8, 5, 13, 9))]),
+    ("drumstick", [("bone", "line", (5, 17, 10, 12), 2), ("bone", "ellipse", (2, 15, 6, 19)), ("meat", "ellipse", (8, 3, 19, 14)), ("crust", "ellipse", (11, 5, 15, 8))]),
+    ("stew", [("bowl", "poly", [(2, 10), (20, 10), (17, 18), (5, 18)]), ("plate", "ellipse", (3, 7, 19, 13)), ("carrot", "rect", (7, 9, 8, 10)), ("leaf", "rect", (13, 9, 14, 10)), ("potato", "rect", (10, 10, 11, 11))]),
+    ("pie", [("crust", "ellipse", (2, 6, 20, 18)), ("plate", "ellipse", (5, 8, 17, 15)), ("crust", "line", (5, 11, 17, 11), 1), ("crust", "line", (11, 8, 11, 15), 1)]),
+    ("bread", [("crust", "ellipse", (2, 6, 20, 17)), ("wheat", "line", (6, 9, 9, 12), 1), ("wheat", "line", (10, 8, 13, 11), 1), ("wheat", "line", (14, 9, 17, 12), 1)]),
+    ("cooked_fish", [("fish", "ellipse", (3, 7, 16, 15)), ("fish", "poly", [(15, 11), (20, 7), (20, 15)]), ("dark", "rect", (6, 9, 7, 10)), ("crust", "line", (8, 9, 12, 13), 1)]),
+    ("skewer", [("wood", "line", (2, 19, 19, 2), 1), ("meat", "ellipse", (4, 12, 9, 17)), ("meat", "ellipse", (8, 8, 13, 13)), ("leaf", "ellipse", (12, 5, 16, 9))]),
+    ("jerky", [("meat", "poly", [(3, 6), (8, 4), (10, 17), (5, 18)]), ("meat", "poly", [(11, 5), (16, 4), (18, 16), (13, 17)]), ("crust", "line", (5, 8, 7, 15), 1)]),
+    ("cakes", [("crust", "ellipse", (2, 10, 12, 18)), ("crust", "ellipse", (9, 6, 19, 14)), ("shell", "rect", (13, 8, 15, 9))]),
+    ("carrot", [("carrot", "poly", [(5, 18), (13, 5), (17, 9)]), ("leaf", "poly", [(13, 5), (14, 1), (16, 4), (19, 2), (17, 7)])]),
+    ("potato", [("potato", "ellipse", (3, 6, 19, 17)), ("bowl", "rect", (7, 9, 8, 10)), ("bowl", "rect", (13, 12, 14, 13))]),
+    ("pumpkin", [("pumpkin", "ellipse", (2, 6, 20, 19)), ("crust", "line", (11, 7, 11, 18), 1), ("crust", "line", (6, 8, 6, 17), 1), ("leaf", "rect", (10, 2, 12, 6))]),
+    ("wheat", [("wheat", "line", (6, 19, 9, 4), 1), ("wheat", "line", (11, 19, 11, 3), 1), ("wheat", "line", (16, 19, 13, 4), 1), ("wheat", "ellipse", (7, 2, 11, 8)),
+               ("wheat", "ellipse", (9, 1, 13, 7)), ("wheat", "ellipse", (12, 2, 16, 8)), ("leaf", "rect", (8, 14, 14, 15))]),
+    ("berries", [("plate", "ellipse", (3, 9, 10, 16)), ("plate", "ellipse", (9, 11, 16, 18)), ("plate", "ellipse", (10, 4, 17, 11)), ("leaf", "poly", [(6, 5), (10, 2), (11, 6)])]),
+    ("platter", [("plate", "ellipse", (1, 9, 21, 19)), ("meat", "ellipse", (4, 7, 12, 14)), ("crust", "ellipse", (10, 8, 17, 14)), ("leaf", "ellipse", (13, 11, 18, 16))]),
+    ("pelt", [("plate", "poly", [(4, 4), (8, 6), (14, 6), (18, 4), (17, 10), (19, 18), (13, 16), (9, 16), (3, 18), (5, 10)]), ("fur", "line", (8, 9, 14, 13), 1)]),
+    ("leather", [("leather", "ellipse", (3, 6, 19, 17)), ("leather", "rect", (2, 10, 20, 14)), ("bowl", "line", (5, 12, 17, 12), 1)]),
+    ("feather", [("plate", "poly", [(4, 19), (8, 10), (15, 3), (17, 6), (11, 14)]), ("bone", "line", (4, 19, 15, 5), 1)]),
+    ("horn", [("plate", "poly", [(3, 18), (6, 10), (11, 5), (18, 3), (14, 7), (10, 12), (8, 19)]), ("bowl", "line", (6, 15, 8, 16), 1)]),
+    ("antler", [("plate", "line", (5, 19, 11, 6), 2), ("plate", "line", (9, 10, 4, 4), 1), ("plate", "line", (10, 8, 16, 3), 1), ("plate", "line", (8, 13, 15, 10), 1)]),
+    ("shell", [("plate", "ellipse", (2, 5, 20, 18)), ("bowl", "line", (11, 6, 11, 17), 1), ("bowl", "line", (5, 9, 9, 16), 1), ("bowl", "line", (17, 9, 13, 16), 1)]),
+    ("scales", [("plate", "ellipse", (3, 4, 10, 11)), ("plate", "ellipse", (9, 7, 16, 14)), ("plate", "ellipse", (5, 11, 12, 18)), ("plate", "ellipse", (12, 13, 19, 20))]),
+    ("wool", [("plate", "ellipse", (2, 5, 13, 16)), ("plate", "ellipse", (8, 7, 20, 18)), ("plate", "ellipse", (6, 3, 16, 12))]),
+    ("seeds", [("leather", "poly", [(5, 8), (17, 8), (19, 18), (3, 18)]), ("leather", "rect", (7, 5, 15, 8)), ("plate", "ellipse", (8, 12, 10, 14)), ("plate", "ellipse", (12, 13, 14, 15))]),
+    ("mushroom", [("stalk", "rect", (9, 10, 13, 19)), ("plate", "ellipse", (3, 4, 19, 13)), ("wool", "ellipse", (6, 6, 8, 8)), ("wool", "ellipse", (13, 7, 15, 9))]),
+]
 
 # Things to gather in the world: 64px frames in one row. Pale parts are
 # tinted in game. Order: rock, ore flecks, tree, herb, fishing ripple.

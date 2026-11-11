@@ -563,6 +563,65 @@ def herb(kind):
     return c.img
 
 
+def decal(kind, seed=0):
+    """Flat ground detail drawn under everything: cracks, puddles, roots."""
+    c = Canvas(32, 32)
+    r = random.Random(hash(kind) & 0xffff)
+    if kind == "cracks":
+        for _ in range(3):
+            x, y = r.randrange(4, 26), r.randrange(14, 28)
+            pts = [(x, y)]
+            for k in range(4):
+                x += r.randrange(-3, 5); y += r.randrange(-2, 3)
+                pts.append((x, y))
+            c.fill("line", pts, C("1a1612", 170), 1)
+            for (px, py) in pts[1:3]:
+                c.img.putpixel((min(31, px + 1), py), C("6a6050", 120))
+    elif kind == "puddle":
+        c.fill("ellipse", (4, 20, 28, 29), C("1a2430", 200))
+        c.fill("ellipse", (6, 21, 26, 28), C("30485a", 210))
+        c.fill("line", (9, 23, 18, 23), C("8ab0c8", 200), 1)
+        c.fill("line", (20, 25, 23, 25), C("8ab0c8", 160), 1)
+    elif kind == "roots":
+        for (a, b) in [((2, 24), (14, 22)), ((14, 22), (22, 26)), ((10, 23), (12, 29)), ((22, 26), (30, 24))]:
+            c.fill("line", (a[0], a[1], b[0], b[1]), C("4a3426", 230), 2)
+            c.fill("line", (a[0], a[1] - 1, b[0], b[1] - 1), C("6a5038", 200), 1)
+    elif kind == "leaves":
+        for _ in range(9):
+            x, y = r.randrange(3, 28), r.randrange(16, 30)
+            col = [C("8a6a2a", 220), C("6a4a1a", 220), C("a07a30", 220), C("5a6a2a", 220)][r.randrange(4)]
+            c.fill("ellipse", (x - 2, y - 1, x + 2, y + 1), col)
+    elif kind == "stones":
+        for _ in range(5):
+            x, y, w = r.randrange(4, 26), r.randrange(18, 28), r.randrange(2, 4)
+            c.shade("ellipse", (x - w, y - w // 2, x + w, y + w // 2 + 1), ramp("8a8794", "66636f", "45434d"))
+    elif kind == "ripples":
+        for k in range(3):
+            y = 18 + k * 4
+            c.fill("line", [(3, y), (10, y - 1), (18, y + 1), (28, y)], C("c8b080", 160), 1)
+            c.fill("line", [(3, y + 1), (10, y), (18, y + 2), (28, y + 1)], C("8a7650", 130), 1)
+    elif kind == "drift":
+        c.fill("ellipse", (2, 20, 30, 30), C("f4f8fc", 220))
+        c.fill("ellipse", (6, 19, 22, 26), C("ffffff", 230))
+        c.fill("line", (6, 28, 26, 28), C("b8c8d8", 200), 1)
+    elif kind == "ash":
+        for _ in range(26):
+            x, y = r.randrange(2, 30), r.randrange(16, 31)
+            c.img.putpixel((x, y), C("2a2828", 150) if r.random() < 0.6 else C("8a8480", 150))
+        c.fill("ellipse", (8, 22, 24, 29), C("201e1e", 110))
+    elif kind == "moss":
+        for _ in range(16):
+            x, y = r.randrange(4, 28), r.randrange(18, 30)
+            c.fill("ellipse", (x - 2, y - 1, x + 2, y + 1), [C("4a6a30", 210), C("5a7a3a", 210), C("3a5a24", 210)][r.randrange(3)])
+    elif kind == "prints":
+        for k in range(4):
+            x, y = 6 + k * 6, 20 + (k % 2) * 5
+            c.fill("ellipse", (x, y, x + 3, y + 4), C("2a2018", 150))
+            c.fill("rect", (x, y - 2, x, y - 2), C("2a2018", 150))
+            c.fill("rect", (x + 3, y - 2, x + 3, y - 2), C("2a2018", 150))
+    return c.img
+
+
 GREEN = ramp("8aaa5a", "5a8a44", "3a5a2a")
 SMALL = [
     flower("daisy", ramp("f4f2ec", "d4d0c4", "a8a498"), C("f0cf6a")),          # 0
@@ -602,6 +661,8 @@ SMALL = [
     flower("cup", ramp("ffb0e0", "e070b8", "a04080"), C("ffe08a")),            # 39 bog lotus
     flower("poppy", ramp("ffe0a0", "f0b860", "b07a30")),                       # 40 desert poppy
     flower("aster", ramp("ff9a5a", "e05a2a", "a03a18"), C("3a1a10")),          # 41 ember aster
+    decal("cracks"), decal("puddle"), decal("roots"), decal("leaves"), decal("stones"),   # 42-46
+    decal("ripples"), decal("drift"), decal("ash"), decal("moss"), decal("prints"),       # 47-51
 ]
 
 

@@ -362,6 +362,7 @@ func enter_house(record: Dictionary) -> void:
 	var tier: int = clampi(int(record.get("tier", 1)), 1, MAX_TIER)
 	var size: Vector2i = HOUSE_SIZES[tier]
 	var house := Room.new()
+	house.wall_style = "wood"
 	house.title = "Home  -  %s" % ["Cottage", "House", "Manor"][tier - 1]
 	house.set_meta("house", record["id"])
 	var place := "house:%d" % record["id"]
