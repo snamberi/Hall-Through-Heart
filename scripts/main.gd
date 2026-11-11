@@ -38,6 +38,14 @@ func _ready() -> void:
 	_day_night.setup(_player)
 	SaveGame.register("world", self)
 
+	var stones := Waystones.new()
+	stones.name = "Waystones"
+	add_child(stones)
+	stones.setup(_world, _player)
+	var hunts := TreasureMaps.new()
+	hunts.name = "TreasureMaps"
+	add_child(hunts)
+	hunts.setup(_world, _player)
 	_world.setup(_active_seed)
 	_instances.setup(_player, _world, _spawner, _loot)
 	_structures.setup(_world, _player, _spawner, _loot, _instances)
@@ -53,6 +61,27 @@ func _ready() -> void:
 	var buildings: Buildings = $Buildings
 	buildings.setup(_player, _instances)
 	$Builder.setup(buildings, _player)
+	var pets := Pets.new()
+	pets.name = "Pets"
+	add_child(pets)
+	pets.setup(_player)
+	_player.pets = pets
+	var codex := Codex.new()
+	codex.name = "Codex"
+	add_child(codex)
+	codex.setup(_player)
+	var settlers := Settlers.new()
+	settlers.name = "Settlers"
+	add_child(settlers)
+	settlers.setup(_player, buildings)
+	var raids := Raids.new()
+	raids.name = "Raids"
+	add_child(raids)
+	raids.setup(_player, settlers, _spawner, _world, _day_night)
+	_day_night.day_changed.connect(func(_day: int) -> void:
+		buildings.dry_plots()
+		settlers.morning()
+	)
 	Events.recall_requested.connect(func() -> void:
 		var problem := buildings.recall_problem()
 		if problem != "":

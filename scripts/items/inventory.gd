@@ -36,6 +36,10 @@ func add(item: Item) -> bool:
 		return true
 	if not has_room_for(item):
 		return false
+	if item.is_unique():
+		Events.codex_event.emit("uniques", 1)
+	elif item.set_id != "":
+		Events.codex_event.emit("set_pieces", 1)
 	var stack := _find_stack(item.id) if item.is_stackable() else null
 	if stack:
 		stack.count = mini(stack.count + item.count, ItemDB.MAX_STACK)

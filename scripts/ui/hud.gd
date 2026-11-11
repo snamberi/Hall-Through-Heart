@@ -80,6 +80,9 @@ func hide_death() -> void:
 
 func _refresh() -> void:
 	_level_label.text = "Lv %d" % _player.leveling.level
+	var codex: Node = _player.get_parent().get_node_or_null("Codex")
+	if codex and codex.title != "":
+		_level_label.text += "   " + codex.title
 	var notes: PackedStringArray = []
 	if _player.attributes.unspent > 0:
 		notes.append("%d attribute points - press C" % _player.attributes.unspent)

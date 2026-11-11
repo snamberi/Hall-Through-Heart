@@ -22,6 +22,9 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "professions", "title": "Professions", "icon": 49, "action": "toggle_professions"},
 	{"id": "journal", "title": "Journal", "icon": 53, "action": "toggle_journal"},
 	{"id": "map", "title": "Map", "icon": 12, "action": "toggle_map"},
+	{"id": "codex", "title": "Codex", "icon": 53, "action": "toggle_codex"},
+	{"id": "pets", "title": "Pets", "icon": 36, "action": ""},
+	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "action": ""},
 	{"id": "pause", "title": "Settings", "icon": 5, "action": ""},
 ]
 
@@ -82,6 +85,11 @@ func setup(player: Player) -> void:
 	_add("shop", ShopMenu.new())
 	_add("quest_board", QuestBoardMenu.new())
 	_add("bounty_board", BountyBoardMenu.new())
+	_add("waystones", WaystoneMenu.new())
+	_add("recruit", RecruitMenu.new())
+	_add("codex", CodexMenu.new())
+	_add("pets", PetsMenu.new())
+	_add("wardrobe", WardrobeMenu.new())
 	_add("storage", StorageMenu.new())
 	Events.screen_requested.connect(open)
 	Events.loot_opened.connect(func(container: Dictionary) -> void:
@@ -141,6 +149,17 @@ func _show(id: String) -> void:
 
 ## Talking to someone opens their screen.
 func _on_npc_interacted(npc: Node) -> void:
+	if npc.kind == "recruit":
+		(_menus["recruit"] as RecruitMenu).offer = npc.offer
+		open("recruit")
+		return
+	if npc.kind == "settler":
+		if npc.stock_kind != "":
+			(_menus["shop"] as ShopMenu).npc = npc
+			open("shop")
+		else:
+			(_player.get_parent().get_node("Settlers") as Settlers).talk(npc)
+		return
 	if npc.kind == "villager":
 		Events.announcement.emit("", "\"%s\"" % npc.say_something())
 		return

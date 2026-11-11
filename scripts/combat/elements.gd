@@ -34,6 +34,19 @@ const MONSTERS := {
 	"ember_wisp": {"attack": "fire", "weak": ["frost"], "hardy": ["fire"]},
 	"ash_wraith": {"attack": "shadow", "weak": ["holy", "fire"], "hardy": ["poison", "frost"]},
 	"crag_golem": {"weak": ["frost"], "hardy": ["fire", "poison"]},
+	"frost_wolf": {"attack": "frost", "weak": ["fire"], "hardy": ["frost"]},
+	"frost_troll": {"attack": "frost", "weak": ["fire"], "hardy": ["frost", "poison"]},
+	"dire_boar": {"weak": ["poison"]},
+	"treant": {"weak": ["fire"], "hardy": ["poison", "frost"]},
+	"sand_scorpion": {"attack": "poison", "weak": ["frost"], "hardy": ["fire", "poison"]},
+	"dune_mummy": {"attack": "shadow", "weak": ["fire", "holy"], "hardy": ["poison"]},
+	"void_stalker": {"attack": "shadow", "weak": ["holy"], "hardy": ["shadow"]},
+	"void_eye": {"attack": "shadow", "weak": ["holy"], "hardy": ["shadow", "frost"]},
+	"crimson_fiend": {"attack": "fire", "weak": ["holy", "frost"], "hardy": ["fire"]},
+	"magma_slime": {"attack": "fire", "weak": ["frost"], "hardy": ["fire", "poison"]},
+	"cinder_imp": {"attack": "fire", "weak": ["frost"], "hardy": ["fire"]},
+	"bog_lurker": {"attack": "poison", "weak": ["fire"], "hardy": ["poison"]},
+	"storm_harpy": {"weak": ["poison", "shadow"], "hardy": ["frost"]},
 }
 
 

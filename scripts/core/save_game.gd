@@ -52,11 +52,11 @@ func has_slot(id: String) -> bool:
 
 
 ## Makes a new, empty world and selects it.
-func create_slot(world_name: String, difficulty: String, world_seed: int = 0) -> String:
+func create_slot(world_name: String, difficulty: String, world_seed: int = 0, appearance: Dictionary = {}) -> String:
 	var id := "world_%d_%d" % [int(Time.get_unix_time_from_system()), randi() % 10000]
 	use_slot(id)
 	_data = {"meta": {"name": world_name, "difficulty": difficulty, "created_at": Time.get_unix_time_from_system(),
-		"played_at": Time.get_unix_time_from_system(), "level": 1, "day": 1}}
+		"played_at": Time.get_unix_time_from_system(), "level": 1, "day": 1, "appearance": appearance.duplicate()}}
 	if world_seed != 0:
 		_data["world"] = {"seed": world_seed}
 	_write()

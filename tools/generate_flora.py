@@ -775,12 +775,52 @@ def decor(kind):
         c.shade("poly", [(24, 62), (26, 12), (32, 4), (38, 12), (40, 62)], ramp("5a5668", "3a3748", "2a2836"))
         for y in range(18, 56, 9):
             c.fill("rect", (30, y, 34, y + 3), C("9a6cf0"))
+    elif kind == "palisade":                      # a section of sharpened log wall
+        for x in range(6, 60, 9):
+            top = 14 + (x * 7) % 6
+            c.shade("rect", (x, top, x + 8, 60), WOOD)
+            c.shade("poly", [(x, top), (x + 4, top - 8), (x + 8, top)], WOOD)
+            c.put(x + 2, top + 10, WOOD[2])
+        c.shade("rect", (4, 30, 60, 33), ramp("7a5a44", "5a4032", "3b2a22"))
+        c.shade("rect", (4, 48, 60, 51), ramp("7a5a44", "5a4032", "3b2a22"))
+    elif kind == "spike_trap":                    # a bed of stakes
+        c.shade("rect", (8, 48, 56, 60), ramp("6a5a48", "4e4236", "362e26"))
+        for x in range(12, 54, 7):
+            for row, y in enumerate((50, 56)):
+                xx = x + (3 if row else 0)
+                c.shade("poly", [(xx - 2, y + 2), (xx, y - 10), (xx + 2, y + 2)], ramp("d8d0c0", "a8a090", "6a6458"))
+                c.put(xx, y - 9, C("a0302a"))
+    elif kind == "ballista":                      # a wooden bolt-thrower on a stand
+        c.shade("poly", [(20, 60), (28, 40), (36, 40), (44, 60)], WOOD)
+        c.shade("rect", (16, 58, 48, 62), WOOD)
+        c.shade("rect", (14, 30, 50, 36), ramp("7a5a44", "5a4032", "3b2a22"))
+        c.shade("poly", [(10, 26), (14, 30), (14, 36), (8, 40)], WOOD)
+        c.shade("poly", [(54, 26), (50, 30), (50, 36), (56, 40)], WOOD)
+        c.fill("line", (8, 40, 32, 34), C("d8d0c0"), 1)
+        c.fill("line", (56, 40, 32, 34), C("d8d0c0"), 1)
+        c.shade("rect", (30, 14, 34, 34), ramp("eef0f0", "b4bcc2", "7d8890"))
+        c.shade("poly", [(28, 16), (32, 6), (36, 16)], ramp("eef0f0", "b4bcc2", "7d8890"))
+    elif kind == "soil":                          # tilled earth for a crop
+        c.shade("rect", (6, 26, 58, 58), ramp("6a4a32", "4e3624", "362418"))
+        for y in range(30, 56, 7):
+            c.fill("line", (9, y, 55, y), C("2a1c12"), 1)
+            c.fill("line", (9, y + 2, 55, y + 2), C("7a5a40"), 1)
+    elif kind == "scarecrow":
+        c.shade("rect", (30, 18, 34, 62), WOOD)
+        c.shade("rect", (14, 26, 50, 29), WOOD)
+        c.shade("poly", [(22, 28), (42, 28), (44, 48), (20, 48)], ramp("b89a5a", "8e7338", "634f26"))
+        c.shade("ellipse", (25, 8, 39, 22), ramp("e8d8a0", "c8b47a", "9a8656"))
+        c.shade("poly", [(20, 10), (44, 10), (38, 2), (26, 2)], ramp("6a5a48", "4e4236", "362e26"))
+        c.fill("rect", (28, 13, 29, 14), OUTLINE)
+        c.fill("rect", (34, 13, 35, 14), OUTLINE)
+        c.fill("line", (16, 30, 12, 36), ramp("e8d8a0", "c8b47a", "9a8656")[1], 1)
     c.outline()
     return c.img
 
 
 DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate", "barrel", "well", "fence", "lantern",
-         "stall", "signpost", "rug", "shelf", "plant_pot", "table", "chair", "candles", "cage", "tent", "obelisk"]
+         "stall", "signpost", "rug", "shelf", "plant_pot", "table", "chair", "candles", "cage", "tent", "obelisk",
+         "palisade", "spike_trap", "ballista", "soil", "scarecrow"]
 
 
 def sheet(images, w, h):

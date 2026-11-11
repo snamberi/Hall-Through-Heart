@@ -57,6 +57,17 @@ func is_tile_seen(tile: Vector2i) -> bool:
 	return is_seen(_map_cell(tile))
 
 
+## Marks every map cell within `radius` tiles of a tile as seen (obelisks).
+func reveal(center: Vector2i, radius: int) -> void:
+	var middle := _map_cell(center)
+	var reach := radius / CELL
+	for y in range(-reach, reach + 1):
+		for x in range(-reach, reach + 1):
+			if x * x + y * y <= reach * reach:
+				_mark(middle + Vector2i(x, y))
+	SaveGame.request_save()
+
+
 func _mark(map_cell: Vector2i) -> void:
 	var block := Vector2i((Vector2(map_cell) / BLOCK).floor())
 	if not _blocks.has(block):

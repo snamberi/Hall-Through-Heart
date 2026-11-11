@@ -321,6 +321,17 @@ const ITEMS := {
 	"boss_trophy": {"name": "Boss Trophy", "icon": 12, "tint": Color("ff6a5a"), "material_rarity": 4, "value": 500, "text": "Proof that a great foe has fallen. Merchants pay well for it."},
 	"dungeon_key": {"name": "Dungeon Key", "icon": 17, "tint": Color("c0a060"), "material_rarity": 1, "value": 0, "text": "Opens one locked door in the dungeon where it was found."},
 	"gold_coins": {"name": "Gold", "icon": 17, "material_rarity": 0, "currency": true, "text": "Coin of a dead kingdom. Still spends."},
+	"frost_pelt": {"name": "Frost Pelt", "icon": 13, "tint": Color("dce8f4"), "material_rarity": 1, "text": "Thick white fur, rimed with ice."},
+	"troll_hide": {"name": "Troll Hide", "icon": 13, "tint": Color("7a8c9a"), "material_rarity": 2, "text": "It knits itself back together if you leave it."},
+	"boar_tusk": {"name": "Boar Tusk", "icon": 15, "tint": Color("f0e8d0"), "material_rarity": 0, "text": "Curved and wicked."},
+	"heartwood": {"name": "Heartwood", "icon": 43, "tint": Color("6a4a2a"), "material_rarity": 2, "text": "The living core of a treant. Still warm."},
+	"scorpion_stinger": {"name": "Scorpion Stinger", "icon": 15, "tint": Color("d8b070"), "material_rarity": 1, "text": "A drop of venom still beads at the tip."},
+	"mummy_wrap": {"name": "Mummy Wrap", "icon": 43, "tint": Color("e0d4b4"), "material_rarity": 1, "text": "Linen that has outlasted kingdoms."},
+	"void_shard": {"name": "Void Shard", "icon": 42, "tint": Color("a070f0"), "material_rarity": 2, "text": "A splinter of nothing, given edges."},
+	"fiend_horn": {"name": "Fiend Horn", "icon": 15, "tint": Color("e05a3a"), "material_rarity": 1, "text": "Hot to the touch."},
+	"magma_core": {"name": "Magma Core", "icon": 16, "tint": Color("ff8a2e"), "material_rarity": 2, "text": "Molten rock that will not cool."},
+	"harpy_feather": {"name": "Harpy Feather", "icon": 43, "tint": Color("a8b8d0"), "material_rarity": 1, "text": "It crackles in dry air."},
+	"lurker_tongue": {"name": "Lurker Tongue", "icon": 16, "tint": Color("c05a6a"), "material_rarity": 0, "text": "Long, sticky, and best not thought about."},
 	"hound_pelt": {"name": "Hound Pelt", "icon": 13, "tint": Color("8a5a4a"), "material_rarity": 0, "text": "Mangy, but it will cure."},
 	"slime_gel": {"name": "Slime Gel", "icon": 16, "tint": Color("b8f08a"), "material_rarity": 0, "text": "It never quite stops moving."},
 	"bat_wing": {"name": "Bat Wing", "icon": 15, "tint": Color("5a4a5e"), "material_rarity": 0, "text": "Thin as old paper."},
@@ -380,6 +391,39 @@ const ITEMS := {
 	"floor_moss": {"name": "Moss Floor", "icon": 42, "tint": Color("4f7a46"), "floor": TerrainTiles.Type.DARK_GRASS, "material_rarity": 0, "place": "floor", "value": 3, "text": "Lays one tile of floor inside a house. Use it, then click a tile."},
 	"floor_sand": {"name": "Sandstone Floor", "icon": 42, "tint": Color("d8c08a"), "floor": TerrainTiles.Type.SAND, "material_rarity": 0, "place": "floor", "value": 3, "text": "Lays one tile of floor inside a house. Use it, then click a tile."},
 	"floor_snow": {"name": "Snow Floor", "icon": 42, "tint": Color("e6eef6"), "floor": TerrainTiles.Type.SNOW, "material_rarity": 0, "place": "floor", "value": 3, "text": "Lays one tile of floor inside a house. Use it, then click a tile."},
+	"rowboat": {"name": "Rowboat", "icon": 43, "tint": Color("a07850"), "boat": true, "material_rarity": 1, "value": 120, "text": "Use it at the water's edge to sail. Step onto land to stow it again."},
+	"treasure_map": {"name": "Treasure Map", "icon": 53, "tint": Color("e8d098"), "treasure_map": true, "material_rarity": 2, "value": 60, "text": "Read it to mark where something is buried. Then find the spot and dig."},
+	# --- farming
+	"farm_plot": {"name": "Farm Plot", "decor": Prop.Decor.SOIL, "icon": 54, "material_rarity": 0, "place": "plot", "value": 10, "text": "A bed of tilled earth. Set it down outdoors, sow seeds, water, and harvest."},
+	"scarecrow": {"name": "Scarecrow", "decor": Prop.Decor.SCARECROW, "icon": 54, "material_rarity": 0, "place": "scarecrow", "value": 20, "text": "Crops near it grow a quarter faster."},
+	"wheat_seeds": {"name": "Wheat Seeds", "icon": 44, "tint": Color("d8c070"), "material_rarity": 0, "value": 3, "text": "Sow in a farm plot. Ripens in about a day."},
+	"carrot_seeds": {"name": "Carrot Seeds", "icon": 44, "tint": Color("f09040"), "material_rarity": 0, "value": 3, "text": "Sow in a farm plot. Quick to ripen."},
+	"potato_seeds": {"name": "Seed Potatoes", "icon": 44, "tint": Color("c0a070"), "material_rarity": 0, "value": 3, "text": "Sow in a farm plot."},
+	"pumpkin_seeds": {"name": "Pumpkin Seeds", "icon": 44, "tint": Color("f0a040"), "material_rarity": 1, "value": 8, "text": "Sow in a farm plot. Slow, but worth it."},
+	"frostberry_seeds": {"name": "Frostberry Seeds", "icon": 44, "tint": Color("a0d8f0"), "material_rarity": 1, "value": 10, "text": "Sow in a farm plot. Found in the cold lands."},
+	"sunroot_seeds": {"name": "Sunroot Seeds", "icon": 44, "tint": Color("f8e070"), "material_rarity": 2, "value": 25, "text": "Sow in a farm plot. Rare, and slow to grow."},
+	"wheat": {"name": "Wheat", "icon": 44, "tint": Color("e8d080"), "material_rarity": 0, "value": 4, "text": "Grind it, bake it."},
+	"carrot": {"name": "Carrot", "icon": 48, "tint": Color("ff8a2e"), "material_rarity": 0, "use": {"heal": 0.06}, "value": 4, "text": "Crunchy. Restores a little health."},
+	"potato": {"name": "Potato", "icon": 48, "tint": Color("c8a878"), "material_rarity": 0, "value": 4, "text": "Better cooked."},
+	"pumpkin": {"name": "Pumpkin", "icon": 48, "tint": Color("ff9a2e"), "material_rarity": 1, "value": 12, "text": "Heavy, round and orange."},
+	"frostberry": {"name": "Frostberries", "icon": 48, "tint": Color("a8e0ff"), "material_rarity": 1, "use": {"heal": 0.1}, "value": 8, "text": "Cold and sweet. Restores some health."},
+	"sunroot": {"name": "Sunroot", "icon": 44, "tint": Color("ffe060"), "material_rarity": 2, "value": 30, "text": "It glows faintly, even at night."},
+	"bread": {"name": "Bread", "icon": 48, "tint": Color("d8a860"), "material_rarity": 0, "use": {"buff": "food", "name": "Well Fed", "duration": 360.0, "mods": {"max_stamina": {"flat": 25.0}, "stamina_regen": {"percent": 0.25}}}, "value": 14, "text": "+25 stamina and stamina returns 25% faster for 6 minutes."},
+	"carrot_stew": {"name": "Carrot Stew", "icon": 48, "tint": Color("f0a050"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 360.0, "mods": {"max_health": {"flat": 40.0}, "health_regen": {"flat": 1.0}}}, "value": 24, "text": "+40 maximum HP and +1 HP per second for 6 minutes."},
+	"baked_potato": {"name": "Baked Potato", "icon": 48, "tint": Color("b88850"), "material_rarity": 0, "use": {"heal": 0.25}, "value": 10, "text": "Restores a quarter of your health."},
+	"pumpkin_pie": {"name": "Pumpkin Pie", "icon": 48, "tint": Color("e88a30"), "material_rarity": 2, "use": {"buff": "food", "name": "Feast", "duration": 480.0, "mods": {"max_health": {"percent": 0.1}, "physical_damage": {"percent": 0.08}, "magic_find": {"flat": 0.1}}}, "value": 60, "text": "+10% maximum HP, +8% damage and +10% magic find for 8 minutes."},
+	"frostberry_tart": {"name": "Frostberry Tart", "icon": 48, "tint": Color("a0d0f0"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 360.0, "mods": {"frost_resist": {"flat": 0.25}, "fire_resist": {"flat": 0.15}, "max_mana": {"flat": 25.0}}}, "value": 30, "text": "+25% frost and +15% fire resistance, +25 mana for 6 minutes."},
+	"sunroot_elixir": {"name": "Sunroot Elixir", "icon": 47, "tint": Color("ffe060"), "material_rarity": 2, "use": {"buff": "sunroot", "name": "Sunlit", "duration": 300.0, "mods": {"holy_damage": {"flat": 8.0}, "shadow_resist": {"flat": 0.3}, "critical_chance": {"flat": 0.05}}}, "value": 90, "text": "+8 holy damage, +30% shadow resistance and +5% critical chance for 5 minutes."},
+	# --- defences
+	"palisade_wall": {"name": "Palisade", "decor": Prop.Decor.PALISADE, "icon": 54, "material_rarity": 0, "place": "palisade", "value": 12, "text": "A wall of sharpened logs. Monsters must go round."},
+	"spike_trap": {"name": "Spike Trap", "decor": Prop.Decor.SPIKE_TRAP, "icon": 54, "material_rarity": 0, "place": "spikes", "value": 20, "text": "Hurts monsters that walk over it."},
+	"ballista": {"name": "Ballista", "decor": Prop.Decor.BALLISTA, "icon": 54, "material_rarity": 1, "place": "ballista", "value": 80, "text": "Looses bolts at monsters that come near."},
+	"taming_treat": {"name": "Taming Treat", "icon": 48, "tint": Color("e0a0c0"), "material_rarity": 1, "value": 25, "text": "Use beside a small creature, or a monster beaten to its last legs, to tame it as a pet."},
+	"pony_whistle": {"name": "Pony Whistle", "icon": 51, "tint": Color("d8b890"), "mount": "pony", "material_rarity": 1, "value": 300, "text": "Calls a pony to ride. Press G to mount and dismount."},
+	"horse_whistle": {"name": "Horse Whistle", "icon": 51, "tint": Color("b08050"), "mount": "horse", "material_rarity": 2, "value": 900, "text": "Calls a horse to ride. Press G to mount and dismount."},
+	"frost_elk_whistle": {"name": "Frost Elk Horn", "icon": 51, "tint": Color("c0e8ff"), "mount": "frost_elk", "material_rarity": 3, "value": 1500, "text": "Calls a frost elk: snow and blizzards cannot slow or chill it."},
+	"sand_strider_whistle": {"name": "Sand Strider Whistle", "icon": 51, "tint": Color("f0c070"), "mount": "sand_strider", "material_rarity": 3, "value": 1500, "text": "Calls a sand strider: sand and sandstorms cannot slow it."},
+	"nightmare_whistle": {"name": "Nightmare Bell", "icon": 51, "tint": Color("8a5aa0"), "mount": "nightmare", "material_rarity": 4, "value": 4000, "text": "Calls a nightmare: the fastest steed, and blows cannot unseat you."},
 	"crafting_table": {"name": "Crafting Table", "icon": 54, "material_rarity": 0, "place": "table", "value": 30, "text": "Stand beside one to craft. Use it from your bag to set it down."},
 	"storage_chest": {"name": "Storage Chest", "icon": 55, "material_rarity": 0, "place": "chest", "value": 50, "text": "Holds 24 stacks. Use it from your bag to set it down."},
 	"bed": {"name": "Bed", "icon": 57, "material_rarity": 0, "place": "bed", "value": 60, "text": "Sleep in it to make this place home. Use it from your bag to set it down."},
@@ -489,7 +533,34 @@ const LOOT_TABLES := {
 		{"id": "wraith_cloth", "chance": 0.3, "count": [1, 1]}, {"id": "essence", "chance": 0.15, "count": [1, 1]}]},
 	"crag_golem": {"gold": [3, 6], "gear": [["shield", 0.04], ["chestplate", 0.03]], "materials": [
 		{"id": "stone", "chance": 0.7, "count": [1, 3]}, {"id": "stone_heart", "chance": 0.15, "count": [1, 1]}]},
+	"frost_wolf": {"gold": [0, 2], "gear": [["boots", 0.02], ["frost_sword", 0.006]], "materials": [
+		{"id": "frost_pelt", "chance": 0.3, "count": [1, 1]}, {"id": "claw", "chance": 0.15, "count": [1, 1]}]},
+	"frost_troll": {"gold": [3, 7], "gear": [["greatsword", 0.03], ["chestplate", 0.03]], "materials": [
+		{"id": "troll_hide", "chance": 0.35, "count": [1, 1]}, {"id": "frost_pelt", "chance": 0.3, "count": [1, 2]}]},
+	"dire_boar": {"gold": [0, 2], "gear": [["greaves", 0.02]], "materials": [
+		{"id": "boar_tusk", "chance": 0.35, "count": [1, 2]}, {"id": "hound_pelt", "chance": 0.25, "count": [1, 1]}]},
+	"treant": {"gold": [2, 5], "gear": [["staff", 0.03], ["shield", 0.03]], "materials": [
+		{"id": "heartwood", "chance": 0.3, "count": [1, 1]}, {"id": "oak_wood", "chance": 0.7, "count": [2, 4]}]},
+	"sand_scorpion": {"gold": [1, 2], "gear": [["fang", 0.015], ["dagger", 0.02]], "materials": [
+		{"id": "scorpion_stinger", "chance": 0.3, "count": [1, 1]}, {"id": "venom_sac", "chance": 0.15, "count": [1, 1]}]},
+	"dune_mummy": {"gold": [2, 4], "gear": [["necklace", 0.02], ["relic", 0.008]], "materials": [
+		{"id": "mummy_wrap", "chance": 0.35, "count": [1, 2]}, {"id": "bone", "chance": 0.3, "count": [1, 2]}]},
+	"void_stalker": {"gold": [1, 3], "gear": [["dark_sword", 0.015], ["katana", 0.015]], "materials": [
+		{"id": "void_shard", "chance": 0.25, "count": [1, 1]}, {"id": "essence", "chance": 0.12, "count": [1, 1]}]},
+	"void_eye": {"gold": [1, 3], "gear": [["ring", 0.03], ["staff", 0.015]], "materials": [
+		{"id": "void_shard", "chance": 0.3, "count": [1, 1]}, {"id": "essence", "chance": 0.2, "count": [1, 1]}]},
+	"crimson_fiend": {"gold": [2, 4], "gear": [["reaver", 0.015], ["axe", 0.02]], "materials": [
+		{"id": "fiend_horn", "chance": 0.3, "count": [1, 1]}, {"id": "claw", "chance": 0.2, "count": [1, 1]}]},
+	"magma_slime": {"gold": [0, 2], "gear": [["ring", 0.015]], "materials": [
+		{"id": "magma_core", "chance": 0.2, "count": [1, 1]}, {"id": "slime_gel", "chance": 0.3, "count": [1, 1]}]},
+	"cinder_imp": {"gold": [1, 2], "gear": [["ember_staff", 0.015], ["flame_sword", 0.008]], "materials": [
+		{"id": "ember_core", "chance": 0.25, "count": [1, 1]}, {"id": "fiend_horn", "chance": 0.1, "count": [1, 1]}]},
+	"bog_lurker": {"gold": [0, 2], "gear": [["boots", 0.015]], "materials": [
+		{"id": "lurker_tongue", "chance": 0.35, "count": [1, 1]}, {"id": "slime_gel", "chance": 0.2, "count": [1, 1]}]},
+	"storm_harpy": {"gold": [1, 2], "gear": [["bow", 0.025], ["spear", 0.015]], "materials": [
+		{"id": "harpy_feather", "chance": 0.35, "count": [1, 2]}, {"id": "claw", "chance": 0.15, "count": [1, 1]}]},
 }
+
 ## How enemy rank changes loot.
 const RANK_LOOT := {
 	"normal": {"gold": 1.0, "materials": 1.0, "equipment_chance": 1.0, "rarity_bonus": 0.0},

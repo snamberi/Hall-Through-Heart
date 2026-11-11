@@ -9,6 +9,7 @@ var _save_list: VBoxContainer
 var _name_field: LineEdit
 var _seed_field: LineEdit
 var _difficulty := "normal"
+var _appearance: Dictionary = Appearance.DEFAULT.duplicate()
 var _difficulty_buttons: Dictionary[String, Button] = {}
 var _difficulty_text: Label
 var _armed_delete := ""
@@ -184,6 +185,18 @@ func _new_page() -> Control:
 	_difficulty_text.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_difficulty_text.custom_minimum_size = Vector2(640.0, 44.0)
 	box.add_child(_difficulty_text)
+	box.add_child(UITheme.label("Your look", 16))
+	var looks := GridContainer.new()
+	looks.columns = 2
+	looks.add_theme_constant_override("h_separation", 14)
+	looks.add_theme_constant_override("v_separation", 6)
+	box.add_child(looks)
+	for part: Array in [["skin", "Skin", Appearance.SKIN_TONES.slice(0, 5)], ["hair", "Hair", Appearance.HAIR], ["clothes", "Clothes", Appearance.CLOTHES]]:
+		looks.add_child(UITheme.label(part[1], 14, UITheme.DIM))
+		var row := Swatches.create(part[2], 0)
+		var key: String = part[0]
+		row.picked.connect(func(index: int) -> void: _appearance[key] = index)
+		looks.add_child(row)
 	box.add_child(UITheme.label("Seed (leave empty for a random world)", 16))
 	_seed_field = LineEdit.new()
 	_seed_field.custom_minimum_size = Vector2(640.0, 36.0)
@@ -213,7 +226,7 @@ func _create() -> void:
 	var world_seed := 0
 	if seed_text != "":
 		world_seed = int(seed_text) if seed_text.is_valid_int() else hash(seed_text)
-	var id := SaveGame.create_slot(world_name, _difficulty, world_seed)
+	var id := SaveGame.create_slot(world_name, _difficulty, world_seed, _appearance)
 	_play(id)
 
 

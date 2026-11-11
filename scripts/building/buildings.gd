@@ -25,6 +25,11 @@ const KINDS := {
 	"brazier": {"item": "brazier", "decor": Prop.Decor.BRAZIER, "solid": 10.0, "light": true},
 	"fence": {"item": "fence", "decor": Prop.Decor.FENCE, "solid": 12.0},
 	"lantern_post": {"item": "lantern_post", "decor": Prop.Decor.LANTERN, "solid": 6.0, "light": true},
+	"plot": {"item": "farm_plot", "decor": Prop.Decor.SOIL, "solid": 0.0, "flat": true, "outdoors": true},
+	"scarecrow": {"item": "scarecrow", "decor": Prop.Decor.SCARECROW, "solid": 6.0, "outdoors": true},
+	"palisade": {"item": "palisade_wall", "decor": Prop.Decor.PALISADE, "solid": 24.0, "outdoors": true},
+	"spikes": {"item": "spike_trap", "decor": Prop.Decor.SPIKE_TRAP, "solid": 0.0, "flat": true, "outdoors": true},
+	"ballista": {"item": "ballista", "decor": Prop.Decor.BALLISTA, "solid": 14.0, "outdoors": true},
 	## One tile of floor inside a house; the record keeps the item and tile.
 	"floor": {"item": "", "solid": 0.0, "flat": true},
 }
@@ -68,8 +73,131 @@ func setup(player: Player, instances: Instances) -> void:
 			_spawn(record)
 
 
+var _tick_left := 0.0
+var _ballista_left: Dictionary = {}
+
+
 func _physics_process(delta: float) -> void:
 	recall_left = maxf(recall_left - delta, 0.0)
+	_tick_left -= delta
+	if _tick_left > 0.0:
+		return
+	_tick_left = 0.5
+	_grow_crops(0.5)
+	_defend(0.5)
+
+
+## Crops grow wherever they are, watered or not, faster near a scarecrow.
+func _grow_crops(seconds: float) -> void:
+	var raining := Atmosphere.weather in ["Rain", "Thunderstorm"]
+	var scarecrows: Array = records.filter(func(r: Dictionary) -> bool: return r["kind"] == "scarecrow")
+	for record in records:
+		if record["kind"] != "plot" or record.get("crop", "") == "":
+			continue
+		if raining:
+			record["watered"] = true
+		var rate := 1.0 / float(Crops.CROPS[record["crop"]]["days"])
+		if record.get("watered", false):
+			rate *= Crops.WATERED
+		var at := Vector2(record["x"], record["y"])
+		if scarecrows.any(func(r: Dictionary) -> bool: return Vector2(r["x"], r["y"]).distance_to(at) < Crops.SCARECROW_REACH):
+			rate *= Crops.SCARECROW
+		record["growth"] = minf(float(record.get("growth", 0.0)) + seconds / DayNight.DAY_SECONDS * rate, 1.0)
+		var prop: Variant = _props.get(record["id"])
+		if is_instance_valid(prop):
+			prop.prompt_text = _plot_prompt(record)
+
+
+## Spike traps hurt monsters that cross them; ballistas shoot what comes near.
+func _defend(seconds: float) -> void:
+	var power := 8.0 + _player.leveling.level * 2.5
+	for record in records:
+		if record["where"] != "world" or not record["kind"] in ["spikes", "ballista"]:
+			continue
+		var at := Vector2(record["x"], record["y"])
+		if at.distance_to(_player.global_position) > 1400.0:
+			continue
+		if record["kind"] == "spikes":
+			for node in get_tree().get_nodes_in_group("enemies"):
+				var enemy := node as Enemy
+				if enemy and not enemy.has_trait("flying") and not EnemyDB.ENEMIES[enemy.enemy_id].get("flying", false) and enemy.global_position.distance_to(at) < 30.0:
+					enemy.take_damage(power * 0.6, Vector2.ZERO)
+					enemy.apply_status("bleed", 3.0, power * 0.1)
+			continue
+		var left: float = _ballista_left.get(record["id"], 0.0) - seconds
+		_ballista_left[record["id"]] = left
+		if left > 0.0:
+			continue
+		var target: Enemy = null
+		var best := 340.0
+		for node in get_tree().get_nodes_in_group("enemies"):
+			var enemy := node as Enemy
+			if enemy and not enemy.health.is_dead() and enemy.global_position.distance_to(at) < best:
+				best = enemy.global_position.distance_to(at)
+				target = enemy
+		if target:
+			_ballista_left[record["id"]] = 1.5
+			Uniques._bolt(_player, at + Vector2(0, -20), target.global_position, Color(0.85, 0.75, 0.55))
+			target.take_damage(power * 1.4, (target.global_position - at).normalized() * 200.0)
+
+
+func _plot_prompt(record: Dictionary) -> String:
+	var crop: String = record.get("crop", "")
+	if crop == "":
+		return "Sow seeds in the plot"
+	var name: String = Crops.CROPS[crop]["name"]
+	var growth: float = record.get("growth", 0.0)
+	if growth >= 1.0:
+		return "Harvest the %s" % name.to_lower()
+	if not record.get("watered", false):
+		return "Water the %s  (%d%% grown)" % [name.to_lower(), roundi(growth * 100.0)]
+	return "%s growing  (%d%%)" % [name, roundi(growth * 100.0)]
+
+
+## Sows, waters, or harvests a plot.
+func tend_plot(player: Player, record: Dictionary, seed_id: String = "") -> String:
+	var crop: String = record.get("crop", "")
+	if crop == "":
+		if seed_id == "":
+			for item in player.inventory.items:
+				if item and Crops.by_seed(item.id) != "":
+					seed_id = item.id
+					break
+		if seed_id == "":
+			return "You have no seeds."
+		player.inventory.take(seed_id, 1)
+		record["crop"] = Crops.by_seed(seed_id)
+		record["growth"] = 0.0
+		record["watered"] = false
+		player.professions.add_xp("cooking", 3.0)
+	elif float(record.get("growth", 0.0)) >= 1.0:
+		var data: Dictionary = Crops.CROPS[crop]
+		var count := randi_range(data["yield"][0], data["yield"][1])
+		player.inventory.add(Item.create(data["item"], count))
+		if randf() < 0.6:
+			player.inventory.add(Item.create(data["seed"], randi_range(1, 2)))
+		DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -36), "%s x%d" % [ItemDB.ITEMS[data["item"]]["name"], count], Color(0.9, 0.85, 0.5), 13)
+		record["crop"] = ""
+		record["growth"] = 0.0
+		player.professions.add_xp("cooking", 12.0 * data["days"])
+		Events.codex_event.emit("harvests", 1)
+	elif not record.get("watered", false):
+		record["watered"] = true
+		Events.splash.emit(Vector2(record["x"], record["y"]))
+	else:
+		return "It is growing. Come back later."
+	var prop: Variant = _props.get(record["id"])
+	if is_instance_valid(prop):
+		prop.prompt_text = _plot_prompt(record)
+	SaveGame.request_save()
+	return ""
+
+
+## A new day: the ground dries out.
+func dry_plots() -> void:
+	for record in records:
+		if record["kind"] == "plot":
+			record["watered"] = false
 
 
 ## Which house the player is inside ("house:3"), or "world".
@@ -87,8 +215,8 @@ func placement_problem(kind: String, at: Vector2) -> String:
 	if _instances.is_inside():
 		if place == "world":
 			return "Not here"
-		if kind == "house":
-			return "Not inside a house"
+		if kind == "house" or KINDS[kind].get("outdoors", false):
+			return "This belongs outdoors"
 		if not _instances.room.is_floor(_room_cell(at)):
 			return "Needs open floor"
 		if kind == "floor":
@@ -144,6 +272,8 @@ func place(kind: String, at: Vector2, item_id: String = "") -> void:
 	records.append(record)
 	_spawn(record)
 	_player.professions.add_xp("building", 15.0 if kind != "house" else 80.0)
+	if kind == "house":
+		Events.codex_event.emit("houses", 1)
 	SaveGame.request_save()
 
 
@@ -287,6 +417,8 @@ func upgrade_house(record: Dictionary) -> String:
 		if cost[id] > 0:
 			_player.inventory.take(id, cost[id])
 	record["tier"] = tier + 1
+	if record["tier"] >= MAX_TIER:
+		Events.codex_event.emit("manors", 1)
 	_player.professions.add_xp("building", 150.0 * tier)
 	SaveGame.request_save()
 	if is_instance_valid(_props.get(record["id"])):
@@ -316,6 +448,15 @@ func _spawn(record: Dictionary) -> void:
 	var prop: Prop
 	if kind.has("decor"):
 		prop = Prop.create_decor(kind["decor"], at, kind["solid"])
+		if record["kind"] == "plot":
+			prop.prompt_text = _plot_prompt(record)
+			prop.on_interact = func(player: Player) -> void:
+				var problem := tend_plot(player, record)
+				if problem != "":
+					DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -36), problem, UITheme.DIM, 12)
+			var view := CropView.new()
+			view.record = record
+			prop.add_child(view)
 		if kind.get("light", false):
 			prop.add_light()
 		if kind.get("flat", false):

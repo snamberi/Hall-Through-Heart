@@ -31,6 +31,7 @@ const LAYERS: Array[Dictionary] = [
 	{"name": "chest", "behind": false},
 	{"name": "shoulders", "behind": false},
 	{"name": "helmet", "behind": false},
+	{"name": "hood", "behind": false},
 	{"name": "shield", "behind": false},
 	{"name": "weapon", "behind": false},
 ]
@@ -233,7 +234,42 @@ func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 		if item.rarity >= AURA_FROM_RARITY and (best == null or item.rarity > best.rarity):
 			best = item
 	_aura_color = best.color() if best else Color.TRANSPARENT
+	_update_hood()
 	queue_redraw()
+
+
+## Recolours the body for the player's appearance.
+func apply_appearance(appearance: Dictionary) -> void:
+	if material is ShaderMaterial and (material as ShaderMaterial).shader.code == Appearance.SHADER:
+		Appearance.update_material(material, appearance)
+	else:
+		material = Appearance.make_material(appearance)
+	_hood_color = Appearance.hood(appearance)
+	if not _layers.is_empty():
+		_update_hood()
+
+
+var _hood_color := Color.TRANSPARENT
+
+
+## A look's hood shows when no helmet hides it.
+func _update_hood() -> void:
+	var sprite := _layers["hood"]
+	if _hood_color.a == 0.0 or _layers["helmet"].visible:
+		sprite.visible = false
+		return
+	var path := "layers/hood"
+	if not _frames_cache.has(path):
+		_frames_cache[path] = SheetAnimations.build(load("res://assets/sprites/layers/hood.png"), FRAME_SIZE, ROWS)
+	sprite.sprite_frames = _frames_cache[path]
+	sprite.animation = animation
+	sprite.frame = frame
+	sprite.visible = true
+	var hood_material := sprite.material as ShaderMaterial
+	hood_material.set_shader_parameter("tint", _hood_color)
+	hood_material.set_shader_parameter("rarity_color", Color.BLACK)
+	hood_material.set_shader_parameter("outline_mix", 0.0)
+	hood_material.set_shader_parameter("glow", 0.0)
 
 
 ## Plays the swing, fitted into `duration` seconds. `heavy` uses the bigger

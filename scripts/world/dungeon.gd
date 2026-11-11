@@ -61,6 +61,7 @@ func _finish() -> void:
 	LightPillar.spawn(_room, center, BossDB.BOSSES[boss_id]["color"])
 	Events.announcement.emit("THE CRYPT IS CLEARED", "%s is no more" % BossDB.BOSSES[boss_id]["name"])
 	Events.boss_defeated.emit(boss_id)
+	Events.codex_event.emit("dungeons", 1)
 	var items := BossDB.drops(boss_id, level)
 	var chest := Prop.create(Prop.Art.CHEST, center + Vector2(0, -40), 12.0, "Open the boss's hoard")
 	chest.on_interact = func(_p: Player) -> void:

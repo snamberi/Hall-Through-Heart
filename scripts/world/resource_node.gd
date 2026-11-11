@@ -130,6 +130,14 @@ func harvest(player: Player) -> void:
 		else:
 			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -30), "Inventory full", UITheme.BAD, 12)
 			return
+	# Herbs and grasses sometimes shed seeds.
+	if kind() == "herb" and randf() < 0.12:
+		var world_node := get_tree().get_first_node_in_group("world") as World
+		var tile: int = world_node.tile_type_at_position(global_position) if world_node else -1
+		var seeds: String = "frostberry_seeds" if tile in [TerrainTiles.Type.SNOW, TerrainTiles.Type.FROSTPINE] else ["wheat_seeds", "carrot_seeds", "potato_seeds", "pumpkin_seeds"][randi() % 4]
+		if randf() < 0.05:
+			seeds = "sunroot_seeds"
+		player.inventory.add(Item.create(seeds))
 	# Ore veins sometimes hold a gem.
 	if kind() == "ore" and randf() < 0.04 + skill * 0.0008:
 		var gem := Item.create(Gems.random_gem(maxi(_data["level"], skill)))

@@ -56,4 +56,7 @@ static func drops(id: String, level: int) -> Array:
 		items.append(Item.create(Gems.random_gem(level + 20)).to_dict())
 	items.append(Item.create("heart_shard", 3).to_dict())
 	items.append(Item.create("boss_trophy").to_dict())
+	var steed: String = {"frostwarden": "frost_elk_whistle", "sunless_prophet": "sand_strider_whistle", "pale_matron": "nightmare_whistle", "hollow_king": "nightmare_whistle"}.get(id, "")
+	if steed != "" and randf() < 0.2:
+		items.append(Item.create(steed).to_dict())
 	return items

@@ -86,6 +86,15 @@ var _combo_left := 0.0
 var _afflictions: Dictionary = {}
 ## Seconds until the Unbreakable talent can save the player again.
 var _unbreakable_left := 0.0
+## Parry: a short window in which a blow is turned aside and its attacker
+## left open to a finisher.
+const PARRY_WINDOW := 0.28
+const PARRY_COOLDOWN := 0.9
+const PARRY_STAMINA := 12.0
+const EXPOSE_SECONDS := 2.0
+const FINISHER_DAMAGE := 3.0
+var parry_left := 0.0
+var _parry_cooldown := 0.0
 
 @onready var health: Health = $Health
 @onready var stamina: ResourcePool = $Stamina
@@ -99,6 +108,15 @@ var _unbreakable_left := 0.0
 @onready var abilities: AbilityUser = $Abilities
 @onready var buffs: Buffs = $Buffs
 var hotbar: Hotbar
+## Skin tone, hair, clothes, trousers and look (see Appearance).
+var appearance: Dictionary = Appearance.DEFAULT.duplicate()
+## The mount being ridden (Mount.MOUNTS id), or "".
+var mount_id := ""
+var _mount: Mount
+var pets: Pets
+## Sailing a rowboat: water is crossed quickly and dry.
+var boating := false
+const BOAT_SPEED := 1.35
 @onready var talents: Talents = $Talents
 @onready var professions: Professions = $Professions
 @onready var quests: QuestLog = $Quests
@@ -110,6 +128,12 @@ var hotbar: Hotbar
 
 func _ready() -> void:
 	SaveGame.register("character", self)
+	if not SaveGame.get_section("character").has("appearance"):
+		# A new world: the look chosen when it was made.
+		var chosen: Variant = SaveGame.get_section("meta").get("appearance", {})
+		if chosen is Dictionary:
+			appearance.merge(chosen, true)
+	_animator.apply_appearance(appearance)
 	stats.setup(attributes, mastery)
 	buffs.setup(stats)
 	StatusFX.attach(self, active_statuses, 44.0, 12.0)
@@ -117,6 +141,14 @@ func _ready() -> void:
 	uniques.name = "Uniques"
 	add_child(uniques)
 	uniques.setup(self)
+	_mount = Mount.new()
+	_mount.name = "Mount"
+	add_child(_mount)
+	_mount.setup(self)
+	var boat := Boat.new()
+	boat.name = "Boat"
+	add_child(boat)
+	boat.setup(self)
 	hotbar = Hotbar.new()
 	hotbar.name = "Hotbar"
 	add_child(hotbar)
@@ -149,6 +181,8 @@ func _physics_process(delta: float) -> void:
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
 	_unbreakable_left = maxf(_unbreakable_left - delta, 0.0)
+	parry_left = maxf(parry_left - delta, 0.0)
+	_parry_cooldown = maxf(_parry_cooldown - delta, 0.0)
 	potion_cooldown_left = maxf(potion_cooldown_left - delta, 0.0)
 	_combo_left = maxf(_combo_left - delta, 0.0)
 	_read_ground()
@@ -159,6 +193,10 @@ func _physics_process(delta: float) -> void:
 		health.heal((health.max_health * (0.04 if undying else 0.02) + stats.get_stat("health_regen")) * delta)
 	if state == State.MOVE or state == State.ATTACK:
 		camera.zoom = camera.zoom.lerp(Vector2(_height_zoom, _height_zoom), 1.5 * delta)
+		# Settle exactly on the target: at these zooms tile and chunk edges
+		# land on whole pixels, so no seams show between chunks.
+		if absf(camera.zoom.x - _height_zoom) < 0.01:
+			camera.zoom = Vector2(_height_zoom, _height_zoom)
 	_unstick(delta)
 	if not _afflictions.is_empty():
 		_process_afflictions(delta)
@@ -331,7 +369,25 @@ func play_attack_animation(duration: float, heavy: bool = false) -> void:
 ## applies the weapon's effects, life steal, and mastery credit.
 func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 	var critical := randf() < stats.get_stat("critical_chance")
+	if enemy.exposed_left > 0.0:
+		# A finisher on a reeling foe: a sure, crushing blow, and the end of
+		# anything ordinary that is already badly hurt.
+		enemy.exposed_left = 0.0
+		critical = true
+		multiplier *= FINISHER_DAMAGE
+		if enemy.rank < Enemy.Rank.MINIBOSS and enemy.health.current < enemy.health.max_health * 0.3:
+			multiplier = maxf(multiplier, enemy.health.current / maxf(stats.get_stat("physical_damage"), 1.0) * 2.0)
+		DamageNumber.spawn_text(get_parent(), enemy.global_position + Vector2(0, -60), "FINISHER", Color(1.0, 0.6, 0.3), 17)
+		Events.codex_event.emit("finishers", 1)
+		HitSpark.spawn(get_parent(), enemy.global_position + Vector2(0, -16), Color(1.0, 0.7, 0.3), true)
+		RingBurst.spawn(get_parent(), enemy.global_position + Vector2(0, -14), Color(1.0, 0.6, 0.3), 70.0)
+		shake_camera(9.0)
+		slow_motion(0.25, 0.1)
 	var damage := stats.get_stat("physical_damage") * multiplier
+	var codex_node: Node = get_parent().get_node_or_null("Codex")
+	if codex_node:
+		# The Hunter's Mark: well-studied prey takes a little more.
+		damage *= codex_node.damage_bonus(enemy.enemy_id)
 	if critical:
 		damage *= stats.get_stat("critical_damage")
 	if talents.has("berserker") and health.current < health.max_health * 0.35:
@@ -366,6 +422,40 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 
 ## Uses a consumable from the bag. Returns "" on success or why it failed.
 func use_item(item: Item) -> String:
+	if item.definition().has("boat") and item in inventory.items:
+		return board_boat()
+	if item.definition().has("mount") and item in inventory.items:
+		if mount_id == item.definition()["mount"]:
+			dismount()
+			return ""
+		return ride(item.definition()["mount"])
+	if item.id == "taming_treat" and item in inventory.items and pets:
+		var problem := pets.tame(self)
+		if problem == "":
+			inventory.take(item.id, 1)
+		return problem
+	if Crops.by_seed(item.id) != "" and item in inventory.items:
+		# Sow the nearest empty plot.
+		var buildings: Buildings = get_parent().get_node("Buildings")
+		var best: Dictionary = {}
+		var best_distance := 90.0
+		for record in buildings.records:
+			if record["kind"] == "plot" and record.get("crop", "") == "" and record["where"] == "world":
+				var distance := Vector2(record["x"], record["y"]).distance_to(global_position)
+				if distance < best_distance:
+					best_distance = distance
+					best = record
+		if best.is_empty():
+			return "Stand by an empty farm plot to sow."
+		return buildings.tend_plot(self, best, item.id)
+	if item.definition().has("treasure_map") and item in inventory.items:
+		var hunts: Node = get_parent().get_node_or_null("TreasureMaps")
+		if hunts == null:
+			return "This cannot be used here."
+		var problem: String = hunts.read_map(self)
+		if problem == "":
+			inventory.take(item.id, 1)
+		return problem
 	if not is_dead() and item.is_placeable() and item in inventory.items:
 		if swimming:
 			return "You cannot build while swimming."
@@ -412,13 +502,34 @@ func _read_ground() -> void:
 		return
 	var tile := _world.tile_type_at_position(global_position)
 	_ground_speed = TerrainTiles.speed(tile)
+	if Atmosphere.weather in ["Rain", "Thunderstorm"] and tile in [TerrainTiles.Type.MUD, TerrainTiles.Type.BOG, TerrainTiles.Type.TAR, TerrainTiles.Type.DEAD_GRASS]:
+		# Rain turns soft ground to mire.
+		_ground_speed *= 0.8
+	if mount_id != "":
+		var steed: Dictionary = Mount.MOUNTS[mount_id]
+		if TerrainTiles.is_water(tile) or indoors:
+			dismount()
+		else:
+			if (steed.get("snow", false) and tile in [TerrainTiles.Type.SNOW, TerrainTiles.Type.FROSTPINE, TerrainTiles.Type.PEAK]) \
+					or (steed.get("sand", false) and tile in [TerrainTiles.Type.SAND, TerrainTiles.Type.SALT]):
+				_ground_speed = maxf(_ground_speed, 1.0)
+			_ground_speed *= steed["speed"]
+	if boating:
+		if TerrainTiles.is_water(tile):
+			_ground_speed = BOAT_SPEED
+			swimming = false
+			deep_water = false
+			return
+		# Run aground: step out, and the boat goes back in the pack.
+		boating = false
+		Events.splash.emit(global_position)
 	var was_swimming := swimming
 	swimming = TerrainTiles.is_water(tile)
 	deep_water = tile == TerrainTiles.Type.DEEP_WATER
 	if swimming != was_swimming:
 		Events.splash.emit(global_position)
 	# Climbing gives a wider view.
-	_height_zoom = 1.7 if tile == TerrainTiles.Type.PEAK else 1.82 if tile == TerrainTiles.Type.ROCK else 2.0
+	_height_zoom = 1.5 if tile == TerrainTiles.Type.PEAK else 1.75 if tile == TerrainTiles.Type.ROCK else 2.0
 
 
 ## A safety net: if the player ever ends up inside a wall (a cave edge,
@@ -532,6 +643,9 @@ func learn_class_node(id: String) -> bool:
 func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1, element: String = "") -> bool:
 	if is_dead():
 		return false
+	if parry_left > 0.0:
+		_parried(source_position)
+		return false
 	if _invulnerable_left > 0.0:
 		if state == State.DODGE and talents.has("perfect_dodge"):
 			buffs.add("perfect_dodge", "Perfect Dodge", 5.0, {"critical_chance": {"flat": 0.3}})
@@ -557,6 +671,8 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		_die()
 		return true
 	_invulnerable_left = maxf(_invulnerable_left, hurt_invulnerability)
+	if mount_id != "" and not Mount.MOUNTS[mount_id].get("steady", false):
+		dismount()
 	if state == State.GATHER:
 		_stop_gathering()
 	if state == State.MOVE:
@@ -621,6 +737,59 @@ func _process_afflictions(delta: float) -> void:
 			_afflictions.erase(id)
 
 
+## Mounts a steed: `id` from Mount.MOUNTS, or "" for the best whistle in the bag.
+func ride(id: String) -> String:
+	if id == "":
+		var best := 0.0
+		for item in inventory.items:
+			if item and item.definition().has("mount"):
+				var speed: float = Mount.MOUNTS[item.definition()["mount"]]["speed"]
+				if speed > best:
+					best = speed
+					id = item.definition()["mount"]
+		if id == "":
+			return "You have no mount. Buy a whistle from a merchant."
+	if indoors or swimming or boating or is_dead() or state != State.MOVE:
+		return "You cannot ride here."
+	mount_id = id
+	_mount.ride(id)
+	_visual.position.y = -Mount.SEAT
+	RingBurst.spawn(get_parent(), global_position, Color(0.9, 0.85, 0.7), 40.0)
+	Events.codex_event.emit("mounts", 1)
+	return ""
+
+
+func dismount() -> void:
+	if mount_id == "":
+		return
+	mount_id = ""
+	_mount.put_away()
+	_visual.position.y = 0.0
+
+
+## Puts the rowboat in the water beside the player and climbs in.
+func board_boat() -> String:
+	if boating:
+		return "You are already afloat."
+	if indoors or _world == null or is_dead() or state != State.MOVE:
+		return "You cannot launch a boat here."
+	var here := _world.world_to_cell(global_position)
+	var best := Vector2i(999999, 0)
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var cell := here + Vector2i(dx, dy)
+			if TerrainTiles.is_water(_world.generator.tile_type_at(cell)) and Vector2(cell - here).length() < Vector2(best - here).length():
+				best = cell
+	if best.x == 999999:
+		return "Stand at the water's edge to launch the boat."
+	global_position = _world.cell_to_world(best)
+	boating = true
+	swimming = false
+	Events.splash.emit(global_position)
+	Events.codex_event.emit("boats", 1)
+	return ""
+
+
 ## Starts rising from the ground at full health. Call after moving the
 ## player to where they wake; rebirth_finished fires when they can move.
 func begin_rebirth() -> void:
@@ -636,7 +805,14 @@ func begin_rebirth() -> void:
 
 
 func save_data() -> Dictionary:
-	return {"class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate()}
+	return {"class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate()}
+
+
+## Changes how the player looks and redraws them.
+func set_appearance(changes: Dictionary) -> void:
+	appearance.merge(changes, true)
+	_animator.apply_appearance(appearance)
+	SaveGame.request_save()
 
 
 func load_data(data: Dictionary) -> void:
@@ -652,6 +828,12 @@ func load_data(data: Dictionary) -> void:
 		for entry: Array in HeroClasses.TREES[class_id]["abilities"].slice(0, 2):
 			class_ranks[entry[0]] = 1
 	show_helmet = bool(data.get("show_helmet", true))
+	var saved_look: Variant = data.get("appearance", SaveGame.get_section("meta").get("appearance", {}))
+	if saved_look is Dictionary:
+		appearance = Appearance.DEFAULT.duplicate()
+		appearance.merge(saved_look, true)
+	if is_node_ready():
+		_animator.apply_appearance(appearance)
 
 
 func _process_move(delta: float) -> void:
@@ -664,8 +846,22 @@ func _process_move(delta: float) -> void:
 		# Both hands are busy keeping afloat.
 		return
 
+	if parry_left > 0.0:
+		velocity *= 0.3
+	if mount_id != "" and (Input.is_action_just_pressed("attack") or Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("parry") \
+			or Input.is_action_just_pressed("ability_1") or Input.is_action_just_pressed("ability_2") or Input.is_action_just_pressed("ability_3") or Input.is_action_just_pressed("ability_4")):
+		dismount()
+	if Input.is_action_just_pressed("mount"):
+		if mount_id != "":
+			dismount()
+		else:
+			var problem := ride("")
+			if problem != "":
+				DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
 	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0 and not swimming:
 		_try_dodge()
+	elif Input.is_action_just_pressed("parry") and _parry_cooldown == 0.0 and not placing and not swimming:
+		_start_parry()
 	elif abilities.try_use_pressed():
 		pass
 	elif Input.is_action_just_pressed("quick_potion"):
@@ -678,6 +874,48 @@ func _process_move(delta: float) -> void:
 		Events.dismantle_requested.emit()
 	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing:
 		attack(aim_direction())
+
+
+func _start_parry() -> void:
+	if not stamina.spend(PARRY_STAMINA * stats.get_stat("stamina_cost_multiplier")):
+		return
+	parry_left = PARRY_WINDOW
+	_parry_cooldown = PARRY_COOLDOWN
+	var direction := aim_direction()
+	face(direction)
+	_animator.play_attack(0.22, false)
+	show_slash(direction, 38.0, 150.0, 0.2, Color(1.0, 0.95, 0.7))
+
+
+## A blow caught in the parry window: no damage, and the attacker reels.
+func _parried(source_position: Vector2) -> void:
+	parry_left = 0.0
+	_parry_cooldown = 0.15
+	stamina.current = minf(stamina.current + PARRY_STAMINA, stamina.max_value)
+	var attacker: Enemy = null
+	var best := 170.0
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy and not enemy.health.is_dead():
+			var distance := enemy.global_position.distance_to(source_position) + enemy.global_position.distance_to(global_position) * 0.5
+			if distance < best:
+				best = distance
+				attacker = enemy
+	if attacker:
+		attacker.expose(EXPOSE_SECONDS)
+	HitSpark.spawn(get_parent(), global_position + facing * 16.0 + Vector2(0, -16), Color(1.0, 0.95, 0.6), true)
+	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(1.0, 0.9, 0.5), 50.0)
+	DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -46), "Parry!", UITheme.GOLD, 15)
+	Events.codex_event.emit("parries", 1)
+	Audio.play("hit", -2.0, 0.0)
+	shake_camera(4.0)
+	slow_motion(0.35, 0.12)
+
+
+## Briefly slows the whole game for weight on a big moment.
+func slow_motion(scale: float, seconds: float) -> void:
+	Engine.time_scale = scale
+	get_tree().create_timer(seconds, true, false, true).timeout.connect(func() -> void: Engine.time_scale = 1.0)
 
 
 func _try_dodge() -> void:
