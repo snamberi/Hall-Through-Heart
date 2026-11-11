@@ -180,6 +180,10 @@ func _build() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(spacer)
+	var hint := UITheme.label("Hover an item and press %s to put it on the hotbar." % "/".join(range(1, Hotbar.SIZE + 1).map(func(i: int) -> String: return GameSettings.describe("hotbar_%d" % i).split(" / ")[0])), 12, UITheme.DIM)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint.custom_minimum_size = Vector2(310.0, 18.0)
+	right.add_child(hint)
 	_message = UITheme.label("", 13, UITheme.BAD)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_message.custom_minimum_size = Vector2(310.0, 20.0)
@@ -436,3 +440,19 @@ func _style_button(button: Button, item: Item) -> void:
 	button.add_theme_stylebox_override("hover", hover)
 	button.icon = item.icon() if item else null
 	_tint_icon(button, item.tint() if item else Color.WHITE)
+
+
+## Hotbar keys put the hovered (or selected) item in that slot.
+func _input(event: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
+	var item := _hovered if _hovered else _selected
+	if item == null:
+		return
+	for index in Hotbar.SIZE:
+		if event.is_action_pressed("hotbar_%d" % (index + 1)):
+			player.hotbar.assign(index, item.id)
+			_message.add_theme_color_override("font_color", UITheme.GOOD)
+			_message.text = "%s is on hotbar slot %d." % [item.display_name(), index + 1]
+			get_viewport().set_input_as_handled()
+			return

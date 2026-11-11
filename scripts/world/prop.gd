@@ -52,6 +52,19 @@ static func create(art: Art, at: Vector2, solid: float = 0.0, prompt: String = "
 
 
 ## A prop drawn from the decor sheet (tools/generate_flora.py) instead.
+static var _decor_icons: Dictionary = {}
+
+
+## One decor frame as an inventory icon.
+static func decor_icon(index: int) -> Texture2D:
+	if not _decor_icons.has(index):
+		var atlas := AtlasTexture.new()
+		atlas.atlas = DECOR
+		atlas.region = Rect2(index * 64 + 4, 4, 56, 56)
+		_decor_icons[index] = atlas
+	return _decor_icons[index]
+
+
 static func create_decor(index: int, at: Vector2, solid: float = 0.0, prompt: String = "", action: Callable = Callable()) -> Prop:
 	var prop := create(Art.PILLAR, at, solid, prompt, action)
 	prop._sprite.texture = DECOR

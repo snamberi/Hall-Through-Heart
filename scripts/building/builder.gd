@@ -1,25 +1,51 @@
 class_name Builder
 extends Node2D
-## Placement mode: shows a see-through blueprint of the thing being placed
-## under the mouse, green where it can go and red where it cannot.
-## Left-click sets it down; right-click or Esc cancels.
+## Placement mode: the item is held in the player's hand and a glowing
+## blueprint of it follows the mouse, blue where it can go and red where it
+## cannot. Left-click sets it down (and keeps going while more are in the
+## bag); right-click or Esc puts it away.
+
+const BLUEPRINT := """
+shader_type canvas_item;
+uniform vec4 tint : source_color = vec4(0.35, 0.75, 1.0, 1.0);
+void fragment() {
+	vec4 c = texture(TEXTURE, UV);
+	vec2 px = TEXTURE_PIXEL_SIZE;
+	float around = texture(TEXTURE, UV + vec2(px.x, 0.0)).a + texture(TEXTURE, UV - vec2(px.x, 0.0)).a
+		+ texture(TEXTURE, UV + vec2(0.0, px.y)).a + texture(TEXTURE, UV - vec2(0.0, px.y)).a;
+	float edge = (c.a > 0.5 && around < 3.5) ? 1.0 : 0.0;
+	float shade = dot(c.rgb, vec3(0.3, 0.59, 0.11));
+	float scan = 0.5 + 0.5 * sin(FRAGCOORD.y * 0.9 - TIME * 7.0);
+	float sweep = smoothstep(0.0, 0.08, 0.08 - abs(fract(UV.y * 2.0 - TIME * 0.5) - 0.5));
+	vec3 body = tint.rgb * (0.35 + shade * 0.7) + sweep * 0.25;
+	COLOR.rgb = mix(body, vec3(0.9, 0.98, 1.0) * tint.rgb + 0.3, edge);
+	COLOR.a = c.a * (0.42 + 0.12 * scan) + edge * 0.45;
+}
+"""
 
 var _buildings: Buildings
 var _player: Player
 var _item: Item
+var _item_id := ""
 var _kind := ""
 var _ghost: Sprite2D
 var _problem := ""
+var _material: ShaderMaterial
 
 
 func setup(buildings: Buildings, player: Player) -> void:
 	_buildings = buildings
 	_player = player
 	z_index = 80
+	add_to_group("builder")
 	Events.placement_requested.connect(begin)
+	_material = ShaderMaterial.new()
+	_material.shader = Shader.new()
+	_material.shader.code = BLUEPRINT
 	_ghost = Sprite2D.new()
 	_ghost.texture = Prop.SHEET
 	_ghost.hframes = Prop.FRAMES
+	_ghost.material = _material
 	_ghost.visible = false
 	add_child(_ghost)
 
@@ -30,13 +56,14 @@ func is_active() -> bool:
 
 func begin(item: Item) -> void:
 	_item = item
+	_item_id = item.id
 	_kind = item.definition()["place"]
 	var kind: Dictionary = Buildings.KINDS[_kind]
 	_ghost.texture = Prop.DECOR if kind.has("decor") else Prop.SHEET
 	_ghost.hframes = Prop.DECOR_FRAMES if kind.has("decor") else Prop.FRAMES
 	_ghost.frame = kind.get("decor", kind.get("art", 0))
 	_ghost.scale = Vector2(2.0, 2.0) if _kind == "house" else Vector2.ONE
-	_ghost.visible = true
+	_ghost.visible = _kind != "floor"
 	_player.placing = true
 
 
@@ -56,23 +83,49 @@ func _process(_delta: float) -> void:
 	var at := _snapped(get_global_mouse_position())
 	_problem = _buildings.placement_problem(_kind, at)
 	_ghost.global_position = at + Vector2(0, -50.0 if _kind == "house" else -22.0)
-	_ghost.modulate = Color(0.5, 1.0, 0.55, 0.7) if _problem == "" else Color(1.0, 0.4, 0.4, 0.6)
+	_material.set_shader_parameter("tint", Color(0.4, 0.8, 1.0) if _problem == "" else Color(1.0, 0.35, 0.3))
 	queue_redraw()
 
 
 func _draw() -> void:
 	if _item == null:
 		return
-	# The footprint on the ground, and a line of advice by the cursor.
 	var at := to_local(_snapped(get_global_mouse_position()))
-	var half := TerrainTiles.TILE_SIZE * (1.5 if _kind == "house" else 0.5)
-	var color := UITheme.GOOD if _problem == "" else UITheme.BAD
-	draw_rect(Rect2(at - Vector2(half, half), Vector2(half, half) * 2.0), Color(color, 0.18))
-	draw_rect(Rect2(at - Vector2(half, half), Vector2(half, half) * 2.0), color, false, 2.0)
-	var text := "Left-click to place, right-click to cancel" if _problem == "" else _problem
+	var tile := float(TerrainTiles.TILE_SIZE)
+	var half := tile * (1.5 if _kind == "house" else 0.5)
+	var color := Color(0.45, 0.85, 1.0) if _problem == "" else UITheme.BAD
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 180.0)
+	# A faint grid of the tiles around the cursor.
+	for gx in range(-3, 4):
+		for gy in range(-3, 4):
+			var cell := Rect2(at + Vector2(gx, gy) * tile - Vector2(tile, tile) / 2.0, Vector2(tile, tile))
+			var fade := 1.0 - Vector2(gx, gy).length() / 4.2
+			if fade > 0.0:
+				draw_rect(cell, Color(color, 0.12 * fade), false, 1.0)
+	# The footprint with its own grid, and corner brackets.
+	var rect := Rect2(at - Vector2(half, half), Vector2(half, half) * 2.0)
+	draw_rect(rect, Color(color, 0.12 + 0.06 * pulse))
+	var steps := int(round(half * 2.0 / tile))
+	for line in range(1, steps):
+		draw_line(rect.position + Vector2(line * tile, 0), rect.position + Vector2(line * tile, rect.size.y), Color(color, 0.35), 1.0)
+		draw_line(rect.position + Vector2(0, line * tile), rect.position + Vector2(rect.size.x, line * tile), Color(color, 0.35), 1.0)
+	var arm := minf(12.0, half)
+	for corner: Vector2 in [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)]:
+		var sx := 1.0 if corner.x == rect.position.x else -1.0
+		var sy := 1.0 if corner.y == rect.position.y else -1.0
+		draw_line(corner, corner + Vector2(arm * sx, 0), color, 2.0)
+		draw_line(corner, corner + Vector2(0, arm * sy), color, 2.0)
+	if _kind == "floor":
+		var tile_type: int = _item.definition()["floor"]
+		draw_rect(rect.grow(-3.0), Color(TerrainTiles.COLORS[tile_type], 0.55))
+	# The item held in the hand.
+	var hand := to_local(_player.global_position + Vector2(9.0 * signf(_player.aim_direction().x if _player.aim_direction().x != 0.0 else 1.0), -18.0 + 2.0 * sin(Time.get_ticks_msec() / 220.0)))
+	draw_texture_rect(_item.icon(), Rect2(hand - Vector2(9, 9), Vector2(18, 18)), false)
+	var left := _player.inventory.count_of(_item_id)
+	var text := "Left-click to place  (%d left)  -  right-click to put away" % left if _problem == "" else _problem
 	var font := UITheme.get_theme().default_font
-	draw_string_outline(font, at + Vector2(-150, half + 22.0), text, HORIZONTAL_ALIGNMENT_CENTER, 300.0, 13, 4, Color.BLACK)
-	draw_string(font, at + Vector2(-150, half + 22.0), text, HORIZONTAL_ALIGNMENT_CENTER, 300.0, 13, color)
+	draw_string_outline(font, at + Vector2(-170, half + 22.0), text, HORIZONTAL_ALIGNMENT_CENTER, 340.0, 13, 4, Color.BLACK)
+	draw_string(font, at + Vector2(-170, half + 22.0), text, HORIZONTAL_ALIGNMENT_CENTER, 340.0, 13, color)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -86,14 +139,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		confirm(_snapped(get_global_mouse_position()))
 
 
-## Places the item at a position if it is allowed there. Returns whether it was.
+## Places the item at a position if it is allowed there. Returns whether it
+## was. With more of the same item in the bag, it stays in hand.
 func confirm(at: Vector2) -> bool:
 	if _item == null or _buildings.placement_problem(_kind, at) != "":
 		return false
-	_player.inventory.take(_item.id, 1)
-	_buildings.place(_kind, at)
+	_player.inventory.take(_item_id, 1)
+	_buildings.place(_kind, at, _item_id)
 	Audio.play("hit", -8.0)
-	cancel()
+	RingBurst.spawn(get_parent(), at, Color(0.5, 0.85, 1.0), 26.0)
+	var more: Item = null
+	for item in _player.inventory.items:
+		if item and item.id == _item_id:
+			more = item
+			break
+	if more and _kind != "house":
+		begin(more)
+	else:
+		cancel()
 	return true
 
 

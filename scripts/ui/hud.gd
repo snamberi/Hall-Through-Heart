@@ -58,6 +58,12 @@ func setup(player: Player) -> void:
 		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
 	)
 	$AbilityBar.setup(player)
+	var hotbar_ui := HotbarUI.new()
+	hotbar_ui.setup(player)
+	hotbar_ui.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	hotbar_ui.size = hotbar_ui.custom_minimum_size
+	hotbar_ui.position = Vector2(-hotbar_ui.size.x / 2.0, -hotbar_ui.size.y - 6.0)
+	add_child(hotbar_ui)
 	_death_message.visible = false
 	_banner.visible = false
 	_refresh()

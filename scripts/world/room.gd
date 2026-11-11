@@ -41,6 +41,13 @@ func cell_position(cell: Vector2i) -> Vector2:
 	return ORIGIN + (Vector2(cell) + Vector2(0.5, 0.5)) * TerrainTiles.TILE_SIZE
 
 
+## Changes one tile after the room is built.
+func set_tile(cell: Vector2i, type: int) -> void:
+	cells[cell] = type
+	if _layer:
+		_layer.set_cell(cell, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(type, posmod(hash(cell), 8)))
+
+
 func is_floor(cell: Vector2i) -> bool:
 	return cells.has(cell) and not TerrainTiles.is_solid(cells[cell])
 

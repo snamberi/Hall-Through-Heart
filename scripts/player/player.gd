@@ -98,6 +98,7 @@ var _unbreakable_left := 0.0
 @onready var equipment: Equipment = $Equipment
 @onready var abilities: AbilityUser = $Abilities
 @onready var buffs: Buffs = $Buffs
+var hotbar: Hotbar
 @onready var talents: Talents = $Talents
 @onready var professions: Professions = $Professions
 @onready var quests: QuestLog = $Quests
@@ -112,6 +113,9 @@ func _ready() -> void:
 	stats.setup(attributes, mastery)
 	buffs.setup(stats)
 	StatusFX.attach(self, active_statuses, 44.0, 12.0)
+	hotbar = Hotbar.new()
+	hotbar.name = "Hotbar"
+	add_child(hotbar)
 	talents.setup(leveling, stats)
 	_apply_class()
 	equipment.setup(inventory, leveling, attributes)

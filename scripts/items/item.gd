@@ -129,6 +129,8 @@ func color() -> Color:
 func icon() -> Texture2D:
 	if definition().has("flora"):
 		return Flora.small_texture(definition()["flora"])
+	if definition().has("decor"):
+		return Prop.decor_icon(definition()["decor"])
 	return ItemDB.icon(definition()["icon"])
 
 
