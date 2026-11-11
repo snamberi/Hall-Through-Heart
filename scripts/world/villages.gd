@@ -98,6 +98,13 @@ func _build(center: Vector2i) -> Array:
 	)
 	board.sprite().modulate = Color(1.0, 0.8, 0.7)
 	add.call(board)
+	# Someone here would move to the player's home, given a bed.
+	var recruit := Npc.create("recruit", _at(center + Vector2i(5, 4)))
+	recruit.offer = Settlers.offer_for(center, _world.generator.world_seed)
+	recruit.title_text = "%s the %s" % [recruit.offer["name"], Settlers.ROLES[recruit.offer["role"]]["title"]]
+	recruit.prompt_text = "Talk to %s" % recruit.offer["name"]
+	recruit.tint = Settlers.ROLES[recruit.offer["role"]]["tint"]
+	add.call(recruit)
 	var stones: Waystones = get_parent().get_node_or_null("Waystones")
 	if stones:
 		add.call(stones.make_stone("village:%d,%d" % [center.x, center.y], "Village (%d, %d)" % [center.x, center.y], center + Vector2i(5, -3)))

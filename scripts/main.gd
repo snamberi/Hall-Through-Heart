@@ -61,6 +61,18 @@ func _ready() -> void:
 	var buildings: Buildings = $Buildings
 	buildings.setup(_player, _instances)
 	$Builder.setup(buildings, _player)
+	var settlers := Settlers.new()
+	settlers.name = "Settlers"
+	add_child(settlers)
+	settlers.setup(_player, buildings)
+	var raids := Raids.new()
+	raids.name = "Raids"
+	add_child(raids)
+	raids.setup(_player, settlers, _spawner, _world, _day_night)
+	_day_night.day_changed.connect(func(_day: int) -> void:
+		buildings.dry_plots()
+		settlers.morning()
+	)
 	Events.recall_requested.connect(func() -> void:
 		var problem := buildings.recall_problem()
 		if problem != "":

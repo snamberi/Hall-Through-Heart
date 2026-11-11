@@ -7,16 +7,27 @@ const KINDS := {
 	"merchant": {"name": "Merchant", "prompt": "Trade with the Merchant", "sheet": "res://assets/sprites/npc_merchant.png"},
 	"warden": {"name": "Warden", "prompt": "Ask the Warden for work", "sheet": "res://assets/sprites/npc_warden.png"},
 	"villager": {"name": "Villager", "prompt": "Talk", "sheet": "res://assets/sprites/npc_merchant.png"},
+	"settler": {"name": "Settler", "prompt": "Talk", "sheet": "res://assets/sprites/npc_merchant.png"},
+	"recruit": {"name": "Wanderer", "prompt": "Talk", "sheet": "res://assets/sprites/npc_warden.png"},
 }
 ## A merchant's wares change this often, in seconds.
 const RESTOCK_SECONDS := 600.0
 ## Share of an item's value a merchant pays for it.
 const SELL_SHARE := 0.25
-const STAPLES: Array[String] = ["health_potion", "mana_potion", "stamina_tonic", "grilled_minnow", "copper_ingot", "oak_wood"]
+const STAPLES: Array[String] = ["health_potion", "mana_potion", "stamina_tonic", "grilled_minnow", "copper_ingot", "oak_wood",
+	"wheat_seeds", "carrot_seeds", "potato_seeds", "farm_plot"]
 
 var kind := "merchant"
 ## A wandering merchant sells rarer things.
 var wandering := false
+## Settlers and recruits: their trade, name, prompt, wares and colouring.
+var role := ""
+var title_text := ""
+var prompt_text := ""
+var stock_kind := "general"
+var tint := Color.WHITE
+## For recruits: the offer (see Settlers.offer_for).
+var offer: Dictionary = {}
 ## What a merchant has for sale: [{"item": Item, "price": int, "endless": bool}].
 var stock: Array[Dictionary] = []
 
@@ -48,9 +59,13 @@ func _ready() -> void:
 		# Each villager dresses a little differently.
 		sprite.modulate = Color.from_hsv(randf(), 0.25, 1.0).lerp(Color.WHITE, 0.4)
 		_walk_to = position
+	if tint != Color.WHITE:
+		sprite.modulate = tint
+	if kind == "settler":
+		_walk_to = position
 
 	var label := Label.new()
-	label.text = KINDS[kind]["name"]
+	label.text = title_text if title_text != "" else KINDS[kind]["name"]
 	label.add_theme_font_override("font", UITheme.bold())
 	label.add_theme_font_size_override("font_size", 15)
 	label.add_theme_color_override("font_color", UITheme.GOLD)
@@ -70,7 +85,7 @@ func _ready() -> void:
 
 
 func prompt() -> String:
-	return KINDS[kind]["prompt"]
+	return prompt_text if prompt_text != "" else KINDS[kind]["prompt"]
 
 
 ## Fills the shelves if it is time, with gear suited to the player's level.
@@ -80,6 +95,24 @@ func restock_if_due(player: Player) -> void:
 		return
 	_stocked_at = now
 	stock.clear()
+	if stock_kind == "smith":
+		for i in 7:
+			var level := maxi(player.leveling.level + randi_range(-1, 2), 1)
+			var gear := LootGenerator.make_equipment(level, maxi(LootGenerator.roll_rarity(0.0, 3.0), 1))
+			stock.append({"item": gear, "price": gear.value(), "endless": false})
+		for ingot in ["copper_ingot", "iron_ingot", "silver_ingot"]:
+			var bar := Item.create(ingot)
+			stock.append({"item": bar, "price": bar.value() * 2, "endless": true})
+		return
+	if stock_kind == "alchemy":
+		for potion in ["health_potion", "mana_potion", "stamina_tonic", "might_elixir", "bloodcap_draught", "aloe_salve"]:
+			if ItemDB.ITEMS.has(potion):
+				var dose := Item.create(potion)
+				stock.append({"item": dose, "price": dose.value(), "endless": true})
+		for i in 2:
+			var gem := Item.create(Gems.random_gem(player.leveling.level))
+			stock.append({"item": gem, "price": gem.value() * 2, "endless": false})
+		return
 	for item_id in STAPLES:
 		var item := Item.create(item_id)
 		stock.append({"item": item, "price": item.value(), "endless": true})
@@ -117,7 +150,7 @@ static func sell_price(item: Item) -> int:
 
 
 func _process(delta: float) -> void:
-	if kind != "villager":
+	if kind != "villager" and kind != "settler":
 		return
 	_think -= delta
 	if _think <= 0.0:

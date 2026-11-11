@@ -7,9 +7,9 @@ const SHEET: Texture2D = preload("res://assets/sprites/props.png")
 const FRAMES := 14
 const REACH := 70.0
 const DECOR: Texture2D = preload("res://assets/sprites/decor.png")
-const DECOR_FRAMES := 22
+const DECOR_FRAMES := 27
 enum Decor { FLOOR, RUBBLE, STATUE, BRAZIER, BANNER, BONES, CRATE, BARREL, WELL, FENCE, LANTERN, STALL, SIGNPOST,
-	RUG, SHELF, PLANT_POT, TABLE, CHAIR, CANDLES, CAGE, TENT, OBELISK }
+	RUG, SHELF, PLANT_POT, TABLE, CHAIR, CANDLES, CAGE, TENT, OBELISK, PALISADE, SPIKE_TRAP, BALLISTA, SOIL, SCARECROW }
 static var LIGHT: Texture2D = _make_light()
 ## Frame numbers in the sheet.
 enum Art { PILLAR, WALL, CHEST, CHEST_OPEN, ALTAR, CAVE, PORTAL, LADDER, TABLE, BED, DOOR, CAMPFIRE, TOTEM, HOUSE }

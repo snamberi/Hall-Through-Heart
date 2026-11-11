@@ -85,7 +85,7 @@ func load_data(data: Dictionary) -> void:
 ## if it is a rich one. `richness` 1 is a plain ruin chest.
 static func roll_chest(level: int, richness: float) -> Array:
 	var items: Array = [{"id": "gold_coins", "count": roundi(randf_range(8.0, 20.0) * pow(level, 0.9) * richness)}]
-	var materials: Array[String] = ["stone", "copper_ore", "oak_wood", "healing_herb", "bone", "husk_fragment", "wild_berries", "torch"]
+	var materials: Array[String] = ["stone", "copper_ore", "oak_wood", "healing_herb", "bone", "husk_fragment", "wild_berries", "torch", "wheat_seeds", "carrot_seeds", "pumpkin_seeds"]
 	for i in randi_range(2, 3):
 		items.append(Item.create(materials.pick_random(), randi_range(1, 4)).to_dict())
 	if randf() < 0.35 * richness:

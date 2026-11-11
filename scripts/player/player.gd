@@ -177,6 +177,10 @@ func _physics_process(delta: float) -> void:
 		health.heal((health.max_health * (0.04 if undying else 0.02) + stats.get_stat("health_regen")) * delta)
 	if state == State.MOVE or state == State.ATTACK:
 		camera.zoom = camera.zoom.lerp(Vector2(_height_zoom, _height_zoom), 1.5 * delta)
+		# Settle exactly on the target: at these zooms tile and chunk edges
+		# land on whole pixels, so no seams show between chunks.
+		if absf(camera.zoom.x - _height_zoom) < 0.01:
+			camera.zoom = Vector2(_height_zoom, _height_zoom)
 	_unstick(delta)
 	if not _afflictions.is_empty():
 		_process_afflictions(delta)
@@ -399,6 +403,20 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 func use_item(item: Item) -> String:
 	if item.definition().has("boat") and item in inventory.items:
 		return board_boat()
+	if Crops.by_seed(item.id) != "" and item in inventory.items:
+		# Sow the nearest empty plot.
+		var buildings: Buildings = get_parent().get_node("Buildings")
+		var best: Dictionary = {}
+		var best_distance := 90.0
+		for record in buildings.records:
+			if record["kind"] == "plot" and record.get("crop", "") == "" and record["where"] == "world":
+				var distance := Vector2(record["x"], record["y"]).distance_to(global_position)
+				if distance < best_distance:
+					best_distance = distance
+					best = record
+		if best.is_empty():
+			return "Stand by an empty farm plot to sow."
+		return buildings.tend_plot(self, best, item.id)
 	if item.definition().has("treasure_map") and item in inventory.items:
 		var hunts: Node = get_parent().get_node_or_null("TreasureMaps")
 		if hunts == null:
@@ -471,7 +489,7 @@ func _read_ground() -> void:
 	if swimming != was_swimming:
 		Events.splash.emit(global_position)
 	# Climbing gives a wider view.
-	_height_zoom = 1.7 if tile == TerrainTiles.Type.PEAK else 1.82 if tile == TerrainTiles.Type.ROCK else 2.0
+	_height_zoom = 1.5 if tile == TerrainTiles.Type.PEAK else 1.75 if tile == TerrainTiles.Type.ROCK else 2.0
 
 
 ## A safety net: if the player ever ends up inside a wall (a cave edge,
