@@ -143,6 +143,7 @@ func configure(p_level: int, p_rank: Rank = Rank.NORMAL, p_id: String = "husk") 
 
 func _ready() -> void:
 	add_to_group("enemies")
+	SunShadow.follow(_animator)
 	if boss_id != "":
 		rank = Rank.BOSS
 		brain = BossBrain.new(self, boss_id)

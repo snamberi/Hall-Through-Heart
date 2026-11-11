@@ -28,6 +28,8 @@ var time := 0.36
 var indoors := false
 
 var _light: PointLight2D
+## Brightness left from the last lightning strike, 0 to 1.
+var _lightning := 0.0
 
 
 func setup(player: Player) -> void:
@@ -56,6 +58,7 @@ func _process(delta: float) -> void:
 		time -= 1.0
 		day += 1
 		day_changed.emit(day)
+	_lightning = maxf(_lightning - delta * 2.2, 0.0)
 	var night := is_night()
 	if night and not was_night and not indoors:
 		blood_moon = blood_moon_tonight()
@@ -76,6 +79,11 @@ func blood_moon_tonight() -> bool:
 		return false
 	var night_of := day if time > 0.5 else day - 1
 	return posmod(hash(night_of * 7919 + 17), BLOOD_MOON_ODDS) == 0
+
+
+## A lightning strike lights up the whole land for a moment.
+func lightning(strength: float) -> void:
+	_lightning = maxf(_lightning, strength)
 
 
 ## How dark it is: 0 in full daylight, 1 in the dead of night.
@@ -106,7 +114,8 @@ func _apply() -> void:
 	var sky := _sky()
 	if blood_moon:
 		sky = sky.lerp(BLOOD_SKY, darkness() * 0.7)
-	color = Color(0.82, 0.8, 0.78) if indoors else sky
+	color = Color(0.82, 0.8, 0.78) if indoors else sky.lerp(Color(0.95, 0.97, 1.0), _lightning)
+	SunShadow.update(time, darkness(), indoors, _lightning)
 	if _light:
 		_light.energy = 0.55 if indoors else darkness() * 0.9
 		_light.enabled = _light.energy > 0.02

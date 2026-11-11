@@ -10,10 +10,12 @@ uniform sampler2D noise : repeat_enable, filter_linear;
 uniform vec4 tint : source_color = vec4(0.8, 0.82, 0.85, 1.0);
 uniform float density = 0.15;
 uniform vec2 drift = vec2(0.0);
+uniform vec2 anchor = vec2(0.0);
 uniform float vignette = 0.35;
 
 void fragment() {
-	vec2 uv = UV * vec2(1.6, 0.9);
+	// Anchored to the land, so fog banks stay put as the player walks through them.
+	vec2 uv = (UV + anchor) * vec2(1.6, 0.9);
 	float a = texture(noise, uv * 0.9 + drift).r;
 	float b = texture(noise, uv * 1.7 - drift * 1.4 + vec2(0.3, 0.7)).r;
 	float fog = smoothstep(0.35, 0.85, a * 0.65 + b * 0.45) * density;
@@ -157,8 +159,12 @@ func _process(delta: float) -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	_material.set_shader_parameter("density", _density)
 	_material.set_shader_parameter("tint", _tint)
-	# The fog drifts, and shifts as the player moves so it feels part of the land.
-	_material.set_shader_parameter("drift", Vector2(t * 0.006, t * 0.002) + _player.global_position / 9000.0)
+	# The fog drifts slowly, and is pinned to the land rather than the screen.
+	_material.set_shader_parameter("drift", Vector2(t * 0.006, t * 0.002))
+	var camera := get_viewport().get_camera_2d()
+	if camera:
+		var view := get_viewport().get_visible_rect().size / camera.zoom
+		_material.set_shader_parameter("anchor", camera.get_screen_center_position() / view)
 	_material.set_shader_parameter("vignette", 0.55 if _player.indoors else 0.28 + 0.25 * _day_night.darkness())
 
 
@@ -172,7 +178,8 @@ func _read_place() -> void:
 		_target_tint = weather[0]
 		# Mist gathers at dawn and in the dark.
 		var hour_fog := 0.12 if _day_night.phase() in ["Dawn", "Dusk"] else 0.06 * _day_night.darkness()
-		_target_density = weather[1] + hour_fog
+		# Clear land keeps only a whisper of haze; marsh and ash still fog up.
+		_target_density = weather[1] * 0.55 + hour_fog * 0.6
 		kind = weather[2]
 		Atmosphere.weather = _weather_for(tile)
 		if Atmosphere.weather != "":
@@ -254,7 +261,8 @@ func _weather_effects(delta: float) -> void:
 
 
 func flash(strength: float = 0.6) -> void:
-	_flash.color.a = strength
+	_flash.color.a = strength * 0.6
+	_day_night.lightning(minf(strength * 1.5, 1.0))
 
 
 func _near_fire() -> bool:

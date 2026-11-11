@@ -106,6 +106,10 @@ func _ready() -> void:
 	$Exploration.setup(_player, _world)
 	_resources.setup(_world)
 	$Atmosphere.setup(_player, _world, _day_night)
+	var ground_fx := GroundFX.new()
+	ground_fx.name = "GroundFX"
+	add_child(ground_fx)
+	ground_fx.setup(_player, _world, _day_night)
 	$Npcs.setup(_world)
 	_place_player_at_start()
 	_world.target = _player

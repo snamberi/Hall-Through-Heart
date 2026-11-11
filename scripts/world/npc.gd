@@ -55,6 +55,7 @@ func _ready() -> void:
 	sprite.position = Vector2(0, -23)
 	sprite.play("idle")
 	add_child(sprite)
+	SunShadow.follow(sprite)
 	if kind == "villager":
 		# Each villager dresses a little differently.
 		sprite.modulate = Color.from_hsv(randf(), 0.25, 1.0).lerp(Color.WHITE, 0.4)

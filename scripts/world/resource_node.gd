@@ -41,6 +41,7 @@ func _ready() -> void:
 		sprite.flip_h = hash(cell) % 2 == 0
 		sprite.add_to_group("occluders")
 		add_child(sprite)
+		SunShadow.cast(sprite)
 		solid = 9.0 if _data["kind"] == "tree" else 0.0
 	elif _data.has("flora"):
 		var plant := Sprite2D.new()
@@ -63,6 +64,7 @@ func _ready() -> void:
 				var tween := create_tween().set_loops()
 				tween.tween_property(sprite, "scale", Vector2(1.15, 1.15), 0.9)
 				tween.tween_property(sprite, "scale", Vector2(0.9, 0.9), 0.9)
+				add_child(FishShoal.new())
 	if solid > 0.0:
 		var body := StaticBody2D.new()
 		var shape := CollisionShape2D.new()

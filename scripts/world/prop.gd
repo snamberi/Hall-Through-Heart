@@ -52,6 +52,19 @@ static func create(art: Art, at: Vector2, solid: float = 0.0, prompt: String = "
 	return prop
 
 
+## Things lying flat on the floor cast no shadow.
+const FLAT_ART: Array[int] = [Art.CAVE, Art.LADDER, Art.DOOR, Art.PORTAL]
+const FLAT_DECOR: Array[int] = [Decor.FLOOR, Decor.RUBBLE, Decor.BONES, Decor.RUG, Decor.SOIL, Decor.SPIKE_TRAP]
+
+
+func _ready() -> void:
+	if z_index < 0 or _sprite == null:
+		return
+	var flat: Array[int] = FLAT_DECOR if _sprite.texture == DECOR else FLAT_ART
+	if not _sprite.frame in flat:
+		SunShadow.cast(_sprite)
+
+
 ## A prop drawn from the decor sheet (tools/generate_flora.py) instead.
 static var _decor_icons: Dictionary = {}
 
@@ -76,10 +89,12 @@ static func create_decor(index: int, at: Vector2, solid: float = 0.0, prompt: St
 
 ## Adds a warm glow around the prop, for torches, braziers, and lanterns.
 func add_light(strength: float = 0.9, reach: float = 1.6) -> void:
-	var light := PointLight2D.new()
+	var light := FlickerLight.new()
 	light.texture = LIGHT
 	light.texture_scale = reach
 	light.energy = strength
+	light.base_energy = strength
+	light.base_scale = reach
 	light.color = Color(1.0, 0.82, 0.55)
 	light.position.y = -30.0
 	add_child(light)

@@ -104,6 +104,11 @@ func _ready() -> void:
 		_layers[layer["name"]] = sprite
 
 
+## The sun shadow hides while the body is in water or in the saddle.
+func casts_shadow() -> bool:
+	return not (_player.swimming or _player.boating or _player.mount_id != "")
+
+
 func _process(delta: float) -> void:
 	_choose_animation(delta)
 	for sprite: AnimatedSprite2D in _layers.values():

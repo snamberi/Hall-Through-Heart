@@ -145,6 +145,8 @@ func _ready() -> void:
 	_mount.name = "Mount"
 	add_child(_mount)
 	_mount.setup(self)
+	SunShadow.follow(_mount)
+	SunShadow.follow(_animator)
 	var fader := OcclusionFader.new()
 	add_child(fader)
 	fader.setup(self)

@@ -140,6 +140,7 @@ func _scenery(look: int, at: Vector2, solid: float) -> Node2D:
 	sprite.position.y = -42.0
 	sprite.flip_h = hash(at) % 2 == 0
 	holder.add_child(sprite)
+	SunShadow.cast(sprite)
 	if solid > 0.0:
 		var body := StaticBody2D.new()
 		var shape := CollisionShape2D.new()
