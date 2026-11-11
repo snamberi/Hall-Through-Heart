@@ -50,8 +50,17 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform vec4 rarity_color : source_color = vec4(1.0);
 uniform float outline_mix = 0.0;
 uniform float glow = 0.0;
+uniform float water_line = 9999.0;
+varying float local_y;
+
+void vertex() {
+	local_y = VERTEX.y;
+}
 
 void fragment() {
+	if (local_y > water_line) {
+		discard;
+	}
 	vec4 pixel = texture(TEXTURE, UV);
 	float outline = step(pixel.r + pixel.g + pixel.b, 0.125) * pixel.a;
 	float pulse = 0.5 + 0.5 * sin(TIME * 5.0);
@@ -124,8 +133,10 @@ func _process(delta: float) -> void:
 		var sink := 19.0 if _player.deep_water else 13.0
 		var bob := sin(Time.get_ticks_msec() / 220.0) * 1.5
 		position.y = -23.0 + sink + bob
-		# The waterline sits a little below the shoulders whatever the depth.
+		# The waterline sits a little below the shoulders whatever the depth;
+		# the body below it is cut away so the real water shows through.
 		_water.position.y = 19.0 - sink
+		_set_water_line(19.0 - sink)
 		_water.queue_redraw()
 		_ripple_left -= delta
 		if _ripple_left <= 0.0 and _player.velocity.length() > 30.0:
@@ -133,6 +144,7 @@ func _process(delta: float) -> void:
 			_spawn_ripple()
 	elif position.y != -23.0:
 		position.y = -23.0
+		_set_water_line(9999.0)
 		_water.position.y = 0.0
 
 
@@ -149,26 +161,35 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
+var _water_line := 9999.0
+
+
+## Cuts the body (and everything worn) off below `line`, in sprite pixels.
+func _set_water_line(line: float) -> void:
+	if is_equal_approx(line, _water_line):
+		return
+	_water_line = line
+	if material is ShaderMaterial:
+		(material as ShaderMaterial).set_shader_parameter("water_line", line)
+	for sprite: AnimatedSprite2D in _layers.values():
+		(sprite.material as ShaderMaterial).set_shader_parameter("water_line", line)
+
+
 func _draw_water() -> void:
 	var deep := _player.deep_water
-	var colour: Color = TerrainTiles.COLORS[TerrainTiles.Type.DEEP_WATER if deep else TerrainTiles.Type.SHALLOW_WATER]
 	var t := Time.get_ticks_msec() / 1000.0
 	var line := 0.0
-	# The water in front of the body, with a wavy top edge.
+	# A wavy glint of surface across the body; the water itself is the ground's.
 	var surface := PackedVector2Array()
-	for i in 11:
-		var x := -22.0 + i * 4.4
-		surface.append(Vector2(x, line + sin(t * 5.0 + i * 0.9) * 1.2))
-	surface.append(Vector2(22.0, line + 30.0))
-	surface.append(Vector2(-22.0, line + 30.0))
-	_water.draw_colored_polygon(surface, Color(colour, 0.94))
-	for i in 10:
-		_water.draw_line(surface[i], surface[i + 1], Color(0.75, 0.88, 0.95, 0.85), 1.5)
+	for i in 7:
+		var x := -13.0 + i * 4.33
+		surface.append(Vector2(x, line + sin(t * 5.0 + i * 0.9) * 1.0))
+	_water.draw_polyline(surface, Color(0.8, 0.92, 1.0, 0.8), 1.5)
 	# Rings spreading from the swimmer.
 	_water.draw_set_transform(Vector2(0.0, line), 0.0, Vector2(1.0, 0.32))
 	for k in 2:
 		var phase := fposmod(t * 0.9 + k * 0.5, 1.0)
-		_water.draw_arc(Vector2.ZERO, 14.0 + phase * 16.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.6 * (1.0 - phase)), 1.5)
+		_water.draw_arc(Vector2.ZERO, 11.0 + phase * 8.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.5 * (1.0 - phase)), 1.5)
 	_water.draw_set_transform(Vector2.ZERO)
 	# A few bubbles in deep water.
 	if deep:
@@ -250,6 +271,7 @@ func apply_appearance(appearance: Dictionary) -> void:
 		Appearance.update_material(material, appearance)
 	else:
 		material = Appearance.make_material(appearance)
+		_water_line = 9999.0
 	_hood_color = Appearance.hood(appearance)
 	if not _layers.is_empty():
 		_update_hood()

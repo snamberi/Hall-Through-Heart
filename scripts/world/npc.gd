@@ -11,12 +11,13 @@ const KINDS := {
 	"recruit": {"name": "Wanderer", "prompt": "Talk", "sheet": "res://assets/sprites/npc_warden.png"},
 }
 ## A merchant's wares change this often, in seconds.
-const RESTOCK_SECONDS := 600.0
+const RESTOCK_SECONDS := 1200.0
+## How many wares a merchant lays out at a time.
+const SHELF := 5
+## One-off wares already bought this period: shelf key -> {slot: true}.
+static var _sold: Dictionary = {}
 ## Share of an item's value a merchant pays for it.
 const SELL_SHARE := 0.25
-const STAPLES: Array[String] = ["health_potion", "mana_potion", "stamina_tonic", "grilled_minnow", "copper_ingot", "oak_wood",
-	"wheat_seeds", "carrot_seeds", "potato_seeds", "farm_plot", "taming_treat"]
-
 var kind := "merchant"
 ## A wandering merchant sells rarer things.
 var wandering := false
@@ -31,7 +32,7 @@ var offer: Dictionary = {}
 ## What a merchant has for sale: [{"item": Item, "price": int, "endless": bool}].
 var stock: Array[Dictionary] = []
 
-var _stocked_at := -RESTOCK_SECONDS
+var _stock_period := -1
 ## Villagers: what they might say, and where they wander from.
 var lines: Array[String] = []
 var home := Vector2.ZERO
@@ -89,60 +90,116 @@ func prompt() -> String:
 	return prompt_text if prompt_text != "" else KINDS[kind]["prompt"]
 
 
-## Fills the shelves if it is time, with gear suited to the player's level.
+## Fills the shelves if it is time: SHELF wares, picked afresh every
+## RESTOCK_SECONDS. The pick depends only on who the merchant is and which
+## twenty minutes it is, so walking away and back does not reroll it.
 func restock_if_due(player: Player) -> void:
-	var now := Time.get_ticks_msec() / 1000.0
-	if now - _stocked_at < RESTOCK_SECONDS and not stock.is_empty():
+	var period := _period()
+	if period == _stock_period and not (stock.is_empty() and _sold_here().is_empty()):
 		return
-	_stocked_at = now
+	_stock_period = period
 	stock.clear()
-	if stock_kind == "smith":
-		for i in 7:
-			var level := maxi(player.leveling.level + randi_range(-1, 2), 1)
-			var gear := LootGenerator.make_equipment(level, maxi(LootGenerator.roll_rarity(0.0, 3.0), 1))
-			stock.append({"item": gear, "price": gear.value(), "endless": false})
-		for ingot in ["copper_ingot", "iron_ingot", "silver_ingot"]:
-			var bar := Item.create(ingot)
-			stock.append({"item": bar, "price": bar.value() * 2, "endless": true})
-		return
-	if stock_kind == "alchemy":
-		for potion in ["health_potion", "mana_potion", "stamina_tonic", "might_elixir", "bloodcap_draught", "aloe_salve"]:
-			if ItemDB.ITEMS.has(potion):
-				var dose := Item.create(potion)
-				stock.append({"item": dose, "price": dose.value(), "endless": true})
-		for i in 2:
-			var gem := Item.create(Gems.random_gem(player.leveling.level))
-			stock.append({"item": gem, "price": gem.value() * 2, "endless": false})
-		return
-	for item_id in STAPLES:
-		var item := Item.create(item_id)
-		stock.append({"item": item, "price": item.value(), "endless": true})
-	for tool_id: String in ["bronze_pickaxe", "bronze_hatchet", "pony_whistle", "horse_whistle"]:
-		var tool := Item.create(tool_id)
-		stock.append({"item": tool, "price": tool.value(), "endless": false})
-	for i in 5:
-		var level := maxi(player.leveling.level + randi_range(-2, 1), 1)
-		var gear := LootGenerator.make_equipment(level, LootGenerator.roll_rarity(0.0, 1.0))
-		stock.append({"item": gear, "price": gear.value(), "endless": false})
-	if wandering:
-		var level := player.leveling.level
-		for i in 2:
-			var gem := Item.create(Gems.random_gem(level + 15))
-			stock.append({"item": gem, "price": gem.value() * 2, "endless": false})
-		var map := Item.create("treasure_map")
-		stock.append({"item": map, "price": 150, "endless": false})
-		var boat := Item.create("rowboat")
-		stock.append({"item": boat, "price": 300, "endless": false})
-		var fine := LootGenerator.make_equipment(level, 3)
-		stock.append({"item": fine, "price": fine.value() * 2, "endless": false})
-		if randf() < 0.4:
+	var level := player.leveling.level
+	var random := RandomNumberGenerator.new()
+	random.seed = hash(_shelf_key())
+	# Everything this kind of merchant might carry: [item id or "gear", weight].
+	var pool: Array = []
+	match stock_kind:
+		"smith":
+			pool = [["gear", 6.0], ["fine_gear", 2.0], ["copper_ingot", 1.0], ["iron_ingot", 1.0], ["silver_ingot", 0.7], ["bronze_pickaxe", 0.8], ["bronze_hatchet", 0.8]]
+		"alchemy":
+			pool = [["health_potion", 3.0], ["mana_potion", 2.5], ["stamina_tonic", 2.0], ["might_elixir", 1.5], ["bloodcap_draught", 1.2], ["aloe_salve", 1.5], ["gem", 1.5]]
+		_:
+			if wandering:
+				pool = [["rare_gem", 2.0], ["treasure_map", 1.5], ["rowboat", 1.0], ["fine_gear", 3.0], ["set_piece", 1.2], ["horse_whistle", 0.8], ["taming_treat", 1.0]]
+			else:
+				pool = [["health_potion", 2.5], ["mana_potion", 1.5], ["stamina_tonic", 1.2], ["grilled_minnow", 1.2], ["copper_ingot", 1.0], ["oak_wood", 1.0],
+					["wheat_seeds", 0.8], ["carrot_seeds", 0.8], ["potato_seeds", 0.8], ["farm_plot", 0.8], ["taming_treat", 0.8], ["torch", 1.5],
+					["bronze_pickaxe", 0.8], ["bronze_hatchet", 0.8], ["pony_whistle", 0.6], ["gear", 3.0]]
+	pool = pool.filter(func(entry: Array) -> bool: return entry[0] in SPECIAL or ItemDB.ITEMS.has(entry[0]))
+	# The loot tables roll with the global dice; pin them for this shelf.
+	seed(hash(_shelf_key()))
+	var sold := _sold_here()
+	for slot in SHELF:
+		if pool.is_empty():
+			break
+		var total := 0.0
+		for entry: Array in pool:
+			total += entry[1]
+		var roll := random.randf() * total
+		var chosen: Array = pool[-1]
+		for entry: Array in pool:
+			roll -= entry[1]
+			if roll <= 0.0:
+				chosen = entry
+				break
+		var offer_entry := _make_offer(chosen[0], level, random)
+		# Only arms and armour may come up twice on one shelf.
+		if not chosen[0] in ["gear", "fine_gear"]:
+			pool.erase(chosen)
+		offer_entry["slot"] = slot
+		if not sold.has(slot):
+			stock.append(offer_entry)
+	randomize()
+
+
+const SPECIAL: Array[String] = ["gear", "fine_gear", "gem", "rare_gem", "set_piece"]
+
+
+func _make_offer(what: String, level: int, random: RandomNumberGenerator) -> Dictionary:
+	match what:
+		"gear":
+			var gear := LootGenerator.make_equipment(maxi(level + random.randi_range(-1, 2), 1), maxi(LootGenerator.roll_rarity(0.0, 2.0), 1))
+			return {"item": gear, "price": gear.value(), "endless": false}
+		"fine_gear":
+			var fine := LootGenerator.make_equipment(maxi(level + random.randi_range(0, 2), 1), 3 if random.randf() < 0.75 else 4)
+			return {"item": fine, "price": fine.value() * 2, "endless": false}
+		"gem":
+			var gem := Item.create(Gems.random_gem(level))
+			return {"item": gem, "price": gem.value() * 2, "endless": false}
+		"rare_gem":
+			var rare := Item.create(Gems.random_gem(level + 15))
+			return {"item": rare, "price": rare.value() * 2, "endless": false}
+		"set_piece":
 			var piece := LootGenerator.make_set_piece(level)
-			stock.append({"item": piece, "price": piece.value() * 3, "endless": false})
+			return {"item": piece, "price": piece.value() * 3, "endless": false}
+	var item := Item.create(what)
+	var single: bool = item.definition().has("tool") or item.definition().has("mount") or what in ["treasure_map", "rowboat"]
+	var price := item.value() * (2 if what.ends_with("_ingot") else 1)
+	if what == "treasure_map":
+		price = 150
+	elif what == "rowboat":
+		price = 300
+	return {"item": item, "price": price, "endless": not single}
+
+
+## Marks a one-off ware as gone until the shelves change.
+func sold(entry: Dictionary) -> void:
+	stock.erase(entry)
+	if entry.has("slot"):
+		if not _sold.has(_shelf_key()):
+			# Old shelves no longer matter.
+			_sold.clear()
+			_sold[_shelf_key()] = {}
+		_sold[_shelf_key()][entry["slot"]] = true
+
+
+func _sold_here() -> Dictionary:
+	return _sold.get(_shelf_key(), {})
+
+
+func _period() -> int:
+	return int(Time.get_unix_time_from_system() / RESTOCK_SECONDS)
+
+
+func _shelf_key() -> String:
+	var at := home if home != Vector2.ZERO else position
+	return "%s:%s:%d:%d:%d" % [stock_kind, wandering, roundi(at.x / 44.0), roundi(at.y / 44.0), _period()]
 
 
 ## Seconds until the wares change.
 func restock_in() -> float:
-	return maxf(RESTOCK_SECONDS - (Time.get_ticks_msec() / 1000.0 - _stocked_at), 0.0)
+	return RESTOCK_SECONDS - fmod(Time.get_unix_time_from_system(), RESTOCK_SECONDS)
 
 
 ## Gold a merchant pays for one of an item.

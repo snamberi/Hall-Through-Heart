@@ -361,6 +361,7 @@ func load_data(data: Dictionary) -> void:
 func enter_house(record: Dictionary) -> void:
 	var tier: int = clampi(int(record.get("tier", 1)), 1, MAX_TIER)
 	var size: Vector2i = HOUSE_SIZES[tier]
+	_instances.prepare_room()
 	var house := Room.new()
 	house.wall_style = "wood"
 	house.title = "Home  -  %s" % ["Cottage", "House", "Manor"][tier - 1]

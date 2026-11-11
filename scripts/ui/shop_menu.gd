@@ -175,7 +175,7 @@ func _trade(times: int) -> void:
 			inventory.add(bought)
 			Events.codex_event.emit("purchases", 1)
 			if not _choice["entry"]["endless"]:
-				npc.stock.erase(_choice["entry"])
+				npc.sold(_choice["entry"])
 				break
 	Audio.play("pickup", -6.0)
 	refresh()

@@ -41,7 +41,7 @@ func setup(player: Player) -> void:
 	add_child(_sprite)
 	_critter = Sprite2D.new()
 	_critter.texture = Critter.SHEET
-	_critter.hframes = Critter.KINDS.size() * 2
+	_critter.hframes = Critter.KINDS.size() * Critter.FRAMES
 	add_child(_critter)
 	Events.enemy_killed.connect(_on_kill)
 	_refresh_look()
@@ -147,7 +147,7 @@ func _refresh_look() -> void:
 	if pet["kind"] == "critter":
 		_sprite.visible = false
 		_critter.visible = true
-		_critter.frame = Critter.KINDS.find(pet["species"]) * 2
+		_critter.frame = Critter.KINDS.find(pet["species"]) * Critter.FRAMES
 		_player.stats.set_modifiers("pet", CRITTER_GIFTS.get(pet["species"], {}).get("mods", {}))
 	else:
 		_critter.visible = false
@@ -173,7 +173,7 @@ func _physics_process(delta: float) -> void:
 		global_position = global_position.lerp(spot, clampf(4.0 * delta, 0.0, 1.0))
 	var moving := global_position.distance_to(spot) > 6.0
 	if pet["kind"] == "critter":
-		_critter.frame = Critter.KINDS.find(pet["species"]) * 2 + (int(Time.get_ticks_msec() / 160.0) % 2 if moving else 0)
+		_critter.frame = Critter.KINDS.find(pet["species"]) * Critter.FRAMES + (2 + int(Time.get_ticks_msec() / 160.0) % 2 if moving else 0)
 		_critter.flip_h = spot.x < global_position.x
 	else:
 		var wanted := "walk" if moving else "idle"

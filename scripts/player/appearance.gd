@@ -47,7 +47,16 @@ const SHADER := """
 shader_type canvas_item;
 uniform vec3 source[14];
 uniform vec3 target[14];
+// Below this line (in the sprite's own pixels) the body is under water.
+uniform float water_line = 9999.0;
+varying float local_y;
+void vertex() {
+	local_y = VERTEX.y;
+}
 void fragment() {
+	if (local_y > water_line) {
+		discard;
+	}
 	vec4 pixel = texture(TEXTURE, UV);
 	vec3 result = pixel.rgb;
 	for (int i = 0; i < 14; i++) {
@@ -56,6 +65,7 @@ void fragment() {
 		}
 	}
 	COLOR = vec4(result, pixel.a) * COLOR;
+	COLOR.rgb = mix(COLOR.rgb, vec3(0.75, 0.88, 0.95), step(water_line - 1.5, local_y) * 0.55);
 }
 """
 

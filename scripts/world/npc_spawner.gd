@@ -1,10 +1,10 @@
 class_name NpcSpawner
 extends Node2D
-## Puts the merchant and warden at the Sanctuary. Everyone else lives in
-## villages (see Villages).
+## Nobody waits at the Sanctuary: the player wakes alone. Merchants and
+## wardens live in villages (see Villages) and at camps on the road.
 
 const REGION := 96
-const SANCTUARY := {"merchant": Vector2i(3, -2), "warden": Vector2i(-3, -2)}
+const SANCTUARY := {}
 
 var _world: World
 var _by_chunk: Dictionary = {}

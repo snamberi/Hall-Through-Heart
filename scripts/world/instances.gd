@@ -65,6 +65,15 @@ func return_position() -> Vector2:
 	return _return_position
 
 
+## Settles where the next room is built. Call before making one.
+func _choose_origin() -> void:
+	Room.choose_origin(_return_position if room != null else _player.global_position)
+
+
+func prepare_room() -> void:
+	_choose_origin()
+
+
 ## Moves the player into a built room.
 func enter(new_room: Room) -> void:
 	if room == null:
@@ -110,6 +119,7 @@ func enter_cave(cave_seed: int, level: int, lair: bool, on_chest: Callable) -> v
 	var theme_ids: Array = CAVE_THEMES.keys()
 	var theme_key: String = theme_ids[random.randi_range(0, theme_ids.size() - 1)]
 	var theme: Dictionary = CAVE_THEMES[theme_key]
+	_choose_origin()
 	var cave := Room.new()
 	cave.title = theme["title"] + (" (Lair)" if lair else "")
 	Events.codex_event.emit("caves", 1)
@@ -251,6 +261,7 @@ const DUNGEON_SPACING := 24
 func enter_dungeon(dungeon_seed: int, level: int, boss_id: String, on_cleared: Callable) -> void:
 	var random := RandomNumberGenerator.new()
 	random.seed = dungeon_seed
+	_choose_origin()
 	var crypt := Room.new()
 	crypt.wall_style = "stone"
 	crypt.title = "Crypt of %s" % (BossDB.BOSSES[boss_id]["name"] as String).trim_prefix("The ")
@@ -403,6 +414,7 @@ func _trap(kind: String, at: Vector2, damage: float, level: int) -> Trap:
 func enter_arena(arena_seed: int, level: int, on_cleared: Callable) -> void:
 	var random := RandomNumberGenerator.new()
 	random.seed = arena_seed
+	_choose_origin()
 	var arena := Room.new()
 	arena.wall_style = "void"
 	arena.title = "The Void"

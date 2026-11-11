@@ -69,7 +69,25 @@ func setup(player: Player) -> void:
 	_refresh()
 
 
+## Words for the death screen, by what struck the last blow.
+const DEATH_LINES := {
+	"blow": ["You have fallen", "Struck down", "The Hall claims another", "Your strength fails you", "Darkness closes in", "Beaten, not broken", "The rot takes you", "Your tale pauses here"],
+	"fire": ["Burned to cinders", "The flames take you", "Ash to ash"],
+	"burn": ["Burned to cinders", "The flames take you", "Ash to ash"],
+	"frost": ["Frozen where you stand", "The cold claims you", "Winter keeps you"],
+	"poison": ["The venom wins", "Poison stills your heart", "Rot runs in your veins"],
+	"bleed": ["Bled dry", "Your wounds would not close", "The last drop falls"],
+	"shadow": ["Swallowed by shadow", "The dark drinks you in", "Your light gutters out"],
+	"holy": ["Judged and found wanting", "Burned by the light"],
+	"storm": ["Struck from the sky", "The storm takes its due", "Thunder has the last word"],
+}
+
+
 func show_death(xp_lost: int, respawn_name: String) -> void:
+	var lines: Array = DEATH_LINES.get(_player.last_harm, DEATH_LINES["blow"])
+	if DayNight.blood_moon and randf() < 0.5:
+		lines = ["The blood moon feeds", "Red night, red end"]
+	_death_message.text = lines.pick_random()
 	_death_summary.text = "Lost %d XP  -  waking at %s" % [xp_lost, respawn_name]
 	_death_message.visible = true
 

@@ -112,6 +112,9 @@ var hotbar: Hotbar
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()
 ## The mount being ridden (Mount.MOUNTS id), or "".
 var mount_id := ""
+## What last hurt the player: an element, a status, or "blow". Shapes the
+## words on the death screen.
+var last_harm := "blow"
 var _mount: Mount
 var pets: Pets
 ## Sailing a rowboat: water is crossed quickly and dry.
@@ -676,6 +679,7 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		_invulnerable_left = 2.0
 		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -40), "Unbreakable", UITheme.GOLD, 14)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(0.95, 0.3, 0.3))
+	last_harm = element if element != "" else "blow"
 	health.take_damage(amount)
 	DamageNumber.spawn(get_parent(), global_position, amount, Color(0.95, 0.3, 0.3))
 	if health.is_dead():
@@ -739,6 +743,7 @@ func _process_afflictions(delta: float) -> void:
 			affliction["tick"] += 0.5
 			var amount: float = maxf(affliction["power"] * 0.5, 1.0)
 			DamageNumber.spawn(get_parent(), global_position, amount, ItemDB.STATUSES[id]["color"])
+			last_harm = id
 			health.take_damage(amount)
 			since_hurt = 0.0
 			if health.is_dead():

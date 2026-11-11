@@ -883,21 +883,90 @@ SNOW_FOX = _quad(
     leg=lambda x: [("frost_fur", R(x + 0.5, 32, x + 3, 40)), ("troll", R(x + 0.3, 39.5, x + 3.2, 41.4))],
     head_pivot=(29, 27),
 )
-SHORE_CRAB = _quad(
-    body=[("blood", E(10, 27, 34, 38)), ("wound", E(14, 30, 30, 37)), ("shine", R(15, 29, 18, 30)), ("eye_white", R(18, 25, 19.5, 28)), ("eye_white", R(25, 25, 26.5, 28)),
-          ("void", R(18.2, 25.2, 19.3, 26.3)), ("void", R(25.2, 25.2, 26.3, 26.3))],
-    head=[("blood", [(30, 30), (36, 24), (41, 24), (42, 28), (38, 31)]), ("blood", [(36, 24), (39, 20), (41, 21), (39, 25)]), ("blood", [(12, 31), (6, 25), (2, 26), (5, 30)])],
-    tail=[],
-    leg=lambda x: [("blood", [(x, 35), (x - 3, 39), (x - 2, 41), (x + 1.5, 37)])],
-    head_pivot=(32, 32),
-)
+# A crab seen from the front: a broad shell, eyes on stalks, two raised
+# claws, and three walking legs a side that scuttle in turn.
+def _crab_leg(x, side):
+    return [("blood", [(x, 33), (x + side * 5, 30), (x + side * 6.5, 31.5), (x + side * 2, 35)]),
+            ("wound", [(x + side * 5, 30.5), (x + side * 8, 40), (x + side * 6.4, 41.4), (x + side * 4.6, 32)])]
+
+
+SHORE_CRAB = {
+    "root": dict(parent=None, pivot=(22, 41), parts=[]),
+    "leg_l1": dict(parent="root", pivot=(14, 33), parts=_crab_leg(14, -1)),
+    "leg_l2": dict(parent="root", pivot=(15, 35), parts=_crab_leg(15.5, -1)),
+    "leg_l3": dict(parent="root", pivot=(17, 36), parts=_crab_leg(17, -1)),
+    "leg_r1": dict(parent="root", pivot=(30, 33), parts=_crab_leg(30, 1)),
+    "leg_r2": dict(parent="root", pivot=(29, 35), parts=_crab_leg(28.5, 1)),
+    "leg_r3": dict(parent="root", pivot=(27, 36), parts=_crab_leg(27, 1)),
+    "body": dict(parent="root", pivot=(22, 34), parts=[
+        ("blood", E(10, 26, 34, 39)), ("wound", E(12, 33, 32, 39.5)), ("blood", [(11, 30), (16, 26), (28, 26), (33, 30), (30, 28), (14, 28)]),
+        ("shine", R(15, 28, 19, 29)), ("shine", R(14, 30, 15, 31)), ("wound", R(18, 31, 19, 32)), ("wound", R(24, 30, 25, 31)), ("wound", R(28, 32, 29, 33)),
+        ("blood", R(18, 22, 19.4, 27)), ("blood", R(24.6, 22, 26, 27)), ("eye_white", E(16.8, 20, 20.6, 23.8)), ("eye_white", E(23.4, 20, 27.2, 23.8)),
+        ("void", R(18.4, 21.2, 19.6, 22.6)), ("void", R(25, 21.2, 26.2, 22.6)), ("void", [(19, 36), (25, 36), (24, 37), (20, 37)])]),
+    "claw_l": dict(parent="body", pivot=(12, 31), parts=[
+        ("blood", [(12, 32), (7, 29), (5, 25), (7, 24), (10, 27), (14, 30)]), ("blood", E(1, 17, 10, 26)),
+        ("wound", [(3, 17), (1, 12), (4, 14), (6, 18)]), ("blood", [(6, 18), (9, 12), (10, 15), (9, 19)]), ("void", [(4, 17), (5.5, 14), (7, 17.5)]),
+        ("shine", R(3, 20, 5, 21))]),
+    "claw_r": dict(parent="body", pivot=(32, 31), parts=[
+        ("blood", [(32, 32), (37, 29), (39, 25), (37, 24), (34, 27), (30, 30)]), ("blood", E(34, 17, 43, 26)),
+        ("wound", [(41, 17), (43, 12), (40, 14), (38, 18)]), ("blood", [(38, 18), (35, 12), (34, 15), (35, 19)]), ("void", [(40, 17), (38.5, 14), (37, 17.5)]),
+        ("shine", R(36, 20, 38, 21))]),
+}
+CRAB_ORDER = ["leg_l1", "leg_r1", "leg_l2", "leg_r2", "leg_l3", "leg_r3", "claw_l", "claw_r", "body"]
+CRAB_STAND = {"shadow": (22, 15, 0)}
+
+
+def _crab(step=0.0, bob=0, dx=0, claws=0.0, lean=0.0, snap=0.0, shadow=15):
+    """Legs scuttle in two alternating sets; claws lift and snap."""
+    return {"root": (dx, bob, lean), "shadow": (22, shadow, 0),
+            "leg_l1": (0, 0, 16 * step), "leg_l2": (0, 0, -16 * step), "leg_l3": (0, 0, 16 * step),
+            "leg_r1": (0, 0, 16 * step), "leg_r2": (0, 0, -16 * step), "leg_r3": (0, 0, 16 * step),
+            "claw_l": (0, 0, -18 * claws - 10 * snap), "claw_r": (0, 0, 18 * claws - 10 * snap)}
+
+
+CRAB_IDLE = [_crab(claws=c, bob=b) for c, b in ((0, 0), (0.25, 0), (0.5, 1), (0.25, 0))]
+CRAB_WALK = cycle(8, lambda s: _crab(step=s, bob=-round(abs(s)), claws=0.2))
+CRAB_WINDUP = [_crab(claws=1.2 * t, bob=round(2 * t), dx=(i % 2 if i > 2 else 0)) for i, t in enumerate(k / 5 for k in range(6))]
+CRAB_LUNGE = [_crab(claws=1.2 - 1.6 * k, dx=round(7 * k), bob=-round(3 * k), snap=k, lean=6 * k) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+CRAB_HURT = [_crab(dx=-round(3 * t), lean=-10 * t, claws=-0.4 * t) for t in (0.7, 1.0, 0.4)]
+CRAB_FALLEN = dict(_crab(step=1.0, claws=1.4, shadow=16), root=(0, -8, 180), root_pivot=(22, 34))
+CRAB_DEATH = keyframes([(0, dict(_crab(), root_pivot=(22, 34))), (1, dict(_crab(lean=-12, claws=0.6), root_pivot=(22, 34))), (5, CRAB_FALLEN), (7, CRAB_FALLEN)])
+CRAB_ANIMATIONS = [("idle", CRAB_IDLE), ("walk", CRAB_WALK), ("windup", CRAB_WINDUP), ("lunge", CRAB_LUNGE), ("hurt", CRAB_HURT), ("death", CRAB_DEATH)]
+
+# A toad in profile: fat warty body, bulging eye, a folded hind leg that
+# kicks straight when it hops, and a short front leg.
 MARSH_TOAD = {
     "root": dict(parent=None, pivot=(22, 41), parts=[]),
+    "leg_b": dict(parent="root", pivot=(14, 35), parts=[
+        ("lurker", E(7, 29, 19, 40)), ("lurker", [(9, 37), (16, 37), (20, 40), (10, 40.6)]), ("lurker", [(10, 40), (23, 40), (24, 41.4), (10, 41.4)]),
+        ("poison", E(10, 32, 13, 35)), ("void", R(19, 40.6, 20, 41.4)), ("void", R(22, 40.6, 23, 41.4))]),
     "body": dict(parent="root", pivot=(22, 41), parts=[
-        ("lurker", E(9, 24, 35, 41)), ("lurker", R(9, 34, 35, 41)), ("eye_white", E(14, 33, 30, 41)), ("poison", E(13, 27, 17, 31)), ("poison", E(26, 29, 29, 32)),
-        ("lurker", E(13, 20, 20, 27)), ("lurker", E(24, 20, 31, 27)), ("glow_orange", E(14.5, 21.5, 18.5, 25.5)), ("glow_orange", E(25.5, 21.5, 29.5, 25.5)),
-        ("void", R(16, 22.5, 17, 24.5)), ("void", R(27, 22.5, 28, 24.5)), ("void", [(16, 30), (28, 30), (27, 31), (17, 31)])]),
+        ("lurker", E(10, 24, 34, 40)), ("lurker", [(24, 27), (33, 24), (38, 28), (38, 33), (33, 37), (24, 38)]),
+        ("eye_white", E(16, 33, 34, 40.6)), ("eye_white", [(30, 33), (38, 32), (37, 35), (31, 37)]),
+        ("poison", E(13, 27, 17, 31)), ("poison", E(20, 25, 23, 28)), ("poison", E(24, 30, 26.5, 32.5)), ("moss", E(15, 33, 17, 35)),
+        ("lurker", E(27, 19, 35, 27)), ("glow_orange", E(28.6, 20.6, 33.6, 25.6)), ("void", R(31, 21.6, 32.4, 24.6)), ("shine", R(29.4, 21.4, 30.4, 22.4)),
+        ("void", [(30, 31), (38, 30), (38, 30.9), (30, 31.9)]), ("void", R(37, 27.6, 37.8, 28.4))]),
+    "leg_f": dict(parent="root", pivot=(28, 35), parts=[
+        ("lurker", [(26, 33), (30, 33), (30.5, 40), (27, 40)]), ("lurker", [(27, 40), (34, 40), (35, 41.4), (27, 41.4)]),
+        ("void", R(31, 40.6, 32, 41.4)), ("void", R(33.5, 40.6, 34.5, 41.4))]),
 }
+TOAD_ORDER = ["leg_b", "body", "leg_f"]
+
+
+def _toad(sx=1.0, sy=1.0, dx=0, dy=0, turn=0.0, kick=0.0, reach=0.0, shadow=13):
+    return {"root": (dx, dy, turn), "body_scale": (sx, sy), "leg_b": (-round(2 * kick), round(2 * kick), 70 * kick),
+            "leg_f": (0, 0, -35 * reach), "shadow": (22, shadow * sx, 0)}
+
+
+TOAD_IDLE = [_toad(), _toad(1.04, 0.96), _toad(1.07, 0.93), _toad(1.03, 0.97)]
+TOAD_WALK = [_toad(1.1, 0.88, dy=1), _toad(0.96, 1.06, 1, -2, -10, 0.55, 0.5), _toad(0.92, 1.1, 2, -6, -14, 1.0, 1.0), _toad(0.94, 1.08, 3, -8, -6, 1.05, 0.9),
+             _toad(0.97, 1.04, 3, -6, 8, 0.7, 0.3), _toad(1.0, 1.0, 2, -3, 12, 0.35, -0.4), _toad(1.16, 0.82, 1), _toad(1.05, 0.95)]
+TOAD_WINDUP = [_toad(1.0 + 0.3 * t, 1.0 - 0.3 * t, (i % 2 if i > 2 else 0)) for i, t in enumerate(k / 5 for k in range(6))]
+TOAD_LUNGE = [_toad(1.0 - 0.06 * k, 1.0 + 0.08 * k, round(7 * k), -round(6 * k), -12 * k, k, k) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+TOAD_HURT = [_toad(1.12, 0.84, -1), _toad(1.2, 0.74, -2), _toad(1.08, 0.92, -1)]
+TOAD_FALLEN = dict(_toad(1.05, 0.9, kick=0.9, reach=0.8, shadow=14), root=(0, -9, 178), root_pivot=(22, 33))
+TOAD_DEATH = keyframes([(0, dict(_toad(), root_pivot=(22, 33))), (1, dict(_toad(1.1, 0.86, -2), root_pivot=(22, 33))), (5, TOAD_FALLEN), (7, TOAD_FALLEN)])
+TOAD_ANIMATIONS = [("idle", TOAD_IDLE), ("walk", TOAD_WALK), ("windup", TOAD_WINDUP), ("lunge", TOAD_LUNGE), ("hurt", TOAD_HURT), ("death", TOAD_DEATH)]
 WILDLIFE = {
     "deer": (DEER, QUAD_ORDER, QUAD_ANIMATIONS),
     "wild_hare": (WILD_HARE, QUAD_ORDER, QUAD_ANIMATIONS),
@@ -906,8 +975,8 @@ WILDLIFE = {
     "pheasant": (PHEASANT, QUAD_ORDER, QUAD_ANIMATIONS),
     "desert_lizard": (DESERT_LIZARD, QUAD_ORDER, QUAD_ANIMATIONS),
     "snow_fox": (SNOW_FOX, QUAD_ORDER, QUAD_ANIMATIONS),
-    "shore_crab": (SHORE_CRAB, QUAD_ORDER, QUAD_ANIMATIONS),
-    "marsh_toad": (MARSH_TOAD, ["body"], SLIME_ANIMATIONS),
+    "shore_crab": (SHORE_CRAB, CRAB_ORDER, CRAB_ANIMATIONS),
+    "marsh_toad": (MARSH_TOAD, TOAD_ORDER, TOAD_ANIMATIONS),
 }
 
 # Mounts: drawn as quadrupeds, ridden by the player.

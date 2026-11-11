@@ -3,8 +3,22 @@ extends Node2D
 ## A place off the world map: a cave, a void arena, the inside of a house.
 ## It is built far from the playable world and surrounded by blackness.
 
-## Where rooms are built, well away from anything the world generates.
-const ORIGIN := Vector2(0, -900000)
+## Where rooms are built: well away from where the player was standing, but
+## near enough to the origin that positions stay exact. (Far out, positions
+## round to sixteenths of a pixel, and the physics wedges bodies into walls.)
+static var ORIGIN := Vector2(0, -90000)
+const FAR := 90000.0
+
+
+## Picks where the next room goes, given where the player is in the world.
+## Call before making a Room.
+static func choose_origin(from: Vector2) -> void:
+	ORIGIN = Vector2(0, -FAR) if from.y > 0.0 or from.distance_to(Vector2(0, -FAR)) >= FAR else Vector2(0, FAR)
+
+
+## Whether a position is inside the space set aside for the current room.
+static func holds(at: Vector2) -> bool:
+	return at.distance_to(ORIGIN) < 30000.0
 
 var title := ""
 ## Tile types by cell; anything not in here is solid black.

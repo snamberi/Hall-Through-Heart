@@ -77,7 +77,11 @@ func _physics_process(delta: float) -> void:
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
 		# Lair guardians stay put; their structure removes them with its chunk.
-		if enemy.lair_home == Vector2.INF and enemy.global_position.distance_to(_player.global_position) > despawn_distance:
+		# A wounded monster lingers for a few minutes so the player can come
+		# back and finish it, rather than meeting a fresh one at full health.
+		var far := enemy.global_position.distance_to(_player.global_position)
+		var wounded := enemy.health.current < enemy.health.max_health and enemy._since_hurt < Enemy.WOUNDS_LAST
+		if enemy.lair_home == Vector2.INF and far > despawn_distance and (not wounded or far > despawn_distance * 2.6):
 			enemy.queue_free()
 
 	# More things stir after dark.

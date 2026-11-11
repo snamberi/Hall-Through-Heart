@@ -65,6 +65,8 @@ const DAMAGE_PER_LEVEL := 0.12
 const XP_LEVEL_EXPONENT := 1.25
 const AGGRO_RADIUS := 290.0
 const LEASH_RADIUS := 560.0
+## Seconds a monster takes, at the least, to heal from nothing to full.
+const WOUNDS_LAST := 180.0
 
 var enemy_id := "husk"
 var display_name := "Husk"
@@ -236,8 +238,8 @@ func _physics_process(delta: float) -> void:
 	if shield_max > 0.0 and _since_hurt > SHIELD_REGEN_DELAY and shield < shield_max:
 		shield = minf(shield + shield_max * 0.25 * delta, shield_max)
 		queue_redraw()
-	if has_trait("regen") and _since_hurt > 3.0:
-		health.heal(health.max_health * 0.04 * delta)
+	if has_trait("regen") and _since_hurt > 2.0:
+		health.heal(health.max_health / WOUNDS_LAST * delta)
 	if not modifiers.is_empty():
 		_update_modifiers(delta)
 	if brain and state != State.STAGGER:
@@ -266,11 +268,10 @@ func _physics_process(delta: float) -> void:
 			if not has_target or distance > LEASH_RADIUS:
 				_pick_wander()
 			elif lair_home != Vector2.INF and global_position.distance_to(lair_home) > 520.0:
-				# Too far from the lair: give up the chase and heal on the way back.
+				# Too far from the lair: give up the chase and head back, still wounded.
 				_pick_wander()
 				_direction = global_position.direction_to(lair_home)
 				_state_time_left = 2.5
-				health.heal(health.max_health * 0.25)
 			elif _in_attack_range(distance):
 				_enter(State.WINDUP, windup_time)
 				velocity = Vector2.ZERO
@@ -679,7 +680,7 @@ func _read_ground(delta: float) -> void:
 	_ground_left = 0.25
 	var world: World = get_tree().get_first_node_in_group("world")
 	# Rooms off the map are far above the world; their ground is never water.
-	if world == null or _data.get("flying", false) or global_position.y < Room.ORIGIN.y / 2.0:
+	if world == null or _data.get("flying", false) or Room.holds(global_position):
 		_ground_speed = 1.0
 		in_water = false
 		return

@@ -112,6 +112,14 @@ func _ready() -> void:
 	ground_fx.setup(_player, _world, _day_night)
 	$Npcs.setup(_world)
 	_place_player_at_start()
+	if saved_world.has("position"):
+		# Carry on from where the game was left.
+		var left: Array = saved_world["position"]
+		var cell := _world.generator.find_walkable_near(_world.world_to_cell(Vector2(left[0], left[1])))
+		var resume := Vector2(left[0], left[1]) if cell == _world.world_to_cell(Vector2(left[0], left[1])) else _world.cell_to_world(cell)
+		_player.global_position = resume
+		_player.camera.reset_smoothing()
+		_world.load_around_now(resume)
 	_world.target = _player
 	_spawner.setup(_world, _player)
 	_loot.setup(_player)
@@ -126,6 +134,11 @@ func save_data() -> Dictionary:
 	if _checkpoint != Vector2.INF:
 		data["checkpoint"] = [_checkpoint.x, _checkpoint.y]
 		data["checkpoint_name"] = _checkpoint_name
+	# Where the player stands, so they come back to the same spot; from
+	# inside a cave or house, the place they went in.
+	if not _player.is_dead():
+		var at := _instances.return_position() if _instances.is_inside() else _player.global_position
+		data["position"] = [at.x, at.y]
 	return data
 
 

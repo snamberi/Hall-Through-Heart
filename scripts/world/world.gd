@@ -143,6 +143,19 @@ func _build_chunk(chunk: Vector2i) -> void:
 		for x in span:
 			types[y * span + x] = generator.tile_type_at(origin + Vector2i(x - 1, y - 1))
 
+	# A skirt of the neighbours' edge tiles, drawn underneath, so no hairline
+	# of background ever shows where two chunks meet.
+	var skirt := TileMapLayer.new()
+	skirt.tile_set = _tile_set
+	skirt.collision_enabled = false
+	skirt.z_index = -1
+	layer.add_child(skirt)
+	for y in span:
+		for x in span:
+			if x == 0 or y == 0 or x == span - 1 or y == span - 1:
+				var ring := Vector2i(x - 1, y - 1)
+				skirt.set_cell(ring, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(types[y * span + x], generator.variant_at(origin + ring)))
+
 	for y in CHUNK_SIZE:
 		for x in CHUNK_SIZE:
 			var here := Vector2i(x, y)

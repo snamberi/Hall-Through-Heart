@@ -668,47 +668,134 @@ SMALL = [
 
 # ----------------------------------------------------------------- critters
 def critter(kind, frame):
+    """One 24x24 frame. Frames 0-1 are at rest (1 is a small idle movement),
+    frames 2-3 are in motion: a hop, a wingbeat, a leap."""
     c = Canvas(24, 24)
     if kind == "rabbit":
-        fur = ramp("c8b8a0", "a08a70", "6a5a48")
-        hop = 2 if frame else 0
-        c.shade("ellipse", (5, 12 - hop, 17, 20 - hop), fur)
-        c.shade("ellipse", (13, 8 - hop, 20, 15 - hop), fur)
-        c.shade("rect", (15, 2 - hop, 16, 9 - hop), fur, dither=False)
-        c.shade("rect", (18, 3 - hop, 19, 9 - hop), fur, dither=False)
-        c.fill("ellipse", (3, 13 - hop, 6, 16 - hop), C("f4f2ec"))
-        c.put(18, 11 - hop, OUTLINE)
-    elif kind == "bird":
-        body = ramp("8a7a6a", "5a4e44", "3a322c")
-        c.shade("ellipse", (7, 10, 17, 17), body)
-        c.shade("ellipse", (14, 7, 20, 13), body)
-        c.put(21, 10, C("f0b030"))
-        c.put(17, 9, OUTLINE)
-        if frame:
-            c.shade("poly", [(9, 11), (4, 2), (14, 10)], body)
+        fur = ramp("d2c2a8", "a8927a", "6e5c4a")
+        belly = ramp("f4efe4", "ddd4c4", "b8ac9a")
+        inner = C("e8a0a0")
+        if frame < 2:
+            # Sitting: round haunch, chest, head, long ears; frame 1 twitches an ear.
+            c.shade("ellipse", (4, 12, 15, 21), fur)
+            c.shade("ellipse", (10, 13, 17, 21), fur)
+            c.shade("ellipse", (12, 16, 17, 21), belly)
+            c.shade("ellipse", (13, 7, 20, 14), fur)
+            lean = 1 if frame == 1 else 0
+            c.shade("poly", [(14, 9), (13 - lean, 1), (15 - lean, 0), (16, 8)], fur, dither=False)
+            c.shade("poly", [(17, 9), (17 + lean, 1), (19 + lean, 1), (19, 9)], fur, dither=False)
+            c.put(14 - lean, 3, inner); c.put(14 - lean, 4, inner); c.put(18 + lean, 3, inner); c.put(18 + lean, 4, inner)
+            c.fill("ellipse", (2, 14, 5, 17), C("f8f6f0"))
+            c.fill("rect", (13, 20, 17, 21), fur[2]); c.fill("rect", (6, 20, 11, 21), fur[2])
+            c.put(18, 10, OUTLINE); c.put(18, 9, C("ffffff")); c.put(20, 11, C("e08080"))
         else:
-            c.shade("poly", [(9, 12), (3, 16), (14, 14)], body)
+            # Leaping: stretched body, legs out; frame 3 gathers for landing.
+            up = 3 if frame == 2 else 1
+            c.shade("ellipse", (3, 11 - up, 16, 18 - up), fur)
+            c.shade("ellipse", (12, 8 - up, 20, 14 - up), fur)
+            c.shade("poly", [(13, 9 - up), (9, 4 - up), (11, 3 - up), (15, 8 - up)], fur, dither=False)
+            c.shade("poly", [(15, 9 - up), (12, 3 - up), (14, 2 - up), (17, 8 - up)], fur, dither=False)
+            c.fill("ellipse", (1, 11 - up, 4, 14 - up), C("f8f6f0"))
+            if frame == 2:
+                c.shade("poly", [(5, 16 - up), (1, 21 - up), (3, 22 - up), (8, 17 - up)], fur, dither=False)
+                c.shade("poly", [(14, 15 - up), (19, 19 - up), (20, 18 - up), (16, 14 - up)], fur, dither=False)
+            else:
+                c.shade("poly", [(6, 16 - up), (7, 21 - up), (10, 21 - up), (9, 16 - up)], fur, dither=False)
+                c.shade("poly", [(14, 15 - up), (15, 21 - up), (17, 21 - up), (16, 14 - up)], fur, dither=False)
+            c.put(18, 10 - up, OUTLINE); c.put(20, 12 - up, C("e08080"))
+    elif kind == "bird":
+        body = ramp("8a7a6a", "5e5248", "3c3430")
+        breast = ramp("e89060", "c06a40", "8a4428")
+        wing = ramp("6a5c50", "463c36", "2c2624")
+        beak = C("f0b030")
+        if frame < 2:
+            # Perched; frame 1 pecks at the ground.
+            peck = 3 if frame == 1 else 0
+            c.shade("ellipse", (6, 10, 17, 18), body)
+            c.shade("ellipse", (10, 12, 17, 18), breast)
+            c.shade("poly", [(7, 11), (15, 11), (12, 16), (5, 15)], wing)
+            c.shade("poly", [(6, 13), (1, 15), (2, 17), (7, 16)], wing, dither=False)
+            c.shade("ellipse", (13, 6 + peck, 19, 12 + peck), body)
+            c.put(20, 9 + peck, beak); c.put(21, 9 + peck, beak); c.put(20, 10 + peck, C("b07818"))
+            c.put(17, 8 + peck, OUTLINE); c.put(17, 7 + peck, C("ffffff"))
+            c.fill("rect", (10, 19, 10, 21), beak); c.fill("rect", (13, 19, 13, 21), beak)
+            c.put(11, 21, beak); c.put(14, 21, beak)
+        else:
+            # Flying: wings up, then down.
+            c.shade("ellipse", (6, 10, 17, 16), body)
+            c.shade("ellipse", (10, 12, 16, 16), breast)
+            c.shade("ellipse", (14, 7, 20, 13), body)
+            c.shade("poly", [(6, 12), (1, 11), (2, 14), (7, 15)], wing, dither=False)
+            if frame == 2:
+                c.shade("poly", [(8, 11), (5, 1), (11, 3), (15, 11)], wing)
+                c.fill("rect", (7, 4, 8, 4), wing[0])
+            else:
+                c.shade("poly", [(8, 12), (4, 21), (11, 19), (15, 13)], wing)
+            c.put(21, 10, beak); c.put(22, 10, beak)
+            c.put(18, 9, OUTLINE)
     elif kind == "butterfly":
-        wing = ramp("ffe08a", "f0a030", "a06018") if frame % 2 == 0 else ramp("ffe08a", "f0a030", "a06018")
-        spread = 7 if frame else 3
+        wing = ramp("ffe08a", "f0a030", "a06018")
+        spots = C("fff6d0")
+        edge = C("5a3010")
+        spread = [8, 6, 3, 6][frame]
         c.fill("rect", (11, 8, 12, 16), OUTLINE)
-        c.shade("ellipse", (11 - spread - 3, 6, 11, 12), wing)
-        c.shade("ellipse", (12, 6, 12 + spread + 3, 12), wing)
-        c.shade("ellipse", (11 - spread, 12, 11, 17), wing)
-        c.shade("ellipse", (12, 12, 12 + spread, 17), wing)
+        c.put(10, 6, OUTLINE); c.put(9, 5, OUTLINE); c.put(13, 6, OUTLINE); c.put(14, 5, OUTLINE)
+        for side in (-1, 1):
+            x0 = 11 if side < 0 else 12
+            c.shade("ellipse", (min(x0, x0 + side * (spread + 2)), 4, max(x0, x0 + side * (spread + 2)), 12), wing)
+            c.shade("ellipse", (min(x0, x0 + side * spread), 11, max(x0, x0 + side * spread), 18), wing)
+            if spread > 3:
+                c.put(x0 + side * (spread - 1), 7, spots); c.put(x0 + side * (spread - 2), 8, spots)
+                c.put(x0 + side * (spread - 2), 14, spots)
+                c.put(x0 + side * (spread + 1), 6, edge); c.put(x0 + side * (spread + 1), 9, edge)
+                c.put(x0 + side * (spread - 1), 16, edge)
     elif kind == "frog":
-        skin = ramp("8aca6a", "5a9a4a", "3a6a2a")
-        sit = 1 if frame else 0
-        c.shade("ellipse", (5, 11 - sit * 3, 19, 21 - sit * 3), skin)
-        c.fill("ellipse", (7, 9 - sit * 3, 10, 12 - sit * 3), C("f0f0d0"))
-        c.fill("ellipse", (14, 9 - sit * 3, 17, 12 - sit * 3), C("f0f0d0"))
-        c.put(8, 10 - sit * 3, OUTLINE)
-        c.put(15, 10 - sit * 3, OUTLINE)
+        skin = ramp("9ad870", "5aa048", "356a2a")
+        belly = ramp("e8f0c0", "c8d8a0", "98b070")
+        dark = C("2e5a24")
+        if frame < 2:
+            # Squatting, hind legs folded at the sides; frame 1 swells the throat.
+            c.shade("ellipse", (5, 12, 18, 20), skin)
+            c.shade("ellipse", (8, 15, 15, 20), belly)
+            if frame == 1:
+                c.shade("ellipse", (8, 16, 15, 22), belly)
+            # Folded hind legs: thigh, shin, and a long splayed foot.
+            for side in (-1, 1):
+                kx = 5 if side < 0 else 18
+                c.shade("ellipse", (kx - 3, 14, kx + 3, 20), skin)
+                c.fill("rect", (min(kx, kx + side * 4), 20, max(kx, kx + side * 4), 21), skin[1])
+                c.put(kx + side * 5, 21, skin[2]); c.put(kx + side * 4, 22, skin[2])
+                # Front legs.
+                fx = 9 if side < 0 else 14
+                c.fill("rect", (fx, 19, fx, 21), skin[1]); c.put(fx + side, 22, skin[2]); c.put(fx, 22, skin[2])
+            # Eyes on top of the head.
+            c.shade("ellipse", (6, 8, 10, 12), skin, dither=False); c.shade("ellipse", (13, 8, 17, 12), skin, dither=False)
+            c.fill("ellipse", (7, 9, 9, 11), C("f4e060")); c.fill("ellipse", (14, 9, 16, 11), C("f4e060"))
+            c.put(8, 10, OUTLINE); c.put(15, 10, OUTLINE)
+            c.fill("rect", (9, 15, 14, 15), dark)
+            c.put(7, 14, dark); c.put(16, 14, dark)
+            c.put(11, 12, dark); c.put(16, 16, dark)
+        else:
+            # Leaping: body stretched and tilted, hind legs trailing straight out.
+            up = 5 if frame == 2 else 2
+            c.shade("ellipse", (7, 9 - up + 4, 19, 16 - up + 4), skin)
+            c.shade("ellipse", (10, 12 - up + 4, 17, 17 - up + 4), belly)
+            c.shade("ellipse", (14, 7 - up + 4, 18, 11 - up + 4), skin, dither=False)
+            c.fill("ellipse", (15, 8 - up + 4, 17, 10 - up + 4), C("f4e060")); c.put(16, 9 - up + 4, OUTLINE)
+            if frame == 2:
+                c.shade("poly", [(8, 14 - up + 4), (2, 19 - up + 4), (3, 21 - up + 4), (10, 16 - up + 4)], skin, dither=False)
+                c.shade("poly", [(3, 20 - up + 4), (0, 22 - up + 4), (1, 23 - up + 4), (4, 21 - up + 4)], skin, dither=False)
+                c.fill("rect", (17, 15 - up + 4, 20, 16 - up + 4), skin[1]); c.put(21, 17 - up + 4, skin[2])
+            else:
+                c.shade("poly", [(8, 15 - up + 4), (5, 20 - up + 4), (8, 21 - up + 4), (11, 16 - up + 4)], skin, dither=False)
+                c.fill("rect", (4, 21 - up + 4, 8, 21 - up + 4), skin[2])
+                c.fill("rect", (16, 16 - up + 4, 17, 20 - up + 4), skin[1]); c.fill("rect", (16, 21 - up + 4, 19, 21 - up + 4), skin[2])
     if kind != "butterfly":
         c.outline()
     return c.img
 
 
+CRITTER_FRAMES = 4
 CRITTERS = ["rabbit", "bird", "butterfly", "frog"]
 
 
@@ -894,5 +981,5 @@ def sheet(images, w, h):
 if __name__ == "__main__":
     sheet(TALL, 64, 96).save(os.path.join(ROOT, "flora_tall.png"))
     sheet(SMALL, 32, 32).save(os.path.join(ROOT, "flora_small.png"))
-    sheet([critter(k, f) for k in CRITTERS for f in (0, 1)], 24, 24).save(os.path.join(ROOT, "critters.png"))
+    sheet([critter(k, f) for k in CRITTERS for f in range(CRITTER_FRAMES)], 24, 24).save(os.path.join(ROOT, "critters.png"))
     sheet([decor(k) for k in DECOR], 64, 64).save(os.path.join(ROOT, "decor.png"))
