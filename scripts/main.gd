@@ -61,6 +61,15 @@ func _ready() -> void:
 	var buildings: Buildings = $Buildings
 	buildings.setup(_player, _instances)
 	$Builder.setup(buildings, _player)
+	var pets := Pets.new()
+	pets.name = "Pets"
+	add_child(pets)
+	pets.setup(_player)
+	_player.pets = pets
+	var codex := Codex.new()
+	codex.name = "Codex"
+	add_child(codex)
+	codex.setup(_player)
 	var settlers := Settlers.new()
 	settlers.name = "Settlers"
 	add_child(settlers)

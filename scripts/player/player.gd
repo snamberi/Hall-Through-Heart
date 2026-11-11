@@ -108,6 +108,12 @@ var _parry_cooldown := 0.0
 @onready var abilities: AbilityUser = $Abilities
 @onready var buffs: Buffs = $Buffs
 var hotbar: Hotbar
+## Skin tone, hair, clothes, trousers and look (see Appearance).
+var appearance: Dictionary = Appearance.DEFAULT.duplicate()
+## The mount being ridden (Mount.MOUNTS id), or "".
+var mount_id := ""
+var _mount: Mount
+var pets: Pets
 ## Sailing a rowboat: water is crossed quickly and dry.
 var boating := false
 const BOAT_SPEED := 1.35
@@ -122,6 +128,12 @@ const BOAT_SPEED := 1.35
 
 func _ready() -> void:
 	SaveGame.register("character", self)
+	if not SaveGame.get_section("character").has("appearance"):
+		# A new world: the look chosen when it was made.
+		var chosen: Variant = SaveGame.get_section("meta").get("appearance", {})
+		if chosen is Dictionary:
+			appearance.merge(chosen, true)
+	_animator.apply_appearance(appearance)
 	stats.setup(attributes, mastery)
 	buffs.setup(stats)
 	StatusFX.attach(self, active_statuses, 44.0, 12.0)
@@ -129,6 +141,10 @@ func _ready() -> void:
 	uniques.name = "Uniques"
 	add_child(uniques)
 	uniques.setup(self)
+	_mount = Mount.new()
+	_mount.name = "Mount"
+	add_child(_mount)
+	_mount.setup(self)
 	var boat := Boat.new()
 	boat.name = "Boat"
 	add_child(boat)
@@ -362,11 +378,16 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 		if enemy.rank < Enemy.Rank.MINIBOSS and enemy.health.current < enemy.health.max_health * 0.3:
 			multiplier = maxf(multiplier, enemy.health.current / maxf(stats.get_stat("physical_damage"), 1.0) * 2.0)
 		DamageNumber.spawn_text(get_parent(), enemy.global_position + Vector2(0, -60), "FINISHER", Color(1.0, 0.6, 0.3), 17)
+		Events.codex_event.emit("finishers", 1)
 		HitSpark.spawn(get_parent(), enemy.global_position + Vector2(0, -16), Color(1.0, 0.7, 0.3), true)
 		RingBurst.spawn(get_parent(), enemy.global_position + Vector2(0, -14), Color(1.0, 0.6, 0.3), 70.0)
 		shake_camera(9.0)
 		slow_motion(0.25, 0.1)
 	var damage := stats.get_stat("physical_damage") * multiplier
+	var codex_node: Node = get_parent().get_node_or_null("Codex")
+	if codex_node:
+		# The Hunter's Mark: well-studied prey takes a little more.
+		damage *= codex_node.damage_bonus(enemy.enemy_id)
 	if critical:
 		damage *= stats.get_stat("critical_damage")
 	if talents.has("berserker") and health.current < health.max_health * 0.35:
@@ -403,6 +424,16 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 func use_item(item: Item) -> String:
 	if item.definition().has("boat") and item in inventory.items:
 		return board_boat()
+	if item.definition().has("mount") and item in inventory.items:
+		if mount_id == item.definition()["mount"]:
+			dismount()
+			return ""
+		return ride(item.definition()["mount"])
+	if item.id == "taming_treat" and item in inventory.items and pets:
+		var problem := pets.tame(self)
+		if problem == "":
+			inventory.take(item.id, 1)
+		return problem
 	if Crops.by_seed(item.id) != "" and item in inventory.items:
 		# Sow the nearest empty plot.
 		var buildings: Buildings = get_parent().get_node("Buildings")
@@ -474,6 +505,15 @@ func _read_ground() -> void:
 	if Atmosphere.weather in ["Rain", "Thunderstorm"] and tile in [TerrainTiles.Type.MUD, TerrainTiles.Type.BOG, TerrainTiles.Type.TAR, TerrainTiles.Type.DEAD_GRASS]:
 		# Rain turns soft ground to mire.
 		_ground_speed *= 0.8
+	if mount_id != "":
+		var steed: Dictionary = Mount.MOUNTS[mount_id]
+		if TerrainTiles.is_water(tile) or indoors:
+			dismount()
+		else:
+			if (steed.get("snow", false) and tile in [TerrainTiles.Type.SNOW, TerrainTiles.Type.FROSTPINE, TerrainTiles.Type.PEAK]) \
+					or (steed.get("sand", false) and tile in [TerrainTiles.Type.SAND, TerrainTiles.Type.SALT]):
+				_ground_speed = maxf(_ground_speed, 1.0)
+			_ground_speed *= steed["speed"]
 	if boating:
 		if TerrainTiles.is_water(tile):
 			_ground_speed = BOAT_SPEED
@@ -631,6 +671,8 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		_die()
 		return true
 	_invulnerable_left = maxf(_invulnerable_left, hurt_invulnerability)
+	if mount_id != "" and not Mount.MOUNTS[mount_id].get("steady", false):
+		dismount()
 	if state == State.GATHER:
 		_stop_gathering()
 	if state == State.MOVE:
@@ -695,6 +737,36 @@ func _process_afflictions(delta: float) -> void:
 			_afflictions.erase(id)
 
 
+## Mounts a steed: `id` from Mount.MOUNTS, or "" for the best whistle in the bag.
+func ride(id: String) -> String:
+	if id == "":
+		var best := 0.0
+		for item in inventory.items:
+			if item and item.definition().has("mount"):
+				var speed: float = Mount.MOUNTS[item.definition()["mount"]]["speed"]
+				if speed > best:
+					best = speed
+					id = item.definition()["mount"]
+		if id == "":
+			return "You have no mount. Buy a whistle from a merchant."
+	if indoors or swimming or boating or is_dead() or state != State.MOVE:
+		return "You cannot ride here."
+	mount_id = id
+	_mount.ride(id)
+	_visual.position.y = -Mount.SEAT
+	RingBurst.spawn(get_parent(), global_position, Color(0.9, 0.85, 0.7), 40.0)
+	Events.codex_event.emit("mounts", 1)
+	return ""
+
+
+func dismount() -> void:
+	if mount_id == "":
+		return
+	mount_id = ""
+	_mount.put_away()
+	_visual.position.y = 0.0
+
+
 ## Puts the rowboat in the water beside the player and climbs in.
 func board_boat() -> String:
 	if boating:
@@ -714,6 +786,7 @@ func board_boat() -> String:
 	boating = true
 	swimming = false
 	Events.splash.emit(global_position)
+	Events.codex_event.emit("boats", 1)
 	return ""
 
 
@@ -732,7 +805,14 @@ func begin_rebirth() -> void:
 
 
 func save_data() -> Dictionary:
-	return {"class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate()}
+	return {"class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate()}
+
+
+## Changes how the player looks and redraws them.
+func set_appearance(changes: Dictionary) -> void:
+	appearance.merge(changes, true)
+	_animator.apply_appearance(appearance)
+	SaveGame.request_save()
 
 
 func load_data(data: Dictionary) -> void:
@@ -748,6 +828,12 @@ func load_data(data: Dictionary) -> void:
 		for entry: Array in HeroClasses.TREES[class_id]["abilities"].slice(0, 2):
 			class_ranks[entry[0]] = 1
 	show_helmet = bool(data.get("show_helmet", true))
+	var saved_look: Variant = data.get("appearance", SaveGame.get_section("meta").get("appearance", {}))
+	if saved_look is Dictionary:
+		appearance = Appearance.DEFAULT.duplicate()
+		appearance.merge(saved_look, true)
+	if is_node_ready():
+		_animator.apply_appearance(appearance)
 
 
 func _process_move(delta: float) -> void:
@@ -762,6 +848,16 @@ func _process_move(delta: float) -> void:
 
 	if parry_left > 0.0:
 		velocity *= 0.3
+	if mount_id != "" and (Input.is_action_just_pressed("attack") or Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("parry") \
+			or Input.is_action_just_pressed("ability_1") or Input.is_action_just_pressed("ability_2") or Input.is_action_just_pressed("ability_3") or Input.is_action_just_pressed("ability_4")):
+		dismount()
+	if Input.is_action_just_pressed("mount"):
+		if mount_id != "":
+			dismount()
+		else:
+			var problem := ride("")
+			if problem != "":
+				DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
 	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0 and not swimming:
 		_try_dodge()
 	elif Input.is_action_just_pressed("parry") and _parry_cooldown == 0.0 and not placing and not swimming:
@@ -810,6 +906,7 @@ func _parried(source_position: Vector2) -> void:
 	HitSpark.spawn(get_parent(), global_position + facing * 16.0 + Vector2(0, -16), Color(1.0, 0.95, 0.6), true)
 	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(1.0, 0.9, 0.5), 50.0)
 	DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -46), "Parry!", UITheme.GOLD, 15)
+	Events.codex_event.emit("parries", 1)
 	Audio.play("hit", -2.0, 0.0)
 	shake_camera(4.0)
 	slow_motion(0.35, 0.12)

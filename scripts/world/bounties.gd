@@ -141,6 +141,7 @@ func _collect(bounty: Dictionary) -> void:
 	if prize == null:
 		prize = LootGenerator.make_equipment(int(bounty["level"]), maxi(LootGenerator.roll_rarity(0.0, 4.0), 2))
 	_player.inventory.add(prize)
+	Events.codex_event.emit("bounties", 1)
 	Events.announcement.emit("BOUNTY COLLECTED", "%d gold, %d XP, %s" % [bounty["gold"], bounty["xp"], prize.display_name()])
 	changed.emit()
 	SaveGame.request_save()

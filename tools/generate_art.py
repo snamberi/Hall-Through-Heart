@@ -248,6 +248,10 @@ LAYERS = {
         ("plate_dark", [(14.2, 32.6), (29.8, 32.6), (30, 35), (14, 35)])]},
     "shoulders": {"torso": [("plate", E(10.5, 23.5, 16.5, 28)), ("plate", E(27.5, 23.5, 33.5, 28))]},
     "cape": {"torso": [("cape", [(14.5, 25), (29.5, 25), (34, 40), (10, 40)])]},
+    # A deep cowl for the Reaper look: covers the hair, leaves the face in shadow.
+    "hood": {"head": [
+        ("cape", _half_ellipse(22, 16, 13.5, 14)), ("cape", [(8.5, 15), (35.5, 15), (34, 27), (30, 27), (31, 17), (13, 17), (14, 27), (10, 27)]),
+        ("cape", [(20, 2.5), (24, 2.5), (22, -1)]), ("plate_dark", [(13, 16), (31, 16), (30.5, 19), (13.5, 19)])]},
 }
 
 
@@ -815,6 +819,31 @@ STORM_HARPY = _floater(
     wing_b=[("feather", [(16, 18), (6, 8), (0, 10), (3, 14), (0, 18), (5, 19), (2, 23), (9, 23), (15, 24)]), ("storm", [(6, 8), (0, 10), (5, 10)])],
     wing_f=[("feather", [(28, 18), (38, 8), (44, 10), (41, 14), (44, 18), (39, 19), (42, 23), (35, 23), (29, 24)]), ("storm", [(38, 8), (44, 10), (39, 10)])],
 )
+# Mounts: drawn as quadrupeds, ridden by the player.
+HORSE = _quad(
+    body=[("hide", E(5, 17, 37, 31)), ("hide", E(8, 19, 34, 29)), ("belt", [(15, 16), (25, 16), (26, 25), (14, 25)]), ("wrap", [(16, 17), (24, 17), (24.5, 23), (15.5, 23)]),
+          ("guard", R(19, 24, 21, 30)), ("guard", E(18.5, 29, 21.5, 32))],
+    head=[("hide", [(30, 22), (34, 10), (39, 8), (42, 10), (44, 15), (43, 18), (39, 17), (36, 23)]), ("hair", [(32, 21), (34, 9), (36, 8), (34.5, 13), (33.5, 22)]),
+          ("hide", [(38, 8), (39, 4), (40.5, 8)]), ("void", R(39, 11, 40.2, 12.2)), ("void", R(42.5, 15.5, 43.5, 16.5)), ("belt", [(37, 11), (44, 15), (43.6, 16), (36.6, 12)])],
+    tail=[("hair", [(7, 20), (2, 24), (1, 31), (3, 33), (6, 27), (8, 23)])],
+    leg=lambda x: [("hide", R(x, 29, x + 3, 39)), ("hair", R(x - 0.3, 37.5, x + 3.3, 39.5)), ("boot", R(x - 0.3, 39.5, x + 3.3, 41.4))],
+    head_pivot=(33, 20),
+)
+FROST_ELK = _quad(
+    body=[("frost_fur", E(5, 17, 37, 31)), ("troll", [(8, 19), (34, 19), (32, 22), (10, 22)]), ("belt", [(15, 16), (25, 16), (26, 25), (14, 25)]),
+          ("wrap", [(16, 17), (24, 17), (24.5, 23), (15.5, 23)])],
+    head=[("frost_fur", [(30, 22), (34, 10), (39, 8), (42, 10), (44, 15), (43, 18), (39, 17), (36, 23)]), ("void", R(39, 11, 40.2, 12.2)),
+          ("bone", [(36, 9), (33, 2), (31, -3), (33, -2), (35, 2), (36, -2), (37, 1), (37.5, 8)]),
+          ("bone", [(39, 8), (41, 1), (44, -3), (43, 2), (46, 0), (44, 4), (40.5, 9)]), ("crystal", [(31, -3), (30, -6), (33, -2)])],
+    tail=[("frost_fur", [(7, 20), (3, 22), (5, 25), (8, 23)])],
+    leg=lambda x: [("frost_fur", R(x, 29, x + 3, 39)), ("troll", R(x - 0.3, 39.5, x + 3.3, 41.4))],
+    head_pivot=(33, 20),
+)
+MOUNTS = {
+    "horse": (HORSE, QUAD_ORDER, QUAD_ANIMATIONS),
+    "frost_elk": (FROST_ELK, QUAD_ORDER, QUAD_ANIMATIONS),
+}
+
 MAGMA_SLIME = {
     "root": dict(parent=None, pivot=(22, 41), parts=[]),
     "body": dict(parent="root", pivot=(22, 41), parts=[
@@ -1389,6 +1418,9 @@ def main():
     os.makedirs(os.path.join(ROOT, "sprites", "enemies"), exist_ok=True)
     for name, (rig, order, animations) in MONSTERS.items():
         draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
+    os.makedirs(os.path.join(ROOT, "sprites", "mounts"), exist_ok=True)
+    for name, (rig, order, animations) in MOUNTS.items():
+        draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "mounts", name + ".png"))
     os.makedirs(os.path.join(ROOT, "sprites", "weapons"), exist_ok=True)
     for name, parts in WEAPONS.items():
         draw_layer_sheet({"sword": parts}).save(os.path.join(ROOT, "sprites", "weapons", name + ".png"))

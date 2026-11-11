@@ -90,6 +90,7 @@ func _dig(player: Player, spot: Dictionary) -> void:
 	if randf() < 0.25:
 		items.append(Item.create("treasure_map").to_dict())
 	player.professions.add_xp("mining", 40.0)
+	Events.codex_event.emit("treasure", 1)
 	Events.loot_opened.emit({"items": items, "title": "Buried cache", "take_only": true})
 	SaveGame.request_save()
 

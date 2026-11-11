@@ -180,6 +180,7 @@ func tend_plot(player: Player, record: Dictionary, seed_id: String = "") -> Stri
 		record["crop"] = ""
 		record["growth"] = 0.0
 		player.professions.add_xp("cooking", 12.0 * data["days"])
+		Events.codex_event.emit("harvests", 1)
 	elif not record.get("watered", false):
 		record["watered"] = true
 		Events.splash.emit(Vector2(record["x"], record["y"]))
@@ -271,6 +272,8 @@ func place(kind: String, at: Vector2, item_id: String = "") -> void:
 	records.append(record)
 	_spawn(record)
 	_player.professions.add_xp("building", 15.0 if kind != "house" else 80.0)
+	if kind == "house":
+		Events.codex_event.emit("houses", 1)
 	SaveGame.request_save()
 
 
@@ -414,6 +417,8 @@ func upgrade_house(record: Dictionary) -> String:
 		if cost[id] > 0:
 			_player.inventory.take(id, cost[id])
 	record["tier"] = tier + 1
+	if record["tier"] >= MAX_TIER:
+		Events.codex_event.emit("manors", 1)
 	_player.professions.add_xp("building", 150.0 * tier)
 	SaveGame.request_save()
 	if is_instance_valid(_props.get(record["id"])):

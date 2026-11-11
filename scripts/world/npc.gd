@@ -15,7 +15,7 @@ const RESTOCK_SECONDS := 600.0
 ## Share of an item's value a merchant pays for it.
 const SELL_SHARE := 0.25
 const STAPLES: Array[String] = ["health_potion", "mana_potion", "stamina_tonic", "grilled_minnow", "copper_ingot", "oak_wood",
-	"wheat_seeds", "carrot_seeds", "potato_seeds", "farm_plot"]
+	"wheat_seeds", "carrot_seeds", "potato_seeds", "farm_plot", "taming_treat"]
 
 var kind := "merchant"
 ## A wandering merchant sells rarer things.
@@ -116,7 +116,7 @@ func restock_if_due(player: Player) -> void:
 	for item_id in STAPLES:
 		var item := Item.create(item_id)
 		stock.append({"item": item, "price": item.value(), "endless": true})
-	for tool_id: String in ["bronze_pickaxe", "bronze_hatchet"]:
+	for tool_id: String in ["bronze_pickaxe", "bronze_hatchet", "pony_whistle", "horse_whistle"]:
 		var tool := Item.create(tool_id)
 		stock.append({"item": tool, "price": tool.value(), "endless": false})
 	for i in 5:

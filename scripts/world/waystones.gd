@@ -39,6 +39,7 @@ func use(key: String, place_name: String, cell: Vector2i) -> void:
 	if not known.has(key):
 		known[key] = {"name": place_name, "cell": [cell.x, cell.y]}
 		Events.announcement.emit("WAYSTONE AWAKENED", place_name)
+		Events.codex_event.emit("waystones", 1)
 		Audio.play("level_up", -6.0, 0.0)
 		for node in get_tree().get_nodes_in_group("props"):
 			if node.get_meta("waystone", "") == key:

@@ -26,6 +26,7 @@ static func create(p_kind: String, at: Vector2) -> Critter:
 
 
 func _ready() -> void:
+	add_to_group("critters")
 	_sprite = Sprite2D.new()
 	_sprite.texture = SHEET
 	_sprite.hframes = KINDS.size() * 2

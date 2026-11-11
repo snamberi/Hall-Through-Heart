@@ -246,10 +246,10 @@ func _weather_effects(delta: float) -> void:
 			_chill_left -= delta
 			if _chill_left <= 0.0:
 				_chill_left = 3.0
-				if not _near_fire():
+				if not _near_fire() and not (_player.mount_id != "" and Mount.MOUNTS[_player.mount_id].get("snow", false)):
 					_player.apply_status("chill", 3.2, 0.25)
 		"Sandstorm":
-			if _player.state == Player.State.MOVE:
+			if _player.state == Player.State.MOVE and not (_player.mount_id != "" and Mount.MOUNTS[_player.mount_id].get("sand", false)):
 				_player.velocity += Vector2(70.0, 10.0) * delta * 6.0
 
 

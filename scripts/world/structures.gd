@@ -464,6 +464,7 @@ func _build_obelisk(cell: Vector2i, key: String, _level: int, _random: RandomNum
 			player.leveling.add_xp(30 * level_xp(_level), "explore")
 			LightPillar.spawn(get_parent(), _at(cell), Color(0.85, 0.75, 1.0))
 			Events.announcement.emit("THE LAND IS REVEALED", "Your map shows the country around the obelisk")
+			Events.codex_event.emit("obelisks", 1)
 			obelisk.prompt_text = "The obelisk is silent"
 			obelisk.on_interact = Callable()
 			SaveGame.request_save()

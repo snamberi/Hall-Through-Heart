@@ -27,7 +27,7 @@ const REBINDABLE: Array[Array] = [
 	["hotbar_1", "Hotbar 1"], ["hotbar_2", "Hotbar 2"], ["hotbar_3", "Hotbar 3"], ["hotbar_4", "Hotbar 4"], ["hotbar_5", "Hotbar 5"],
 	["toggle_menu", "Menu wheel"], ["toggle_inventory", "Inventory"], ["toggle_character", "Attributes"],
 	["toggle_talents", "Talents"], ["toggle_professions", "Professions"], ["toggle_journal", "Journal"],
-	["toggle_map", "Map"], ["recall_home", "Recall home"], ["dismantle", "Take down a building"],
+	["toggle_map", "Map"], ["toggle_codex", "Codex"], ["mount", "Mount / dismount"], ["recall_home", "Recall home"], ["dismantle", "Take down a building"],
 ]
 
 var master_volume := 1.0

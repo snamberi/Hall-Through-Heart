@@ -9,6 +9,8 @@ signal damage_dealt(weapon_type: String, amount: float)
 ## An enemy died. Keys: id, name, level, rank, xp, position, weapon_type.
 signal enemy_killed(info: Dictionary)
 signal boss_defeated(boss_id: String)
+## Something the Codex counts towards achievements ("parries", "raids"...).
+signal codex_event(stat: String, amount: int)
 signal xp_gained(amount: int, source: String)
 signal level_up(level: int)
 ## Every tenth level.

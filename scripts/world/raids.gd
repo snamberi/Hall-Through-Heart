@@ -126,6 +126,7 @@ func _end(won: bool) -> void:
 	if prize == null:
 		prize = LootGenerator.make_equipment(level, maxi(LootGenerator.roll_rarity(0.0, 4.0), 2))
 	_player.inventory.add(prize)
+	Events.codex_event.emit("raids", 1)
 	Events.announcement.emit("RAID REPELLED", "%d gold and %s" % [gold, prize.display_name()])
 	SaveGame.request_save()
 

@@ -79,6 +79,7 @@ func recruit(offer: Dictionary) -> String:
 	_player.inventory.gold -= cost()
 	_player.inventory.changed.emit()
 	settlers.append(offer.duplicate())
+	Events.codex_event.emit("settlers", 1)
 	Events.announcement.emit("%s IS MOVING IN" % (offer["name"] as String).to_upper(), "Your new %s will wait at your home" % ROLES[offer["role"]]["title"].to_lower())
 	SaveGame.request_save()
 	return ""

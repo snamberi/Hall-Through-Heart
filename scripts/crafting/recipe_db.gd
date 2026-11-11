@@ -98,6 +98,7 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "frostberry_tart", "profession": "cooking", "level": 15, "inputs": {"frostberry": 3, "wheat": 1}, "item": "frostberry_tart", "count": 1, "xp": 28.0},
 	{"id": "pumpkin_pie", "profession": "cooking", "level": 20, "inputs": {"pumpkin": 1, "wheat": 2}, "item": "pumpkin_pie", "count": 1, "xp": 40.0},
 	{"id": "sunroot_elixir", "profession": "alchemy", "level": 25, "inputs": {"sunroot": 1, "mana_flower": 1}, "item": "sunroot_elixir", "count": 1, "xp": 50.0},
+	{"id": "taming_treat", "profession": "cooking", "level": 2, "inputs": {"wild_berries": 2, "bone": 1}, "item": "taming_treat", "count": 2, "xp": 10.0},
 	{"id": "storage_chest", "profession": "building", "level": 1, "inputs": {"oak_wood": 8, "copper_ingot": 1}, "item": "storage_chest", "count": 1, "xp": 25.0},
 	{"id": "bed", "profession": "building", "level": 1, "inputs": {"oak_wood": 10, "husk_fragment": 6}, "item": "bed", "count": 1, "xp": 30.0},
 	{"id": "house_kit", "profession": "building", "level": 2, "inputs": {"oak_wood": 30, "stone": 20, "copper_ingot": 4}, "item": "house_kit", "count": 1, "xp": 120.0},
