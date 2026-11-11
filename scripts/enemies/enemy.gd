@@ -89,6 +89,8 @@ var boss_id := ""
 var custom_name := ""
 ## Seconds left in which a hit is a finisher (after being parried).
 var exposed_left := 0.0
+var _nameplate: Label
+var _plate_check := 0.0
 var brain: BossBrain
 ## Asks whoever spawned this enemy for a minion (the Summoner modifier).
 signal wants_minion(enemy: Enemy)
@@ -219,6 +221,10 @@ func _physics_process(delta: float) -> void:
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
 	_since_hurt += delta
 	_stagger_cooldown = maxf(_stagger_cooldown - delta, 0.0)
+	_plate_check -= delta
+	if _plate_check <= 0.0 and _nameplate:
+		_plate_check = 0.15
+		_update_nameplate()
 	if exposed_left > 0.0:
 		exposed_left = maxf(exposed_left - delta, 0.0)
 		queue_redraw()
@@ -390,6 +396,8 @@ func take_damage(
 	Audio.play("hit", -4.0)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(1.0, 0.85, 0.4) if critical else Color(1.0, 0.95, 0.85), critical)
 	var dealt := health.take_damage(amount)
+	Gore.spray(get_parent(), global_position, enemy_id, knockback.normalized(), 9 if health.is_dead() else (6 if critical else 3), health.is_dead() or critical)
+	_animator.scale = Vector2(1.18, 0.84)
 	if health.is_dead():
 		return dealt
 	# Poise: a blow only interrupts an enemy that is not mid-attack and has
@@ -424,6 +432,31 @@ func apply_status(id: String, duration: float, power: float, weapon_type: String
 	if weapon_type != "":
 		_last_weapon_type = weapon_type
 	_refresh_status_tint()
+
+
+static var _tops: Dictionary = {}
+
+
+## How far above the feet the top of a creature's art is (at size 1).
+static func _art_top(sheet: Texture2D) -> float:
+	if not _tops.has(sheet):
+		var top := -52.0
+		var image := sheet.get_image() if sheet else null
+		if image:
+			var used := image.get_region(Rect2i(0, 0, 96, 96)).get_used_rect()
+			# The sprite's centre sits 23px above the feet.
+			top = -23.0 + (used.position.y - 48.0)
+		_tops[sheet] = top
+	return _tops[sheet]
+
+
+## Names show for the strong, the recently hurt, and whatever the mouse is
+## over; the rank and file stay unlabelled so a crowd is readable.
+func _update_nameplate() -> void:
+	var near_mouse := get_global_mouse_position().distance_to(global_position + Vector2(0, -20)) < 36.0
+	var show := rank > Rank.NORMAL or _since_hurt < 4.0 or near_mouse or custom_name != ""
+	var target_alpha := 1.0 if show else 0.0
+	_nameplate.modulate.a = move_toward(_nameplate.modulate.a, target_alpha, 0.35)
 
 
 ## A wild animal rather than a monster.
@@ -770,8 +803,8 @@ func _on_died() -> void:
 	var tween := create_tween()
 	tween.tween_property(_visual, "modulate", _tint, 0.15)
 	# Let the collapse play, lie still a moment, then fade away.
-	tween.tween_interval(_animator.death_seconds() + 0.25)
-	tween.tween_property(self, "modulate:a", 0.0, 0.4)
+	tween.tween_interval(_animator.death_seconds() + 3.5)
+	tween.tween_property(self, "modulate:a", 0.0, 1.2)
 	tween.tween_callback(queue_free)
 
 
@@ -789,8 +822,9 @@ func _add_nameplate(rank_data: Dictionary, size: float) -> void:
 	label.add_theme_constant_override("outline_size", 4)
 	# The camera zooms in 2x; shrink so the text stays small and sharp.
 	label.scale = Vector2.ONE / 2.0
-	var top := -52.0 * size - (10.0 if _data.get("flying", false) else 0.0)
+	var top := _art_top(EnemyDB.sheet(enemy_id)) * size - (8.0 if _data.get("flying", false) else 2.0)
 	label.position = Vector2(-label.get_minimum_size().x / 4.0, top - 14.0)
 	label.z_index = 10
 	add_child(label)
+	_nameplate = label
 	$HealthBar.position.y = top

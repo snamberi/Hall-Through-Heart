@@ -39,6 +39,7 @@ func _ready() -> void:
 		sprite.region_rect = Flora.tall_region(tall_look if tall_look >= 0 else _data["tall"])
 		sprite.position.y = -42.0
 		sprite.flip_h = hash(cell) % 2 == 0
+		sprite.add_to_group("occluders")
 		add_child(sprite)
 		solid = 9.0 if _data["kind"] == "tree" else 0.0
 	elif _data.has("flora"):

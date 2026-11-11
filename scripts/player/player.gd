@@ -145,6 +145,9 @@ func _ready() -> void:
 	_mount.name = "Mount"
 	add_child(_mount)
 	_mount.setup(self)
+	var fader := OcclusionFader.new()
+	add_child(fader)
+	fader.setup(self)
 	var boat := Boat.new()
 	boat.name = "Boat"
 	add_child(boat)
@@ -407,6 +410,11 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 		extra *= multiplier * (stats.get_stat("critical_damage") if critical else 1.0) * Elements.multiplier(enemy.enemy_id, element)
 		dealt += enemy.take_damage(extra, Vector2.ZERO, critical, type, element)
 	Uniques.on_hit(self, enemy, damage)
+	# Hit-stop: a blink of stillness on solid blows gives them weight.
+	if critical or multiplier >= 1.5:
+		hit_stop(0.06)
+	elif state == State.ATTACK:
+		hit_stop(0.025)
 	Events.damage_dealt.emit(type, dealt)
 	var weapon := equipment.get_item("main_hand")
 	var def: Dictionary = weapon.definition() if weapon else {}
@@ -913,6 +921,18 @@ func _parried(source_position: Vector2) -> void:
 	slow_motion(0.35, 0.12)
 
 
+var _hit_stop_ready := 0.0
+
+
+## A very short freeze of the whole game when a blow lands.
+func hit_stop(seconds: float) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if now < _hit_stop_ready or Engine.time_scale < 1.0:
+		return
+	_hit_stop_ready = now + 0.12
+	slow_motion(0.08, seconds)
+
+
 ## Briefly slows the whole game for weight on a big moment.
 func slow_motion(scale: float, seconds: float) -> void:
 	Engine.time_scale = scale
@@ -925,6 +945,7 @@ func _try_dodge() -> void:
 		return
 	_dodge_direction = facing
 	var start := global_position
+	Gore.spray(get_parent(), global_position + Vector2(0, 14), "_dust", -facing, 7, false)
 	get_tree().create_timer(dodge_duration).timeout.connect(func() -> void:
 		if is_instance_valid(self):
 			Uniques.on_dodge(self, start, global_position)

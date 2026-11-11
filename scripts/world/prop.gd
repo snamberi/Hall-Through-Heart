@@ -37,6 +37,7 @@ static func create(art: Art, at: Vector2, solid: float = 0.0, prompt: String = "
 	prop._sprite.hframes = FRAMES
 	prop._sprite.frame = art
 	prop._sprite.position.y = -22.0
+	prop._sprite.add_to_group("occluders")
 	prop.add_child(prop._sprite)
 	if solid > 0.0:
 		var body := StaticBody2D.new()
