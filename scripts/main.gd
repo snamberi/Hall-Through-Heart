@@ -12,6 +12,7 @@ var _active_seed := 0
 @onready var _player: Player = $Player
 @onready var _spawner: EnemySpawner = $Enemies
 @onready var _resources: ResourceSpawner = $Resources
+@onready var _day_night: DayNight = $DayNight
 @onready var _loot: Node2D = $Loot
 @onready var _cinematic: CanvasLayer = $Cinematic
 @onready var _hud: CanvasLayer = $HUD
@@ -25,6 +26,10 @@ func _ready() -> void:
 		_active_seed = int(SaveGame.get_section("world").get("seed", 0))
 	if _active_seed == 0:
 		_active_seed = int(randi())
+	var saved_world := SaveGame.get_section("world")
+	_day_night.day = maxi(int(saved_world.get("day", 1)), 1)
+	_day_night.time = clampf(float(saved_world.get("time", _day_night.time)), 0.0, 0.999)
+	_day_night.setup(_player)
 	SaveGame.register("world", self)
 
 	_world.setup(_active_seed)
@@ -41,7 +46,7 @@ func _ready() -> void:
 
 
 func save_data() -> Dictionary:
-	return {"seed": _active_seed}
+	return {"seed": _active_seed, "day": _day_night.day, "time": _day_night.time}
 
 
 func load_data(_data: Dictionary) -> void:

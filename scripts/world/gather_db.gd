@@ -16,8 +16,8 @@ const KINDS := {
 	"fish": {"profession": "fishing", "tool": "rod", "verb": "Fish", "seconds": 3.2, "frame": 4},
 }
 const T := TerrainTiles.Type
-const ROCKY: Array[int] = [T.ASH, T.MUD, T.DEAD_GRASS]
-const WOODED: Array[int] = [T.DARK_GRASS, T.DEAD_GRASS]
+const ROCKY: Array[int] = [T.ASH, T.MUD, T.DEAD_GRASS, T.SALT, T.SAND, T.CINDER, T.SNOW, T.VOIDSCAR, T.CAVE_FLOOR]
+const WOODED: Array[int] = [T.DARK_GRASS, T.DEAD_GRASS, T.FROSTPINE, T.THORN, T.CRIMSON, T.FUNGAL]
 
 const RESOURCES := {
 	"stone": {"kind": "ore", "item": "stone", "level": 1, "tier": 1, "tiles": ROCKY},
@@ -35,10 +35,10 @@ const RESOURCES := {
 	"pine": {"kind": "tree", "item": "pine_wood", "level": 10, "tier": 1, "tiles": WOODED},
 	"ancient_tree": {"kind": "tree", "item": "ancient_wood", "level": 30, "tier": 3, "tiles": WOODED},
 	"spirit_tree": {"kind": "tree", "item": "spiritwood", "level": 60, "tier": 4, "tiles": WOODED},
-	"healing_herb": {"kind": "herb", "item": "healing_herb", "level": 1, "tier": 0, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.BOG]},
-	"poison_mushroom": {"kind": "herb", "item": "poison_mushroom", "level": 5, "tier": 0, "tiles": [T.BOG, T.DARK_GRASS]},
-	"mana_flower": {"kind": "herb", "item": "mana_flower", "level": 10, "tier": 0, "tiles": [T.DARK_GRASS, T.ASH]},
-	"rare_root": {"kind": "herb", "item": "rare_root", "level": 30, "tier": 0, "tiles": [T.BOG, T.MUD]},
+	"healing_herb": {"kind": "herb", "item": "healing_herb", "level": 1, "tier": 0, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.BOG, T.CRIMSON, T.FROSTPINE]},
+	"poison_mushroom": {"kind": "herb", "item": "poison_mushroom", "level": 5, "tier": 0, "tiles": [T.BOG, T.DARK_GRASS, T.FUNGAL, T.TAR]},
+	"mana_flower": {"kind": "herb", "item": "mana_flower", "level": 10, "tier": 0, "tiles": [T.DARK_GRASS, T.ASH, T.SNOW, T.VOIDSCAR]},
+	"rare_root": {"kind": "herb", "item": "rare_root", "level": 30, "tier": 0, "tiles": [T.BOG, T.MUD, T.THORN, T.FUNGAL]},
 	"fishing_spot": {"kind": "fish", "item": "minnow", "level": 1, "tier": 1, "tiles": [T.SHALLOW_WATER]},
 }
 ## What a fishing spot can give: [item, fishing level needed, weight].

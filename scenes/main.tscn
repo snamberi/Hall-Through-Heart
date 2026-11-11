@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
@@ -15,10 +15,14 @@
 [ext_resource type="Script" path="res://scripts/ui/minimap.gd" id="14_minimap"]
 [ext_resource type="Script" path="res://scripts/world/npc_spawner.gd" id="15_npcs"]
 [ext_resource type="Script" path="res://scripts/ui/quest_tracker.gd" id="16_tracker"]
+[ext_resource type="Script" path="res://scripts/world/day_night.gd" id="17_daynight"]
 
 [node name="Main" type="Node2D"]
 y_sort_enabled = true
 script = ExtResource("1_main")
+
+[node name="DayNight" type="CanvasModulate" parent="."]
+script = ExtResource("17_daynight")
 
 [node name="World" type="Node2D" parent="."]
 z_index = -10

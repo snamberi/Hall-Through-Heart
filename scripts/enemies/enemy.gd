@@ -126,8 +126,8 @@ func _ready() -> void:
 	_visual.modulate = _tint
 	_animator.sheet = EnemyDB.sheet(enemy_id)
 	_animator.rebuild()
-	if _data.get("flying", false):
-		collision_mask = 0
+	# Walkers are stopped by walls and deep water; fliers by neither.
+	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION | TerrainTiles.WATER_COLLISION
 	_add_nameplate(rank_data, size)
 	health.died.connect(_on_died)
 	_pick_wander()
