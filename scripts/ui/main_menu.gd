@@ -193,10 +193,10 @@ func _new_page() -> Control:
 	box.add_child(looks)
 	for part: Array in [["skin", "Skin", Appearance.SKIN_TONES.slice(0, 5)], ["hair", "Hair", Appearance.HAIR], ["clothes", "Clothes", Appearance.CLOTHES]]:
 		looks.add_child(UITheme.label(part[1], 14, UITheme.DIM))
-		var row := Swatches.create(part[2], 0)
+		var swatches := Swatches.create(part[2], 0)
 		var key: String = part[0]
-		row.picked.connect(func(index: int) -> void: _appearance[key] = index)
-		looks.add_child(row)
+		swatches.picked.connect(func(index: int) -> void: _appearance[key] = index)
+		looks.add_child(swatches)
 	box.add_child(UITheme.label("Seed (leave empty for a random world)", 16))
 	_seed_field = LineEdit.new()
 	_seed_field.custom_minimum_size = Vector2(640.0, 36.0)
