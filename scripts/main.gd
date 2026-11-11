@@ -65,7 +65,9 @@ func _ready() -> void:
 		if problem != "" and problem != "Nothing of yours within reach.":
 			Events.announcement.emit("", problem)
 	)
+	$Villages.setup(_world)
 	_resources.setup(_world)
+	$Atmosphere.setup(_player, _world, _day_night)
 	$Npcs.setup(_world)
 	_place_player_at_start()
 	_world.target = _player

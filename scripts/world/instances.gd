@@ -223,13 +223,16 @@ func _start_wave() -> void:
 
 ## A chest that scatters its loot when opened. `richness` scales it.
 func _add_chest(in_room: Room, cell: Vector2i, level: int, richness: float, on_open: Callable) -> void:
+	var contents: Array = []
 	var chest: Prop
 	chest = Prop.create(Prop.Art.CHEST, in_room.cell_position(cell), 12.0, "Open the chest", func(_p: Player) -> void:
+		if contents.is_empty() and chest.get_meta("rolled", false) == false:
+			contents.append_array(Structures.roll_chest(level, richness))
+			chest.set_meta("rolled", true)
+			if on_open.is_valid():
+				on_open.call()
 		chest.set_art(Prop.Art.CHEST_OPEN)
-		chest.disarm()
-		Structures.scatter_loot(_loot, chest.global_position, level, richness)
-		if on_open.is_valid():
-			on_open.call()
+		Events.loot_opened.emit({"items": contents, "title": "Chest", "take_only": true})
 	)
 	in_room.add_prop(chest)
 

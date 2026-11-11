@@ -81,6 +81,10 @@ func setup(player: Player) -> void:
 	_add("quest_board", QuestBoardMenu.new())
 	_add("storage", StorageMenu.new())
 	Events.screen_requested.connect(open)
+	Events.loot_opened.connect(func(container: Dictionary) -> void:
+		(_menus["storage"] as StorageMenu).chest = container
+		open("storage")
+	)
 	Events.storage_opened.connect(func(building: Dictionary) -> void:
 		(_menus["storage"] as StorageMenu).chest = building
 		open("storage")
@@ -134,6 +138,9 @@ func _show(id: String) -> void:
 
 ## Talking to someone opens their screen.
 func _on_npc_interacted(npc: Node) -> void:
+	if npc.kind == "villager":
+		Events.announcement.emit("", "\"%s\"" % npc.say_something())
+		return
 	if npc.kind == "merchant":
 		(_menus["shop"] as ShopMenu).npc = npc
 		open("shop")

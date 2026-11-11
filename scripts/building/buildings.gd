@@ -11,6 +11,7 @@ const KINDS := {
 	"chest": {"item": "storage_chest", "art": Prop.Art.CHEST, "solid": 12.0, "prompt": "Open storage"},
 	"bed": {"item": "bed", "art": Prop.Art.BED, "solid": 13.0, "prompt": "Sleep here and make this home"},
 	"house": {"item": "house_kit", "art": Prop.Art.HOUSE, "solid": 34.0, "prompt": "Enter your house"},
+	"torch": {"item": "torch", "decor": Prop.Decor.LANTERN, "solid": 0.0, "prompt": ""},
 }
 const CHEST_SLOTS := 24
 ## Inside of a house, in tiles, not counting the walls.
@@ -42,11 +43,6 @@ func setup(player: Player, instances: Instances) -> void:
 	for record in records:
 		if record["where"] == "world":
 			_spawn(record)
-	# A table at the Sanctuary so nobody starts stuck.
-	var table := Prop.create(Prop.Art.TABLE, Vector2(-4.5, 2.5) * TerrainTiles.TILE_SIZE, 13.0, KINDS["table"]["prompt"],
-		func(_p: Player) -> void: Events.screen_requested.emit("professions"))
-	table.add_to_group("crafting_tables")
-	add_child(table)
 
 
 func _physics_process(delta: float) -> void:
@@ -209,10 +205,20 @@ func _spawn(record: Dictionary) -> void:
 	if in_room and (not _instances.is_inside() or current_place() != record["where"]):
 		return
 	var at := _instances.room.cell_position(Vector2i(int(record["x"]), int(record["y"]))) if in_room else Vector2(record["x"], record["y"])
-	var prop := Prop.create(kind["art"], at, kind["solid"], kind["prompt"], _use.bind(record))
+	var prop: Prop
+	if kind.has("decor"):
+		prop = Prop.create_decor(kind["decor"], at, kind["solid"])
+		prop.add_light()
+		# Your own scenery still counts as yours for taking down.
+		prop.add_to_group("my_buildings")
+	else:
+		prop = Prop.create(kind["art"], at, kind["solid"], kind["prompt"], _use.bind(record))
 	if record["kind"] == "house":
 		prop.sprite().scale = Vector2(2.0, 2.0)
 		prop.sprite().position.y = -50.0
+		if not in_room:
+			var world: World = get_parent().get_node("World")
+			HouseStyles.dress(prop, world.tile_type_at_position(at), str(record.get("style", "")))
 		prop.reach = 110.0
 	if record["kind"] == "table":
 		prop.add_to_group("crafting_tables")

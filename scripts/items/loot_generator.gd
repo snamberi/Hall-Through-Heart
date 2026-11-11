@@ -89,7 +89,7 @@ static func _random_base(rarity: int) -> String:
 	var total := 0.0
 	for item_id: String in ItemDB.ITEMS:
 		var def: Dictionary = ItemDB.ITEMS[item_id]
-		if def.has("slot") and rarity >= def.get("min_rarity", 0):
+		if def.has("slot") and rarity >= def.get("min_rarity", 0) and def.get("drop_weight", 1.0) > 0.0:
 			ids.append(item_id)
 			total += def["drop_weight"]
 	var roll := randf() * total

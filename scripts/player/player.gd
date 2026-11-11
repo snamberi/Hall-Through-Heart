@@ -112,9 +112,9 @@ func _ready() -> void:
 	_apply_class()
 	equipment.setup(inventory, leveling, attributes)
 	if not inventory.starter_given:
-		# A new character starts empty-handed with a sword in the bag.
+		# A new character starts with nothing in hand; the first sword waits
+		# in a chest at the Sanctuary.
 		inventory.starter_given = true
-		inventory.add(LootGenerator.make_equipment(1, 0, "sword"))
 	if not inventory.tools_given:
 		# Older saves get the gathering tools too.
 		inventory.tools_given = true

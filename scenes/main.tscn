@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
@@ -20,6 +20,8 @@
 [ext_resource type="Script" path="res://scripts/world/instances.gd" id="19_instances"]
 [ext_resource type="Script" path="res://scripts/building/buildings.gd" id="20_buildings"]
 [ext_resource type="Script" path="res://scripts/building/builder.gd" id="21_builder"]
+[ext_resource type="Script" path="res://scripts/world/atmosphere.gd" id="22_atmosphere"]
+[ext_resource type="Script" path="res://scripts/world/villages.gd" id="23_villages"]
 
 [node name="Main" type="Node2D"]
 y_sort_enabled = true
@@ -51,6 +53,10 @@ script = ExtResource("20_buildings")
 [node name="Builder" type="Node2D" parent="."]
 script = ExtResource("21_builder")
 
+[node name="Villages" type="Node2D" parent="."]
+y_sort_enabled = true
+script = ExtResource("23_villages")
+
 [node name="Npcs" type="Node2D" parent="."]
 y_sort_enabled = true
 script = ExtResource("15_npcs")
@@ -65,6 +71,9 @@ y_sort_enabled = true
 script = ExtResource("10_loot")
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
+
+[node name="Atmosphere" type="CanvasLayer" parent="."]
+script = ExtResource("22_atmosphere")
 
 [node name="Cinematic" type="CanvasLayer" parent="."]
 script = ExtResource("11_cinematic")

@@ -48,6 +48,7 @@ PALETTE = {
     "blood": ["e0555a", "b3242e", "7a1620"],
     "poison": ["c8f08a", "7cc84a", "4a8a2c"],
     "wrap": ["8a2c37", "5c1c28", "3d1220"],
+    "bark": ["4a3626", "3a2a1c", "2a1c12"],
     # Single-tone details.
     "tunic_fold": ["7d7260"] * 3,
     "skin_shade": ["b98a6c"] * 3,
@@ -171,6 +172,8 @@ WEAPONS = {
                ("blood", R(25.8, 13, 26.8, 21))],
     "fang": [("poison", [(34.2, 29.5), (36.8, 29.5), (38.6, 24), (38, 17), (36.2, 21), (35, 25.5)]),
              ("bone", R(33, 30, 38, 31)), ("belt", R(35, 31.5, 36, 33.5))],
+    "club": [("wood", R(34.6, 16, 36.4, 35)), ("wood", E(32, 6, 39, 20)), ("bark", R(33, 10, 34, 11)), ("bark", R(37, 14, 38, 15)),
+             ("wrap", R(34.4, 28, 36.6, 33))],
     "bow": [("wood", [(35, 13), (38.4, 17), (40, 24), (40, 32), (38.4, 39), (35, 43), (36, 38.5), (37.8, 32), (37.8, 24), (36, 17.5)]),
             ("bone", R(34.6, 13.5, 35.2, 42.5)), ("wrap", R(37.4, 25.5, 40.2, 30.5))],
     "staff": [("wood", R(35, 6, 36, 41)), ("bone", [(33.4, 7), (31.6, 1.5), (34.6, 5.5)]), ("bone", [(37.6, 7), (39.4, 1.5), (36.4, 5.5)]),
@@ -650,6 +653,7 @@ TILES = [
     ("wall", "rock", "2a2630", "3e3848", "0c0a10", "4a4458"),
     ("cave_floor", "mud", "34323a", "45434c", "24222a", "55535e"),
     ("peak", "peak", "7c7986", "a4a2ae", "55525e", "eef2f6"),
+    ("path", "path", "7a6448", "8e7656", "5c4a34", "a6a2b0"),
 ]
 VARIANTS = 8
 WATER_FRAMES = 4
@@ -742,6 +746,15 @@ def draw_tile(row, variant, frame=0):
             for k in range(w):
                 put(x + k, y + (1 if (k + frame) % 5 == 0 else 0), accent)
                 put(x + k + 2, y + 1, dark)
+    elif style == "path":
+        # Packed earth with wheel ruts and the odd stone.
+        for y in (12, 30):
+            d.line((0, y, N, y + r.choice((-1, 0, 1))), fill=dark)
+            d.line((0, y + 1, N, y + 1), fill=light)
+        for _ in range(4):
+            x, y = r.randrange(2, N - 5), r.randrange(2, N - 4)
+            d.ellipse((x, y, x + 3, y + 2), fill=accent)
+            put(x + 1, y + 2, dark)
     elif style == "mud":
         for _ in range(3):
             pebble()
@@ -947,6 +960,8 @@ ICONS += [
     ("house", [("wood", "rect", (4, 10, 17, 19)), ("red", "poly", [(2, 11), (10.5, 3), (19, 11)]), ("dark", "rect", (9, 14, 12, 19))]),
     ("bed", [("wood", "rect", (3, 8, 18, 18)), ("red", "rect", (4, 11, 17, 17)), ("bone", "rect", (5, 9, 10, 11))]),
 ]
+# Icon 58: the wooden club.
+ICONS += [("club", None)]
 
 # Things to gather in the world: 64px frames in one row. Pale parts are
 # tinted in game. Order: rock, ore flecks, tree, herb, fishing ripple.

@@ -30,6 +30,10 @@ func has_room_for(item: Item) -> bool:
 
 ## Adds an item, merging stackables. Returns false if the bag is full.
 func add(item: Item) -> bool:
+	# Coins go straight into the purse.
+	if item.definition().get("currency", false):
+		add_gold(item.count)
+		return true
 	if not has_room_for(item):
 		return false
 	var stack := _find_stack(item.id) if item.is_stackable() else null

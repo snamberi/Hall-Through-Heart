@@ -41,6 +41,8 @@ var _enchant: Button
 var _salvage: Button
 var _discard: Button
 var _message: Label
+var _hand_row: HBoxContainer
+var _hand_buttons: Dictionary[String, Button] = {}
 
 var _selected: Item
 var _hovered: Item
@@ -57,6 +59,7 @@ func _build() -> void:
 	# --- left: the bag
 	var bag_panel := UITheme.inset_panel()
 	columns.add_child(bag_panel)
+	bag_panel.custom_minimum_size.y = 520.0
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 12)
 	bag_panel.add_child(left)
@@ -97,9 +100,34 @@ func _build() -> void:
 	bag_actions.add_child(_discard)
 	bag_actions.add_child(UITheme.button("Sort", func() -> void: player.inventory.sort(), 130.0))
 
+	# Simple things that need no workbench.
+	left.add_child(UITheme.heading("Craft by hand", 16))
+	_hand_row = HBoxContainer.new()
+	_hand_row.add_theme_constant_override("separation", 6)
+	left.add_child(_hand_row)
+	for recipe_id in RecipeDB.NO_TABLE:
+		var recipe := RecipeDB.find(recipe_id)
+		var button := Button.new()
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = Vector2(98.0, 44.0)
+		button.add_theme_font_size_override("font_size", 12)
+		button.text = RecipeDB.display_name(recipe)
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD
+		button.pressed.connect(func() -> void: _report(Crafting.craft(player, recipe)))
+		button.mouse_entered.connect(func() -> void:
+			var needs: PackedStringArray = []
+			for item_id: String in recipe["inputs"]:
+				needs.append("%d %s" % [recipe["inputs"][item_id], ItemDB.ITEMS[item_id]["name"]])
+			_message.add_theme_color_override("font_color", UITheme.DIM)
+			_message.text = "%s needs %s" % [RecipeDB.display_name(recipe), ", ".join(needs)]
+		)
+		_hand_row.add_child(button)
+		_hand_buttons[recipe_id] = button
+
 	# --- middle: the character and what they wear
 	var doll_panel := UITheme.inset_panel()
 	columns.add_child(doll_panel)
+	doll_panel.custom_minimum_size.y = 520.0
 	var doll := CharacterPreview.new()
 	doll.custom_minimum_size = Vector2(330.0, 400.0)
 	doll.setup(player)
@@ -125,6 +153,7 @@ func _build() -> void:
 	# --- right: details and actions
 	var detail_panel := UITheme.inset_panel()
 	columns.add_child(detail_panel)
+	detail_panel.custom_minimum_size.y = 520.0
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 8)
 	right.custom_minimum_size = Vector2(310.0, 0.0)
@@ -140,9 +169,11 @@ func _build() -> void:
 	_detail_frame.add_child(_detail_icon)
 	_details = RichTextLabel.new()
 	_details.bbcode_enabled = true
-	_details.fit_content = true
-	_details.scroll_active = false
-	_details.custom_minimum_size = Vector2(310.0, 250.0)
+	# A fixed box so the screen keeps its size whatever is shown.
+	_details.fit_content = false
+	_details.scroll_active = true
+	_details.custom_minimum_size = Vector2(310.0, 270.0)
+	_details.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_details.add_theme_font_size_override("normal_font_size", 14)
 	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(_details)
@@ -174,6 +205,8 @@ func refresh() -> void:
 	if _selected and not _selected in inventory.items and _equipped_slot(_selected) == "":
 		_selected = null
 	_count.text = "%d / %d" % [inventory.items.size(), Inventory.CAPACITY]
+	for recipe_id in _hand_buttons:
+		_hand_buttons[recipe_id].disabled = Crafting.blocked_reason(player, RecipeDB.find(recipe_id)) != ""
 	_gold.text = "%d gold" % inventory.gold
 	for index in Inventory.CAPACITY:
 		var item := _bag_item(index)

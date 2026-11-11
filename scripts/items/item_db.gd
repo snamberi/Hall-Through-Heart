@@ -73,6 +73,11 @@ const ITEMS := {
 	#   burn / poison / bleed: "power" x the hit's damage, every second
 	#   chill: "power" is the share of movement speed removed
 	# "life_steal" heals that share of damage dealt.
+	"club": {
+		"name": "Wooden Club", "icon": 58, "visual": "club", "slot": "main_hand", "drop_weight": 0.0,
+		"damage": 4.0, "text": "A heavy stick. Better than nothing.",
+		"weapon": {"type": "unarmed", "range": 56.0, "arc": 110.0, "cooldown": 0.42, "knockback": 360.0},
+	},
 	"sword": {
 		"name": "Sword", "icon": 0, "visual": "sword", "slot": "main_hand", "tiered": true, "drop_weight": 10.0,
 		"damage": 6.0,
@@ -232,6 +237,7 @@ const ITEMS := {
 	"trout": {"name": "Trout", "icon": 45, "tint": Color("e0a080"), "material_rarity": 1, "text": "Fresh from the black water. Best cooked."},
 	"eel": {"name": "Eel", "icon": 45, "tint": Color("708090"), "material_rarity": 2, "text": "Fresh from the black water. Best cooked."},
 	"enchanted_dust": {"name": "Enchanted Dust", "icon": 52, "tint": Color("ffffff"), "material_rarity": 1, "text": "What is left when magic gear is broken down."},
+	"gold_coins": {"name": "Gold", "icon": 17, "material_rarity": 0, "currency": true, "text": "Coin of a dead kingdom. Still spends."},
 	"hound_pelt": {"name": "Hound Pelt", "icon": 13, "tint": Color("8a5a4a"), "material_rarity": 0, "text": "Mangy, but it will cure."},
 	"slime_gel": {"name": "Slime Gel", "icon": 16, "tint": Color("b8f08a"), "material_rarity": 0, "text": "It never quite stops moving."},
 	"bat_wing": {"name": "Bat Wing", "icon": 15, "tint": Color("5a4a5e"), "material_rarity": 0, "text": "Thin as old paper."},
@@ -240,6 +246,26 @@ const ITEMS := {
 	"cultist_sigil": {"name": "Cultist Sigil", "icon": 53, "tint": Color("c08cff"), "material_rarity": 1, "text": "A prayer to something that should not answer."},
 	"wraith_cloth": {"name": "Wraith Cloth", "icon": 43, "tint": Color("dfe6ee"), "material_rarity": 2, "text": "Cold to the touch, and weightless."},
 	"heart_shard": {"name": "Heart Shard", "icon": 12, "tint": Color("ff6a7a"), "material_rarity": 3, "text": "A splinter of something vast. It still pulses."},
+	# --- biome plants (icons from the flora sheet: "flora")
+	"frost_lily": {"name": "Frost Lily", "icon": 44, "flora": 24, "material_rarity": 1, "text": "Its petals never thaw."},
+	"bloodcap": {"name": "Bloodcap", "icon": 44, "flora": 25, "material_rarity": 1, "text": "Bell-shaped and the colour of a wound."},
+	"glowshroom": {"name": "Glowshroom", "icon": 44, "flora": 26, "material_rarity": 1, "text": "Gives off a soft green light."},
+	"desert_aloe": {"name": "Desert Aloe", "icon": 44, "flora": 27, "material_rarity": 0, "text": "Cool sap that soothes burns."},
+	"emberbloom": {"name": "Emberbloom", "icon": 44, "flora": 28, "material_rarity": 2, "text": "Warm enough to light a pipe."},
+	"void_bloom": {"name": "Void Bloom", "icon": 44, "flora": 29, "material_rarity": 3, "text": "It grows toward nothing at all."},
+	"saltweed": {"name": "Saltweed", "icon": 44, "flora": 30, "material_rarity": 0, "text": "Crunchy, bitter, and keeps forever."},
+	"wild_berries": {"name": "Wild Berries", "icon": 48, "tint": Color("c0303a"), "material_rarity": 0, "use": {"heal": 0.08}, "value": 6, "text": "A handful of berries. Restores a little health."},
+	"thornberries": {"name": "Thornberries", "icon": 48, "tint": Color("e8d8a0"), "material_rarity": 0, "use": {"heal": 0.12}, "value": 10, "text": "Worth the scratches. Restores some health."},
+	"berry_tart": {"name": "Berry Tart", "icon": 48, "tint": Color("e05a6a"), "material_rarity": 0, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"max_health": {"flat": 30.0}, "move_speed": {"percent": 0.05}}}, "text": "+30 maximum HP and +5% speed for 5 minutes."},
+	"frost_tea": {"name": "Frost Tea", "icon": 47, "tint": Color("a8d8f0"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"stamina_regen": {"percent": 0.4}, "max_stamina": {"flat": 25.0}}}, "text": "Stamina comes back 40% faster; +25 stamina for 5 minutes."},
+	"glowshroom_soup": {"name": "Glowshroom Soup", "icon": 48, "tint": Color("3ab088"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"mana_regen": {"percent": 0.6}, "max_mana": {"flat": 30.0}}}, "text": "Mana comes back 60% faster; +30 mana for 5 minutes."},
+	"thornberry_jam": {"name": "Thornberry Jam", "icon": 48, "tint": Color("b02a3a"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"critical_chance": {"flat": 0.06}}}, "text": "+6% critical-hit chance for 5 minutes."},
+	"ember_stew": {"name": "Ember Stew", "icon": 48, "tint": Color("f08a2e"), "material_rarity": 2, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"physical_damage": {"percent": 0.12}, "max_health": {"flat": 60.0}}}, "text": "+12% damage and +60 maximum HP for 5 minutes."},
+	"aloe_salve": {"name": "Aloe Salve", "icon": 47, "tint": Color("aac87a"), "material_rarity": 0, "use": {"heal": 0.3, "buff": "salve", "name": "Soothed", "duration": 20.0, "mods": {"health_regen": {"flat": 3.0}}}, "text": "Restores 30% health and more over 20 seconds."},
+	"bloodcap_draught": {"name": "Bloodcap Draught", "icon": 47, "tint": Color("c02a3a"), "material_rarity": 2, "use": {"buff": "draught", "name": "Bloodthirst", "duration": 90.0, "mods": {"life_steal": {"flat": 0.05}}}, "text": "Heal for 5% of damage dealt for 90 seconds."},
+	"void_tonic": {"name": "Void Tonic", "icon": 47, "tint": Color("9a6cf0"), "material_rarity": 3, "use": {"buff": "tonic", "name": "Void-touched", "duration": 90.0, "mods": {"magic_power": {"percent": 0.25}}}, "text": "+25% magic damage for 90 seconds."},
+	"bandage": {"name": "Bandage", "icon": 43, "tint": Color("f4f2ec"), "material_rarity": 0, "use": {"heal": 0.2}, "value": 8, "text": "Rough cloth and herbs. Restores 20% health."},
+	"torch": {"name": "Torch", "icon": 43, "tint": Color("f08a2e"), "material_rarity": 0, "place": "torch", "value": 4, "text": "Lights the dark. Use it to set it down."},
 	"venom_sac": {"name": "Venom Sac", "icon": 16, "tint": Color("b06ad0"), "material_rarity": 1, "text": "Handle with care."},
 	"ember_core": {"name": "Ember Core", "icon": 16, "tint": Color("f08a2e"), "material_rarity": 2, "text": "Still warm."},
 	"stone_heart": {"name": "Stone Heart", "icon": 42, "tint": Color("8a8794"), "material_rarity": 2, "text": "The slow-beating core of a golem."},

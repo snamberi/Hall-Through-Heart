@@ -25,9 +25,20 @@ const TOOL_TIERS: Array[Array] = [
 	["mithril", 40, "mithril_ingot", "ancient_wood"], ["adamantite", 65, "adamantite_ingot", "ancient_wood"],
 ]
 ## Recipes that can be made with bare hands, away from a crafting table.
-const NO_TABLE: Array[String] = ["crafting_table"]
+const NO_TABLE: Array[String] = ["crafting_table", "bandage", "torch", "wooden_club"]
 const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "crafting_table", "profession": "building", "level": 1, "inputs": {"oak_wood": 6, "stone": 4}, "item": "crafting_table", "count": 1, "xp": 20.0},
+	{"id": "bandage", "profession": "alchemy", "level": 1, "inputs": {"healing_herb": 1, "husk_fragment": 1}, "item": "bandage", "count": 2, "xp": 6.0},
+	{"id": "torch", "profession": "building", "level": 1, "inputs": {"oak_wood": 1}, "item": "torch", "count": 3, "xp": 3.0},
+	{"id": "wooden_club", "profession": "blacksmithing", "level": 1, "inputs": {"oak_wood": 4}, "equipment": "club", "item_level": 1, "xp": 8.0},
+	{"id": "berry_tart", "profession": "cooking", "level": 5, "inputs": {"wild_berries": 3, "healing_herb": 1}, "item": "berry_tart", "count": 1, "xp": 16.0},
+	{"id": "frost_tea", "profession": "cooking", "level": 15, "inputs": {"frost_lily": 2}, "item": "frost_tea", "count": 1, "xp": 28.0},
+	{"id": "thornberry_jam", "profession": "cooking", "level": 12, "inputs": {"thornberries": 3}, "item": "thornberry_jam", "count": 1, "xp": 24.0},
+	{"id": "glowshroom_soup", "profession": "cooking", "level": 20, "inputs": {"glowshroom": 2, "minnow": 1}, "item": "glowshroom_soup", "count": 1, "xp": 34.0},
+	{"id": "ember_stew", "profession": "cooking", "level": 30, "inputs": {"emberbloom": 1, "trout": 1, "saltweed": 1}, "item": "ember_stew", "count": 1, "xp": 52.0},
+	{"id": "aloe_salve", "profession": "alchemy", "level": 12, "inputs": {"desert_aloe": 2}, "item": "aloe_salve", "count": 1, "xp": 22.0},
+	{"id": "bloodcap_draught", "profession": "alchemy", "level": 25, "inputs": {"bloodcap": 2, "venom_sac": 1}, "item": "bloodcap_draught", "count": 1, "xp": 44.0},
+	{"id": "void_tonic", "profession": "alchemy", "level": 40, "inputs": {"void_bloom": 1, "essence": 1}, "item": "void_tonic", "count": 1, "xp": 70.0},
 	{"id": "storage_chest", "profession": "building", "level": 1, "inputs": {"oak_wood": 8, "copper_ingot": 1}, "item": "storage_chest", "count": 1, "xp": 25.0},
 	{"id": "bed", "profession": "building", "level": 1, "inputs": {"oak_wood": 10, "husk_fragment": 6}, "item": "bed", "count": 1, "xp": 30.0},
 	{"id": "house_kit", "profession": "building", "level": 2, "inputs": {"oak_wood": 30, "stone": 20, "copper_ingot": 4}, "item": "house_kit", "count": 1, "xp": 120.0},

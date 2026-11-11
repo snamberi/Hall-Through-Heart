@@ -6,6 +6,11 @@ extends Node2D
 const SHEET: Texture2D = preload("res://assets/sprites/props.png")
 const FRAMES := 14
 const REACH := 70.0
+const DECOR: Texture2D = preload("res://assets/sprites/decor.png")
+const DECOR_FRAMES := 22
+enum Decor { FLOOR, RUBBLE, STATUE, BRAZIER, BANNER, BONES, CRATE, BARREL, WELL, FENCE, LANTERN, STALL, SIGNPOST,
+	RUG, SHELF, PLANT_POT, TABLE, CHAIR, CANDLES, CAGE, TENT, OBELISK }
+static var LIGHT: Texture2D = _make_light()
 ## Frame numbers in the sheet.
 enum Art { PILLAR, WALL, CHEST, CHEST_OPEN, ALTAR, CAVE, PORTAL, LADDER, TABLE, BED, DOOR, CAMPFIRE, TOTEM, HOUSE }
 
@@ -46,6 +51,26 @@ static func create(art: Art, at: Vector2, solid: float = 0.0, prompt: String = "
 	return prop
 
 
+## A prop drawn from the decor sheet (tools/generate_flora.py) instead.
+static func create_decor(index: int, at: Vector2, solid: float = 0.0, prompt: String = "", action: Callable = Callable()) -> Prop:
+	var prop := create(Art.PILLAR, at, solid, prompt, action)
+	prop._sprite.texture = DECOR
+	prop._sprite.hframes = DECOR_FRAMES
+	prop._sprite.frame = index
+	return prop
+
+
+## Adds a warm glow around the prop, for torches, braziers, and lanterns.
+func add_light(strength: float = 0.9, reach: float = 1.6) -> void:
+	var light := PointLight2D.new()
+	light.texture = LIGHT
+	light.texture_scale = reach
+	light.energy = strength
+	light.color = Color(1.0, 0.82, 0.55)
+	light.position.y = -30.0
+	add_child(light)
+
+
 func set_art(art: Art) -> void:
 	_sprite.frame = art
 
@@ -63,3 +88,17 @@ func disarm() -> void:
 func interact(player: Player) -> void:
 	if on_interact.is_valid():
 		on_interact.call(player)
+
+
+static func _make_light() -> Texture2D:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(1, 1, 1, 1))
+	gradient.set_color(1, Color(1, 1, 1, 0))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+	texture.width = 128
+	texture.height = 128
+	return texture

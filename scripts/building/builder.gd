@@ -31,7 +31,10 @@ func is_active() -> bool:
 func begin(item: Item) -> void:
 	_item = item
 	_kind = item.definition()["place"]
-	_ghost.frame = Buildings.KINDS[_kind]["art"]
+	var kind: Dictionary = Buildings.KINDS[_kind]
+	_ghost.texture = Prop.DECOR if kind.has("decor") else Prop.SHEET
+	_ghost.hframes = Prop.DECOR_FRAMES if kind.has("decor") else Prop.FRAMES
+	_ghost.frame = kind.get("decor", kind.get("art", 0))
 	_ghost.scale = Vector2(2.0, 2.0) if _kind == "house" else Vector2.ONE
 	_ghost.visible = true
 	_player.placing = true
