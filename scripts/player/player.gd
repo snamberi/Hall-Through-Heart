@@ -273,6 +273,8 @@ func weapon_color() -> Color:
 
 ## Short camera jolt for heavy impacts.
 func shake_camera(strength: float = 6.0) -> void:
+	if not GameSettings.screen_shake:
+		return
 	var tween := create_tween()
 	for i in 5:
 		var offset := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * strength * (1.0 - i / 5.0)

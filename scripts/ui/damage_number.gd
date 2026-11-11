@@ -9,6 +9,8 @@ const LIFETIME := 0.6
 static func spawn(
 	parent: Node, world_position: Vector2, amount: float, color: Color, big: bool = false
 ) -> void:
+	if not GameSettings.damage_numbers:
+		return
 	spawn_text(parent, world_position, str(roundi(amount)), color, 20 if big else 14)
 
 

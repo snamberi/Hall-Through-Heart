@@ -88,6 +88,7 @@ func setup(player: Player) -> void:
 	Events.npc_interacted.connect(_on_npc_interacted)
 	_add("map", MapMenu.new())
 	_add("pause", PauseMenu.new())
+	_add("settings", SettingsMenu.new())
 
 
 func is_open() -> bool:

@@ -26,6 +26,7 @@ var _checkpoint_name := START_NAME
 
 
 func _ready() -> void:
+	Difficulty.current = str(SaveGame.get_section("meta").get("difficulty", "normal"))
 	_active_seed = world_seed
 	if _active_seed == 0:
 		_active_seed = int(SaveGame.get_section("world").get("seed", 0))

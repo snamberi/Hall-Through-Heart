@@ -67,7 +67,8 @@ func blocked_reason(id: String) -> String:
 func try_use_pressed() -> bool:
 	var ids := slots()
 	for index in ids.size():
-		if Input.is_action_just_pressed("ability_%d" % (index + 1)):
+		var action := "ability_%d" % (index + 1)
+		if InputMap.has_action(action) and Input.is_action_just_pressed(action):
 			return use(ids[index])
 	return false
 
