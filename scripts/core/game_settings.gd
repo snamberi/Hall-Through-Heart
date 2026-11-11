@@ -21,7 +21,7 @@ const DEFAULTS := {
 ## Actions players may rebind, in the order the Controls tab lists them.
 const REBINDABLE: Array[Array] = [
 	["move_up", "Move up"], ["move_down", "Move down"], ["move_left", "Move left"], ["move_right", "Move right"],
-	["attack", "Attack"], ["dodge", "Dodge"], ["interact", "Gather / talk / use"],
+	["attack", "Attack"], ["dodge", "Dodge"], ["parry", "Parry"], ["interact", "Gather / talk / use"],
 	["ability_1", "Ability 1"], ["ability_2", "Ability 2"], ["ability_3", "Ability 3"], ["ability_4", "Ability 4"],
 	["ability_swap", "Switch ability set"], ["quick_potion", "Drink health potion"],
 	["hotbar_1", "Hotbar 1"], ["hotbar_2", "Hotbar 2"], ["hotbar_3", "Hotbar 3"], ["hotbar_4", "Hotbar 4"], ["hotbar_5", "Hotbar 5"],

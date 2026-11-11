@@ -321,6 +321,17 @@ const ITEMS := {
 	"boss_trophy": {"name": "Boss Trophy", "icon": 12, "tint": Color("ff6a5a"), "material_rarity": 4, "value": 500, "text": "Proof that a great foe has fallen. Merchants pay well for it."},
 	"dungeon_key": {"name": "Dungeon Key", "icon": 17, "tint": Color("c0a060"), "material_rarity": 1, "value": 0, "text": "Opens one locked door in the dungeon where it was found."},
 	"gold_coins": {"name": "Gold", "icon": 17, "material_rarity": 0, "currency": true, "text": "Coin of a dead kingdom. Still spends."},
+	"frost_pelt": {"name": "Frost Pelt", "icon": 13, "tint": Color("dce8f4"), "material_rarity": 1, "text": "Thick white fur, rimed with ice."},
+	"troll_hide": {"name": "Troll Hide", "icon": 13, "tint": Color("7a8c9a"), "material_rarity": 2, "text": "It knits itself back together if you leave it."},
+	"boar_tusk": {"name": "Boar Tusk", "icon": 15, "tint": Color("f0e8d0"), "material_rarity": 0, "text": "Curved and wicked."},
+	"heartwood": {"name": "Heartwood", "icon": 43, "tint": Color("6a4a2a"), "material_rarity": 2, "text": "The living core of a treant. Still warm."},
+	"scorpion_stinger": {"name": "Scorpion Stinger", "icon": 15, "tint": Color("d8b070"), "material_rarity": 1, "text": "A drop of venom still beads at the tip."},
+	"mummy_wrap": {"name": "Mummy Wrap", "icon": 43, "tint": Color("e0d4b4"), "material_rarity": 1, "text": "Linen that has outlasted kingdoms."},
+	"void_shard": {"name": "Void Shard", "icon": 42, "tint": Color("a070f0"), "material_rarity": 2, "text": "A splinter of nothing, given edges."},
+	"fiend_horn": {"name": "Fiend Horn", "icon": 15, "tint": Color("e05a3a"), "material_rarity": 1, "text": "Hot to the touch."},
+	"magma_core": {"name": "Magma Core", "icon": 16, "tint": Color("ff8a2e"), "material_rarity": 2, "text": "Molten rock that will not cool."},
+	"harpy_feather": {"name": "Harpy Feather", "icon": 43, "tint": Color("a8b8d0"), "material_rarity": 1, "text": "It crackles in dry air."},
+	"lurker_tongue": {"name": "Lurker Tongue", "icon": 16, "tint": Color("c05a6a"), "material_rarity": 0, "text": "Long, sticky, and best not thought about."},
 	"hound_pelt": {"name": "Hound Pelt", "icon": 13, "tint": Color("8a5a4a"), "material_rarity": 0, "text": "Mangy, but it will cure."},
 	"slime_gel": {"name": "Slime Gel", "icon": 16, "tint": Color("b8f08a"), "material_rarity": 0, "text": "It never quite stops moving."},
 	"bat_wing": {"name": "Bat Wing", "icon": 15, "tint": Color("5a4a5e"), "material_rarity": 0, "text": "Thin as old paper."},
@@ -489,7 +500,34 @@ const LOOT_TABLES := {
 		{"id": "wraith_cloth", "chance": 0.3, "count": [1, 1]}, {"id": "essence", "chance": 0.15, "count": [1, 1]}]},
 	"crag_golem": {"gold": [3, 6], "gear": [["shield", 0.04], ["chestplate", 0.03]], "materials": [
 		{"id": "stone", "chance": 0.7, "count": [1, 3]}, {"id": "stone_heart", "chance": 0.15, "count": [1, 1]}]},
+	"frost_wolf": {"gold": [0, 2], "gear": [["boots", 0.02], ["frost_sword", 0.006]], "materials": [
+		{"id": "frost_pelt", "chance": 0.3, "count": [1, 1]}, {"id": "claw", "chance": 0.15, "count": [1, 1]}]},
+	"frost_troll": {"gold": [3, 7], "gear": [["greatsword", 0.03], ["chestplate", 0.03]], "materials": [
+		{"id": "troll_hide", "chance": 0.35, "count": [1, 1]}, {"id": "frost_pelt", "chance": 0.3, "count": [1, 2]}]},
+	"dire_boar": {"gold": [0, 2], "gear": [["greaves", 0.02]], "materials": [
+		{"id": "boar_tusk", "chance": 0.35, "count": [1, 2]}, {"id": "hound_pelt", "chance": 0.25, "count": [1, 1]}]},
+	"treant": {"gold": [2, 5], "gear": [["staff", 0.03], ["shield", 0.03]], "materials": [
+		{"id": "heartwood", "chance": 0.3, "count": [1, 1]}, {"id": "oak_wood", "chance": 0.7, "count": [2, 4]}]},
+	"sand_scorpion": {"gold": [1, 2], "gear": [["fang", 0.015], ["dagger", 0.02]], "materials": [
+		{"id": "scorpion_stinger", "chance": 0.3, "count": [1, 1]}, {"id": "venom_sac", "chance": 0.15, "count": [1, 1]}]},
+	"dune_mummy": {"gold": [2, 4], "gear": [["necklace", 0.02], ["relic", 0.008]], "materials": [
+		{"id": "mummy_wrap", "chance": 0.35, "count": [1, 2]}, {"id": "bone", "chance": 0.3, "count": [1, 2]}]},
+	"void_stalker": {"gold": [1, 3], "gear": [["dark_sword", 0.015], ["katana", 0.015]], "materials": [
+		{"id": "void_shard", "chance": 0.25, "count": [1, 1]}, {"id": "essence", "chance": 0.12, "count": [1, 1]}]},
+	"void_eye": {"gold": [1, 3], "gear": [["ring", 0.03], ["staff", 0.015]], "materials": [
+		{"id": "void_shard", "chance": 0.3, "count": [1, 1]}, {"id": "essence", "chance": 0.2, "count": [1, 1]}]},
+	"crimson_fiend": {"gold": [2, 4], "gear": [["reaver", 0.015], ["axe", 0.02]], "materials": [
+		{"id": "fiend_horn", "chance": 0.3, "count": [1, 1]}, {"id": "claw", "chance": 0.2, "count": [1, 1]}]},
+	"magma_slime": {"gold": [0, 2], "gear": [["ring", 0.015]], "materials": [
+		{"id": "magma_core", "chance": 0.2, "count": [1, 1]}, {"id": "slime_gel", "chance": 0.3, "count": [1, 1]}]},
+	"cinder_imp": {"gold": [1, 2], "gear": [["ember_staff", 0.015], ["flame_sword", 0.008]], "materials": [
+		{"id": "ember_core", "chance": 0.25, "count": [1, 1]}, {"id": "fiend_horn", "chance": 0.1, "count": [1, 1]}]},
+	"bog_lurker": {"gold": [0, 2], "gear": [["boots", 0.015]], "materials": [
+		{"id": "lurker_tongue", "chance": 0.35, "count": [1, 1]}, {"id": "slime_gel", "chance": 0.2, "count": [1, 1]}]},
+	"storm_harpy": {"gold": [1, 2], "gear": [["bow", 0.025], ["spear", 0.015]], "materials": [
+		{"id": "harpy_feather", "chance": 0.35, "count": [1, 2]}, {"id": "claw", "chance": 0.15, "count": [1, 1]}]},
 }
+
 ## How enemy rank changes loot.
 const RANK_LOOT := {
 	"normal": {"gold": 1.0, "materials": 1.0, "equipment_chance": 1.0, "rarity_bonus": 0.0},

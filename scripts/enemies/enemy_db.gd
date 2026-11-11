@@ -100,8 +100,88 @@ const ENEMIES := {
 		"attack": {"kind": "slam", "range": 80.0, "windup": 0.9, "recover": 1.4, "radius": 120.0, "color": Color(1.0, 0.7, 0.4), "knockback": 520.0},
 		"traits": ["armored", "enrage"],
 	},
+	# --- biome families
+	"frost_wolf": {
+		"active": "always", "name": "Frost Wolf", "health": 26.0, "damage": 10.0, "speed": 175.0, "xp": 11,
+		"radius": 13.0, "size": 1.0, "tiles": [T.SNOW, T.FROSTPINE, T.PEAK], "min_level": 4, "weight": 9.0,
+		"attack": {"kind": "lunge", "range": 125.0, "windup": 0.32, "speed": 660.0, "time": 0.24, "recover": 0.55},
+		"touch": {"status": "chill", "duration": 2.0, "power": 0.3}, "traits": ["pack"],
+	},
+	"frost_troll": {
+		"active": "night", "name": "Frost Troll", "health": 110.0, "damage": 20.0, "speed": 62.0, "xp": 26,
+		"radius": 19.0, "size": 1.45, "tiles": [T.SNOW, T.FROSTPINE, T.PEAK, T.ROCK], "min_level": 9, "weight": 3.0,
+		"attack": {"kind": "slam", "range": 85.0, "windup": 0.95, "recover": 1.4, "radius": 130.0, "color": Color(0.6, 0.88, 1.0), "knockback": 540.0,
+			"status": {"status": "chill", "duration": 3.0, "power": 0.4}},
+		"traits": ["regen", "enrage"],
+	},
+	"dire_boar": {
+		"active": "day", "name": "Dire Boar", "health": 40.0, "damage": 13.0, "speed": 140.0, "xp": 12,
+		"radius": 15.0, "size": 1.1, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.THORN], "min_level": 3, "weight": 5.0,
+		"attack": {"kind": "lunge", "range": 170.0, "windup": 0.6, "speed": 760.0, "time": 0.32, "recover": 0.9},
+		"traits": ["enrage"],
+	},
+	"treant": {
+		"active": "night", "name": "Treant", "health": 120.0, "damage": 15.0, "speed": 45.0, "xp": 24,
+		"radius": 19.0, "size": 1.5, "tiles": [T.DARK_GRASS, T.BOG, T.FROSTPINE], "min_level": 8, "weight": 2.0,
+		"attack": {"kind": "slam", "range": 85.0, "windup": 1.0, "recover": 1.5, "radius": 125.0, "color": Color(0.55, 0.9, 0.4), "knockback": 500.0},
+		"traits": ["regen", "armored"],
+	},
+	"sand_scorpion": {
+		"active": "always", "name": "Sand Scorpion", "health": 30.0, "damage": 11.0, "speed": 130.0, "xp": 11,
+		"radius": 14.0, "size": 1.05, "tiles": [T.SAND, T.SALT], "min_level": 3, "weight": 9.0,
+		"attack": {"kind": "lunge", "range": 90.0, "windup": 0.4, "speed": 520.0, "time": 0.22, "recover": 0.7},
+		"touch": {"status": "poison", "duration": 4.0, "power": 0.35}, "traits": [],
+	},
+	"dune_mummy": {
+		"active": "night", "name": "Dune Mummy", "health": 45.0, "damage": 12.0, "speed": 68.0, "xp": 14,
+		"radius": 13.0, "size": 1.05, "tiles": [T.SAND, T.SALT, T.ASH], "min_level": 5, "weight": 6.0,
+		"attack": {"kind": "lunge", "range": 80.0, "windup": 0.55, "speed": 420.0, "time": 0.24, "recover": 0.9},
+		"touch": {"status": "bleed", "duration": 4.0, "power": 0.25}, "traits": ["regen"],
+	},
+	"void_stalker": {
+		"active": "night", "name": "Void Stalker", "health": 34.0, "damage": 15.0, "speed": 160.0, "xp": 17,
+		"radius": 13.0, "size": 1.05, "tiles": [T.VOIDSCAR, T.CRIMSON], "min_level": 9, "weight": 6.0,
+		"attack": {"kind": "lunge", "range": 130.0, "windup": 0.35, "speed": 700.0, "time": 0.22, "recover": 0.6},
+		"traits": ["blink", "erratic"],
+	},
+	"void_eye": {
+		"active": "always", "name": "Void Eye", "health": 22.0, "damage": 13.0, "speed": 85.0, "xp": 15, "flying": true,
+		"radius": 13.0, "size": 1.0, "tiles": [T.VOIDSCAR], "min_level": 8, "weight": 5.0,
+		"attack": {"kind": "shoot", "range": 320.0, "windup": 0.65, "recover": 1.1, "sprite": 1, "speed": 380.0, "color": Color(0.8, 0.5, 1.0)},
+		"traits": [],
+	},
+	"crimson_fiend": {
+		"active": "night", "name": "Crimson Fiend", "health": 40.0, "damage": 14.0, "speed": 120.0, "xp": 16,
+		"radius": 13.0, "size": 1.05, "tiles": [T.CRIMSON, T.THORN], "min_level": 7, "weight": 6.0,
+		"attack": {"kind": "lunge", "range": 100.0, "windup": 0.38, "speed": 600.0, "time": 0.22, "recover": 0.65},
+		"touch": {"status": "bleed", "duration": 3.0, "power": 0.3}, "traits": ["lifesteal", "enrage"],
+	},
+	"magma_slime": {
+		"active": "always", "name": "Magma Slime", "health": 38.0, "damage": 12.0, "speed": 70.0, "xp": 13,
+		"radius": 14.0, "size": 1.0, "tiles": [T.CINDER, T.ASH, T.TAR], "min_level": 6, "weight": 7.0,
+		"attack": {"kind": "lunge", "range": 70.0, "windup": 0.5, "speed": 360.0, "time": 0.26, "recover": 0.8},
+		"touch": {"status": "burn", "duration": 3.0, "power": 0.35}, "traits": ["split"],
+	},
+	"cinder_imp": {
+		"active": "night", "name": "Cinder Imp", "health": 16.0, "damage": 11.0, "speed": 165.0, "xp": 12, "flying": true,
+		"radius": 11.0, "size": 0.9, "tiles": [T.CINDER, T.ASH, T.CRIMSON], "min_level": 6, "weight": 6.0,
+		"attack": {"kind": "shoot", "range": 280.0, "windup": 0.5, "recover": 1.0, "sprite": 2, "speed": 420.0, "color": Color(1.0, 0.6, 0.25),
+			"status": {"status": "burn", "duration": 3.0, "power": 0.3}},
+		"traits": ["erratic"],
+	},
+	"bog_lurker": {
+		"active": "night", "name": "Bog Lurker", "health": 36.0, "damage": 12.0, "speed": 95.0, "xp": 12,
+		"radius": 15.0, "size": 1.05, "tiles": [T.BOG, T.MUD, T.FUNGAL], "min_level": 4, "weight": 6.0,
+		"attack": {"kind": "lunge", "range": 145.0, "windup": 0.45, "speed": 620.0, "time": 0.24, "recover": 0.8},
+		"touch": {"status": "poison", "duration": 4.0, "power": 0.3}, "traits": [],
+	},
+	"storm_harpy": {
+		"active": "day", "name": "Storm Harpy", "health": 24.0, "damage": 11.0, "speed": 170.0, "xp": 13, "flying": true,
+		"radius": 12.0, "size": 1.0, "tiles": [T.ROCK, T.PEAK, T.SALT, T.DEAD_GRASS], "min_level": 5, "weight": 5.0,
+		"attack": {"kind": "lunge", "range": 150.0, "windup": 0.4, "speed": 700.0, "time": 0.26, "recover": 0.9},
+		"traits": ["erratic"],
+	},
 }
-
 
 static func sheet(id: String) -> Texture2D:
 	return load(ENEMIES[id].get("sheet", SHEETS % id))

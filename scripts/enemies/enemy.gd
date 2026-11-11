@@ -87,6 +87,8 @@ var lair_home := Vector2.INF
 var boss_id := ""
 ## A name of its own (bounty marks), shown instead of its kind's.
 var custom_name := ""
+## Seconds left in which a hit is a finisher (after being parried).
+var exposed_left := 0.0
 var brain: BossBrain
 ## Asks whoever spawned this enemy for a minion (the Summoner modifier).
 signal wants_minion(enemy: Enemy)
@@ -213,6 +215,9 @@ func _physics_process(delta: float) -> void:
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
 	_since_hurt += delta
 	_stagger_cooldown = maxf(_stagger_cooldown - delta, 0.0)
+	if exposed_left > 0.0:
+		exposed_left = maxf(exposed_left - delta, 0.0)
+		queue_redraw()
 	_read_ground(delta)
 	_update_statuses(delta)
 	if state == State.DEAD:
@@ -294,6 +299,15 @@ func _physics_process(delta: float) -> void:
 
 
 func _draw() -> void:
+	if exposed_left > 0.0 and state != State.DEAD:
+		# Open to a finisher: a golden mark over the head.
+		var bob := sin(Time.get_ticks_msec() / 90.0) * 2.0
+		var top := Vector2(0, -52.0 * _visual.scale.y - 18.0 + bob)
+		draw_colored_polygon(PackedVector2Array([top + Vector2(-6, -12), top + Vector2(6, -12), top + Vector2(2, 2), top + Vector2(-2, 2)]), Color(1.0, 0.8, 0.3))
+		draw_circle(top + Vector2(0, 6), 2.5, Color(1.0, 0.8, 0.3))
+		draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, body_radius + 14.0, 0.0, TAU, 32, Color(1.0, 0.8, 0.3, 0.9), 2.5)
+		draw_set_transform(Vector2.ZERO)
 	# A ring in each modifier's colour marks an Elite or Champion.
 	if state != State.DEAD:
 		for index in modifiers.size():
@@ -401,6 +415,15 @@ func apply_status(id: String, duration: float, power: float, weapon_type: String
 	if weapon_type != "":
 		_last_weapon_type = weapon_type
 	_refresh_status_tint()
+
+
+## Parried: reeling and open to a finisher for a moment.
+func expose(seconds: float) -> void:
+	if state == State.DEAD:
+		return
+	exposed_left = seconds * (0.6 if rank >= Rank.MINIBOSS else 1.0)
+	stun(seconds * 0.8)
+	queue_redraw()
 
 
 ## Freezes the enemy in place. Bosses shake it off sooner.

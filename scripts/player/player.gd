@@ -86,6 +86,15 @@ var _combo_left := 0.0
 var _afflictions: Dictionary = {}
 ## Seconds until the Unbreakable talent can save the player again.
 var _unbreakable_left := 0.0
+## Parry: a short window in which a blow is turned aside and its attacker
+## left open to a finisher.
+const PARRY_WINDOW := 0.28
+const PARRY_COOLDOWN := 0.9
+const PARRY_STAMINA := 12.0
+const EXPOSE_SECONDS := 2.0
+const FINISHER_DAMAGE := 3.0
+var parry_left := 0.0
+var _parry_cooldown := 0.0
 
 @onready var health: Health = $Health
 @onready var stamina: ResourcePool = $Stamina
@@ -149,6 +158,8 @@ func _physics_process(delta: float) -> void:
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
 	_unbreakable_left = maxf(_unbreakable_left - delta, 0.0)
+	parry_left = maxf(parry_left - delta, 0.0)
+	_parry_cooldown = maxf(_parry_cooldown - delta, 0.0)
 	potion_cooldown_left = maxf(potion_cooldown_left - delta, 0.0)
 	_combo_left = maxf(_combo_left - delta, 0.0)
 	_read_ground()
@@ -331,6 +342,19 @@ func play_attack_animation(duration: float, heavy: bool = false) -> void:
 ## applies the weapon's effects, life steal, and mastery credit.
 func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 	var critical := randf() < stats.get_stat("critical_chance")
+	if enemy.exposed_left > 0.0:
+		# A finisher on a reeling foe: a sure, crushing blow, and the end of
+		# anything ordinary that is already badly hurt.
+		enemy.exposed_left = 0.0
+		critical = true
+		multiplier *= FINISHER_DAMAGE
+		if enemy.rank < Enemy.Rank.MINIBOSS and enemy.health.current < enemy.health.max_health * 0.3:
+			multiplier = maxf(multiplier, enemy.health.current / maxf(stats.get_stat("physical_damage"), 1.0) * 2.0)
+		DamageNumber.spawn_text(get_parent(), enemy.global_position + Vector2(0, -60), "FINISHER", Color(1.0, 0.6, 0.3), 17)
+		HitSpark.spawn(get_parent(), enemy.global_position + Vector2(0, -16), Color(1.0, 0.7, 0.3), true)
+		RingBurst.spawn(get_parent(), enemy.global_position + Vector2(0, -14), Color(1.0, 0.6, 0.3), 70.0)
+		shake_camera(9.0)
+		slow_motion(0.25, 0.1)
 	var damage := stats.get_stat("physical_damage") * multiplier
 	if critical:
 		damage *= stats.get_stat("critical_damage")
@@ -532,6 +556,9 @@ func learn_class_node(id: String) -> bool:
 func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1, element: String = "") -> bool:
 	if is_dead():
 		return false
+	if parry_left > 0.0:
+		_parried(source_position)
+		return false
 	if _invulnerable_left > 0.0:
 		if state == State.DODGE and talents.has("perfect_dodge"):
 			buffs.add("perfect_dodge", "Perfect Dodge", 5.0, {"critical_chance": {"flat": 0.3}})
@@ -664,8 +691,12 @@ func _process_move(delta: float) -> void:
 		# Both hands are busy keeping afloat.
 		return
 
+	if parry_left > 0.0:
+		velocity *= 0.3
 	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0 and not swimming:
 		_try_dodge()
+	elif Input.is_action_just_pressed("parry") and _parry_cooldown == 0.0 and not placing and not swimming:
+		_start_parry()
 	elif abilities.try_use_pressed():
 		pass
 	elif Input.is_action_just_pressed("quick_potion"):
@@ -678,6 +709,47 @@ func _process_move(delta: float) -> void:
 		Events.dismantle_requested.emit()
 	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing:
 		attack(aim_direction())
+
+
+func _start_parry() -> void:
+	if not stamina.spend(PARRY_STAMINA * stats.get_stat("stamina_cost_multiplier")):
+		return
+	parry_left = PARRY_WINDOW
+	_parry_cooldown = PARRY_COOLDOWN
+	var direction := aim_direction()
+	face(direction)
+	_animator.play_attack(0.22, false)
+	show_slash(direction, 38.0, 150.0, 0.2, Color(1.0, 0.95, 0.7))
+
+
+## A blow caught in the parry window: no damage, and the attacker reels.
+func _parried(source_position: Vector2) -> void:
+	parry_left = 0.0
+	_parry_cooldown = 0.15
+	stamina.current = minf(stamina.current + PARRY_STAMINA, stamina.max_value)
+	var attacker: Enemy = null
+	var best := 170.0
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy and not enemy.health.is_dead():
+			var distance := enemy.global_position.distance_to(source_position) + enemy.global_position.distance_to(global_position) * 0.5
+			if distance < best:
+				best = distance
+				attacker = enemy
+	if attacker:
+		attacker.expose(EXPOSE_SECONDS)
+	HitSpark.spawn(get_parent(), global_position + facing * 16.0 + Vector2(0, -16), Color(1.0, 0.95, 0.6), true)
+	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(1.0, 0.9, 0.5), 50.0)
+	DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -46), "Parry!", UITheme.GOLD, 15)
+	Audio.play("hit", -2.0, 0.0)
+	shake_camera(4.0)
+	slow_motion(0.35, 0.12)
+
+
+## Briefly slows the whole game for weight on a big moment.
+func slow_motion(scale: float, seconds: float) -> void:
+	Engine.time_scale = scale
+	get_tree().create_timer(seconds, true, false, true).timeout.connect(func() -> void: Engine.time_scale = 1.0)
 
 
 func _try_dodge() -> void:
