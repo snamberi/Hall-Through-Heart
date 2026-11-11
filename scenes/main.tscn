@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
@@ -22,6 +22,7 @@
 [ext_resource type="Script" path="res://scripts/building/builder.gd" id="21_builder"]
 [ext_resource type="Script" path="res://scripts/world/atmosphere.gd" id="22_atmosphere"]
 [ext_resource type="Script" path="res://scripts/world/villages.gd" id="23_villages"]
+[ext_resource type="Script" path="res://scripts/world/exploration.gd" id="24_exploration"]
 
 [node name="Main" type="Node2D"]
 y_sort_enabled = true
@@ -52,6 +53,9 @@ script = ExtResource("20_buildings")
 
 [node name="Builder" type="Node2D" parent="."]
 script = ExtResource("21_builder")
+
+[node name="Exploration" type="Node" parent="."]
+script = ExtResource("24_exploration")
 
 [node name="Villages" type="Node2D" parent="."]
 y_sort_enabled = true

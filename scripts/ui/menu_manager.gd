@@ -20,7 +20,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "class", "title": "Class", "icon": 6, "action": ""},
 	{"id": "professions", "title": "Professions", "icon": 49, "action": "toggle_professions"},
 	{"id": "journal", "title": "Journal", "icon": 53, "action": "toggle_journal"},
-	{"id": "map", "title": "Map", "icon": 12, "action": ""},
+	{"id": "map", "title": "Map", "icon": 12, "action": "toggle_map"},
 	{"id": "pause", "title": "Settings", "icon": 5, "action": ""},
 ]
 

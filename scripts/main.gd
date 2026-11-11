@@ -66,6 +66,7 @@ func _ready() -> void:
 			Events.announcement.emit("", problem)
 	)
 	$Villages.setup(_world)
+	$Exploration.setup(_player, _world)
 	_resources.setup(_world)
 	$Atmosphere.setup(_player, _world, _day_night)
 	$Npcs.setup(_world)

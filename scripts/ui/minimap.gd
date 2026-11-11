@@ -15,12 +15,14 @@ var _texture: ImageTexture
 var _drawn_cell := Vector2i.MAX
 var _refresh_left := 0.0
 var _day_night: DayNight
+var _exploration: Exploration
 
 
 func setup(player: Player, world: World) -> void:
 	_player = player
 	_world = world
 	_day_night = world.get_parent().get_node_or_null("DayNight")
+	_exploration = world.get_parent().get_node_or_null("Exploration")
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	custom_minimum_size = Vector2.ONE * ((RADIUS * 2 + 1) * SCALE + 8.0)
 	GameSettings.changed.connect(func() -> void: visible = GameSettings.show_minimap)
@@ -49,8 +51,11 @@ func _render(center: Vector2i) -> void:
 	var image := Image.create(side, side, false, Image.FORMAT_RGB8)
 	for y in side:
 		for x in side:
-			var type := generator.tile_type_at(center + Vector2i(x - RADIUS, y - RADIUS))
-			image.set_pixel(x, y, TerrainTiles.COLORS[type].lightened(0.16))
+			var tile := center + Vector2i(x - RADIUS, y - RADIUS)
+			if _exploration and not _exploration.is_tile_seen(tile):
+				image.set_pixel(x, y, Color(0.07, 0.075, 0.09))
+				continue
+			image.set_pixel(x, y, TerrainTiles.COLORS[generator.tile_type_at(tile)].lightened(0.16))
 	if _texture == null:
 		_texture = ImageTexture.create_from_image(image)
 	else:
