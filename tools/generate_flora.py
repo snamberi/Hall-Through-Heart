@@ -123,10 +123,29 @@ def canopy(c, blobs, colours, seed, highlights=True):
 # ----------------------------------------------------------------- tall
 def oak(seed=1):
     c = Canvas(64, 96)
-    c.shadow(32, 90, 20, 5)
+    r = random.Random(seed)
+    c.shadow(32, 90, 21, 5)
     trunk(c, 32, 50, 90, 9)
-    canopy(c, [(32, 38, 22, 17), (18, 46, 12, 10), (46, 46, 12, 10), (24, 26, 13, 12), (40, 26, 13, 12), (32, 18, 12, 10)],
-           ramp("6a9a4a", "4a7a3a", "2f5a2a"), seed)
+    # Branches reaching into the crown, seen through gaps.
+    for (a, b) in [((32, 58), (18, 44)), ((32, 54), (46, 42)), ((32, 50), (30, 30))]:
+        c.shade("line", (a[0], a[1], b[0], b[1]), BARK, width=3, dither=False)
+    leaves = ramp("6a9a4a", "4a7a3a", "2f5a2a")
+    deep = ramp("3f6a34", "2f5a2a", "1f3e1e")
+    # A dark inner mass first, then lit clumps over it, for depth.
+    canopy(c, [(32, 40, 22, 16), (20, 46, 11, 9), (44, 46, 11, 9)], deep, seed, highlights=False)
+    jitter = lambda v: v + r.randint(-2, 2)
+    canopy(c, [(jitter(30), 36, 18, 13), (jitter(17), 44, 10, 8), (jitter(47), 44, 10, 8), (jitter(23), 25, 12, 10),
+               (jitter(41), 25, 12, 10), (jitter(32), 16, 11, 9)], leaves, seed)
+    # Sunlit leaf tips along the top-left of each clump.
+    for (cx, cy, rr) in [(23, 25, 12), (32, 16, 11), (17, 44, 10), (30, 36, 18)]:
+        for k in range(6):
+            a = math.pi * (1.1 + 0.08 * k)
+            c.put(cx + math.cos(a) * (rr - 2), cy + math.sin(a) * (rr * 0.8 - 2), C("9aca6a"))
+    # Gaps of shadow between clumps and a few hanging leaves.
+    for (x, y) in [(26, 34), (38, 33), (31, 45), (22, 40)]:
+        c.put(x, y, deep[2]); c.put(x + 1, y, deep[2])
+    for x in (16, 27, 44, 49):
+        c.put(x, 54 + r.randint(0, 2), leaves[1])
     c.outline()
     return c.img
 
@@ -144,17 +163,39 @@ def dead_tree():
 
 def pine(snowy, seed=2):
     c = Canvas(64, 96)
+    r = random.Random(seed)
     c.shadow(32, 90, 16, 4)
     trunk(c, 32, 70, 90, 6, roots=False)
     greens = ramp("4a7a6a", "2f5a50", "1f3e38")
-    for k, (top, half, base) in enumerate([(8, 8, 28), (20, 13, 44), (34, 18, 60), (48, 22, 76)]):
+    tiers = [(6, 7, 24), (14, 11, 36), (24, 15, 50), (35, 19, 64), (47, 23, 78)]
+    for k, (top, half, base) in enumerate(tiers):
+        # Each tier is a skirt of drooping boughs with a ragged hem.
+        hem = []
+        steps = 8
+        for i in range(steps + 1):
+            x = 32 - half + 2 * half * i / steps
+            hem.append((x, base + (2 if i % 2 else -1)))
+        c.shade("poly", [(32, top)] + hem[::-1][::-1] + [(32 + half, base - 2)][:0], greens)
         c.shade("poly", [(32, top), (32 + half, base), (32 - half, base)], greens)
+        for i in range(0, steps + 1, 2):
+            x = 32 - half + 2 * half * i / steps
+            c.shade("poly", [(x - 2, base - 2), (x + 2, base - 2), (x, base + 2)], greens)
+        # A dark band under each tier and needle highlights on the lit side.
+        for x in range(int(32 - half + 3), int(32 + half - 2)):
+            c.put(x, base - 3, greens[2])
+        for i in range(half):
+            c.put(32 - i * 0.7 - 1, top + i * (base - top) / half * 0.8, C("6a9a8a"))
         if snowy:
-            for x in range(32 - half + 2, 32 + half - 1):
-                c.put(x, base - 1, C("eef2f6"))
-                if (x * 7 + k) % 5 == 0:
-                    c.put(x, base - 2, C("eef2f6"))
+            for x in range(int(32 - half + 1), int(32 + half)):
+                if (x + k) % 3 != 0:
+                    c.put(x, base - 1 - (1 if (x * 7 + k) % 4 == 0 else 0), C("eef2f6"))
+            for x in range(int(32 - half + 3), int(32 + half - 2)):
+                if (x + k) % 4 == 0:
+                    c.put(x, base - 2, C("dce6ee"))
             c.put(32, top, C("ffffff"))
+    for _ in range(3 if not snowy else 0):
+        x, y = r.randint(24, 40), r.randint(30, 70)
+        c.put(x, y, C("8a5a3a"))
     c.outline()
     return c.img
 
@@ -317,42 +358,116 @@ TALL = [
 
 
 # ----------------------------------------------------------------- small
-def flower(kind, petals, centre=None, seed=0):
-    c = Canvas(32, 32)
-    stem = ramp("6a9a4a", "4a7a3a", "2f5a2a")
-    if kind == "daisy":
-        c.fill("line", (16, 30, 16, 16), stem[1], 1)
-        c.shade("ellipse", (10, 26, 15, 29), stem)
-        for a in range(8):
-            ang = a * math.pi / 4
-            c.fill("ellipse", (16 + math.cos(ang) * 4 - 1.5, 13 + math.sin(ang) * 4 - 1.5, 16 + math.cos(ang) * 4 + 1.5, 13 + math.sin(ang) * 4 + 1.5), petals[0])
-        c.fill("ellipse", (14, 11, 18, 15), centre)
+STEM = ramp("7aaa58", "4a7a3a", "2f5a2a")
+
+
+def _outline_tinted(c, base=(18, 26, 16)):
+    """Outline in a dark shade of the plant instead of black, so small
+    plants read as soft shapes."""
+    c.outline(C("%02x%02x%02x" % base))
+
+
+def _leaves(c, x, y, r, count=4, colours=STEM, seed=0):
+    """A rosette of pointed leaves at a plant's foot."""
+    rnd = random.Random(seed)
+    for k in range(count):
+        a = math.pi + (k + 0.5) * math.pi / count + rnd.uniform(-0.2, 0.2)
+        tip = (x + math.cos(a) * r, y + math.sin(a) * r * 0.7)
+        side = (-math.sin(a) * 1.8, math.cos(a) * 1.8)
+        c.shade("poly", [(x, y), (x + (tip[0] - x) * 0.5 + side[0], y + (tip[1] - y) * 0.5 + side[1]), tip,
+                         (x + (tip[0] - x) * 0.5 - side[0], y + (tip[1] - y) * 0.5 - side[1])], colours)
+        c.put((x + tip[0]) / 2, (y + tip[1]) / 2, colours[0])
+
+
+def _stem(c, x0, y0, x1, y1, colours=STEM):
+    c.fill("line", (x0, y0, x1, y1), colours[1], 1)
+    c.put(x1, y1 + 1, colours[0])
+
+
+def _bloom(c, kind, x, y, size, petals, centre):
+    """One flower head of a kind, centred at x, y."""
+    if kind in ("daisy", "aster"):
+        n = 8 if kind == "daisy" else 10
+        for a in range(n):
+            ang = a * 2 * math.pi / n
+            px, py = x + math.cos(ang) * size, y + math.sin(ang) * size * 0.85
+            c.fill("ellipse", (px - 1.3, py - 1.3, px + 1.3, py + 1.3), petals[0] if math.sin(ang) < 0.3 else petals[1])
+        c.shade("ellipse", (x - size * 0.5, y - size * 0.5, x + size * 0.5, y + size * 0.5), [centre, centre, C("8a5a20")])
     elif kind == "tulip":
-        c.fill("line", (16, 30, 16, 14), stem[1], 1)
-        c.shade("poly", [(16, 30), (11, 22), (15, 24)], stem)
-        c.shade("poly", [(12, 8), (14, 12), (16, 7), (18, 12), (20, 8), (20, 14), (12, 14)], petals)
+        c.shade("poly", [(x - size, y - size), (x - size * 0.5, y - size * 0.2), (x, y - size * 1.3), (x + size * 0.5, y - size * 0.2),
+                         (x + size, y - size), (x + size * 0.8, y + size * 0.6), (x, y + size * 0.9), (x - size * 0.8, y + size * 0.6)], petals)
+        c.put(x - 1, y - 1, petals[0])
     elif kind == "bell":
-        c.fill("line", (12, 30, 12, 8), stem[1], 1)
-        c.fill("line", (12, 8, 20, 6), stem[1], 1)
-        for k, (x, y) in enumerate([(19, 8), (16, 12), (20, 15), (15, 18)]):
-            c.fill("line", (13, y - 2, x, y - 1), stem[1], 1)
-            c.shade("poly", [(x - 2, y + 3), (x, y - 1), (x + 2, y + 3)], petals)
-    elif kind == "spike":
-        for dx in (-4, 0, 4):
-            c.fill("line", (16 + dx, 30, 16 + dx, 14 - abs(dx)), stem[1], 1)
-            for y in range(6 - abs(dx), 16 - abs(dx), 2):
-                c.put(16 + dx - 1, y, petals[0] if y % 4 else petals[1])
-                c.put(16 + dx + 1, y + 1, petals[1])
-                c.put(16 + dx, y, petals[0])
+        c.shade("poly", [(x - size, y + size), (x - size * 0.6, y - size * 0.6), (x, y - size), (x + size * 0.6, y - size * 0.6), (x + size, y + size),
+                         (x + size * 0.4, y + size * 0.7), (x, y + size * 1.1), (x - size * 0.4, y + size * 0.7)], petals)
+        c.put(x, y + size + 1, centre or petals[2])
     elif kind == "star":
-        c.fill("line", (16, 30, 16, 18), stem[1], 1)
-        c.shade("poly", [(16, 6), (18, 12), (24, 13), (19, 17), (21, 23), (16, 19), (11, 23), (13, 17), (8, 13), (14, 12)], petals)
-        c.fill("ellipse", (14, 12, 18, 16), centre)
+        pts = []
+        for k in range(10):
+            ang = -math.pi / 2 + k * math.pi / 5
+            rr = size * (1.0 if k % 2 == 0 else 0.45)
+            pts.append((x + math.cos(ang) * rr, y + math.sin(ang) * rr))
+        c.shade("poly", pts, petals)
+        c.fill("ellipse", (x - 1.2, y - 1.2, x + 1.2, y + 1.2), centre)
     elif kind == "cup":
-        c.fill("line", (16, 30, 16, 16), stem[1], 1)
-        c.shade("ellipse", (10, 9, 22, 18), petals)
-        c.fill("ellipse", (13, 9, 19, 12), C("201a1c"))
-    c.outline()
+        c.shade("ellipse", (x - size, y - size * 0.7, x + size, y + size * 0.8), petals)
+        c.fill("ellipse", (x - size * 0.6, y - size * 0.6, x + size * 0.6, y - size * 0.05), C("2a1a1c"))
+        c.put(x, y - size * 0.35, centre or petals[0])
+    elif kind == "rose":
+        c.shade("ellipse", (x - size, y - size, x + size, y + size), petals)
+        c.fill("line", (x - size * 0.5, y - size * 0.2, x + size * 0.4, y - size * 0.5), petals[2], 1)
+        c.fill("line", (x - size * 0.3, y + size * 0.3, x + size * 0.5, y + size * 0.1), petals[2], 1)
+        c.put(x - 1, y - 1, petals[0])
+    elif kind == "poppy":
+        for ang in (0.4, 2.0, 3.6, 5.2):
+            px, py = x + math.cos(ang) * size * 0.6, y + math.sin(ang) * size * 0.5
+            c.shade("ellipse", (px - size * 0.75, py - size * 0.7, px + size * 0.75, py + size * 0.7), petals)
+        c.fill("ellipse", (x - 1.3, y - 1.3, x + 1.3, y + 1.3), C("1a1418"))
+    elif kind == "sun":
+        for a in range(12):
+            ang = a * 2 * math.pi / 12
+            px, py = x + math.cos(ang) * size, y + math.sin(ang) * size
+            c.fill("ellipse", (px - 1.6, py - 1.6, px + 1.6, py + 1.6), petals[0] if a % 2 else petals[1])
+        c.shade("ellipse", (x - size * 0.6, y - size * 0.6, x + size * 0.6, y + size * 0.6), ramp("8a5a2a", "5a3a1a", "3a2410"))
+        c.put(x - 1, y - 1, C("c08a3a"))
+
+
+def flower(kind, petals, centre=None, seed=0):
+    """A clump of flowers: leaves at the foot, two or three stems of
+    different heights, each with a shaded head."""
+    c = Canvas(32, 32)
+    rnd = random.Random(seed * 31 + len(kind))
+    centre = centre or petals[0]
+    if kind == "spike":
+        # Lavender-like spikes: stacked tiny buds up each stem.
+        _leaves(c, 16, 30, 7, 5, seed=seed)
+        for dx, top in ((-5, 9), (0, 4), (5, 10), (-2, 12), (3, 7)):
+            x = 16 + dx
+            _stem(c, x, 30, x + dx * 0.2, top)
+            for y in range(top, top + 10, 2):
+                c.fill("ellipse", (x + dx * 0.2 - 1.4, y - 1, x + dx * 0.2 + 1.4, y + 1), petals[0] if (y // 2) % 2 else petals[1])
+            c.put(x + dx * 0.2, top - 1, petals[0])
+        _outline_tinted(c)
+        return c.img
+    if kind == "bell":
+        _leaves(c, 14, 30, 6, 4, seed=seed)
+        _stem(c, 14, 30, 15, 6)
+        c.fill("line", (15, 6, 22, 5), STEM[1], 1)
+        for k, (x, y) in enumerate([(22, 9), (18, 12), (22, 16), (17, 19), (20, 23)]):
+            c.fill("line", (15, y - 3, x, y - 2), STEM[1], 1)
+            _bloom(c, "bell", x, y, 2.3 - k * 0.15, petals, centre)
+        _outline_tinted(c)
+        return c.img
+    _leaves(c, 16, 30, 8, 5, seed=seed)
+    heads = [(16 + rnd.uniform(-1, 1), rnd.uniform(8, 10), 4.2), (10 + rnd.uniform(-1, 1), rnd.uniform(14, 16), 3.4), (22 + rnd.uniform(-1, 1), rnd.uniform(16, 18), 3.2)]
+    for x, y, size in heads:
+        _stem(c, 16 + (x - 16) * 0.3, 30, x, y + size)
+        if rnd.random() < 0.7:
+            mid = (y + 30) / 2
+            c.shade("poly", [(16 + (x - 16) * 0.6, mid), (16 + (x - 16) * 0.6 + (3 if x > 16 else -3), mid - 3), (16 + (x - 16) * 0.6, mid + 1.5)], STEM)
+    for x, y, size in heads:
+        _bloom(c, kind, x, y, size, petals, centre)
+    _outline_tinted(c)
     return c.img
 
 
@@ -363,11 +478,15 @@ def tufts(colours, tall=False, seed=0):
         x = r.randrange(6, 26)
         h = r.randrange(10, 22) if tall else r.randrange(5, 11)
         lean = r.choice((-2, -1, 1, 2))
-        c.fill("line", (x, 30, x + lean, 30 - h), colours[r.randrange(0, 3)], 1)
+        c.fill("line", (x, 30, x + lean, 30 - h), colours[r.randrange(1, 3)], 1)
+        c.put(x + lean, 30 - h, colours[0])
+        c.put(x + lean * 0.5, 30 - h * 0.5, colours[0])
     if tall:
         for _ in range(2):
             x = r.randrange(8, 24)
             c.fill("ellipse", (x - 1, 8, x + 1, 13), C("6a4a30"))
+            c.put(x, 8, C("8a6a48"))
+    _outline_tinted(c, (20, 26, 16))
     return c.img
 
 
@@ -378,6 +497,10 @@ def mushrooms(cap, seed=0, glow=False):
         x, h, w = r.randrange(8, 24), r.randrange(4, 9), r.randrange(4, 7)
         c.shade("rect", (x - 1, 30 - h, x + 1, 30), ramp("f2efe2", "cfcbb8", "9b9889"))
         c.shade("ellipse", (x - w, 28 - h - w // 2, x + w, 30 - h + 1), cap)
+        c.fill("line", (x - w + 1, 30 - h + 1, x + w - 1, 30 - h + 1), C("e8d8c8"), 1)
+        for k in range(2):
+            sx = x + r.randrange(-w + 2, w - 1)
+            c.put(sx, 29 - h - w // 2 + r.randrange(1, 3), C("ffffff") if glow else C("f2efe2"))
         if glow:
             c.put(x, 29 - h - w // 2, C("ffffff"))
     c.outline()
@@ -393,6 +516,9 @@ def rocks(colours, seed=0, shards=False):
             c.shade("poly", [(x - w // 2, 30), (x, y - w), (x + w // 2, 30)], colours)
         else:
             c.shade("ellipse", (x - w, y - w // 2, x + w, y + w // 2 + 1), colours)
+            if colours[0] == C("a6a2b0") and r.random() < 0.6:
+                c.fill("ellipse", (x - w + 1, y - w // 2, x + 1, y), C("6a8a3e"))
+            c.put(x - w // 2, y - w // 2 + 1, C("ffffff") if shards else colours[0])
     c.outline()
     return c.img
 
@@ -466,6 +592,16 @@ SMALL = [
     flower("star", ramp("e0c0ff", "9a6cf0", "5c3690"), C("ffffff")),           # 29 void bloom
     flower("tulip", ramp("f4f2ec", "d4d0c4", "a8a498")),                       # 30 saltweed
     flower("daisy", ramp("ffb0d0", "e070a0", "a04070"), C("ffe08a")),          # 31 pink daisy
+    flower("rose", ramp("f05a6a", "b0203a", "6a1020")),                        # 32 wild rose
+    flower("spike", ramp("c8b0ff", "8a6ae0", "5a42a0")),                       # 33 lavender
+    flower("sun", ramp("ffe060", "f0b020", "b07a10")),                         # 34 sunflower
+    flower("poppy", ramp("ff6a4a", "e0302a", "a01a18")),                       # 35 poppy
+    flower("aster", ramp("b8d0ff", "7a98e0", "4a68b0"), C("ffe08a")),          # 36 blue aster
+    flower("bell", ramp("f0e8ff", "c8b8f0", "8a78c0")),                        # 37 snowbell
+    flower("rose", ramp("2a2030", "1a1420", "0a080e")),                        # 38 black rose
+    flower("cup", ramp("ffb0e0", "e070b8", "a04080"), C("ffe08a")),            # 39 bog lotus
+    flower("poppy", ramp("ffe0a0", "f0b860", "b07a30")),                       # 40 desert poppy
+    flower("aster", ramp("ff9a5a", "e05a2a", "a03a18"), C("3a1a10")),          # 41 ember aster
 ]
 
 

@@ -68,6 +68,14 @@ PALETTE = {
     "glow_red": ["ff5050"] * 3,
     "glow_cyan": ["8ff0ff"] * 3,
     "glow_orange": ["ffb347"] * 3,
+    "moss": ["8fb05a", "6a8a3e", "46622a"],
+    "crystal": ["e6fbff", "9fdcf2", "5a9cc8"],
+    "tooth": ["fffbe8", "e6dcc0", "b8ad90"],
+    "membrane": ["7a5a72", "5c4258", "3e2c3c"],
+    "gill": ["f0c8d8", "d098b0", "a06880"],
+    "shine": ["ffffff"] * 3,
+    "spark": ["fff3c4"] * 3,
+    "wound": ["a0283a", "7a1828", "54101c"],
     "plate": ["f4f6f8", "c2c9d0", "8c96a0"],
     "plate_dark": ["8c96a0", "6c7682", "4e5762"],
     "cape": ["f2f2f2", "c8c8c8", "9a9a9a"],
@@ -131,11 +139,15 @@ HUSK = {
     "torso": dict(parent="root", pivot=(21, 37), parts=[
         ("flesh", E(11, 13, 31, 37)),
         ("rib", R(16, 24, 24, 24)), ("rib", R(16, 27, 25, 27)), ("rib", R(17, 30, 24, 30)),
-        ("bone", [(13, 16), (11, 12), (16, 14)]), ("bone", [(17, 13), (17, 8), (21, 12)])]),
+        ("bone", [(13, 16), (11, 12), (16, 14)]), ("bone", [(17, 13), (17, 8), (21, 12)]),
+        ("bone", [(12, 21), (9, 19), (12.5, 24)]), ("wound", E(23, 18, 27, 22)), ("blood", R(24.5, 21, 25.3, 25)),
+        ("rib", R(13, 33, 20, 33.6)), ("moss", E(13, 28, 17, 32))]),
     "head": dict(parent="torso", pivot=(25, 17), parts=[
         ("flesh", E(21, 6, 37, 21)), ("void", E(28, 14, 35, 20)),
         ("bone", R(30, 14, 30, 15)), ("bone", R(33, 14, 33, 15)), ("bone", R(31, 19, 31, 20)),
-        ("void", E(26, 9, 30, 13)), ("eye", R(28, 11, 28, 11))]),
+        ("void", E(26, 9, 30, 13)), ("eye", R(28, 11, 28, 11)),
+        ("tooth", [(29, 15), (30.5, 15), (29.7, 17)]), ("tooth", [(32, 15), (33.5, 15), (32.7, 17.5)]),
+        ("bone", [(22, 8), (21, 3), (25, 7)]), ("blood", R(34, 19, 34.8, 23))]),
     "front_arm": dict(parent="torso", pivot=(30, 23), parts=[("flesh", R(29, 23, 31, 37)), ("bone", [(28, 37), (32, 37), (31, 42)])]),
 }
 HUSK_ORDER = ["back_arm", "leg_l", "leg_r", "torso", "head", "front_arm"]
@@ -223,9 +235,49 @@ def _transform(rig, name, point, pose):
     return point
 
 
-def draw_frame(rig, order, pose, shadow=True):
+def _shift(colour, amount):
+    """Lighter (amount > 0) or darker, nudging hue warm in light, cool in shadow."""
+    r, g, b = (int(colour[i:i + 2], 16) for i in (0, 2, 4))
+    if amount > 0:
+        r, g, b = r + (255 - r) * amount, g + (255 - g) * amount * 0.92, b + (255 - b) * amount * 0.8
+    else:
+        k = 1 + amount
+        r, g, b = r * k * 0.94, g * k * 0.97, b * k * 1.05
+    return "%02x%02x%02x" % tuple(max(0, min(255, int(v))) for v in (r, g, b))
+
+
+def _rich_tone(shades, t, x, y):
+    """Five tones from a material's three, dithered where bands meet."""
+    tones = [_shift(shades[0], 0.18), shades[0], shades[1], shades[2], _shift(shades[2], -0.25)]
+    edges = [0.16, 0.34, 0.62, 0.84]
+    band = sum(1 for e in edges if t >= e)
+    for index, edge in enumerate(edges):
+        if abs(t - edge) < 0.035 and (x + y) % 2 == 0:
+            band = index if t >= edge else index + 1
+    return tones[band]
+
+
+def _finish(pixels, plain):
+    """Rim light on top-left edges, occlusion along the bottom, and an
+    outline tinted by the colour it wraps instead of flat black."""
+    out = dict(pixels)
+    for (x, y), colour in pixels.items():
+        if (x, y) in plain:
+            continue
+        up, left, down, right = (x, y - 1) in pixels, (x - 1, y) in pixels, (x, y + 1) in pixels, (x + 1, y) in pixels
+        if not up or not left:
+            out[(x, y)] = _shift(colour, 0.22)
+        elif not down:
+            out[(x, y)] = _shift(colour, -0.3)
+        elif not right:
+            out[(x, y)] = _shift(colour, -0.15)
+    return out
+
+
+def draw_frame(rig, order, pose, shadow=True, rich=False):
     ox, oy = FRAME_OFFSET
     pixels = {}
+    plain = set()
     for name in order:
         for material, polygon in rig[name]["parts"]:
             moved = [_transform(rig, name, pt, pose) for pt in polygon]
@@ -236,22 +288,38 @@ def draw_frame(rig, order, pose, shadow=True):
                 continue
             x0, x1 = min(p[0] for p in points), max(p[0] for p in points)
             y0, y1 = min(p[1] for p in points), max(p[1] for p in points)
+            shades = PALETTE[material]
+            flat = shades[0] == shades[2]
             for x, y in points:
                 t = 0.7 * (x - x0) / max(x1 - x0, 1) + 0.3 * (y - y0) / max(y1 - y0, 1)
-                pixels[(x, y)] = PALETTE[material][0 if t < 0.3 else 1 if t < 0.68 else 2]
+                if rich and not flat:
+                    pixels[(x, y)] = _rich_tone(shades, t, x, y)
+                    plain.discard((x, y))
+                else:
+                    pixels[(x, y)] = shades[0 if t < 0.3 else 1 if t < 0.68 else 2]
+                    if flat:
+                        plain.add((x, y))
 
     img = Image.new("RGBA", (FRAME, FRAME), (0, 0, 0, 0))
     shadow_x, shadow_w = pose.get("shadow", (22, 9))[:2]
     if shadow:
         ImageDraw.Draw(img).ellipse((shadow_x + ox - shadow_w, GROUND_Y - 2, shadow_x + ox + shadow_w, GROUND_Y + 2), fill=(0, 0, 0, 90))
+    if rich:
+        pixels = _finish(pixels, plain)
     for (x, y), colour in pixels.items():
         img.putpixel((x, y), rgba(colour))
     for y in range(FRAME):
         for x in range(FRAME):
-            if (x, y) not in pixels and any(
-                (x + dx, y + dy) in pixels for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
-            ):
-                img.putpixel((x, y), rgba(OUTLINE))
+            if (x, y) in pixels:
+                continue
+            near = [pixels[(x + dx, y + dy)] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)) if (x + dx, y + dy) in pixels]
+            if near:
+                if rich:
+                    r, g, b = (int(near[0][i:i + 2], 16) for i in (0, 2, 4))
+                    o = (int(OUTLINE[0:2], 16), int(OUTLINE[2:4], 16), int(OUTLINE[4:6], 16))
+                    img.putpixel((x, y), (int(o[0] * 0.7 + r * 0.22), int(o[1] * 0.7 + g * 0.22), int(o[2] * 0.7 + b * 0.22), 255))
+                else:
+                    img.putpixel((x, y), rgba(OUTLINE))
     return img
 
 
@@ -380,13 +448,17 @@ def _biped(back_arm, leg_l, leg_r, torso, head, front_arm, pivots=None):
 
 
 BONE_ARCHER = _biped(
-    back_arm=[("bone", R(13, 20, 14.5, 32))],
+    back_arm=[("wood", [(9, 15), (13, 14), (15, 30), (11, 31)]), ("guard", R(10, 20, 14, 21)), ("bone", R(9.5, 11, 10.3, 15)),
+              ("bone", R(11.5, 10, 12.3, 14.5)), ("blood", [(9, 11), (10.8, 11), (9.9, 8.5)]), ("blood", [(11, 10), (12.8, 10), (11.9, 7.5)]),
+              ("bone", R(13, 20, 14.5, 32))],
     leg_l=[("bone", R(18, 33, 19.5, 41)), ("bone", R(17, 40, 20.5, 41))],
     leg_r=[("bone", R(24.5, 33, 26, 41)), ("bone", R(23.5, 40, 27, 41))],
     torso=[("bone", R(17, 19, 27, 33)), ("void", R(18.5, 22, 25.5, 22.6)), ("void", R(18.5, 25, 25.5, 25.6)),
-           ("void", R(18.5, 28, 25.5, 28.6)), ("void", R(21.6, 21, 22.4, 32))],
+           ("void", R(18.5, 28, 25.5, 28.6)), ("void", R(21.6, 21, 22.4, 32)),
+           ("wrap", [(16, 31), (28, 31), (27, 37), (24, 34.5), (22, 38), (20, 34.5), (17, 37)]), ("belt", R(16, 30.5, 28, 31.8))],
     head=[("bone", E(16, 5, 30, 19)), ("bone", R(19, 17, 27, 20)), ("void", E(18.5, 9, 22.5, 14)), ("void", E(24, 9, 28, 14)),
-          ("glow_red", R(25.6, 11, 26.4, 12)), ("void", R(21, 18, 21.6, 20)), ("void", R(24, 18, 24.6, 20))],
+          ("glow_red", R(25.6, 11, 26.4, 12)), ("glow_red", R(20, 11, 20.8, 12)), ("void", R(21, 18, 21.6, 20)), ("void", R(24, 18, 24.6, 20)),
+          ("void", [(19, 5.5), (20, 5.5), (21.5, 8), (20.6, 8.4)]), ("wrap", [(16, 8), (30, 8), (30, 9.5), (16, 9.5)]), ("wrap", [(16, 8), (12, 12), (13, 13), (16.5, 9.5)])],
     front_arm=[("bone", R(29.5, 21, 31, 31)), ("wood", [(32, 14), (35.5, 18), (36.8, 25), (35.5, 32), (32, 36), (33, 32), (34.6, 25), (33, 18)]),
                ("bone", R(31.6, 14.5, 32.2, 35.5))],
 )
@@ -395,27 +467,42 @@ CRAG_GOLEM = _biped(
     leg_l=[("stone", R(14, 33, 20, 41))],
     leg_r=[("stone", R(24, 33, 30, 41))],
     torso=[("stone", [(10, 16), (20, 11), (32, 13), (36, 22), (33, 35), (11, 35), (8, 24)]),
-           ("ember", [(18, 22), (22, 20), (26, 23), (23, 28), (19, 27)])],
-    head=[("stone", [(20, 5), (30, 4), (34, 10), (31, 16), (21, 16), (18, 10)]), ("void", R(26, 9, 31, 11)), ("glow_orange", R(28, 9.4, 30, 10.6))],
-    front_arm=[("stone", [(30, 19), (37, 19), (40, 34), (36, 41), (30, 38)])],
+           ("ember", [(18, 22), (22, 20), (26, 23), (23, 28), (19, 27)]), ("fire_core", E(20.5, 22.5, 23.5, 25.5)),
+           ("ember", [(12, 26), (16, 28), (15, 28.8), (11.5, 27)]), ("ember", [(27, 30), (31, 27), (31.6, 28), (28, 31)]),
+           ("moss", [(10, 16), (20, 11), (24, 12), (18, 15), (12, 19)]), ("moss", E(28, 31, 33, 35)),
+           ("crystal", [(11, 15), (9, 7), (14, 13)]), ("crystal", [(14, 13), (14, 5), (17, 12)]), ("crystal", [(29, 13), (33, 6), (32, 14)])],
+    head=[("stone", [(20, 5), (30, 4), (34, 10), (31, 16), (21, 16), (18, 10)]), ("void", R(26, 9, 31, 11)), ("glow_orange", R(28, 9.4, 30, 10.6)),
+          ("moss", [(20, 5), (30, 4), (31, 6), (21, 7)]), ("void", R(24, 13.5, 30, 14.3)), ("ember", R(25, 13.6, 29, 14.1))],
+    front_arm=[("stone", [(30, 19), (37, 19), (40, 34), (36, 41), (30, 38)]), ("ember", [(33, 26), (37, 29), (36.3, 30), (32.5, 27)]),
+               ("moss", [(30, 19), (37, 19), (37.5, 22), (31, 22)]), ("stone", [(31, 38), (33, 43), (35, 39)])],
     pivots={"back_arm": (10, 21), "front_arm": (33, 21), "head": (26, 15)},
 )
 ROT_CULTIST = _biped(
     back_arm=[("robe", R(12, 21, 15, 32))],
     leg_l=[("robe", R(16, 33, 21, 41))],
     leg_r=[("robe", R(23, 33, 28, 41))],
-    torso=[("robe", [(16, 19), (28, 19), (31, 36), (13, 36)]), ("bone", R(15, 29, 29, 30))],
+    torso=[("robe", [(16, 19), (28, 19), (31, 36), (13, 36)]), ("bone", R(15, 29, 29, 30)),
+           ("guard", [(20.5, 19), (23.5, 19), (23.5, 29), (20.5, 29)]), ("glow_red", [(22, 22), (23.3, 24), (22, 26), (20.7, 24)]),
+           ("robe", [(13, 35), (16, 39), (18, 35.5), (21, 39.5), (24, 35.5), (27, 39), (29, 35.5), (31, 38), (31, 35)]),
+           ("bone", E(16, 29.5, 18, 32.5)), ("bone", E(26, 29.5, 28, 32.5))],
     head=[("robe", E(14, 4, 30, 21)), ("robe", [(16, 8), (12, 3), (20, 5)]), ("void", E(18, 9, 28, 19)),
-          ("eye", R(20, 13, 21, 14)), ("eye", R(25, 13, 26, 14))],
-    front_arm=[("robe", R(29, 21, 32, 30)), ("wood", R(33, 8, 34, 41)), ("eye", E(31, 3, 36, 8))],
+          ("eye", R(20, 13, 21, 14)), ("eye", R(25, 13, 26, 14)), ("guard", [(14, 13), (16, 10), (16.5, 17), (15, 20)]),
+          ("guard", [(30, 13), (28, 10), (27.5, 17), (29, 20)])],
+    front_arm=[("robe", R(29, 21, 32, 30)), ("wood", R(33, 8, 34, 41)), ("bone", [(30.5, 4), (36.5, 4), (36, 9), (31, 9)]),
+               ("eye", E(31.5, 4.5, 35.5, 8.5)), ("void", R(33.2, 5.5, 33.8, 7.5)), ("bone", [(30, 4), (29, 0), (32, 3)]), ("bone", [(37, 4), (38, 0), (35, 3)]),
+               ("skin_shade", R(29, 30, 32, 31.5))],
 )
 SPORE_SHAMBLER = _biped(
     back_arm=[("stalk", R(12, 25, 15, 34))],
     leg_l=[("stalk", R(16, 35, 21, 41))],
     leg_r=[("stalk", R(23, 35, 28, 41))],
-    torso=[("stalk", [(15, 22), (29, 22), (31, 37), (13, 37)]), ("void", R(25, 27, 28, 29)), ("void", R(26, 32, 30, 33))],
-    head=[("cap", _half_ellipse(22, 22, 17, 17)), ("cap", R(5, 21, 39, 23)), ("stalk", E(10, 10, 15, 14)), ("stalk", E(20, 7, 26, 11)),
-          ("stalk", E(30, 12, 34, 16))],
+    torso=[("stalk", [(15, 22), (29, 22), (31, 37), (13, 37)]), ("void", R(25, 27, 28, 29)), ("eye", R(26, 27.5, 27, 28.5)),
+           ("void", R(26, 32, 30, 33)), ("moss", E(14, 30, 19, 36)), ("cap", E(17, 25, 21, 28)), ("gill", R(14, 36, 30, 37))],
+    head=[("cap", _half_ellipse(22, 22, 17, 17)), ("cap", R(5, 21, 39, 23)), ("gill", R(7, 23, 37, 25)),
+          ("void", R(10, 23.5, 10.6, 25)), ("void", R(15, 23.5, 15.6, 25)), ("void", R(20, 23.5, 20.6, 25)), ("void", R(25, 23.5, 25.6, 25)),
+          ("void", R(30, 23.5, 30.6, 25)), ("void", R(34, 23.5, 34.6, 25)),
+          ("stalk", E(10, 10, 15, 14)), ("stalk", E(20, 7, 26, 11)), ("stalk", E(30, 12, 34, 16)), ("stalk", E(16, 15, 19, 18)),
+          ("stalk", E(26, 16, 28.5, 18.5)), ("shine", R(13, 8, 15, 9)), ("poison", E(35, 4, 37, 6)), ("poison", E(6, 8, 8, 10))],
     front_arm=[("stalk", R(29, 25, 32, 35))],
     pivots={"head": (22, 23)},
 )
@@ -438,19 +525,26 @@ def _quad(body, head, tail, leg, head_pivot=(31, 24)):
 
 
 ROT_HOUND = _quad(
-    body=[("hide", E(8, 20, 34, 33)), ("rib", R(15, 25, 22, 25.6)), ("rib", R(15, 28, 22, 28.6)), ("bone", [(13, 21), (15, 17), (17, 21)]),
-          ("bone", [(19, 20), (21, 16), (23, 20)])],
+    body=[("hide", E(8, 20, 34, 33)), ("rib", R(15, 25, 22, 25.6)), ("rib", R(15, 28, 22, 28.6)), ("rib", R(15, 31, 21, 31.5)),
+          ("bone", [(13, 21), (15, 17), (17, 21)]), ("bone", [(19, 20), (21, 16), (23, 20)]), ("bone", [(25, 20), (27, 15.5), (29, 21)]),
+          ("bone", [(9, 23), (10, 19), (12, 22)]), ("wound", E(24, 25, 30, 30)), ("bone", R(26, 26.5, 28, 27.2)), ("blood", R(27, 29, 27.8, 33))],
     head=[("hide", E(28, 15, 41, 27)), ("hide", [(38, 21), (44, 22), (44, 26), (37, 27)]), ("void", R(38, 25, 44, 26)),
-          ("bone", R(40, 24, 40.6, 26)), ("bone", R(42.5, 24, 43.1, 26)), ("glow_red", R(35, 19, 36.4, 20.4)), ("hide", [(30, 16), (31, 11), (34, 16)])],
+          ("tooth", [(39, 24.6), (40.4, 24.6), (39.7, 27)]), ("tooth", [(41.8, 24.6), (43.2, 24.6), (42.5, 27)]),
+          ("glow_red", R(35, 19, 36.4, 20.4)), ("hide", [(30, 16), (31, 11), (34, 16)]), ("wound", [(31, 15), (31.6, 12.5), (33, 15)]),
+          ("void", R(43.2, 21.5, 44, 22.5)), ("blood", R(40, 26, 40.7, 29))],
     tail=[("hide", [(10, 24), (4, 19), (3, 21), (9, 28)])],
-    leg=lambda x: [("hide", R(x, 31, x + 3, 40)), ("bone", R(x, 40, x + 4, 41.4))],
+    leg=lambda x: [("hide", R(x, 31, x + 3, 40)), ("bone", R(x, 40, x + 4, 41.4)), ("tooth", [(x + 3, 40), (x + 5, 41.4), (x + 3, 41.4)])],
 )
 THORN_STALKER = _quad(
-    body=[("chitin", E(5, 16, 26, 32)), ("poison", E(10, 19, 15, 23)), ("poison", E(17, 22, 20, 25)), ("chitin", E(22, 21, 33, 31))],
+    body=[("chitin", E(5, 16, 26, 32)), ("poison", E(10, 19, 15, 23)), ("poison", E(17, 22, 20, 25)), ("chitin", E(22, 21, 33, 31)),
+          ("void", [(10, 17), (11, 31), (11.6, 31), (10.6, 17)]), ("void", [(16, 16), (16.5, 32), (17.1, 32), (16.6, 16)]),
+          ("bone", [(8, 18), (8, 11), (11, 17)]), ("bone", [(13, 16.5), (14, 9), (16, 16)]), ("bone", [(19, 17), (21, 10), (22, 18)]),
+          ("bone", [(25, 21), (27, 15), (28, 22)]), ("shine", R(7, 21, 9, 22)), ("poison", E(26, 25, 29, 28))],
     head=[("chitin", E(29, 20, 40, 30)), ("eye", R(35, 23, 36, 24)), ("eye", R(37.5, 24.5, 38.5, 25.5)), ("eye", R(34, 26, 35, 27)),
           ("bone", [(38, 28), (42, 31), (39, 30)]), ("bone", [(36, 29), (38, 33), (36.5, 31)])],
-    tail=[("chitin", [(9, 20), (5, 14), (7, 13), (11, 19)])],
-    leg=lambda x: [("chitin", [(x + 3, 29), (x - 3, 22), (x - 5, 40), (x - 3.5, 41), (x - 2, 25), (x + 4, 31)])],
+    tail=[("chitin", [(9, 20), (5, 14), (7, 13), (11, 19)]), ("chitin", [(6, 15), (3, 6), (5, 5), (8, 14)]),
+          ("poison", [(3, 6), (2, 1), (6, 4.5)]), ("glow_red", R(3, 3, 4, 4))],
+    leg=lambda x: [("chitin", [(x + 3, 29), (x - 3, 22), (x - 5, 40), (x - 3.5, 41), (x - 2, 25), (x + 4, 31)]), ("bone", [(x - 5, 39.5), (x - 6.5, 41.5), (x - 3.5, 41)])],
     head_pivot=(30, 25),
 )
 
@@ -469,23 +563,35 @@ def _floater(body, head, tail, wing_b, wing_f):
 
 
 ASH_WRAITH = _floater(
-    body=[("ghost", [(14, 16), (30, 16), (32, 30), (12, 30)])],
-    head=[("ghost", E(14, 3, 32, 19)), ("void", E(18, 8, 30, 17)), ("glow_cyan", R(21, 11, 22.4, 12.4)), ("glow_cyan", R(26, 11, 27.4, 12.4))],
-    tail=[("ghost", [(12, 29), (32, 29), (29, 35), (26, 31), (23, 38), (20, 31), (16, 36)])],
+    body=[("ghost", [(14, 16), (30, 16), (32, 30), (12, 30)]), ("plate_dark", [(13, 22), (31, 25), (31, 26.4), (13, 23.4)]),
+          ("plate_dark", E(19, 23, 22, 26)), ("ghost", [(16, 18), (18, 18), (17, 29)]), ("void", R(21.5, 18, 22.3, 29)), ("spark", R(25, 19, 26, 20))],
+    head=[("ghost", E(14, 3, 32, 19)), ("void", E(18, 8, 30, 17)), ("glow_cyan", R(21, 11, 22.4, 12.4)), ("glow_cyan", R(26, 11, 27.4, 12.4)),
+          ("ghost", [(14, 9), (10, 3), (17, 5)]), ("ghost", [(32, 9), (35, 2), (29, 5)]), ("bone", [(20, 15), (28, 15), (27, 17), (21, 17)]),
+          ("void", R(22, 15.3, 22.6, 17)), ("void", R(25, 15.3, 25.6, 17))],
+    tail=[("ghost", [(12, 29), (32, 29), (29, 35), (26, 31), (23, 38), (20, 31), (16, 36)]), ("plate_dark", [(22, 30), (23, 30), (23, 40), (22, 40)]),
+          ("plate_dark", E(21, 39, 24, 42)), ("spark", R(14, 33, 15, 34)), ("spark", R(29, 36, 30, 37))],
     wing_b=[("ghost", [(15, 18), (9, 22), (5, 30), (8, 30), (12, 25), (16, 22)])],
     wing_f=[("ghost", [(29, 18), (35, 22), (40, 29), (37, 30), (33, 25), (28, 22)]), ("bone", [(39, 28), (42, 31), (38, 31)])],
 )
 CARRION_BAT = _floater(
-    body=[("wing", E(16, 15, 28, 29))],
+    body=[("wing", E(16, 15, 28, 29)), ("hide", E(18, 18, 26, 27)), ("bone", R(21, 27, 21.6, 30)), ("bone", R(23, 27, 23.6, 30))],
     head=[("wing", E(18, 7, 31, 19)), ("wing", [(19, 9), (18, 3), (23, 8)]), ("wing", [(26, 8), (30, 3), (30, 10)]),
-          ("glow_red", R(23, 12, 24.2, 13.2)), ("glow_red", R(27, 12, 28.2, 13.2)), ("bone", R(24, 16, 24.6, 18)), ("bone", R(27, 16, 27.6, 18))],
+          ("glow_red", R(23, 12, 24.2, 13.2)), ("glow_red", R(27, 12, 28.2, 13.2)), ("tooth", [(23.6, 16), (25, 16), (24.3, 19)]),
+          ("tooth", [(26.6, 16), (28, 16), (27.3, 19)]), ("gill", [(19.5, 8), (19, 5), (21.5, 7.5)]), ("gill", [(27.5, 7.5), (29, 5), (29.2, 8.5)]),
+          ("void", R(25.2, 14, 26.2, 15))],
     tail=[("wing", [(19, 27), (25, 27), (22, 33)])],
-    wing_b=[("wing", [(18, 18), (10, 9), (2, 12), (5, 17), (3, 22), (9, 21), (10, 26), (17, 23)])],
-    wing_f=[("wing", [(26, 18), (34, 9), (42, 12), (39, 17), (41, 22), (35, 21), (34, 26), (27, 23)])],
+    wing_b=[("membrane", [(18, 18), (10, 9), (2, 12), (5, 17), (3, 22), (9, 21), (10, 26), (17, 23)]),
+            ("bone", [(18, 18), (10, 9), (10.8, 8.6), (18.6, 17.4)]), ("bone", [(11, 10), (4, 17), (4.6, 17.5), (11.6, 10.6)]),
+            ("bone", [(11, 10), (9, 21), (9.7, 21), (11.7, 10.4)]), ("bone", [(10, 9), (9, 6), (11.5, 8.6)])],
+    wing_f=[("membrane", [(26, 18), (34, 9), (42, 12), (39, 17), (41, 22), (35, 21), (34, 26), (27, 23)]),
+            ("bone", [(26, 18), (34, 9), (34.6, 9.6), (26.6, 18.6)]), ("bone", [(33, 10), (40, 17), (39.4, 17.6), (32.4, 10.6)]),
+            ("bone", [(33, 10), (35, 21), (34.3, 21), (32.3, 10.4)]), ("bone", [(34, 9), (35, 6), (32.5, 8.6)])],
 )
 EMBER_WISP = _floater(
-    body=[("ember", E(13, 13, 31, 31)), ("fire_core", E(18, 17, 27, 26))],
-    head=[("void", R(19, 20, 20.6, 22)), ("void", R(24, 20, 25.6, 22))],
+    body=[("ember", E(13, 13, 31, 31)), ("fire", E(15, 15, 29, 29)), ("fire_core", E(18, 17, 27, 26)), ("shine", R(19, 18, 21, 19)),
+          ("spark", R(11, 12, 12, 13)), ("spark", R(33, 17, 34, 18)), ("spark", R(30, 10, 31, 11)), ("ember", [(18, 14), (20, 6), (23, 13)]),
+          ("ember", [(23, 13), (27, 5), (28, 15)]), ("fire", [(20, 13), (21, 9), (22, 13)])],
+    head=[("void", R(19, 20, 20.6, 22.5)), ("void", R(24, 20, 25.6, 22.5)), ("void", [(20, 24.5), (25, 24.5), (22.5, 26)])],
     tail=[("ember", [(14, 26), (30, 26), (27, 33), (24, 29), (22, 37), (19, 29), (16, 34)])],
     wing_b=[("ember", [(15, 17), (9, 12), (11, 20), (7, 23), (14, 24)])],
     wing_f=[("ember", [(29, 17), (35, 11), (33, 20), (38, 22), (30, 24)])],
@@ -495,7 +601,11 @@ BOG_SLIME = {
     "root": dict(parent=None, pivot=(22, 41), parts=[]),
     "body": dict(parent="root", pivot=(22, 41), parts=[
         ("slime", E(8, 20, 36, 41)), ("slime", R(8, 31, 36, 41)), ("poison", E(13, 24, 20, 30)),
-        ("void", R(24, 28, 26, 31)), ("void", R(30, 28, 32, 31)), ("void", R(25, 35, 31, 36))]),
+        ("void", R(24, 28, 26, 31)), ("void", R(30, 28, 32, 31)), ("void", R(25, 35, 31, 36)),
+        ("shine", R(12, 23, 15, 24)), ("shine", R(11, 25, 12, 27)), ("shine", R(25, 28, 25.6, 28.8)), ("shine", R(31, 28, 31.6, 28.8)),
+        ("bone", [(15, 33), (20, 32), (20.5, 33.5), (15.5, 34.5)]), ("bone", E(14, 32, 16.5, 35)),
+        ("poison", E(31, 33, 34, 36)), ("poison", E(19, 22, 21.5, 24.5)), ("moss", E(8, 38, 36, 41.5)),
+        ("tooth", [(26.5, 35.4), (27.6, 35.4), (27, 37)]), ("tooth", [(29, 35.4), (30, 35.4), (29.5, 37)])]),
 }
 
 # Four-legged poses.
@@ -595,12 +705,12 @@ def draw_npc(changes, extras):
         PALETTE.update(saved)
 
 
-def draw_sheet(rig, order, animations, shadow=True):
+def draw_sheet(rig, order, animations, shadow=True, rich=False):
     columns = max(len(poses) for _name, poses in animations)
     sheet = Image.new("RGBA", (columns * FRAME, len(animations) * FRAME), (0, 0, 0, 0))
     for row, (_name, poses) in enumerate(animations):
         for column, pose in enumerate(poses):
-            sheet.paste(draw_frame(rig, order, pose, shadow), (column * FRAME, row * FRAME))
+            sheet.paste(draw_frame(rig, order, pose, shadow, rich), (column * FRAME, row * FRAME))
     return sheet
 
 
@@ -1094,12 +1204,12 @@ def main():
     os.makedirs(os.path.join(ROOT, "sprites"), exist_ok=True)
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
     draw_sheet(HUMAN, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
-    draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
+    draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS, rich=True).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
     for name, (changes, extras) in NPCS.items():
         draw_npc(changes, extras).save(os.path.join(ROOT, "sprites", "npc_%s.png" % name))
     os.makedirs(os.path.join(ROOT, "sprites", "enemies"), exist_ok=True)
     for name, (rig, order, animations) in MONSTERS.items():
-        draw_sheet(rig, order, animations).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
+        draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
     os.makedirs(os.path.join(ROOT, "sprites", "weapons"), exist_ok=True)
     for name, parts in WEAPONS.items():
         draw_layer_sheet({"sword": parts}).save(os.path.join(ROOT, "sprites", "weapons", name + ".png"))
