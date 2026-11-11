@@ -115,6 +115,10 @@ var mount_id := ""
 ## What last hurt the player: an element, a status, or "blow". Shapes the
 ## words on the death screen.
 var last_harm := "blow"
+## Shift toggles between walking and sprinting; sprinting burns stamina.
+var sprinting := false
+const SPRINT_SPEED := 1.4
+const SPRINT_STAMINA := 7.0
 var _mount: Mount
 var pets: Pets
 ## Sailing a rowboat: water is crossed quickly and dry.
@@ -200,11 +204,12 @@ func _physics_process(delta: float) -> void:
 	if since_hurt > (2.0 if undying else 5.0):
 		health.heal((health.max_health * (0.04 if undying else 0.02) + stats.get_stat("health_regen")) * delta)
 	if state == State.MOVE or state == State.ATTACK:
-		camera.zoom = camera.zoom.lerp(Vector2(_height_zoom, _height_zoom), 1.5 * delta)
+		var zoom := _height_zoom / GameSettings.ui_scale
+		camera.zoom = camera.zoom.lerp(Vector2(zoom, zoom), 1.5 * delta)
 		# Settle exactly on the target: at these zooms tile and chunk edges
 		# land on whole pixels, so no seams show between chunks.
-		if absf(camera.zoom.x - _height_zoom) < 0.01:
-			camera.zoom = Vector2(_height_zoom, _height_zoom)
+		if absf(camera.zoom.x - zoom) < 0.01:
+			camera.zoom = Vector2(zoom, zoom)
 	_unstick(delta)
 	if not _afflictions.is_empty():
 		_process_afflictions(delta)
@@ -857,7 +862,18 @@ func _process_move(delta: float) -> void:
 	if input != Vector2.ZERO:
 		facing = input.normalized()
 		_face_visual(input.x)
-	velocity = velocity.move_toward(input * stats.get_stat("move_speed") * _ground_speed, acceleration * delta)
+	if Input.is_action_just_pressed("sprint"):
+		sprinting = not sprinting
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), "Sprinting" if sprinting else "Walking", UITheme.DIM, 12)
+	var pace := 1.0
+	if sprinting and input != Vector2.ZERO and not swimming and mount_id == "" and parry_left == 0.0:
+		# Out of breath: drop back to a walk until stamina returns.
+		if stamina.current < 1.0:
+			sprinting = false
+		else:
+			stamina.spend(SPRINT_STAMINA * stats.get_stat("stamina_cost_multiplier") * delta)
+			pace = SPRINT_SPEED
+	velocity = velocity.move_toward(input * stats.get_stat("move_speed") * _ground_speed * pace, acceleration * delta)
 	if deep_water:
 		# Both hands are busy keeping afloat.
 		return
@@ -880,15 +896,13 @@ func _process_move(delta: float) -> void:
 		_start_parry()
 	elif abilities.try_use_pressed():
 		pass
-	elif Input.is_action_just_pressed("quick_potion"):
+	elif Input.is_action_just_pressed("quick_use"):
 		quick_potion()
 	elif Input.is_action_just_pressed("interact"):
 		_start_gathering()
 	elif Input.is_action_just_pressed("recall_home"):
 		Events.recall_requested.emit()
-	elif Input.is_action_just_pressed("dismantle"):
-		Events.dismantle_requested.emit()
-	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing:
+	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing and not HudMenuButton.hovered:
 		attack(aim_direction())
 
 

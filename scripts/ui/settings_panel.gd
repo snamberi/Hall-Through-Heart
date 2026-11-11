@@ -47,6 +47,7 @@ func _ready() -> void:
 	_pages["Display"] = _page(holder, func(page: VBoxContainer) -> void:
 		_check(page, "fullscreen", "Full screen")
 		_check(page, "vsync", "Vertical sync (smoother, may limit frame rate)")
+		_slider(page, "ui_scale", "Interface size", 0.7, 1.3)
 	)
 	_pages["Gameplay"] = _page(holder, func(page: VBoxContainer) -> void:
 		_check(page, "show_minimap", "Show the minimap")
@@ -96,15 +97,15 @@ func _page(holder: Control, fill: Callable) -> VBoxContainer:
 	return page
 
 
-func _slider(page: Control, setting: String, title: String) -> void:
+func _slider(page: Control, setting: String, title: String, low: float = 0.0, high: float = 1.0) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	var label := UITheme.label(title, 17)
 	label.custom_minimum_size.x = 200.0
 	row.add_child(label)
 	var slider := HSlider.new()
-	slider.min_value = 0.0
-	slider.max_value = 1.0
+	slider.min_value = low
+	slider.max_value = high
 	slider.step = 0.05
 	slider.value = GameSettings.get(setting)
 	slider.custom_minimum_size = Vector2(320.0, 24.0)
@@ -112,11 +113,16 @@ func _slider(page: Control, setting: String, title: String) -> void:
 	slider.focus_mode = Control.FOCUS_NONE
 	var percent := UITheme.label("%d%%" % roundi(slider.value * 100.0), 17, UITheme.GOLD)
 	slider.value_changed.connect(func(value: float) -> void:
-		GameSettings.set_value(setting, value)
 		percent.text = "%d%%" % roundi(value * 100.0)
+		# Resizing the interface under the mouse mid-drag would be dizzying.
+		if setting == "ui_scale":
+			return
+		GameSettings.set_value(setting, value)
 		if setting == "sfx_volume":
 			Audio.play("pickup")
 	)
+	if setting == "ui_scale":
+		slider.drag_ended.connect(func(_changed: bool) -> void: GameSettings.set_value(setting, slider.value))
 	row.add_child(slider)
 	row.add_child(percent)
 	page.add_child(row)

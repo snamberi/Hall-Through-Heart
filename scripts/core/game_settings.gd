@@ -17,17 +17,22 @@ const DEFAULTS := {
 	"screen_shake": true,
 	"damage_numbers": true,
 	"last_slot": "",
+	"ui_scale": 1.0,
+	"controls_version": 0,
 }
+## Raised whenever the default keys change, so old saved bindings are dropped
+## once and everyone starts from the new layout.
+const CONTROLS_VERSION := 2
 ## Actions players may rebind, in the order the Controls tab lists them.
 const REBINDABLE: Array[Array] = [
 	["move_up", "Move up"], ["move_down", "Move down"], ["move_left", "Move left"], ["move_right", "Move right"],
-	["attack", "Attack"], ["dodge", "Dodge"], ["parry", "Parry"], ["interact", "Gather / talk / use"],
+	["attack", "Attack / break / gather"], ["interact", "Interact / open / talk"], ["parry", "Parry"], ["dodge", "Dash"],
+	["sprint", "Sprint on / off"],
 	["ability_1", "Ability 1"], ["ability_2", "Ability 2"], ["ability_3", "Ability 3"], ["ability_4", "Ability 4"],
-	["ability_swap", "Switch ability set"], ["quick_potion", "Drink health potion"],
+	["ability_swap", "Switch ability set"], ["quick_use", "Quick-use potion or food"], ["transform", "Transform (hold)"],
 	["hotbar_1", "Hotbar 1"], ["hotbar_2", "Hotbar 2"], ["hotbar_3", "Hotbar 3"], ["hotbar_4", "Hotbar 4"], ["hotbar_5", "Hotbar 5"],
-	["toggle_menu", "Menu wheel"], ["toggle_inventory", "Inventory"], ["toggle_character", "Attributes"],
-	["toggle_talents", "Talents"], ["toggle_professions", "Professions"], ["toggle_journal", "Quest Book"],
-	["toggle_map", "Map"], ["toggle_codex", "Codex"], ["mount", "Mount / dismount"], ["recall_home", "Recall home"], ["dismantle", "Take down a building"],
+	["hotbar_6", "Hotbar 6"], ["hotbar_7", "Hotbar 7"], ["hotbar_8", "Hotbar 8"], ["hotbar_9", "Hotbar 9"],
+	["toggle_menu", "Menu wheel"], ["mount", "Mount / dismount"], ["recall_home", "Recall home"],
 ]
 
 var master_volume := 1.0
@@ -39,6 +44,9 @@ var vsync := true
 var screen_shake := true
 var damage_numbers := true
 var last_slot := ""
+## Size of everything on screen that is not the world itself.
+var ui_scale := 1.0
+var controls_version := 0
 ## action -> saved events, each {"key": physical keycode} or {"mouse": button}.
 var bindings: Dictionary = {}
 
@@ -67,6 +75,12 @@ func _ready() -> void:
 			var saved: Variant = data.get("bindings", {})
 			if saved is Dictionary:
 				bindings = saved
+	ui_scale = clampf(ui_scale, 0.7, 1.3)
+	if controls_version < CONTROLS_VERSION:
+		# The key layout changed: drop bindings saved for the old one.
+		bindings.clear()
+		controls_version = CONTROLS_VERSION
+		_save()
 	for action: String in bindings:
 		_apply_binding(action)
 	_apply()
@@ -144,6 +158,9 @@ func _apply() -> void:
 	_set_bus("Master", master_volume)
 	_set_bus("Music", music_volume)
 	_set_bus("SFX", sfx_volume)
+	if is_inside_tree():
+		# The world's camera divides this back out, so only the interface changes size.
+		get_tree().root.content_scale_factor = ui_scale
 	if not Engine.is_editor_hint() and DisplayServer.get_name() != "headless":
 		var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
 		if DisplayServer.window_get_mode() != mode:

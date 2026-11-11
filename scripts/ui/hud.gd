@@ -64,6 +64,10 @@ func setup(player: Player) -> void:
 	hotbar_ui.size = hotbar_ui.custom_minimum_size
 	hotbar_ui.position = Vector2(-hotbar_ui.size.x / 2.0, -hotbar_ui.size.y - 6.0)
 	add_child(hotbar_ui)
+	var menu_button := HudMenuButton.new()
+	menu_button.setup(player)
+	menu_button.position = Vector2(14.0, 110.0)
+	add_child(menu_button)
 	_death_message.visible = false
 	_banner.visible = false
 	_refresh()
@@ -101,15 +105,17 @@ func _refresh() -> void:
 	var codex: Node = _player.get_parent().get_node_or_null("Codex")
 	if codex and codex.title != "":
 		_level_label.text += "   " + codex.title
+	# What waits in the menu is said beside the Menu button, which wears the count.
 	var notes: PackedStringArray = []
 	if _player.attributes.unspent > 0:
-		notes.append("%d attribute points - press C" % _player.attributes.unspent)
+		notes.append("%d attribute points" % _player.attributes.unspent)
 	if _player.leveling.talent_points > 0:
-		notes.append("%d talent points - press K" % _player.leveling.talent_points)
+		notes.append("%d talent points" % _player.leveling.talent_points)
 	if _player.class_id == "adventurer" and _player.leveling.level >= HeroClasses.CHOICE_LEVEL:
-		notes.append("Choose a class - press M")
+		notes.append("a class to choose")
 	_points_label.visible = not notes.is_empty()
-	_points_label.text = "      ".join(notes)
+	_points_label.text = "to spend: " + ", ".join(notes)
+	_points_label.position = Vector2(158.0, 114.0)
 	_xp_bar.queue_redraw()
 
 

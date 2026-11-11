@@ -1,32 +1,33 @@
 extends CanvasLayer
 ## Every pause-time screen, and the wheel that leads to them.
 ##
-## M (or Tab) opens the menu wheel; clicking a wedge opens that screen by
-## itself. E, C, K, P, and J open Inventory, Attributes, Talents,
-## Professions, and the Journal directly. Shops and quest boards open by
-## talking to people. Esc closes whatever is open, or opens the pause
-## menu if nothing is. The game is paused while anything here is showing.
+## M (or `) opens the menu wheel; clicking a wedge opens that screen by
+## itself, and every screen has a Back button to the wheel. No screen has a
+## key of its own: the wheel is the one way in. Shops and boards open by
+## talking to people. Esc closes whatever is open, or opens the pause menu
+## if nothing is. The game is paused while anything here is showing.
 ##
 ## To add a screen: write a GameMenu subclass and add a line to SCREENS.
 
-## "action" is an optional input action that opens the screen directly.
-## "icon" is an index into the item icon atlas. "wheel": false keeps a
-## screen off the wheel.
+## "icon" is an index into the item icon atlas; "text" is the line shown in
+## the wheel's hub. "wheel": false keeps a screen off the wheel.
 const SCREENS: Array[Dictionary] = [
-	{"id": "inventory", "title": "Inventory", "icon": 17, "action": "toggle_inventory"},
-	{"id": "attributes", "title": "Attributes", "icon": 38, "action": "toggle_character"},
-	{"id": "mastery", "title": "Mastery", "icon": 0, "action": ""},
-	{"id": "talents", "title": "Talents", "icon": 28, "action": "toggle_talents"},
-	{"id": "abilities", "title": "Abilities", "icon": 27, "action": ""},
-	{"id": "class", "title": "Class", "icon": 6, "action": ""},
-	{"id": "professions", "title": "Professions", "icon": 49, "action": "toggle_professions"},
-	{"id": "journal", "title": "Quests", "icon": 41, "action": "toggle_journal"},
-	{"id": "map", "title": "Map", "icon": 12, "action": "toggle_map"},
-	{"id": "codex", "title": "Codex", "icon": 53, "action": "toggle_codex"},
-	{"id": "pets", "title": "Pets", "icon": 36, "action": ""},
-	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "action": ""},
-	{"id": "pause", "title": "Settings", "icon": 5, "action": ""},
+	{"id": "inventory", "title": "Inventory", "icon": 17, "text": "Bags, gear,\nand crafting by hand"},
+	{"id": "attributes", "title": "Attributes", "icon": 38, "text": "Spend points on\nstrength, vigour, ..."},
+	{"id": "mastery", "title": "Mastery", "icon": 0, "text": "Skill with each\nkind of weapon"},
+	{"id": "talents", "title": "Talents", "icon": 28, "text": "Passive gifts bought\nwith talent points"},
+	{"id": "abilities", "title": "Abilities", "icon": 27, "text": "Choose and rank up\nyour active skills"},
+	{"id": "class", "title": "Class", "icon": 6, "text": "Your calling\nand its path"},
+	{"id": "professions", "title": "Professions", "icon": 49, "text": "Mining, smithing,\ncooking and the rest"},
+	{"id": "journal", "title": "Quests", "icon": 41, "text": "The quest book:\nevery chapter and goal"},
+	{"id": "map", "title": "Map", "icon": 12, "text": "The land as far\nas you have walked"},
+	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary, feats,\ntitles and lore"},
+	{"id": "pets", "title": "Pets", "icon": 36, "text": "Companions\nand mounts"},
+	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours"},
+	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options, save,\nand quit"},
 ]
+## Where a screen's Back button leads, when not to the wheel. "" closes.
+const BACK := {"settings": "pause", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": ""}
 
 var _menus: Dictionary[String, GameMenu] = {}
 ## "" when closed, "wheel", or a screen id.
@@ -36,6 +37,8 @@ var _root: Control
 var _wheel: MenuWheel
 var _holder: CenterContainer
 var _hint: Label
+var _back: Button
+var _fade: Tween
 
 
 func _ready() -> void:
@@ -61,12 +64,21 @@ func setup(player: Player) -> void:
 		if screen.get("wheel", true):
 			_wheel.entries.append(screen)
 	_wheel.chosen.connect(open)
+	_wheel.badge_for = badge_for
+	_wheel.hub_text = func() -> Array:
+		return ["Menu", "Level %d\n%d gold" % [_player.leveling.level, _player.inventory.gold]]
 	_root.add_child(_wheel)
 
 	_holder = CenterContainer.new()
 	_holder.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_holder)
+
+	_back = UITheme.button("<  Menu", _go_back, 118.0)
+	_back.position = Vector2(18.0, 16.0)
+	_back.custom_minimum_size.y = 38.0
+	_back.add_theme_font_size_override("font_size", 17)
+	_root.add_child(_back)
 
 	_hint = UITheme.label("", 14, UITheme.DIM)
 	_hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -91,7 +103,13 @@ func setup(player: Player) -> void:
 	_add("pets", PetsMenu.new())
 	_add("wardrobe", WardrobeMenu.new())
 	_add("storage", StorageMenu.new())
-	Events.screen_requested.connect(open)
+	Events.screen_requested.connect(func(id: String) -> void:
+		if id == "wheel":
+			open_wheel()
+		else:
+			open(id)
+	)
+	get_viewport().size_changed.connect(_fit)
 	Events.loot_opened.connect(func(container: Dictionary) -> void:
 		(_menus["storage"] as StorageMenu).chest = container
 		open("storage")
@@ -138,13 +156,70 @@ func close() -> void:
 
 
 func _show(id: String) -> void:
+	var changed := id != _open_id
 	_open_id = id
 	_wheel.visible = id == "wheel"
 	for other in _menus:
 		_menus[other].visible = other == id
-	_hint.text = "M Close" if id == "wheel" else "M Menu wheel     Esc Close"
+	_back.visible = id != "wheel"
+	_back.text = "<  Menu" if BACK.get(id, "wheel") == "wheel" else "<  Back" if BACK[id] != "" else "x  Close"
+	_hint.text = "%s  Close" % GameSettings.describe("toggle_menu").split(" / ")[0] if id == "wheel" else "Esc  Close"
 	visible = true
 	get_tree().paused = true
+	if id != "wheel" and changed:
+		# Screens ease in rather than snapping onto the screen.
+		if _fade:
+			_fade.kill()
+		_holder.modulate.a = 0.0
+		_fade = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		_fade.tween_property(_holder, "modulate:a", 1.0, 0.12)
+	_fit.call_deferred()
+
+
+## Where the Back button leads from the open screen.
+func _go_back() -> void:
+	var target: String = BACK.get(_open_id, "wheel")
+	if target == "wheel":
+		open_wheel()
+	elif target == "":
+		close()
+	else:
+		open(target)
+
+
+## Shrinks a screen that is too big for the window (a large interface size
+## on a small window) so nothing runs off the edge.
+func _fit() -> void:
+	if _holder == null or not is_open() or _open_id == "wheel":
+		return
+	var menu: GameMenu = _menus[_open_id]
+	var room := _root.size - Vector2(24.0, 70.0)
+	var need := menu.get_combined_minimum_size().max(menu.size)
+	var scale_by := minf(1.0, minf(room.x / maxf(need.x, 1.0), room.y / maxf(need.y, 1.0)))
+	_holder.pivot_offset = _root.size / 2.0
+	_holder.scale = Vector2(scale_by, scale_by)
+
+
+## How many things wait for the player on a screen (points to spend...).
+func badge_for(id: String) -> int:
+	match id:
+		"attributes":
+			return _player.attributes.unspent
+		"talents":
+			return _player.leveling.talent_points
+		"class":
+			return 1 if _player.class_id == "adventurer" and _player.leveling.level >= HeroClasses.CHOICE_LEVEL else 0
+		"abilities":
+			return _player.abilities.unspent_points() if _player.abilities.has_method("unspent_points") else 0
+	return 0
+
+
+## Everything waiting, across all screens: the number on the HUD's menu button.
+func badge_total() -> int:
+	var total := 0
+	for screen in SCREENS:
+		total += badge_for(screen["id"])
+	return total
 
 
 ## Talking to someone opens their screen.
@@ -185,15 +260,6 @@ func _input(event: InputEvent) -> void:
 		else:
 			open_wheel()
 		get_viewport().set_input_as_handled()
-	else:
-		for screen in SCREENS:
-			if screen["action"] != "" and event.is_action_pressed(screen["action"]):
-				if _open_id == screen["id"]:
-					close()
-				else:
-					open(screen["id"])
-				get_viewport().set_input_as_handled()
-				return
 
 
 func _add(id: String, menu: GameMenu) -> void:

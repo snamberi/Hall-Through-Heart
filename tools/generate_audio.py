@@ -104,7 +104,67 @@ def music():
     return out
 
 
+def ui_hover():
+    """A tiny soft tick for moving over a button."""
+    n = int(0.035 * RATE)
+    return [0.22 * math.sin(2 * math.pi * 1500 * i / RATE) * math.exp(-i / RATE * 110.0) for i in range(n)]
+
+
+def ui_click():
+    """A short woody click for pressing a button."""
+    n = int(0.07 * RATE)
+    rnd, out = noise(5), []
+    for i in range(n):
+        t = i / RATE
+        out.append(0.4 * math.sin(2 * math.pi * 620 * t) * math.exp(-t * 60.0) + 0.18 * rnd() * math.exp(-t * 240.0))
+    return out
+
+
+def chop():
+    """An axe biting into wood: a knock and a crack."""
+    n = int(0.16 * RATE)
+    rnd, out = noise(6), []
+    for i in range(n):
+        t = i / RATE
+        out.append(0.55 * math.sin(2 * math.pi * (240 - 500 * t) * t) * math.exp(-t * 32.0) + 0.35 * rnd() * math.exp(-t * 90.0))
+    return out
+
+
+def mine():
+    """A pick ringing on stone: a bright ping over a clack."""
+    n = int(0.2 * RATE)
+    rnd, out = noise(7), []
+    for i in range(n):
+        t = i / RATE
+        ring = 0.3 * math.sin(2 * math.pi * 2100 * t) * math.exp(-t * 26.0) + 0.16 * math.sin(2 * math.pi * 3150 * t) * math.exp(-t * 34.0)
+        out.append(ring + 0.4 * rnd() * math.exp(-t * 130.0))
+    return out
+
+
+def transform():
+    """A rising, growling swell for changing shape."""
+    n = int(1.1 * RATE)
+    rnd, low, out = noise(8), 0.0, []
+    for i in range(n):
+        t = i / RATE
+        low += (rnd() - low) * 0.08
+        growl = math.sin(2 * math.pi * (70 + 90 * t) * t) * (0.5 + 0.5 * math.sin(2 * math.pi * 23 * t))
+        out.append((0.5 * growl + 0.9 * low) * min(t / 0.5, 1.0) * min((1.1 - t) / 0.15, 1.0) * 0.8)
+    return out
+
+
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "sfx":
+        # Only the short effects; leaves the music alone.
+        for name, make in (("ui_hover", ui_hover), ("ui_click", ui_click), ("chop", chop), ("mine", mine), ("transform", transform)):
+            write(name + ".wav", make())
+        sys.exit(0)
+    write("ui_hover.wav", ui_hover())
+    write("ui_click.wav", ui_click())
+    write("chop.wav", chop())
+    write("mine.wav", mine())
+    write("transform.wav", transform())
     write("level_up.wav", level_up())
     write("swing.wav", swing())
     write("hit.wav", hit())

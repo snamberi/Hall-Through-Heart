@@ -12,7 +12,7 @@ func _build() -> void:
 	var title := UITheme.heading("PETS & MOUNTS", 30)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(title)
-	var note := UITheme.label("Tame pets with a Taming Treat: use it beside a small creature, or a monster beaten to its last legs. Press G to ride a mount.", 14, UITheme.DIM)
+	var note := UITheme.label("Tame pets with a Taming Treat: use it beside a small creature, or a monster beaten to its last legs. Press H to ride a mount.", 14, UITheme.DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD
 	note.custom_minimum_size = Vector2(900, 40)
