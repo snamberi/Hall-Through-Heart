@@ -109,13 +109,37 @@ func modifiers() -> Dictionary:
 			if not totals.has(stat):
 				totals[stat] = {"flat": 0.0, "percent": 0.0}
 			totals[stat][modifier["kind"]] += modifier["value"]
-	var bonus: Dictionary = set_bonus()
-	for stat: String in bonus:
-		if not totals.has(stat):
-			totals[stat] = {"flat": 0.0, "percent": 0.0}
-		for kind: String in bonus[stat]:
-			totals[stat][kind] += bonus[stat][kind]
+	var bonuses: Array = [set_bonus()]
+	var named := named_set_counts()
+	for set_id: String in named:
+		for needed: int in ItemDB.ITEM_SETS[set_id]["bonuses"]:
+			if named[set_id] >= needed:
+				bonuses.append(ItemDB.ITEM_SETS[set_id]["bonuses"][needed])
+	for bonus: Dictionary in bonuses:
+		for stat: String in bonus:
+			if not totals.has(stat):
+				totals[stat] = {"flat": 0.0, "percent": 0.0}
+			for kind: String in bonus[stat]:
+				totals[stat][kind] += bonus[stat][kind]
 	return totals
+
+
+## How many pieces of each named set are worn: {"gravewarden": 3}.
+func named_set_counts() -> Dictionary:
+	var counts := {}
+	for item: Item in equipped.values():
+		if item.set_id != "":
+			counts[item.set_id] = counts.get(item.set_id, 0) + 1
+	return counts
+
+
+## The unique effect ids of everything worn.
+func unique_effects() -> Array[String]:
+	var effects: Array[String] = []
+	for item: Item in equipped.values():
+		if item.is_unique():
+			effects.append(item.definition()["unique"])
+	return effects
 
 
 ## The most armour pieces worn from one tier: {"tier": name, "count": n}.

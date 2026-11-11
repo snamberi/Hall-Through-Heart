@@ -113,6 +113,10 @@ func _ready() -> void:
 	stats.setup(attributes, mastery)
 	buffs.setup(stats)
 	StatusFX.attach(self, active_statuses, 44.0, 12.0)
+	var uniques := Uniques.new()
+	uniques.name = "Uniques"
+	add_child(uniques)
+	uniques.setup(self)
 	hotbar = Hotbar.new()
 	hotbar.name = "Hotbar"
 	add_child(hotbar)
@@ -214,6 +218,10 @@ func attack(direction: Vector2) -> void:
 		var config: Dictionary = weapon["projectile"].duplicate()
 		config["knockback"] = weapon["knockback"]
 		Projectile.fire(self, direction, config, _weapon_multiplier() * multiplier)
+		var extra := Uniques.extra_projectiles(self)
+		for index in extra:
+			var spread := deg_to_rad(12.0) * (1 if index % 2 == 0 else -1) * (index / 2 + 1)
+			Projectile.fire(self, direction.rotated(spread), config, _weapon_multiplier() * multiplier * 0.6)
 		return
 	show_slash(direction, reach, weapon["arc"] * (1.2 if multiplier > 1.0 else 1.0))
 	strike_arc(direction, reach, weapon["arc"], multiplier, weapon["knockback"])
@@ -334,6 +342,15 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 	var dealt := enemy.take_damage(damage, knockback, critical, type)
 	if dealt <= 0.0:
 		return
+	# Elemental damage rides on top of the blow, against the monster's
+	# weaknesses and resistances.
+	for element in Elements.LIST:
+		var extra := stats.get_stat(element + "_damage")
+		if extra <= 0.0 or enemy.health.is_dead():
+			continue
+		extra *= multiplier * (stats.get_stat("critical_damage") if critical else 1.0) * Elements.multiplier(enemy.enemy_id, element)
+		dealt += enemy.take_damage(extra, Vector2.ZERO, critical, type, element)
+	Uniques.on_hit(self, enemy, damage)
 	Events.damage_dealt.emit(type, dealt)
 	var weapon := equipment.get_item("main_hand")
 	var def: Dictionary = weapon.definition() if weapon else {}
@@ -512,14 +529,18 @@ func learn_class_node(id: String) -> bool:
 
 ## Hurts the player. Returns whether the blow landed (false if it was
 ## dodged or the player cannot be hurt right now).
-func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1) -> bool:
+func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1, element: String = "") -> bool:
 	if is_dead():
 		return false
 	if _invulnerable_left > 0.0:
 		if state == State.DODGE and talents.has("perfect_dodge"):
 			buffs.add("perfect_dodge", "Perfect Dodge", 5.0, {"critical_chance": {"flat": 0.3}})
 		return false
+	if element != "":
+		# Part of the blow is the attacker's element; resistance turns it away.
+		amount *= 1.0 - Elements.ATTACK_SHARE * Elements.resistance(stats, element)
 	amount = maxf(amount * (1.0 - stats.damage_reduction(attacker_level)) * stats.get_stat("damage_taken") * Difficulty.damage_to_player(), 1.0)
+	amount = Uniques.on_hurt(self, amount)
 	if talents.has("last_stand") and health.current < health.max_health * 0.3:
 		amount *= 0.7
 	since_hurt = 0.0
@@ -664,6 +685,11 @@ func _try_dodge() -> void:
 	if not stamina.spend(cost):
 		return
 	_dodge_direction = facing
+	var start := global_position
+	get_tree().create_timer(dodge_duration).timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			Uniques.on_dodge(self, start, global_position)
+	)
 	state = State.DODGE
 	_state_time_left = dodge_duration
 	_dodge_cooldown_left = dodge_cooldown / stats.get_stat("dodge_efficiency")

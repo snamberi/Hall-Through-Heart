@@ -48,7 +48,7 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_target) or _target.is_dead():
 		return
 	if global_position.distance_to(_target.global_position + Vector2(0, -14)) < 16.0:
-		var hurt := _target.take_damage(_damage, global_position - _direction * 10.0, _level)
+		var hurt := _target.take_damage(_damage, global_position - _direction * 10.0, _level, Elements.attack_element(_owner_enemy.enemy_id) if is_instance_valid(_owner_enemy) else "")
 		if hurt:
 			if not _status.is_empty():
 				_target.apply_status(_status["status"], _status["duration"], _status["power"] * _damage if _status["status"] != "chill" else _status["power"])

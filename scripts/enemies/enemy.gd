@@ -298,10 +298,22 @@ func _draw() -> void:
 
 ## Returns the health actually removed, so callers can reward real damage only.
 func take_damage(
-	amount: float, knockback: Vector2, critical: bool = false, weapon_type: String = ""
+	amount: float, knockback: Vector2, critical: bool = false, weapon_type: String = "", element: String = ""
 ) -> float:
 	if state == State.DEAD:
 		return 0.0
+	if element != "":
+		# Elemental damage riding on a blow: its own coloured number, and no
+		# extra shove, dodge, or thorns.
+		if shield > 0.0:
+			var soaked := minf(shield, amount)
+			shield -= soaked
+			amount -= soaked
+		if amount <= 0.0:
+			return 0.0
+		DamageNumber.spawn(get_parent(), global_position + Vector2(randf_range(-10, 10), -12), amount, Elements.color(element), critical)
+		_since_hurt = 0.0
+		return health.take_damage(amount)
 	if has_trait("armored"):
 		amount *= 0.65
 	if "evasive" in modifiers and state != State.WINDUP and randf() < EVADE_CHANCE:
@@ -365,6 +377,18 @@ func apply_status(id: String, duration: float, power: float, weapon_type: String
 	_refresh_status_tint()
 
 
+## Freezes the enemy in place. Bosses shake it off sooner.
+func stun(seconds: float) -> void:
+	if state == State.DEAD:
+		return
+	_enter(State.STAGGER, seconds * (0.4 if rank == Rank.MINIBOSS else 1.0))
+	velocity = Vector2.ZERO
+	_visual.modulate = Color(0.7, 0.9, 1.3)
+	var tween := create_tween()
+	tween.tween_interval(seconds)
+	tween.tween_callback(func() -> void: _visual.modulate = _tint)
+
+
 func has_status(id: String) -> bool:
 	return _statuses.has(id)
 
@@ -417,7 +441,7 @@ func _blast() -> void:
 ## Damages the player and applies this enemy's on-hit status. Returns whether
 ## the blow landed (it may have been dodged).
 func _hit_target(amount: float) -> bool:
-	if not target.take_damage(amount, global_position, level):
+	if not target.take_damage(amount, global_position, level, Elements.attack_element(enemy_id)):
 		return false
 	on_dealt_damage(amount)
 	var effects: Array = [_data.get("touch", {}), _attack.get("status", {}) if _attack["kind"] != "shoot" else {}]

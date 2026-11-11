@@ -38,6 +38,7 @@ var _details: RichTextLabel
 var _primary: Button
 var _upgrade: Button
 var _enchant: Button
+var _socket: Button
 var _salvage: Button
 var _discard: Button
 var _message: Label
@@ -196,7 +197,9 @@ func _build() -> void:
 	_upgrade = UITheme.button("Upgrade", func() -> void: _act(Crafting.upgrade), 99.0)
 	_enchant = UITheme.button("Enchant", func() -> void: _act(Crafting.enchant), 99.0)
 	_salvage = UITheme.button("Salvage", func() -> void: _act(Crafting.salvage), 99.0)
-	for button: Button in [_upgrade, _enchant, _salvage]:
+	_socket = UITheme.button("Gems", _open_gems, 99.0)
+	for button: Button in [_upgrade, _enchant, _salvage, _socket]:
+		button.custom_minimum_size.x = 74.0
 		smith.add_child(button)
 
 	player.inventory.changed.connect(refresh_if_open)
@@ -249,6 +252,7 @@ func _refresh_details() -> void:
 	_upgrade.disabled = item == null or not item.is_equipment() or not item.is_upgradable() or item.upgrade >= ItemDB.MAX_UPGRADE
 	_enchant.disabled = item == null or not item.is_equipment()
 	_salvage.disabled = not in_bag or not item.is_equipment()
+	_socket.disabled = item == null or not item.is_equipment() or item.sockets.is_empty()
 
 
 ## BBCode description of an item.
@@ -295,12 +299,32 @@ func _describe(item: Item) -> String:
 		lines.append("[color=#%s]Inflicts %s: %s for %.1fs[/color]" % [status["color"].to_html(false), status["name"], detail, effect["duration"]])
 	if def.has("life_steal"):
 		lines.append("[color=#%s]Heals you for %d%% of damage dealt[/color]" % [UITheme.GOOD.to_html(false), roundi(def["life_steal"] * 100.0)])
+	if def.has("unique"):
+		lines.append("[color=#ff9a2e]Unique: %s[/color]" % Uniques.TEXT[def["unique"]])
 	for modifier in item.implicit_modifiers():
 		lines.append("[color=#%s]+[/color] %s" % [UITheme.HEADING.to_html(false), ItemDB.describe_modifier(modifier)])
 	for modifier in item.mods:
 		lines.append("[color=#%s]+[/color] [color=#%s]%s[/color]" % [UITheme.HEADING.to_html(false), UITheme.INFO.to_html(false), ItemDB.describe_modifier(modifier)])
 	if not item.enchant.is_empty():
 		lines.append("[color=#c08cff]+ %s  (enchanted)[/color]" % ItemDB.describe_modifier(item.enchant))
+	for gem in item.sockets:
+		if gem == "":
+			lines.append("[color=#%s]<> Empty socket[/color]" % dim)
+		else:
+			lines.append("[color=#%s]<> %s: %s[/color]" % [(ItemDB.ITEMS[gem]["tint"] as Color).to_html(false), ItemDB.ITEMS[gem]["name"], ItemDB.describe_modifier(Gems.modifier(gem, item.slot()))])
+	if item.set_id != "":
+		var set_data: Dictionary = ItemDB.ITEM_SETS[item.set_id]
+		var worn: int = player.equipment.named_set_counts().get(item.set_id, 0)
+		lines.append("")
+		lines.append("[color=#%s]%s set  (%d / %d worn)[/color]" % [ItemDB.SET_COLOR.to_html(false), set_data["name"], worn, set_data["pieces"].size()])
+		for needed: int in set_data["bonuses"]:
+			var parts: PackedStringArray = []
+			for stat: String in set_data["bonuses"][needed]:
+				for kind: String in set_data["bonuses"][needed][stat]:
+					var value: float = set_data["bonuses"][needed][stat][kind]
+					var text_part := ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": absf(value)})
+					parts.append(text_part if value >= 0.0 else "-" + text_part.substr(1))
+			lines.append("[color=#%s](%d) %s[/color]" % [ItemDB.SET_COLOR.to_html(false) if worn >= needed else dim, needed, ", ".join(parts)])
 	if _equipped_slot(item) == "":
 		var current := player.equipment.get_item(player.equipment.target_slot(item))
 		if current:
@@ -367,6 +391,44 @@ func _report(result: String) -> void:
 	else:
 		_message.text = _costs(_selected)
 		_message.add_theme_color_override("font_color", UITheme.DIM)
+
+
+## A small window listing the gems in the bag that fit the selected item.
+func _open_gems() -> void:
+	var item := _selected
+	if item == null:
+		return
+	var popup := PopupPanel.new()
+	popup.add_theme_stylebox_override("panel", UITheme.get_theme().get_stylebox("panel", "PanelContainer"))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	popup.add_child(box)
+	box.add_child(UITheme.heading("Gems for %s" % item.display_name(), 18))
+	var free := item.sockets.count("")
+	box.add_child(UITheme.label("%d of %d sockets empty" % [free, item.sockets.size()], 14, UITheme.DIM))
+	var seen := {}
+	for gem in player.inventory.items:
+		if gem == null or not gem.definition().has("gem") or seen.has(gem.id):
+			continue
+		seen[gem.id] = true
+		var button := UITheme.button("%s  ->  %s" % [gem.display_name(), ItemDB.describe_modifier(Gems.modifier(gem.id, item.slot()))], func() -> void:
+			_report(Gems.insert(player, item, gem))
+			popup.hide()
+		, 360.0)
+		button.icon = gem.icon()
+		button.add_theme_color_override("icon_normal_color", gem.tint())
+		button.disabled = free == 0
+		box.add_child(button)
+	if seen.is_empty():
+		box.add_child(UITheme.label("You have no gems. Mine ore or beat strong foes.", 14, UITheme.DIM))
+	box.add_child(UITheme.button("Remove all gems  (%d gold)" % (Gems.REMOVE_COST_PER_LEVEL * item.level), func() -> void:
+		_report(Gems.remove_all(player, item))
+		popup.hide()
+	, 360.0))
+	box.add_child(UITheme.button("Close", popup.hide, 360.0))
+	add_child(popup)
+	popup.popup_centered()
+	popup.popup_hide.connect(popup.queue_free)
 
 
 func _discard_selected() -> void:
