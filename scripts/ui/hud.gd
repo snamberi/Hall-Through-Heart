@@ -102,6 +102,13 @@ func show_death(xp_lost: int, respawn_name: String) -> void:
 	_death_message.visible = true
 
 
+## Death on a Hardcore world: there is no waking.
+func show_hardcore_death(day: int) -> void:
+	_death_message.text = "Your tale ends here"
+	_death_summary.text = "Hardcore  -  level %d, day %d. This world is lost with you." % [_player.leveling.level, day]
+	_death_message.visible = true
+
+
 func hide_death() -> void:
 	_death_message.visible = false
 

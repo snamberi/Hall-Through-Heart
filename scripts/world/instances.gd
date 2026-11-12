@@ -468,6 +468,40 @@ func _start_wave() -> void:
 		var enemy := _spawner.spawn_at(Room.ORIGIN + spot + Vector2(22, 22), _arena_level, rank, options.pick_random())
 		RingBurst.spawn(room, enemy.global_position, Color(0.75, 0.55, 1.0), 50.0)
 		room.enemies.append(enemy)
+	if _wave == _waves_total:
+		_spawn_wave_boss()
+
+
+## The last wave of a void portal is led by one of the world's bosses,
+## pulled through the tear. Its treasure joins the arena's chest.
+func _spawn_wave_boss() -> void:
+	var ids: Array = BossDB.BOSSES.keys()
+	var boss_id: String = ids[randi() % ids.size()]
+	var data: Dictionary = BossDB.BOSSES[boss_id]
+	var boss: Enemy = _spawner.enemy_scene.instantiate()
+	boss.boss_id = boss_id
+	boss.position = Room.ORIGIN + Vector2(22, 22 - 3.0 * TerrainTiles.TILE_SIZE)
+	boss.target = _player
+	boss.configure(_arena_level + 2, Enemy.Rank.BOSS, data["monster"])
+	boss.wants_minion.connect(func(from: Enemy) -> void:
+		if room:
+			room.enemies.append(_spawner.spawn_at(from.global_position + Vector2.from_angle(randf() * TAU) * 70.0, from.level, Enemy.Rank.NORMAL, from.enemy_id))
+	)
+	_spawner.add_child(boss)
+	room.enemies.append(boss)
+	RingBurst.spawn(room, boss.global_position, data["color"], 120.0)
+	LightPillar.spawn(room, boss.global_position, data["color"])
+	Events.announcement.emit("%s COMES THROUGH" % (data["name"] as String).to_upper(), "The last wave")
+	var level := _arena_level
+	boss.died.connect(func(_enemy: Enemy) -> void:
+		if room == null:
+			return
+		Events.boss_defeated.emit(boss_id)
+		for saved: Dictionary in BossDB.drops(boss_id, level + 2):
+			var item := Item.from_dict(saved)
+			if item:
+				_loot.drop_item(item, _enemy.global_position + Vector2(randf_range(-40, 40), randf_range(-30, 30)))
+	)
 
 
 # --- shared

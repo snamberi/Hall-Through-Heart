@@ -26,7 +26,8 @@ var _checkpoint_name := START_NAME
 
 
 func _ready() -> void:
-	Difficulty.current = str(SaveGame.get_section("meta").get("difficulty", "normal"))
+	Difficulty.hardcore = bool(SaveGame.get_section("meta").get("hardcore", false))
+	Difficulty.current = "insane" if Difficulty.hardcore else str(SaveGame.get_section("meta").get("difficulty", "normal"))
 	_active_seed = world_seed
 	if _active_seed == 0:
 		_active_seed = int(SaveGame.get_section("world").get("seed", 0))
@@ -160,6 +161,17 @@ func _place_player_at_start() -> void:
 
 
 func _on_player_died(xp_lost: int) -> void:
+	if Difficulty.hardcore:
+		# One life: the world ends with it.
+		var slot := SaveGame.slot_id
+		SaveGame.enabled = false
+		await _cinematic.play_death(_player, _hud.show_hardcore_death.bind(_day_night.day))
+		await get_tree().create_timer(2.5, true, false, true).timeout
+		SaveGame.delete_slot(slot)
+		SaveGame.enabled = true
+		get_tree().paused = false
+		get_tree().change_scene_to_file("res://scenes/menu.tscn")
+		return
 	await _cinematic.play_death(_player, _hud.show_death.bind(xp_lost, _checkpoint_name))
 	_place_player_at_start()
 	_hud.hide_death()
