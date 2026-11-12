@@ -298,7 +298,7 @@ const ABILITIES := {
 	# "level" is the character level each unlocks at. "heal" restores that
 	# share of health when cast.
 	"spell_fire_bolt": {
-		"name": "Fire Bolt", "school": "fire", "level": 1, "icon": 18, "shape": "shot", "magic": true,
+		"name": "Fire Bolt", "school": "fire", "level": 1, "icon": 34, "shape": "shot", "magic": true,
 		"damage": 1.6, "mana": 10.0, "cooldown": 1.5, "count": 1, "spread": 0.0, "color": Color(1.0, 0.6, 0.2),
 		"projectile": {"sprite": 2, "speed": 600.0, "radius": 12.0, "range": 520.0, "explode": 60.0, "knockback": 260.0,
 			"status": {"status": "burn", "duration": 3.0, "power": 0.25}, "color": Color(1.0, 0.6, 0.2)},
@@ -317,7 +317,7 @@ const ABILITIES := {
 		"text": "Call down a burning star on the ground ahead.",
 	},
 	"spell_inferno_cloak": {
-		"name": "Inferno Cloak", "school": "fire", "level": 24, "icon": 55, "shape": "buff", "magic": true,
+		"name": "Inferno Cloak", "school": "fire", "level": 24, "icon": 38, "shape": "buff", "magic": true,
 		"mana": 25.0, "cooldown": 30.0, "duration": 20.0, "color": Color(1.0, 0.55, 0.2),
 		"mods": {"fire_damage": {"flat": 10.0}, "fire_resist": {"flat": 0.2}, "magic_power": {"percent": 0.1}},
 		"text": "Wrap yourself in fire: +10 fire damage, +20% fire resistance and +10% magic damage for 20 seconds.",
@@ -364,7 +364,7 @@ const ABILITIES := {
 		"text": "Tear open the void ahead: it drags enemies in and holds them slow.",
 	},
 	"spell_dark_pact": {
-		"name": "Dark Pact", "school": "dark", "level": 24, "icon": 55, "shape": "buff", "magic": true,
+		"name": "Dark Pact", "school": "dark", "level": 24, "icon": 12, "shape": "buff", "magic": true,
 		"mana": 10.0, "cooldown": 30.0, "duration": 15.0, "color": Color(0.6, 0.3, 0.95),
 		"mods": {"magic_power": {"percent": 0.35}, "life_steal": {"flat": 0.06}, "damage_taken": {"percent": 0.15}},
 		"text": "+35% magic damage and 6% life steal for 15 seconds, but you take 15% more damage.",
@@ -386,7 +386,7 @@ const ABILITIES := {
 		"text": "Judgement falls from the sky on the ground ahead.",
 	},
 	"spell_blessing": {
-		"name": "Blessing", "school": "light", "level": 24, "icon": 55, "shape": "buff", "magic": true,
+		"name": "Blessing", "school": "light", "level": 24, "icon": 35, "shape": "buff", "magic": true,
 		"mana": 30.0, "cooldown": 35.0, "duration": 20.0, "heal": 0.25, "color": Color(1.0, 0.92, 0.6),
 		"mods": {"health_regen": {"flat": 4.0}, "armor": {"percent": 0.2}, "damage_taken": {"percent": -0.1}},
 		"text": "Heal 25% at once, then +4 health a second, +20% armor and 10% less damage taken for 20 seconds.",
@@ -411,7 +411,7 @@ const ABILITIES := {
 		"text": "A spike of ice bursts up from the ground ahead.",
 	},
 	"spell_ice_armor": {
-		"name": "Ice Armour", "school": "frost", "level": 24, "icon": 55, "shape": "buff", "magic": true,
+		"name": "Ice Armour", "school": "frost", "level": 24, "icon": 59, "shape": "buff", "magic": true,
 		"mana": 25.0, "cooldown": 30.0, "duration": 20.0, "color": Color(0.7, 0.92, 1.0),
 		"mods": {"armor": {"percent": 0.35}, "frost_resist": {"flat": 0.25}, "knockback_resistance": {"flat": 0.3}},
 		"text": "+35% armor, +25% frost resistance and steady footing for 20 seconds.",

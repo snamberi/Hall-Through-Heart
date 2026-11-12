@@ -24,7 +24,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary, feats,\ntitles and lore"},
 	{"id": "forms", "title": "Forms", "icon": 92, "text": "Beasts and legends\nto transform into"},
 	{"id": "magic", "title": "Magic", "icon": 33, "text": "Schools of magic\nand their spells"},
-	{"id": "evolution", "title": "Evolution", "icon": 92, "text": "Your race's three\npaths of change"},
+	{"id": "evolution", "title": "Evolution", "icon": 39, "text": "Your race's three\npaths of change"},
 	{"id": "build", "title": "Build", "icon": 56, "text": "Walls, ground,\nfurniture and more"},
 	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions\nand mounts"},
 	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours"},
