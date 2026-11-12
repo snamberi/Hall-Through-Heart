@@ -389,7 +389,7 @@ func _collection(codex: Codex) -> void:
 	_collection_grid("Caught", fish)
 	var stats := codex.stats
 	var lines: PackedStringArray = ["[font_size=20][color=#%s]Your deeds[/color][/font_size]" % UITheme.HEADING.to_html(false), ""]
-	for row: Array in [["Monsters slain", "kills"], ["Elites", "elites"], ["Champions", "champions"], ["World bosses beaten", "bosses"], ["Crypts cleared", "dungeons"], ["Void portals closed", "portals"],
+	for row: Array in [["Monsters slain", "kills"], ["Elites", "elites"], ["Champions", "champions"], ["World bosses beaten", "bosses"], ["Named monsters slain", "named"], ["Crypts cleared", "dungeons"], ["Void portals closed", "portals"],
 			["Bounties collected", "bounties"], ["Raids repelled", "raids"], ["Crops harvested", "harvests"], ["Things crafted", "crafted"], ["Parries", "parries"], ["Finishers", "finishers"],
 			["Pets tamed", "pets"], ["Transformations", "transformations"], ["Caves explored", "caves"]]:
 		lines.append("[color=#%s]%s[/color]   [color=#%s]%d[/color]" % [UITheme.DIM.to_html(false), row[0], UITheme.TEXT.to_html(false), int(stats.get(row[1], 0))])

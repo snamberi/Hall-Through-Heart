@@ -56,7 +56,7 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 static func upgrade_cost(item: Item) -> Dictionary:
 	var tier := ItemDB.tier_start(item.level)
 	return {
-		"ingot": ItemDB.TIER_INGOTS[tier],
+		"ingot": ItemDB.tier_ingot(item.level),
 		"ingots": item.upgrade + 1,
 		"gold": 20 * item.level * (item.upgrade + 1),
 		"level": mini(tier, Professions.MAX_LEVEL),
@@ -126,7 +126,7 @@ static func salvage_yield(player: Player, item: Item) -> Dictionary:
 		# Skilled salvagers recover more metal.
 		if player.professions.level("salvaging") >= 50:
 			ingots += 1
-		result[ItemDB.TIER_INGOTS[ItemDB.tier_start(item.level)]] = ingots
+		result[ItemDB.tier_ingot(item.level)] = ingots
 	if item.rarity > 0 or not item.definition().get("tiered", false):
 		result["enchanted_dust"] = maxi(item.rarity, 1)
 	return result

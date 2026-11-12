@@ -7,6 +7,8 @@ extends RefCounted
 ##   "attacks"  moves used from the start; "phase2" / "phase3" are added at
 ##              two thirds and one third of its health
 ##   "tiles"    where its arena may stand      "set"  the set it always drops
+##   "min_level" the area level it needs before its arena appears (default 1);
+##              where several bosses fit a place, the arena's seed picks one
 
 const T := TerrainTiles.Type
 const BOSSES := {
@@ -28,6 +30,27 @@ const BOSSES := {
 	"sunless_prophet": {"name": "The Sunless Prophet", "monster": "rot_cultist", "tint": Color(1.0, 0.9, 0.7), "size": 2.4, "health": 1.0,
 		"attacks": ["meteor", "volley", "summon"], "phase2": ["teleport"], "phase3": ["spiral"], "color": Color(1.0, 0.85, 0.45),
 		"tiles": [T.SAND, T.SALT, T.THORN], "set": "sunward", "unique": "sunfang"},
+	"briar_queen": {"name": "The Briar Queen", "monster": "thorn_stalker", "tint": Color(1.0, 0.75, 0.8), "size": 2.6, "health": 1.0,
+		"attacks": ["charge", "volley", "summon"], "phase2": ["pools"], "phase3": ["spiral"], "color": Color(0.95, 0.4, 0.5),
+		"tiles": [T.THORN, T.CRIMSON, T.DARK_GRASS], "set": "nightstalker", "unique": "bloodthirst", "min_level": 12},
+	"dune_tyrant": {"name": "The Dune Tyrant", "monster": "sand_scorpion", "tint": Color(1.1, 0.9, 0.65), "size": 2.7, "health": 1.25,
+		"attacks": ["charge", "slam", "pools"], "phase2": ["volley"], "phase3": ["meteor"], "color": Color(0.95, 0.75, 0.35),
+		"tiles": [T.SAND, T.SALT], "set": "sunward", "unique": "splitshot", "min_level": 16},
+	"rime_colossus": {"name": "The Rime Colossus", "monster": "frost_troll", "tint": Color(0.75, 0.9, 1.15), "size": 2.6, "health": 1.4,
+		"attacks": ["slam", "charge"], "phase2": ["meteor"], "phase3": ["nova"], "color": Color(0.55, 0.85, 1.0),
+		"tiles": [T.SNOW, T.PEAK, T.FROSTPINE], "set": "frostbound", "unique": "frostbite", "min_level": 22},
+	"molten_heart": {"name": "The Molten Heart", "monster": "magma_slime", "tint": Color(1.15, 0.8, 0.6), "size": 3.0, "health": 1.2,
+		"attacks": ["pools", "slam", "summon"], "phase2": ["spiral"], "phase3": ["meteor"], "color": Color(1.0, 0.45, 0.15),
+		"tiles": [T.CINDER, T.TAR], "set": "emberheart", "unique": "ember_crown", "min_level": 25},
+	"mire_leviathan": {"name": "The Mire Leviathan", "monster": "bog_lurker", "tint": Color(0.75, 1.0, 0.8), "size": 2.8, "health": 1.3,
+		"attacks": ["pools", "charge", "summon"], "phase2": ["slam"], "phase3": ["volley"], "color": Color(0.4, 0.85, 0.55),
+		"tiles": [T.BOG, T.MUD, T.TAR], "set": "gravewarden", "unique": "voidwalker", "min_level": 14},
+	"elder_grove": {"name": "The Elder Grove", "monster": "treant", "tint": Color(0.85, 1.0, 0.8), "size": 2.5, "health": 1.5,
+		"attacks": ["slam", "summon", "pools"], "phase2": ["volley"], "phase3": ["nova"], "color": Color(0.45, 0.85, 0.35),
+		"tiles": [T.DARK_GRASS, T.FUNGAL, T.DEAD_GRASS], "set": "gravewarden", "unique": "wispkeeper", "min_level": 18},
+	"unblinking_eye": {"name": "The Unblinking Eye", "monster": "void_eye", "tint": Color(1.0, 0.85, 1.15), "size": 3.0, "health": 1.1,
+		"attacks": ["teleport", "spiral", "volley"], "phase2": ["summon"], "phase3": ["nova"], "color": Color(0.8, 0.5, 1.0),
+		"tiles": [T.VOIDSCAR, T.ASH], "set": "archmage", "unique": "stormcaller", "min_level": 30},
 }
 ## Boss health and damage on top of a Mini-boss's.
 const HEALTH := 3.5
@@ -41,6 +64,19 @@ static func for_tile(tile: int) -> String:
 		if tile in BOSSES[id]["tiles"]:
 			return id
 	return "hollow_king"
+
+
+## The boss for an arena or crypt here: any whose land this is and whose
+## level the area has reached, chosen by the place's own seed so it stays
+## the same each visit.
+static func for_site(tile: int, level: int, seed: int) -> String:
+	var options: Array[String] = []
+	for id: String in BOSSES:
+		if tile in BOSSES[id]["tiles"] and level >= int(BOSSES[id].get("min_level", 1)):
+			options.append(id)
+	if options.is_empty():
+		return for_tile(tile)
+	return options[posmod(seed, options.size())]
 
 
 ## What a boss leaves: a set piece of its own set, often its unique, gems,

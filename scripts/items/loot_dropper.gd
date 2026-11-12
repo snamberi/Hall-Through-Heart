@@ -23,6 +23,10 @@ func _on_enemy_killed(info: Dictionary) -> void:
 		drop_gold(roundi(drops["gold"] * _player.stats.get_stat("gold_find")), info["position"])
 	for item: Item in drops["items"]:
 		drop_item(item, info["position"])
+	if str(info.get("named", "")) != "":
+		for item: Item in MinibossDB.drops(info["level"]):
+			drop_item(item, info["position"])
+		Events.codex_event.emit("named", 1)
 
 
 func _spawn(pickup: Pickup, at: Vector2) -> void:

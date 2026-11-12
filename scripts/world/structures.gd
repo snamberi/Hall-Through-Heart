@@ -379,7 +379,7 @@ func _build_portal(cell: Vector2i, key: String, level: int, random: RandomNumber
 ## A world boss's arena: a paved ring of braziers and banners. The boss
 ## waits in the middle, and comes back some days after it is beaten.
 func _build_boss(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
-	var boss_id := BossDB.for_tile(_world.generator.tile_type_at(cell))
+	var boss_id := BossDB.for_site(_world.generator.tile_type_at(cell), level, hash(key))
 	var data: Dictionary = BossDB.BOSSES[boss_id]
 	_floor(placed, cell, 5)
 	for index in 10:
@@ -526,7 +526,7 @@ func _build_shipwreck(cell: Vector2i, key: String, level: int, random: RandomNum
 ## A crypt's entrance: steps down into a dungeon of locked rooms.
 func _build_dungeon(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
 	var dungeon_seed := random.randi()
-	var boss_id := BossDB.for_tile(_world.generator.tile_type_at(cell))
+	var boss_id := BossDB.for_site(_world.generator.tile_type_at(cell), level, dungeon_seed)
 	_floor(placed, cell, 3)
 	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(-2, -1), 10.0)
 	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(2, -1), 10.0)

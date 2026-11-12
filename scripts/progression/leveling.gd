@@ -5,7 +5,7 @@ extends Node
 signal xp_changed(xp: int, required: int)
 signal leveled_up(level: int)
 
-const MAX_LEVEL := 500
+const MAX_LEVEL := 1200
 const STAT_POINTS_PER_LEVEL := 3
 const LEVELS_PER_TALENT_POINT := 2
 const MILESTONE_INTERVAL := 10

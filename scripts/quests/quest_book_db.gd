@@ -323,7 +323,7 @@ static func _equipment() -> void:
 	for set_id: String in ItemDB.ITEM_SETS:
 		_q("equipment_set_" + set_id, ItemDB.ITEM_SETS[set_id]["name"], "Find a piece of the %s set." % ItemDB.ITEM_SETS[set_id]["name"], {"item": ItemDB.ITEM_SETS[set_id]["pieces"][0]}, ["equipment_set_found"],
 			[_o("own_set", {"set": set_id})], 6.0)
-	var levels := [10, 20, 30, 50, 65, 80]
+	var levels := [10, 20, 30, 50, 65, 80, 100, 150, 250, 400, 600, 850]
 	last = root
 	for level: int in levels:
 		last = _q("equipment_level_%d" % level, "%s Gear" % ItemDB.tier_name(level), "Wear gear of item level %d or more." % level, {"atlas": 46}, [last], [_o("gear_level", {"level": level})], 3.0 + level / 8.0)

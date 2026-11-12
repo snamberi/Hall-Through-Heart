@@ -57,6 +57,8 @@ const SLOT_NAMES := {
 ## Name prefix for metal gear by item level, matching the ore tiers.
 ## The colour tints worn armour on the character.
 const TIERS: Array[Array] = [
+	[850, "Ascendant", Color("ffd86b")], [600, "Primordial", Color("7ae0a0")], [400, "Celestial", Color("e8ecff")],
+	[250, "Eclipse", Color("7a5ab8")], [150, "Starmetal", Color("8ab8ff")],
 	[100, "Heartstone", Color("e0506a")], [80, "Void", Color("9a6cf0")],
 	[65, "Adamantite", Color("d06a5a")], [50, "Obsidian", Color("6a6480")],
 	[40, "Mithril", Color("8fe0e8")], [30, "Gilded", Color("f0cf6a")],
@@ -717,6 +719,16 @@ static func tier_start(level: int) -> int:
 		if level >= tier[0]:
 			return tier[0]
 	return 1
+
+
+## The ingot that works gear of this level: its tier's, or for the tiers
+## past Heartstone (which no ore yields), Heartstone's.
+static func tier_ingot(level: int) -> String:
+	var best := 1
+	for start: int in TIER_INGOTS:
+		if level >= start and start > best:
+			best = start
+	return TIER_INGOTS[best]
 
 
 static func tier_name(level: int) -> String:

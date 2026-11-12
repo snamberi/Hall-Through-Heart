@@ -316,7 +316,7 @@ func _draw_boss_bar() -> void:
 	var banner := Rect2(bar.position.x + 40.0, 2, bar.size.x - 80.0, 24)
 	_boss_bar.draw_rect(banner, Color(0.12, 0.03, 0.04, 0.85))
 	_boss_bar.draw_rect(banner, Color("8a683a"), false, 1.0)
-	var title := "%s%s   Lv %d" % [Enemy.RANK_DATA[boss.rank]["title"], boss.display_name, boss.level]
+	var title := "%s%s   Lv %d" % [Enemy.RANK_DATA[boss.rank]["title"] if boss.named_id == "" else "", boss.display_name, boss.level]
 	_boss_bar.draw_string_outline(font, Vector2(banner.position.x, 20), title, HORIZONTAL_ALIGNMENT_CENTER, banner.size.x, 19, 5, Color.BLACK)
 	_boss_bar.draw_string(font, Vector2(banner.position.x, 20), title, HORIZONTAL_ALIGNMENT_CENTER, banner.size.x, 19, Color(1.0, 0.6, 0.48))
 	# The bar.

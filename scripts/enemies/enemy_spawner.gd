@@ -116,4 +116,31 @@ func _try_spawn() -> void:
 		return
 	if EnemyDB.ENEMIES[enemy_id].get("wild", "") != "":
 		rank = Enemy.Rank.NORMAL
+	# Now and then a named miniboss of these lands turns up instead.
+	if randf() < MinibossDB.CHANCE * (2.0 if DayNight.blood_moon else 1.0) and not _named_about():
+		var named := MinibossDB.pick(_world.generator.tile_type_at(cell), area_level)
+		if named != "":
+			_spawn_named(named, _world.cell_to_world(cell), level + 2)
+			return
 	spawn_at(_world.cell_to_world(cell), level, rank, enemy_id)
+
+
+func _named_about() -> bool:
+	for node in get_tree().get_nodes_in_group("enemies"):
+		if (node as Enemy).named_id != "":
+			return true
+	return false
+
+
+func _spawn_named(named: String, at: Vector2, level: int) -> Enemy:
+	var data: Dictionary = MinibossDB.NAMED[named]
+	var enemy: Enemy = enemy_scene.instantiate()
+	enemy.position = at
+	enemy.target = _player
+	enemy.named_id = named
+	enemy.configure(level, Enemy.Rank.MINIBOSS, data["monster"])
+	enemy.died.connect(_on_enemy_died)
+	enemy.wants_minion.connect(_on_wants_minion)
+	add_child(enemy)
+	Events.announcement.emit(str(data["name"]).to_upper(), "roams nearby")
+	return enemy

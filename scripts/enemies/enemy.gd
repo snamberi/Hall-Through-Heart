@@ -87,6 +87,8 @@ var modifiers: Array[String] = []
 var lair_home := Vector2.INF
 ## Set before adding to the tree to make this a world boss (BossDB id).
 var boss_id := ""
+## A named miniboss (MinibossDB), or "".
+var named_id := ""
 ## A name of its own (bounty marks), shown instead of its kind's.
 var custom_name := ""
 ## Seconds left in which a hit is a finisher (after being parried).
@@ -160,6 +162,8 @@ func _ready() -> void:
 	_attack = _data["attack"]
 	_traits = _data["traits"].duplicate() if boss_id == "" else []
 	display_name = _data["name"] if boss_id == "" else BossDB.BOSSES[boss_id]["name"]
+	if named_id != "":
+		display_name = MinibossDB.NAMED[named_id]["name"]
 	if custom_name != "":
 		display_name = custom_name
 	var rolls: int = RANK_DATA[rank]["modifiers"]
@@ -177,6 +181,8 @@ func _ready() -> void:
 	var size: float = rank_data["size"] * _data["size"] * (0.62 if is_fragment else 1.0) * (1.3 if giant else 1.0)
 	if boss_id != "":
 		size = BossDB.BOSSES[boss_id]["size"]
+	elif named_id != "":
+		size *= float(MinibossDB.NAMED[named_id]["size"])
 	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0) * Difficulty.value("health") * (1.6 if giant else 1.0)
 	health.current = health.max_health
 	_damage = _data["damage"] * rank_data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1)) * (0.6 if is_fragment else 1.0)
@@ -187,6 +193,8 @@ func _ready() -> void:
 		shield_max = health.max_health * SHIELD_SHARE
 		shield = shield_max
 	_tint = rank_data["tint"] if boss_id == "" else BossDB.BOSSES[boss_id]["tint"]
+	if named_id != "":
+		_tint = MinibossDB.NAMED[named_id]["tint"]
 	if boss_id != "":
 		health.max_health *= BossDB.BOSSES[boss_id]["health"]
 		health.current = health.max_health
@@ -797,6 +805,7 @@ func _on_died() -> void:
 		"weapon_type": _last_weapon_type,
 		"fragment": is_fragment,
 		"modifiers": modifiers.size(),
+		"named": named_id,
 	})
 	if _flash_tween:
 		_flash_tween.kill()
@@ -815,7 +824,7 @@ func _add_nameplate(rank_data: Dictionary, size: float) -> void:
 	var prefix := ""
 	for modifier in modifiers:
 		prefix += MODIFIERS[modifier]["name"] + " "
-	label.text = "Lv %d %s%s%s" % [level, prefix, rank_data["title"], display_name]
+	label.text = "Lv %d %s%s%s" % [level, prefix, rank_data["title"] if named_id == "" else "", display_name]
 	label.add_theme_font_override("font", UITheme.get_theme().default_font)
 	label.add_theme_font_size_override("font_size", 13)
 	var plate_colors: Array[Color] = [Color(0.82, 0.8, 0.74), Color(1.0, 0.82, 0.4), Color(0.85, 0.6, 1.0), Color(1.0, 0.45, 0.4), Color(1.0, 0.3, 0.25)]
