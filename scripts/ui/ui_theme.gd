@@ -1,7 +1,9 @@
 class_name UITheme
 extends RefCounted
-## The game's interface style: dark navy panels with worked bronze frames,
-## gold headings, and the Almendra typeface.
+## The game's interface style: pixel-art panels of dark navy cloth in heavy
+## riveted bronze frames, stone buttons, sunken slots, gold headings, and
+## the Almendra typeface. The art is drawn by tools/generate_ui.py at twice
+## size, so its pixels match the game's.
 ##
 ## Every screen uses this theme. New interface code should build from plain
 ## Controls and the helpers here rather than styling itself.
@@ -99,7 +101,37 @@ static func _frame(file: String, margin: int, content: int) -> StyleBoxTexture:
 	box.texture = load("res://assets/ui/%s.png" % file)
 	box.set_texture_margin_all(margin)
 	box.set_content_margin_all(content)
+	# The middles and edges repeat rather than stretch, so no pixel smears.
+	box.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+	box.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
 	return box
+
+
+## A framed card for a list or grid entry: "card", "card_hover",
+## "card_selected" (gold, with gem corners) or "card_dim" (iron, for
+## locked or closed things).
+static func card(kind: String = "card", content: int = 10) -> StyleBoxTexture:
+	return _frame(kind, 12, content)
+
+
+## An item slot: "slot", "slot_hover" or "slot_active".
+static func slot(kind: String = "slot") -> StyleBoxTexture:
+	return _frame(kind, 8, 4)
+
+
+## The box tooltips sit in.
+static func tooltip_box() -> StyleBoxTexture:
+	return _frame("tooltip", 6, 10)
+
+
+## A worked rule to put under a heading.
+static func divider(width: float = 160.0) -> TextureRect:
+	var rule := TextureRect.new()
+	rule.texture = load("res://assets/ui/divider.png")
+	rule.custom_minimum_size = Vector2(width, 10.0)
+	rule.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return rule
 
 
 static func _build() -> Theme:
@@ -109,7 +141,8 @@ static func _build() -> Theme:
 
 	theme.set_stylebox("panel", "PanelContainer", _frame("panel", 20, 26))
 	theme.set_type_variation("InsetPanel", "PanelContainer")
-	theme.set_stylebox("panel", "InsetPanel", _frame("inset", 16, 16))
+	theme.set_stylebox("panel", "InsetPanel", _frame("inset", 6, 14))
+	theme.set_stylebox("panel", "TooltipPanel", tooltip_box())
 
 	for state: Array in [["normal", "button"], ["hover", "button_hover"], ["pressed", "button_pressed"], ["disabled", "button_disabled"]]:
 		var box := _frame(state[1], 6, 6)

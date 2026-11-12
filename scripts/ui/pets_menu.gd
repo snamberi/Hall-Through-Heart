@@ -75,11 +75,7 @@ func refresh() -> void:
 		# Its picture.
 		var frame := Panel.new()
 		frame.custom_minimum_size = Vector2(72, 72)
-		var frame_style := StyleBoxFlat.new()
-		frame_style.bg_color = Color("0b0e17")
-		frame_style.border_color = Color("403020")
-		frame_style.set_border_width_all(2)
-		frame.add_theme_stylebox_override("panel", frame_style)
+		frame.add_theme_stylebox_override("panel", UITheme.card("card"))
 		var picture := TextureRect.new()
 		picture.texture = _portrait(pet)
 		picture.position = Vector2(6, 6)

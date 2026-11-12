@@ -85,12 +85,7 @@ func _row(id: String, near_table: bool) -> Control:
 	var data: Dictionary = ItemDB.ITEMS[id]
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = ROW
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("151823")
-	style.border_color = Color("4a4f64")
-	style.set_border_width_all(1)
-	style.set_content_margin_all(6)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UITheme.card("card", 8))
 	var box := HBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
 	panel.add_child(box)

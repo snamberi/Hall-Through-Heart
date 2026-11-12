@@ -117,10 +117,6 @@ var _parry_cooldown := 0.0
 @onready var abilities: AbilityUser = $Abilities
 @onready var buffs: Buffs = $Buffs
 var hotbar: Hotbar
-var transformations: Transformations
-## Camera zoom multiplier, for moments like the build-up to a transformation.
-var zoom_boost := 1.0
-var _form: FormSprite
 ## Skin tone, hair, clothes, trousers and look (see Appearance).
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()
 ## The mount being ridden (Mount.MOUNTS id), or "".
@@ -185,14 +181,6 @@ func _ready() -> void:
 	hotbar = Hotbar.new()
 	hotbar.name = "Hotbar"
 	add_child(hotbar)
-	_form = FormSprite.new()
-	_form.setup(self)
-	_visual.add_child(_form)
-	SunShadow.follow(_form)
-	transformations = Transformations.new()
-	transformations.name = "Transformations"
-	add_child(transformations)
-	transformations.setup(self)
 	talents.setup(leveling, stats)
 	_apply_class()
 	equipment.setup(inventory, leveling, attributes)
@@ -235,7 +223,7 @@ func _physics_process(delta: float) -> void:
 	if since_hurt > (2.0 if undying else 5.0):
 		health.heal((health.max_health * (0.04 if undying else 0.02) + stats.get_stat("health_regen")) * delta)
 	if state == State.MOVE or state == State.ATTACK:
-		var zoom := _height_zoom / GameSettings.ui_scale * zoom_boost
+		var zoom := _height_zoom / GameSettings.ui_scale
 		camera.zoom = camera.zoom.lerp(Vector2(zoom, zoom), 1.5 * delta)
 		# Settle exactly on the target: at these zooms tile and chunk edges
 		# land on whole pixels, so no seams show between chunks.
@@ -284,7 +272,6 @@ func attack(direction: Vector2) -> void:
 	velocity = direction * 130.0
 	# The swing animation fills the gap until the next swing is ready.
 	_animator.play_attack(clampf(_attack_cooldown_left, attack_duration, 0.4))
-	_form.act("lunge", clampf(_attack_cooldown_left, attack_duration, 0.4))
 	Audio.play("swing", -6.0)
 	# With enough mastery, every third attack in a row is a finisher.
 	var multiplier := 1.0
@@ -410,13 +397,6 @@ func face(direction: Vector2) -> void:
 
 func play_attack_animation(duration: float, heavy: bool = false) -> void:
 	_animator.play_attack(duration, heavy)
-	_form.act("lunge" if not heavy else "windup", duration)
-
-
-## Puts on (or, with "", takes off) the body of a transformation.
-func set_form(id: String) -> void:
-	_form.wear(id)
-	_animator.visible = id == ""
 
 
 ## One blow against one enemy: rolls a critical, deals the damage, and
@@ -760,7 +740,6 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		_stop_gathering()
 	if state == State.MOVE:
 		_animator.play_hurt()
-		_form.act("hurt", 0.25)
 	var resistance := stats.get_stat("knockback_resistance")
 	velocity = source_position.direction_to(global_position) * 300.0 * (1.0 - resistance)
 	return true
@@ -1000,10 +979,6 @@ func load_data(data: Dictionary) -> void:
 
 
 func _process_move(delta: float) -> void:
-	if transformations.is_channeling():
-		# Rooted while the change gathers.
-		velocity = velocity.move_toward(Vector2.ZERO, acceleration * delta)
-		return
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if input != Vector2.ZERO:
 		facing = input.normalized()

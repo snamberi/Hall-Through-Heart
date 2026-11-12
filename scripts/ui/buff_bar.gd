@@ -45,7 +45,7 @@ func _draw() -> void:
 		var buff: Dictionary = _player.buffs.active[id]
 		var rect := Rect2(index * (CHIP + GAP), 0, CHIP, CHIP)
 		var color: Color = KIND_COLORS.get(buff.get("kind", ""), Color(0.75, 0.72, 0.65))
-		draw_rect(rect, Color(0.04, 0.05, 0.09, 0.9))
+		draw_style_box(UITheme.slot("slot"), rect.grow(2.0))
 		var icon: Texture2D = buff.get("icon")
 		if icon:
 			draw_texture_rect(icon, rect.grow(-3.0), false)
@@ -93,7 +93,6 @@ func _draw_detail(buff: Dictionary) -> void:
 	for line in lines:
 		width = maxf(width, _font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x)
 	var box := Rect2(Vector2(0, CHIP + 22.0), Vector2(width + 16.0, lines.size() * 18.0 + 10.0))
-	draw_rect(box, Color(0.035, 0.045, 0.08, 0.95))
-	draw_rect(box, Color("b08a4a"), false, 1.0)
+	draw_style_box(UITheme.tooltip_box(), box)
 	for k in lines.size():
 		draw_string(_font, box.position + Vector2(8, 20 + k * 18.0), lines[k], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.HEADING if k == 0 else UITheme.TEXT)

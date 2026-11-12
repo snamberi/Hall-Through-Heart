@@ -75,12 +75,7 @@ func _path_column(race: String, index: int, path: Dictionary) -> Control:
 	var closed := player.evolution_path != -1 and not chosen
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = COLUMN
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("151823") if not closed else Color("0e1018")
-	style.border_color = (pace["color"] as Color) if chosen else Color("5a6078") if not closed else Color("33364a")
-	style.set_border_width_all(3 if chosen else 2)
-	style.set_content_margin_all(10)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UITheme.card("card_selected" if chosen else "card_dim" if closed else "card", 12))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	panel.add_child(box)
@@ -128,12 +123,7 @@ func _stage_row(race: String, index: int, stage: int, path: Dictionary, closed: 
 	var reached := player.evolution_path == index and player.evolution_stage >= stage
 	var next := (player.evolution_path == index and player.evolution_stage + 1 == stage) or (player.evolution_path == -1 and stage == 1)
 	var frame := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.2, 0.17, 0.08, 0.6) if reached else Color(0.05, 0.06, 0.1, 0.7)
-	style.border_color = UITheme.GOLD if reached else (Color("8a683a") if next and not closed else Color("2e3140"))
-	style.set_border_width_all(1)
-	style.set_content_margin_all(5)
-	frame.add_theme_stylebox_override("panel", style)
+	frame.add_theme_stylebox_override("panel", UITheme.slot("slot_active" if reached else "slot_hover" if next and not closed else "slot"))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 0)
 	frame.add_child(box)

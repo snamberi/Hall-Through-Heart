@@ -101,20 +101,13 @@ func _item(index: int) -> Item:
 	return _items[index] if index < _items.size() else null
 
 
-## A slot frame in the item's rarity colour; the chosen item's is bright.
-static func frame_style(item: Item, chosen: bool) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	# Empty slots are lighter than the panel behind them, so they read as slots.
-	style.bg_color = Color("1a1e2b")
-	style.border_color = Color("4a4f64")
-	style.set_border_width_all(2)
+## A sunken pixel-art slot, its iron lip washed in the item's rarity
+## colour; the chosen item's slot is gold.
+static func frame_style(item: Item, chosen: bool, kind: String = "") -> StyleBoxTexture:
+	var style := UITheme.slot(kind if kind != "" else ("slot_active" if chosen else "slot"))
 	style.set_content_margin_all(5)
-	if item:
-		style.border_color = item.color().darkened(0.2)
-		style.bg_color = item.color().darkened(0.84)
-		if chosen:
-			style.border_color = Color.WHITE
-			style.set_border_width_all(3)
+	if item and not chosen and kind == "":
+		style.modulate_color = Color.WHITE.lerp(item.color().lightened(0.15), 0.55)
 	return style
 
 
@@ -123,15 +116,10 @@ static func frame_style(item: Item, chosen: bool) -> StyleBoxFlat:
 ## greys it.
 static func style_slot(button: Button, item: Item, chosen: bool = false) -> void:
 	var style := frame_style(item, chosen)
-	var hover := style.duplicate() as StyleBoxFlat
-	hover.bg_color = style.bg_color.lightened(0.1)
-	if not chosen:
-		hover.border_color = style.border_color.lightened(0.35)
-	var pressed := style.duplicate() as StyleBoxFlat
-	pressed.bg_color = style.bg_color.darkened(0.3)
-	var disabled := style.duplicate() as StyleBoxFlat
-	disabled.bg_color = style.bg_color.darkened(0.25)
-	disabled.border_color = style.border_color.darkened(0.4)
+	var hover := frame_style(item, chosen, "slot_active" if chosen else "slot_hover")
+	var pressed := frame_style(item, chosen, "slot_active")
+	var disabled := frame_style(item, chosen)
+	disabled.modulate_color = Color(0.6, 0.6, 0.65)
 	button.add_theme_stylebox_override("normal", style)
 	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_stylebox_override("hover", hover)

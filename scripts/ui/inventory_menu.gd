@@ -479,7 +479,7 @@ func _tint_icon(button: Button, tint: Color) -> void:
 
 
 ## A slot frame in the item's rarity colour; the selected item's is bright.
-func _frame_style(item: Item, selected: bool) -> StyleBoxFlat:
+func _frame_style(item: Item, selected: bool) -> StyleBoxTexture:
 	return ItemGrid.frame_style(item, selected)
 
 

@@ -1,10 +1,11 @@
 class_name ActionBar
 extends Control
-## A framed bar along the bottom of the screen. The HUD uses two: the four
-## abilities the keys use now, on their own in the bottom-left corner, and
-## the hotbar in the middle in labelled groups (the quick item, weapons
-## with the off hand beside them, tools, supplies) and what is worn. Hover
-## anything for what it is; click a hotbar slot to use it.
+## A framed bar of slots. The HUD uses two: the four abilities the keys use
+## now, in a column down the middle of the left side with the other set
+## small beside them, and the hotbar along the bottom in labelled groups
+## (the quick item, weapons with the off hand beside them, tools,
+## supplies) and what is worn. Hover anything for what it is; click a
+## hotbar slot to use it.
 ##
 ## Abilities show at a glance whether they can be used: bright and edged in
 ## gold when ready (with a flash the moment a cooldown ends), a clock-hand
@@ -12,6 +13,10 @@ extends Control
 ## lack, and dark with a padlock while locked.
 
 const ABILITY := 54.0
+## The ability column on its own: bigger slots, the other set beside them.
+const COLUMN_SLOT := 58.0
+const COLUMN_GAP := 10.0
+const COLUMN_MINI := 26.0
 const SLOT := 48.0
 const GAP := 5.0
 const GROUP := 18.0
@@ -38,6 +43,10 @@ var _hover := -1
 var _was_ready: Array[bool] = [false, false, false, false]
 var _ready_flash: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _press_flash: Array[float] = []
+## Pixel-art frames (see tools/generate_ui.py).
+var _plate_style: StyleBox = UITheme._frame("panel", 20, 0)
+var _group_style: StyleBox = UITheme._frame("inset", 6, 0)
+var _slot_styles := {"slot": UITheme.slot("slot"), "slot_hover": UITheme.slot("slot_hover"), "slot_active": UITheme.slot("slot_active")}
 
 
 func setup(player: Player, tip: ItemTooltip) -> void:
@@ -59,6 +68,17 @@ func _layout() -> void:
 	var top := PAD + TITLE
 	var x := PAD
 	var start := x
+	if show_abilities and not show_items:
+		# A column: four big slots, top to bottom.
+		for index in AbilityDB.SET_SIZE:
+			_spots.append([Rect2(x, top + index * (COLUMN_SLOT + COLUMN_GAP), COLUMN_SLOT, COLUMN_SLOT), "ability", index])
+		var tall := AbilityDB.SET_SIZE * (COLUMN_SLOT + COLUMN_GAP) - COLUMN_GAP
+		_groups.append(["Abilities", Rect2(x - 4.0, top - TITLE, COLUMN_SLOT + COLUMN_MINI + 18.0, tall + TITLE + 4.0)])
+		custom_minimum_size = Vector2(PAD * 2.0 + COLUMN_SLOT + COLUMN_MINI + 10.0, top + tall + 22.0 + PAD)
+		size = custom_minimum_size
+		_press_flash.resize(Hotbar.SIZE)
+		_press_flash.fill(0.0)
+		return
 	if show_abilities:
 		for index in AbilityDB.SET_SIZE:
 			_spots.append([Rect2(x, top, ABILITY, ABILITY), "ability", index])
@@ -205,25 +225,31 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if _player == null:
 		return
-	# The frame: a dark plate with a bronze edge and pointed ends.
-	var plate := Rect2(Vector2.ZERO, size)
-	var middle := plate.size.y / 2.0
-	var outline := PackedVector2Array([Vector2(8, 0), Vector2(plate.size.x - 8, 0), Vector2(plate.size.x + 6, middle), Vector2(plate.size.x - 8, plate.size.y),
-		Vector2(8, plate.size.y), Vector2(-6, middle)])
-	draw_colored_polygon(outline, Color(0.035, 0.045, 0.08, 0.9))
-	draw_polyline(outline + PackedVector2Array([outline[0]]), Color("402f1c"), 4.0)
-	draw_polyline(outline + PackedVector2Array([outline[0]]), Color("b08a4a"), 1.5)
-	for end: Vector2 in [Vector2(-6, middle), Vector2(plate.size.x + 6, middle)]:
-		draw_circle(end, 4.0, Color("402f1c"))
-		draw_circle(end, 2.6, Color("d9b26a"))
-	# Each group on its own inset plate, with its name on a little tab.
+	# The frame: a riveted bronze plate, each group sunk into it.
+	draw_style_box(_plate_style, Rect2(Vector2(-8, -8), size + Vector2(16, 16)))
 	for group: Array in _groups:
 		var rect: Rect2 = group[1]
-		draw_rect(rect, Color(0.07, 0.08, 0.13, 0.85))
-		draw_rect(rect, Color("5a4a32"), false, 1.0)
-		draw_string(_font, rect.position + Vector2(5, 13), group[0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, Color("c8b07a"))
-	# The other ability set, small, on the Abilities tab.
-	if show_abilities:
+		draw_style_box(_group_style, rect)
+		draw_string_outline(_font, rect.position + Vector2(6, 14), group[0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, 3, Color(0, 0, 0, 0.8))
+		draw_string(_font, rect.position + Vector2(6, 14), group[0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, Color("c8b07a"))
+	# The column: the other set small beside each slot, the set below.
+	if show_abilities and not show_items:
+		var abilities := _player.abilities
+		var other := (abilities.active_set + 1) % AbilityDB.SETS
+		var casting := abilities.casting()
+		for index in AbilityDB.SET_SIZE:
+			var slot: Rect2 = _spots[index][0]
+			var mini_rect := Rect2(slot.end.x + 6.0, slot.position.y + (COLUMN_SLOT - COLUMN_MINI) / 2.0, COLUMN_MINI, COLUMN_MINI)
+			draw_rect(mini_rect, Color(0.05, 0.05, 0.08, 0.85))
+			var other_id: String = abilities.loadout[other * AbilityDB.SET_SIZE + index] if not casting else ""
+			if other_id != "":
+				draw_texture_rect(ItemDB.icon(AbilityDB.ABILITIES[other_id]["icon"]), mini_rect.grow(-3.0), false, Color(0.62, 0.62, 0.68))
+			draw_rect(mini_rect, Color(0.3, 0.28, 0.26), false, 1.0)
+		var label := "Set %d  %s" % [abilities.active_set + 1, _key("ability_swap")] if not casting else "%s magic" % MagicDB.SCHOOLS[_player.magic_school]["short"]
+		var bottom: Rect2 = _groups[0][1]
+		draw_string_outline(_font, Vector2(bottom.position.x + 4.0, bottom.end.y + 15.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 3, Color.BLACK)
+		draw_string(_font, Vector2(bottom.position.x + 4.0, bottom.end.y + 15.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADING)
+	elif show_abilities:
 		var abilities := _player.abilities
 		var other := (abilities.active_set + 1) % AbilityDB.SETS
 		var tab: Rect2 = _groups[0][1]
@@ -270,10 +296,8 @@ func _draw() -> void:
 
 func _draw_ability(rect: Rect2, index: int, hovered: bool) -> void:
 	var id := _ability_id(index)
-	draw_rect(rect.grow(2.0), Color(0.02, 0.02, 0.04, 0.9))
-	draw_rect(rect, Color(0.06, 0.065, 0.1))
+	draw_style_box(_slot_styles["slot_hover" if hovered else "slot"], rect.grow(3.0))
 	if id == "":
-		draw_rect(rect, Color(0.3, 0.28, 0.26), false, 1.5)
 		_key_badge(rect, _key("ability_%d" % (index + 1)))
 		return
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
@@ -338,16 +362,9 @@ func _draw_ability(rect: Rect2, index: int, hovered: bool) -> void:
 func _slot(rect: Rect2, item: Item, ghost: int, missing: bool, active: bool, hovered: bool, flash: float) -> void:
 	var lift := Vector2(0, -3) if active else Vector2.ZERO
 	rect.position += lift
-	draw_rect(rect.grow(2.0), Color(0.02, 0.02, 0.04, 0.9))
-	var fill := Color(0.08, 0.09, 0.14)
-	var border := Color("6a5636")
-	if item and not missing:
-		fill = item.color().darkened(0.82)
-		border = item.color().darkened(0.1)
-	draw_rect(rect, fill)
-	# A faint bevel so every slot reads as a slot, filled or not.
-	draw_line(rect.position + Vector2(1, 1), Vector2(rect.end.x - 1, rect.position.y + 1), Color(1, 1, 1, 0.07), 1.0)
-	draw_line(Vector2(rect.position.x + 1, rect.end.y - 1), rect.end - Vector2(1, 1), Color(0, 0, 0, 0.4), 1.0)
+	var frame: StyleBoxTexture = _slot_styles["slot_active" if active else "slot_hover" if hovered else "slot"]
+	frame.modulate_color = Color.WHITE.lerp(item.color().lightened(0.15), 0.5) if item and not missing and not active else Color.WHITE
+	draw_style_box(frame, rect.grow(3.0))
 	if item:
 		draw_texture_rect(item.icon(), rect.grow(-6.0), false, item.icon_tint() if not missing else Color(0.45, 0.45, 0.5, 0.8))
 	else:
@@ -362,20 +379,16 @@ func _slot(rect: Rect2, item: Item, ghost: int, missing: bool, active: bool, hov
 		draw_rect(rect, Color("ffe08a"), false, 3.0)
 		var top := Vector2(rect.get_center().x, rect.position.y - 3.0)
 		draw_colored_polygon(PackedVector2Array([top + Vector2(-6, -6), top + Vector2(6, -6), top]), Color("ffe08a"))
-	else:
-		draw_rect(rect, border, false, 1.5)
 
 
 func _mini(rect: Rect2, item: Item, ghost: int, dimmed: bool, hovered: bool) -> void:
-	draw_rect(rect.grow(1.5), Color(0.02, 0.02, 0.04, 0.9))
-	draw_rect(rect, item.color().darkened(0.82) if item else Color(0.08, 0.09, 0.14))
+	draw_style_box(_slot_styles["slot_hover" if hovered else "slot"], rect.grow(2.0))
 	if item:
 		draw_texture_rect(item.icon(), rect.grow(-2.0), false, Color(item.icon_tint(), 0.45 if dimmed else 1.0))
 	else:
 		draw_texture_rect(ItemDB.icon(ghost), rect.grow(-4.0), false, Color(1, 1, 1, 0.18))
 	if hovered:
-		draw_rect(rect, Color(1, 1, 1, 0.12))
-	draw_rect(rect, item.color().darkened(0.1) if item else Color("5a4a32"), false, 1.0)
+		draw_rect(rect, Color(1, 1, 1, 0.08))
 
 
 func _count(rect: Rect2, count: int) -> void:

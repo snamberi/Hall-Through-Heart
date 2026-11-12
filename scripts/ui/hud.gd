@@ -57,8 +57,8 @@ func setup(player: Player) -> void:
 	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
 		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
 	)
-	# Two framed bars along the bottom: the abilities on their own in the
-	# bottom-left corner, the hotbar in groups in the middle.
+	# Two framed bars: the abilities in a column on the middle-left, the
+	# hotbar in groups along the bottom.
 	var tip := ItemTooltip.new()
 	_ability_bar = ActionBar.new()
 	_ability_bar.show_items = false
@@ -72,10 +72,6 @@ func setup(player: Player) -> void:
 	_place_bars()
 	get_viewport().size_changed.connect(_place_bars)
 	GameSettings.changed.connect(_place_bars)
-	var meter := TransformMeter.new()
-	meter.setup(player)
-	meter.position = Vector2(14.0, 152.0)
-	add_child(meter)
 	# Buffs as icons to the right of the left-hand blocks, clear of them.
 	_buff_label.visible = false
 	var buff_bar := BuffBar.new()
@@ -95,15 +91,14 @@ var _ability_bar: ActionBar
 var _item_bar: ActionBar
 
 
-## The ability bar keeps to the bottom-left corner; the hotbar sits in the
-## middle, nudged right if the window is too narrow for both.
+## The ability column keeps to the middle of the left side; the hotbar
+## sits along the bottom in the middle.
 func _place_bars() -> void:
 	if _ability_bar == null:
 		return
 	var room := get_viewport().get_visible_rect().size
-	_ability_bar.position = Vector2(14.0, room.y - _ability_bar.size.y - 8.0)
-	var left := maxf((room.x - _item_bar.size.x) / 2.0, _ability_bar.position.x + _ability_bar.size.x + 14.0)
-	_item_bar.position = Vector2(left, room.y - _item_bar.size.y - 8.0)
+	_ability_bar.position = Vector2(14.0, (room.y - _ability_bar.size.y) / 2.0 + 20.0)
+	_item_bar.position = Vector2((room.x - _item_bar.size.x) / 2.0, room.y - _item_bar.size.y - 8.0)
 
 
 ## Words for the death screen, by what struck the last blow.
@@ -238,6 +233,17 @@ func _draw_gather() -> void:
 ## Draws `bar` as an ornate gauge: a dark trough, the fill with a sheen and
 ## a slow "chip" trail showing what was just lost, bronze frame with corner
 ## studs, the icon in a little medallion and the numbers on top.
+## The pixel-art frame round each bar: a slot's metal lip, its middle
+## left open so the fill shows.
+var _bar_frame: StyleBoxTexture = _open_frame()
+
+
+static func _open_frame() -> StyleBoxTexture:
+	var box := UITheme.slot("slot_hover")
+	box.draw_center = false
+	return box
+
+
 func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Callable = Callable()) -> void:
 	var trail := {"value": 1.0}
 	bar.draw.connect(func() -> void:
@@ -261,11 +267,7 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 		for tick in range(1, 10):
 			var tx := inner.position.x + inner.size.x * tick / 10.0
 			bar.draw_line(Vector2(tx, inner.end.y - 3.0), Vector2(tx, inner.end.y), Color(0, 0, 0, 0.45), 1.0)
-		bar.draw_rect(Rect2(Vector2.ZERO, size), Color("402f1c"), false, 2.0)
-		bar.draw_rect(Rect2(Vector2(1.5, 1.5), size - Vector2(3, 3)), Color("b08a4a"), false, 1.0)
-		for corner: Vector2 in [Vector2(0, 0), Vector2(size.x, 0), Vector2(0, size.y), Vector2(size.x, size.y)]:
-			bar.draw_circle(corner, 3.0, Color("402f1c"))
-			bar.draw_circle(corner, 2.0, Color("d9b26a"))
+		bar.draw_style_box(_bar_frame, Rect2(Vector2(-3, -3), size + Vector2(6, 6)))
 		if icon >= 0:
 			var medal := Vector2(-16.0, size.y / 2.0)
 			var radius := maxf(size.y / 2.0 + 3.0, 11.0)

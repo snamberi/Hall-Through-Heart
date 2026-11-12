@@ -11,24 +11,25 @@ extends CanvasLayer
 
 ## "icon" is an index into the item icon atlas; "text" is the line shown in
 ## the wheel's hub. "wheel": false keeps a screen off the wheel.
+## Main screens go on the wheel (exactly eight, clockwise from the top);
+## the rest ("side") are listed in the panel to its left.
 const SCREENS: Array[Dictionary] = [
 	{"id": "inventory", "title": "Inventory", "icon": 17, "text": "Bags, gear,\nand crafting by hand"},
-	{"id": "attributes", "title": "Attributes", "icon": 38, "text": "Spend points on\nstrength, vigour, ..."},
-	{"id": "mastery", "title": "Mastery", "icon": 0, "text": "Skill with each\nkind of weapon"},
-	{"id": "talents", "title": "Talents", "icon": 28, "text": "Passive gifts bought\nwith talent points"},
 	{"id": "abilities", "title": "Abilities", "icon": 27, "text": "Choose and rank up\nyour active skills"},
 	{"id": "class", "title": "Class", "icon": 6, "text": "Your calling\nand its path"},
+	{"id": "magic", "title": "Magic", "icon": 33, "text": "Schools of magic\nand their spells"},
+	{"id": "build", "title": "Build", "icon": 56, "text": "Walls, ground,\nfurniture and more"},
 	{"id": "professions", "title": "Professions", "icon": 49, "text": "Mining, smithing,\ncooking and the rest"},
 	{"id": "journal", "title": "Quests", "icon": 41, "text": "The quest book:\nevery chapter and goal"},
 	{"id": "map", "title": "Map", "icon": 12, "text": "The land as far\nas you have walked"},
-	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary, feats,\ntitles and lore"},
-	{"id": "forms", "title": "Forms", "icon": 92, "text": "Beasts and legends\nto transform into"},
-	{"id": "magic", "title": "Magic", "icon": 33, "text": "Schools of magic\nand their spells"},
-	{"id": "evolution", "title": "Evolution", "icon": 39, "text": "Your race's three\npaths of change"},
-	{"id": "build", "title": "Build", "icon": 56, "text": "Walls, ground,\nfurniture and more"},
-	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions\nand mounts"},
-	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours"},
-	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options, save,\nand quit"},
+	{"id": "attributes", "title": "Character", "icon": 38, "text": "Attribute points", "side": true},
+	{"id": "talents", "title": "Talents", "icon": 28, "text": "Passive gifts", "side": true},
+	{"id": "mastery", "title": "Mastery", "icon": 0, "text": "Weapon skill", "side": true},
+	{"id": "evolution", "title": "Evolution", "icon": 39, "text": "Your race's paths", "side": true},
+	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary and feats", "side": true},
+	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions, mounts", "side": true},
+	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours", "side": true},
+	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options and saving", "side": true},
 ]
 ## Where a screen's Back button leads, when not to the wheel. "" closes.
 const BACK := {"settings": "pause", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": ""}
@@ -39,6 +40,9 @@ var _open_id := ""
 var _player: Player
 var _root: Control
 var _wheel: MenuWheel
+## The panel left of the wheel, listing the other screens.
+var _side: PanelContainer
+var _side_badges: Dictionary = {}
 var _holder: CenterContainer
 var _hint: Label
 var _back: Button
@@ -65,13 +69,15 @@ func setup(player: Player) -> void:
 
 	_wheel = MenuWheel.new()
 	for screen in SCREENS:
-		if screen.get("wheel", true):
+		if not screen.get("side", false):
 			_wheel.entries.append(screen)
 	_wheel.chosen.connect(open)
 	_wheel.badge_for = badge_for
 	_wheel.hub_text = func() -> Array:
 		return ["Menu", "Level %d\n%d gold" % [_player.leveling.level, _player.inventory.gold]]
 	_root.add_child(_wheel)
+	_side = _make_side_panel()
+	_root.add_child(_side)
 
 	_holder = CenterContainer.new()
 	_holder.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -105,7 +111,6 @@ func setup(player: Player) -> void:
 	_add("recruit", RecruitMenu.new())
 	_add("codex", CodexMenu.new())
 	_add("pets", PetsMenu.new())
-	_add("forms", FormsMenu.new())
 	_add("magic", MagicMenu.new())
 	_add("evolution", EvolutionMenu.new())
 	_add("build", BuildMenu.new())
@@ -167,6 +172,9 @@ func _show(id: String) -> void:
 	var changed := id != _open_id
 	_open_id = id
 	_wheel.visible = id == "wheel"
+	_side.visible = id == "wheel"
+	if _side.visible:
+		_refresh_side()
 	for other in _menus:
 		_menus[other].visible = other == id
 	_back.visible = id != "wheel"
@@ -188,6 +196,8 @@ func _process(_delta: float) -> void:
 	# Screens can change size as they fill in; keep them inside the window.
 	if is_open() and _open_id != "wheel":
 		_fit()
+	elif _open_id == "wheel":
+		_refresh_side()
 
 
 ## Where the Back button leads from the open screen.
@@ -212,6 +222,55 @@ func _fit() -> void:
 	var scale_by := minf(1.0, minf(room.x / maxf(need.x, 1.0), room.y / maxf(need.y, 1.0)))
 	_holder.pivot_offset = _root.size / 2.0
 	_holder.scale = Vector2(scale_by, scale_by)
+
+
+## A slim panel to the left of the wheel: every screen that is not on the
+## wheel, one row each with its icon and a badge when something waits.
+func _make_side_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.position = Vector2(26.0, 120.0)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	panel.add_child(box)
+	var title := UITheme.heading("More", 18)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	box.add_child(UITheme.divider(150.0))
+	for screen in SCREENS:
+		if not screen.get("side", false):
+			continue
+		var row := Button.new()
+		row.text = screen["title"]
+		row.icon = ItemDB.icon(screen["icon"])
+		row.expand_icon = false
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.focus_mode = Control.FOCUS_NONE
+		row.custom_minimum_size = Vector2(176.0, 38.0)
+		row.add_theme_constant_override("icon_max_width", 22)
+		row.add_theme_font_size_override("font_size", 16)
+		row.tooltip_text = screen.get("text", "")
+		var id: String = screen["id"]
+		row.pressed.connect(func() -> void: open(id))
+		UITheme.sounds(row)
+		var badge := Label.new()
+		badge.add_theme_color_override("font_color", Color(1.0, 0.6, 0.5))
+		badge.add_theme_font_size_override("font_size", 15)
+		badge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+		badge.offset_left = -30.0
+		badge.offset_right = -8.0
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(badge)
+		_side_badges[id] = badge
+		box.add_child(row)
+	return panel
+
+
+func _refresh_side() -> void:
+	for id: String in _side_badges:
+		var waiting := badge_for(id)
+		(_side_badges[id] as Label).text = str(waiting) if waiting > 0 else ""
+	var room := _root.size
+	_side.position = Vector2(maxf(16.0, room.x / 2.0 - MenuWheel.OUTER - _side.size.x - 40.0), (room.y - _side.size.y) / 2.0)
 
 
 ## How many things wait for the player on a screen (points to spend...).

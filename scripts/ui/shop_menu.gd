@@ -136,9 +136,8 @@ func _card(entry: Dictionary) -> Button:
 	var button := Button.new()
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(300.0, 68.0)
-	var style := ItemGrid.frame_style(item, chosen)
-	var hover := style.duplicate()
-	hover.bg_color = style.bg_color.lightened(0.08)
+	var style := UITheme.card("card_selected" if chosen else "card")
+	var hover := UITheme.card("card_selected" if chosen else "card_hover")
 	for state: String in ["normal", "pressed"]:
 		button.add_theme_stylebox_override(state, style)
 	button.add_theme_stylebox_override("hover", hover)

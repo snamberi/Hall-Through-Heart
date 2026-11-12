@@ -16,14 +16,7 @@ func _ready() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.045, 0.055, 0.09, 0.97)
-	style.border_color = Color("8a683a")
-	style.set_border_width_all(2)
-	style.set_content_margin_all(10)
-	style.shadow_color = Color(0, 0, 0, 0.5)
-	style.shadow_size = 6
-	add_theme_stylebox_override("panel", style)
+	add_theme_stylebox_override("panel", UITheme.tooltip_box())
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -77,7 +70,7 @@ func hide_tip() -> void:
 
 func _fill(bbcode: String, border: Color) -> void:
 	_text.text = bbcode
-	(get_theme_stylebox("panel") as StyleBoxFlat).border_color = border
+	(get_theme_stylebox("panel") as StyleBoxTexture).modulate_color = Color.WHITE.lerp(border, 0.35)
 	visible = true
 	reset_size()
 	_follow()

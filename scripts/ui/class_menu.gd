@@ -210,18 +210,10 @@ func _fill_tree(column: String, entries: Array) -> void:
 		node.position = at
 		node.size = Vector2(NODE, NODE)
 		node.custom_minimum_size = Vector2(NODE, NODE)
-		var style := StyleBoxFlat.new()
-		style.bg_color = Color("2a2416") if learned else Color("171a26") if open else Color("101220")
-		style.border_color = UITheme.GOLD if learned else Color("b0a080") if open else Color("3a3e50")
-		style.set_border_width_all(3 if learned else 2)
-		style.set_corner_radius_all(4)
-		if id == _picked:
-			style.border_color = Color.WHITE
-		if learned:
-			style.shadow_color = Color(1.0, 0.8, 0.35, 0.45)
-			style.shadow_size = 6
-		var hover := style.duplicate() as StyleBoxFlat
-		hover.bg_color = style.bg_color.lightened(0.1)
+		var style := UITheme.slot("slot_active" if learned or id == _picked else "slot_hover" if open else "slot")
+		if id == _picked and not learned:
+			style.modulate_color = Color(1.2, 1.2, 1.2)
+		var hover := UITheme.slot("slot_active" if learned else "slot_hover")
 		node.add_theme_stylebox_override("normal", style)
 		node.add_theme_stylebox_override("hover", hover)
 		node.add_theme_stylebox_override("pressed", hover)

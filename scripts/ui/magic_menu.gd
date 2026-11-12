@@ -126,11 +126,7 @@ func refresh() -> void:
 		var card := _cards[school]
 		var current := school == player.magic_school
 		var color: Color = MagicDB.SCHOOLS[school]["color"]
-		var style := StyleBoxFlat.new()
-		style.bg_color = color.darkened(0.85) if current else Color("151823")
-		style.border_color = color if current else Color("5a6078")
-		style.set_border_width_all(3 if current else 2)
-		style.set_content_margin_all(12)
+		var style := UITheme.card("card_selected" if current else "card", 12)
 		card.add_theme_stylebox_override("panel", style)
 		var button := card.find_child("Choose", true, false) as Button
 		button.text = "Your magic" if current else ("Take up" if at_altar else "Visit the altar")

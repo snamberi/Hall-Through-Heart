@@ -140,12 +140,8 @@ func _creature_tile(codex: Codex, id: String) -> Button:
 	var button := Button.new()
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = TILE
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("1c1a12") if marked else Color("151823")
-	style.border_color = Color.WHITE if id == _picked else UITheme.GOLD if marked else Color("3a3e50")
-	style.set_border_width_all(3 if id == _picked else 2 if marked else 1)
-	var hover := style.duplicate()
-	hover.bg_color = style.bg_color.lightened(0.08)
+	var style := UITheme.card("card_selected" if id == _picked or marked else "card", 4)
+	var hover := UITheme.card("card_selected" if id == _picked else "card_hover", 4)
 	for state: String in ["normal", "pressed"]:
 		button.add_theme_stylebox_override(state, style)
 	button.add_theme_stylebox_override("hover", hover)
@@ -391,7 +387,7 @@ func _collection(codex: Codex) -> void:
 	var lines: PackedStringArray = ["[font_size=20][color=#%s]Your deeds[/color][/font_size]" % UITheme.HEADING.to_html(false), ""]
 	for row: Array in [["Monsters slain", "kills"], ["Elites", "elites"], ["Champions", "champions"], ["World bosses beaten", "bosses"], ["Named monsters slain", "named"], ["Crypts cleared", "dungeons"], ["Void portals closed", "portals"],
 			["Bounties collected", "bounties"], ["Raids repelled", "raids"], ["Crops harvested", "harvests"], ["Things crafted", "crafted"], ["Parries", "parries"], ["Finishers", "finishers"],
-			["Pets tamed", "pets"], ["Transformations", "transformations"], ["Caves explored", "caves"]]:
+			["Pets tamed", "pets"], ["Caves explored", "caves"]]:
 		lines.append("[color=#%s]%s[/color]   [color=#%s]%d[/color]" % [UITheme.DIM.to_html(false), row[0], UITheme.TEXT.to_html(false), int(stats.get(row[1], 0))])
 	_say("\n".join(lines))
 

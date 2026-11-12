@@ -63,9 +63,7 @@ func _draw() -> void:
 		height += 22.0 + (entry[1] as Array).size() * LINE + 6.0
 	var top := 202.0 if GameSettings.show_minimap else 14.0
 	var panel := Rect2(size.x - WIDTH, top, WIDTH, height)
-	draw_rect(panel, Color(0.035, 0.045, 0.08, 0.72))
-	draw_rect(panel, Color("5a4a32"), false, 1.0)
-	draw_line(panel.position + Vector2(8, 0), Vector2(panel.end.x - 8.0, panel.position.y), Color("b08a4a"), 1.5)
+	draw_style_box(UITheme.tooltip_box(), panel)
 	var y := top + 8.0
 	for entry: Array in entries:
 		var marker := Vector2(panel.position.x + 14.0, y + 9.0)

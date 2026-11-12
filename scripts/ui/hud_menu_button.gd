@@ -51,9 +51,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var rect := Rect2(Vector2.ZERO, size)
 	var font := UITheme.get_theme().default_font
-	draw_rect(rect.grow(2.0), Color(0.02, 0.02, 0.04, 0.85))
-	draw_rect(rect, Color(0.16, 0.14, 0.1, 0.96) if _over else Color(0.07, 0.08, 0.13, 0.94))
-	draw_rect(rect, UITheme.GOLD if _over else Color("8a683a"), false, 1.5)
+	draw_style_box(UITheme._frame("button_hover" if _over else "button", 6, 0), rect)
 	# Three bars: the sign for a menu.
 	for k in 3:
 		draw_rect(Rect2(10.0, 10.0 + k * 6.0, 16.0, 2.5), UITheme.HEADING)
@@ -61,8 +59,7 @@ func _draw() -> void:
 	# The key, on a little keycap.
 	var key := GameSettings.describe("toggle_menu").split(" / ")[0]
 	var cap := Rect2(size.x - 44.0, 6.0, 34.0, 22.0)
-	draw_rect(cap, Color(0.2, 0.22, 0.3))
-	draw_rect(cap, Color(0.55, 0.58, 0.7), false, 1.0)
+	draw_style_box(UITheme.slot("slot_hover"), cap.grow(2.0))
 	draw_string(UITheme.bold(), cap.position + Vector2(0, 16.0), key, HORIZONTAL_ALIGNMENT_CENTER, cap.size.x, 14, Color.WHITE)
 	if _waiting > 0:
 		var at := Vector2(size.x - 2.0, 2.0)
