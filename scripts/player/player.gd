@@ -296,7 +296,9 @@ func attack(direction: Vector2) -> void:
 			var spread := deg_to_rad(12.0) * (1 if index % 2 == 0 else -1) * (index / 2 + 1)
 			Projectile.fire(self, direction.rotated(spread), config, _weapon_multiplier() * multiplier * 0.6)
 		return
-	show_slash(direction, reach, weapon["arc"] * (1.2 if multiplier > 1.0 else 1.0))
+	# Each kind of weapon swings in its own way, trailing its element.
+	_slash.play_weapon(str(weapon["type"]), SlashEffect.element_of(equipment.weapon()), direction, reach,
+		deg_to_rad(weapon["arc"] * (1.2 if multiplier > 1.0 else 1.0)), 0.24, weapon_color())
 	strike_arc(direction, reach, weapon["arc"], multiplier, weapon["knockback"])
 
 

@@ -11,6 +11,7 @@ var decals: Array = []
 
 func _ready() -> void:
 	z_index = -9
+	material = Wind.grass
 
 
 func _draw() -> void:

@@ -52,6 +52,8 @@ PALETTE = {
     # Single-tone details.
     "tunic_fold": ["7d7260"] * 3,
     "skin_shade": ["b98a6c"] * 3,
+    "skin_dark": ["9c7460"] * 3,
+    "catchlight": ["f4f4f0"] * 3,
     "boot_cuff": ["6a554a"] * 3,
     # Armour layers are drawn in neutral steel and tinted by tier in game.
     # Monsters.
@@ -131,8 +133,10 @@ HUMAN = {
         ("tunic_fold", R(21.6, 25, 22.4, 28)),                      # collar slit
         ("tunic_fold", R(17.8, 27, 18.3, 30)), ("tunic_fold", R(26, 28, 26.5, 30.5)),  # folds
         ("tunic_fold", R(14.2, 34.3, 29.8, 35)),                    # hem
+        ("tunic_fold", [(19.5, 32.4), (20.2, 32.4), (19.6, 34.2), (18.9, 34.2)]),  # folds under the belt
+        ("tunic_fold", [(24.6, 32.4), (25.3, 32.4), (25.9, 34.2), (25.2, 34.2)]),
         ("belt", R(14, 31, 30, 32)), ("guard", R(21, 30.8, 23, 32.2))]),
-    "arm_l": dict(parent="torso", pivot=(12.5, 26), parts=[("tunic", R(11, 26, 14, 32)), ("skin", R(11, 33, 14, 34))]),
+    "arm_l": dict(parent="torso", pivot=(12.5, 26), parts=[("tunic", R(11, 26, 14, 32)), ("tunic_fold", R(11, 31.4, 14, 31.9)), ("skin", R(11, 33, 14, 34))]),
     # The hands are empty here; held items are separate layers that follow
     # these groups (see WEAPONS and LAYERS).
     "sword": dict(parent="arm_r", pivot=(35.5, 32), parts=[]),
@@ -151,8 +155,13 @@ HUMAN_ORDER = ["leg_l", "leg_r", "torso", "arm_l", "sword", "arm_r", "head"]
 # coloured. NPCs keep the plain HUMAN head.
 HUMAN_BALD = dict(HUMAN, head=dict(parent="torso", pivot=(22, 25), parts=[
     ("skin", E(12.5, 5.5, 31.5, 26)),
+    # Brows, eyes with a catch of light, a nose and a mouth, in the skin's
+    # own tones so they follow any skin colour.
+    ("skin_dark", R(16.4, 15.4, 18.6, 15.9)), ("skin_dark", R(24.4, 15.4, 26.6, 15.9)),
     ("void", R(17, 17, 18, 19)), ("void", R(25, 17, 26, 19)),
-    ("skin_shade", R(21.6, 20.6, 22.4, 21.4))]))
+    ("catchlight", R(17, 17, 17.4, 17.4)), ("catchlight", R(25, 17, 25.4, 17.4)),
+    ("skin_shade", R(21.6, 20.6, 22.4, 21.4)),
+    ("skin_shade", R(20.6, 23.1, 23.4, 23.5))]))
 
 
 def _arc(cx, cy, rx, ry, start, end, steps=12):
@@ -401,6 +410,95 @@ def _rich_tone(shades, t, x, y):
     return tones[band]
 
 
+# Surface texture by material, so fur, stone, bone, ghostly light and
+# flesh read differently at a glance. Patterns use part-relative
+# coordinates (u, v) so they travel with the part from frame to frame.
+TEXTURES = {
+    "fur": ["hide", "frost_fur", "bristle", "troll", "feather"],
+    "stone": ["stone", "obsidian", "plate_dark"],
+    "bone": ["bone", "rib", "tooth", "wrap_pale"],
+    "spectral": ["ghost", "storm", "void_skin"],
+    "flesh": ["flesh", "imp", "lurker", "wound", "skin"],
+    "chitin": ["chitin", "sand_chitin"],
+    "wood": ["bark", "wood"],
+    "slime": ["slime", "lava", "poison"],
+}
+TEXTURE_OF = {material: kind for kind, materials in TEXTURES.items() for material in materials}
+
+
+def _hash2(u, v):
+    return ((u * 73856093) ^ (v * 19349663) ^ 0x5bd1e995) & 0xffff
+
+
+def _textured(material, colour, u, v):
+    kind = TEXTURE_OF.get(material)
+    if kind == "fur":
+        # Short strands running down and back, with lit tips.
+        k = (u * 2 + v) % 6
+        if k == 0:
+            return _shift(colour, -0.2)
+        if k == 3 and v % 2 == 0:
+            return _shift(colour, 0.1)
+    elif kind == "stone":
+        # Blocky grain and the odd crack.
+        h = _hash2(u // 2, v // 2) % 9
+        if (u + 2 * v) % 13 == 0 and h < 4:
+            return _shift(colour, -0.32)
+        if h == 0:
+            return _shift(colour, -0.14)
+        if h == 1:
+            return _shift(colour, 0.12)
+    elif kind == "bone":
+        # Faint growth lines and pores.
+        if _hash2(u, v) % 23 == 0:
+            return _shift(colour, -0.28)
+        if v % 5 == 0:
+            return _shift(colour, -0.07)
+    elif kind == "spectral":
+        # Streaming wisps of lighter light and thin dark gaps.
+        if (u + v // 2) % 5 == 0:
+            return _shift(colour, 0.2)
+        if v % 4 == 3 and u % 2 == 0:
+            return _shift(colour, -0.12)
+    elif kind == "flesh":
+        # Mottling and a thread of vein.
+        if abs((u * 0.6 + math.sin(v * 0.55) * 2.0) % 9 - 4.5) < 0.45:
+            return _shift(colour, -0.2)
+        if _hash2(u // 3, v // 3) % 5 == 0:
+            return _shift(colour, -0.1)
+    elif kind == "chitin":
+        # Overlapping plates: a dark seam with a lit lip below it.
+        if v % 5 == 0:
+            return _shift(colour, -0.26)
+        if v % 5 == 1:
+            return _shift(colour, 0.12)
+    elif kind == "wood":
+        if (u * 3 + v // 4) % 7 == 0:
+            return _shift(colour, -0.16)
+    elif kind == "slime":
+        if _hash2(u, v) % 17 == 0:
+            return _shift(colour, 0.35)
+    return colour
+
+
+def _palette_finish(pixels, materials):
+    """For palette-swapped art (the player's body, worn layers): light the
+    top-left edge of each shape and shade its underside using only the
+    material's own three tones, so recolouring still works."""
+    out = dict(pixels)
+    for (x, y), colour in pixels.items():
+        material = materials.get((x, y))
+        shades = PALETTE.get(material)
+        if not shades or shades[0] == shades[2]:
+            continue
+        up, left, down = (x, y - 1) in pixels, (x - 1, y) in pixels, (x, y + 1) in pixels
+        if not up or not left:
+            out[(x, y)] = shades[0]
+        elif not down:
+            out[(x, y)] = shades[2]
+    return out
+
+
 def _finish(pixels, plain):
     """Rim light on top-left edges, occlusion along the bottom, and an
     outline tinted by the colour it wraps instead of flat black."""
@@ -421,6 +519,7 @@ def _finish(pixels, plain):
 def draw_frame(rig, order, pose, shadow=True, rich=False, outline=True):
     ox, oy = FRAME_OFFSET
     pixels = {}
+    materials = {}
     plain = set()
     for name in order:
         for material, polygon in rig[name]["parts"]:
@@ -436,8 +535,9 @@ def draw_frame(rig, order, pose, shadow=True, rich=False, outline=True):
             flat = shades[0] == shades[2]
             for x, y in points:
                 t = 0.7 * (x - x0) / max(x1 - x0, 1) + 0.3 * (y - y0) / max(y1 - y0, 1)
+                materials[(x, y)] = material
                 if rich and not flat:
-                    pixels[(x, y)] = _rich_tone(shades, t, x, y)
+                    pixels[(x, y)] = _textured(material, _rich_tone(shades, t, x, y), x - x0, y - y0)
                     plain.discard((x, y))
                 else:
                     pixels[(x, y)] = shades[0 if t < 0.3 else 1 if t < 0.68 else 2]
@@ -450,6 +550,8 @@ def draw_frame(rig, order, pose, shadow=True, rich=False, outline=True):
         ImageDraw.Draw(img).ellipse((shadow_x + ox - shadow_w, GROUND_Y - 2, shadow_x + ox + shadow_w, GROUND_Y + 2), fill=(0, 0, 0, 90))
     if rich:
         pixels = _finish(pixels, plain)
+    elif outline:
+        pixels = _palette_finish(pixels, materials)
     for (x, y), colour in pixels.items():
         img.putpixel((x, y), rgba(colour))
     for y in range(FRAME if outline else 0):

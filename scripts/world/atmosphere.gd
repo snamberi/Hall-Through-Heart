@@ -48,6 +48,30 @@ const FRONTS := {
 	"dry": ["Dust", "Sandstorm"],
 	"ash": ["Ashfall", "Ash storm"],
 }
+## How thick the low haze lies on each kind of land (default 0.08).
+const HAZE := {
+	TerrainTiles.Type.BOG: 0.4, TerrainTiles.Type.FUNGAL: 0.32, TerrainTiles.Type.VOIDSCAR: 0.34, TerrainTiles.Type.TAR: 0.3,
+	TerrainTiles.Type.DARK_GRASS: 0.2, TerrainTiles.Type.ASH: 0.26, TerrainTiles.Type.CINDER: 0.18, TerrainTiles.Type.CRIMSON: 0.2,
+	TerrainTiles.Type.SNOW: 0.14, TerrainTiles.Type.FROSTPINE: 0.16, TerrainTiles.Type.PEAK: 0.22,
+}
+## The near layer: wisps that float past the camera faster than the land,
+## thinning out around the middle of the view so the player stays clear.
+const MIST_SHADER := """
+shader_type canvas_item;
+uniform sampler2D noise : repeat_enable, filter_linear;
+uniform vec4 tint : source_color = vec4(0.8, 0.82, 0.85, 1.0);
+uniform float density = 0.0;
+uniform vec2 anchor = vec2(0.0);
+
+void fragment() {
+	vec2 uv = (UV + anchor * 1.35) * vec2(1.1, 0.65);
+	float n = texture(noise, uv * 0.55 + vec2(TIME * 0.01, TIME * 0.003)).r;
+	float m = texture(noise, uv * 1.3 - vec2(TIME * 0.006, 0.0) + vec2(0.4, 0.2)).r;
+	float wisps = smoothstep(0.58, 0.92, n * 0.7 + m * 0.4) * density;
+	float clear = smoothstep(0.16, 0.42, length((UV - vec2(0.5)) * vec2(1.0, 1.25)));
+	COLOR = vec4(tint.rgb, wisps * clear);
+}
+"""
 ## Fog, tint, and particles each weather brings.
 const WEATHERS := {
 	"Rain": {"fog": 0.12, "tint": Color(0.62, 0.68, 0.78), "particles": "rain"},
@@ -99,6 +123,11 @@ var _strike_left := 6.0
 var _chill_left := 3.0
 var _flash: ColorRect
 var _streak: Texture2D
+var _haze: GroundHaze
+var _mist: ColorRect
+var _mist_material: ShaderMaterial
+var _haze_density := 0.0
+var _haze_target := 0.0
 
 
 func setup(player: Player, world: World, day_night: DayNight) -> void:
@@ -124,6 +153,20 @@ func setup(player: Player, world: World, day_night: DayNight) -> void:
 	_fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fog.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_fog)
+	# Depth: haze lying on the land under everything, and a near mist.
+	_haze = GroundHaze.new()
+	_haze.setup(texture)
+	world.add_child(_haze)
+	var mist_shader := Shader.new()
+	mist_shader.code = MIST_SHADER
+	_mist_material = ShaderMaterial.new()
+	_mist_material.shader = mist_shader
+	_mist_material.set_shader_parameter("noise", texture)
+	_mist = ColorRect.new()
+	_mist.material = _mist_material
+	_mist.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mist.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_mist)
 	_flash = ColorRect.new()
 	_flash.color = Color(1, 1, 1, 0)
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -167,6 +210,17 @@ func _process(delta: float) -> void:
 		var view := get_viewport().get_visible_rect().size / camera.zoom
 		_material.set_shader_parameter("anchor", camera.get_screen_center_position() / view)
 	_material.set_shader_parameter("vignette", 0.4 if _player.indoors else 0.14 + 0.2 * _day_night.darkness())
+	# The depth layers: thicker at dawn, in storms, on marshy and blighted
+	# land; none indoors.
+	_haze_density = lerpf(_haze_density, _haze_target, 0.5 * delta)
+	_haze.density = _haze_density
+	_haze.tint = _tint
+	_mist_material.set_shader_parameter("density", _haze_density * 0.5)
+	_mist_material.set_shader_parameter("tint", _tint.lightened(0.1))
+	if camera:
+		var view := get_viewport().get_visible_rect().size / camera.zoom
+		_mist_material.set_shader_parameter("anchor", camera.get_screen_center_position() / view)
+	_mist.visible = _haze_density > 0.005
 
 
 func _read_place() -> void:
@@ -195,6 +249,11 @@ func _read_place() -> void:
 			kind = "fireflies"
 	if _player.indoors:
 		Atmosphere.weather = ""
+		_haze_target = 0.0
+	else:
+		var land := _world.tile_type_at_position(_player.global_position)
+		var dawn := 1.6 if _day_night.time > 0.17 and _day_night.time < 0.32 else 1.0
+		_haze_target = minf(float(HAZE.get(land, 0.08)) * dawn + (0.1 if _storminess >= 2 else 0.0), 0.55)
 	# The trees feel the weather.
 	Wind.set_strength(2.0 if Atmosphere.weather == "" else 3.6 if _storminess < 2 else 6.5)
 	if kind == _kind:

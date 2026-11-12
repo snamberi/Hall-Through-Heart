@@ -58,7 +58,8 @@ func _ready() -> void:
 		match _data["kind"]:
 			"ore":
 				# A plain boulder with flecks in the ore's colour.
-				_sprite(1, tint)
+				_sprite(1, tint).material = Wind.still
+				sprite.material = Wind.still
 				solid = 14.0
 				ContactShadow.under(sprite)
 			"fish":

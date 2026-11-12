@@ -60,11 +60,20 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform vec4 rarity_color : source_color = vec4(1.0);
 uniform float outline_mix = 0.0;
 uniform float glow = 0.0;
+uniform float glint = 0.0;
+uniform float glint_period = 5.0;
+uniform float sparkle = 0.0;
 uniform float water_line = 9999.0;
 varying float local_y;
+varying vec2 local_pos;
 
 void vertex() {
 	local_y = VERTEX.y;
+	local_pos = VERTEX;
+}
+
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
 void fragment() {
@@ -73,14 +82,30 @@ void fragment() {
 	}
 	vec4 pixel = texture(TEXTURE, UV);
 	float outline = step(pixel.r + pixel.g + pixel.b, 0.125) * pixel.a;
-	float pulse = 0.5 + 0.5 * sin(TIME * 5.0);
-	vec3 body = COLOR.rgb * tint.rgb + rarity_color.rgb * glow * 0.3 * pulse;
-	vec3 edge = rarity_color.rgb * (1.0 + glow * 0.6 * pulse);
-	COLOR.rgb = mix(body, mix(COLOR.rgb, edge, outline_mix), outline);
+	vec3 body = COLOR.rgb * tint.rgb + rarity_color.rgb * glow * 0.3;
+	vec3 edge = rarity_color.rgb;
+	vec3 result = mix(body, mix(COLOR.rgb, edge, outline_mix), outline);
+	float inside = (1.0 - outline) * step(0.5, pixel.a);
+	// Fine gear catches the light now and then: a narrow gleam sweeps
+	// across it, then it rests, so the art stays readable.
+	if (glint > 0.0) {
+		float cycle = fract(TIME / glint_period);
+		float sweep = mix(-60.0, 60.0, cycle / 0.16);
+		float band = step(cycle, 0.16) * (1.0 - smoothstep(0.0, 3.5, abs(local_pos.x + local_pos.y * 0.6 - sweep)));
+		result += (rarity_color.rgb * 0.7 + vec3(0.35)) * band * glint * inside;
+	}
+	// The finest twinkle: a pixel here and there flashes white.
+	if (sparkle > 0.0) {
+		vec2 cell = floor(UV / TEXTURE_PIXEL_SIZE);
+		float h = hash(cell + floor(TIME * 3.0) * 17.31);
+		result = mix(result, vec3(1.0), step(1.0 - 0.006 * sparkle, h) * inside * 0.85);
+	}
+	COLOR.rgb = result;
 }
 """
-## Per rarity: how strongly the outline takes the rarity colour, and the shimmer.
-const RARITY_LOOK: Array[Array] = [[0.0, 0.0], [0.75, 0.0], [1.0, 0.0], [1.0, 0.35], [1.0, 0.65], [1.0, 1.0]]
+## Per rarity, for the weapon in hand: [gleam strength, seconds between
+## gleams, twinkle]. Common and uncommon steel stays plain.
+const RARITY_LOOK: Array[Array] = [[0.0, 5.0, 0.0], [0.0, 5.0, 0.0], [0.45, 7.0, 0.0], [0.6, 5.5, 0.0], [0.8, 4.2, 0.6], [1.0, 3.2, 1.0]]
 ## Seconds between fading after-images while dodging.
 const GHOST_INTERVAL := 0.04
 
@@ -163,11 +188,16 @@ func _draw() -> void:
 		return
 	if _aura_color.a <= 0.0:
 		return
-	# A soft pulsing glow on the ground under the feet.
-	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 250.0)
+	# A faint, still ring on the ground under the feet; now and then a
+	# bright spark runs once round it, rather than a constant pulse.
+	var t := Time.get_ticks_msec() / 1000.0
 	draw_set_transform(Vector2(0, 23), 0.0, Vector2(1.0, 0.4))
-	draw_circle(Vector2.ZERO, 24.0 + 3.0 * pulse, Color(_aura_color, 0.16 + 0.1 * pulse))
-	draw_arc(Vector2.ZERO, 24.0 + 3.0 * pulse, 0.0, TAU, 32, Color(_aura_color, 0.55), 1.5)
+	draw_circle(Vector2.ZERO, 24.0, Color(_aura_color, 0.07))
+	draw_arc(Vector2.ZERO, 24.0, 0.0, TAU, 32, Color(_aura_color, 0.32), 1.0)
+	var cycle := fmod(t, 4.0) / 4.0
+	if cycle < 0.22:
+		var head := PI * 0.5 + cycle / 0.22 * TAU
+		draw_arc(Vector2.ZERO, 24.0, head - 0.9, head, 10, Color(_aura_color.lightened(0.4), 0.85 * (1.0 - cycle / 0.22 * 0.5)), 2.0)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -464,6 +494,11 @@ func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true,
 	material.set_shader_parameter("rarity_color", item.color())
 	material.set_shader_parameter("outline_mix", 0.0)
 	material.set_shader_parameter("glow", 0.0)
+	# Only the weapon in hand shows its rarity, and only as a passing gleam.
+	var look: Array = RARITY_LOOK[clampi(item.rarity, 0, RARITY_LOOK.size() - 1)] if layer == "weapon" and item.is_equipment() else [0.0, 5.0, 0.0]
+	material.set_shader_parameter("glint", look[0])
+	material.set_shader_parameter("glint_period", look[1])
+	material.set_shader_parameter("sparkle", look[2])
 
 
 func _spawn_ghost() -> void:

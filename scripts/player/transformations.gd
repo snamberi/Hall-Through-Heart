@@ -143,6 +143,7 @@ func _physics_process(delta: float) -> void:
 func _begin_channel() -> void:
 	_fx = TransformFX.new()
 	_fx.color = FORMS[current()]["color"]
+	_fx.form = current()
 	_fx.seconds = HOLD_SECONDS
 	_player.add_child(_fx)
 	Audio.play("transform", -4.0, 0.0)

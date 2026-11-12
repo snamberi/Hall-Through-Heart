@@ -35,6 +35,23 @@ const TORCH_SECONDS := 240.0
 var torch_left := 0.0
 
 var _player: Player
+var _world: World
+## How the land underfoot colours the light: snowfields bright and cool,
+## the Ashen Waste dim and grey, cinders warm, the void violet, deep woods
+## green-shaded. Multiplies the sky.
+const BIOME_LIGHT := {
+	TerrainTiles.Type.SNOW: Color(1.07, 1.1, 1.16), TerrainTiles.Type.FROSTPINE: Color(1.02, 1.05, 1.11),
+	TerrainTiles.Type.PEAK: Color(1.08, 1.1, 1.15), TerrainTiles.Type.ASH: Color(0.86, 0.84, 0.83),
+	TerrainTiles.Type.CINDER: Color(0.98, 0.84, 0.74), TerrainTiles.Type.VOIDSCAR: Color(0.86, 0.8, 0.98),
+	TerrainTiles.Type.BOG: Color(0.9, 0.95, 0.86), TerrainTiles.Type.FUNGAL: Color(0.93, 0.86, 0.97),
+	TerrainTiles.Type.DARK_GRASS: Color(0.88, 0.94, 0.88), TerrainTiles.Type.TAR: Color(0.82, 0.8, 0.82),
+	TerrainTiles.Type.SAND: Color(1.06, 1.02, 0.94), TerrainTiles.Type.SALT: Color(1.06, 1.05, 1.03),
+	TerrainTiles.Type.CRIMSON: Color(0.98, 0.86, 0.88),
+}
+var _biome := Color.WHITE
+var _biome_target := Color.WHITE
+var _biome_tile := -1
+var _biome_check := 0.0
 
 var _light: PointLight2D
 ## Brightness left from the last lightning strike, 0 to 1.
@@ -70,6 +87,7 @@ func _process(delta: float) -> void:
 		day_changed.emit(day)
 	_lightning = maxf(_lightning - delta * 2.2, 0.0)
 	_burn_torch(delta)
+	_read_biome(delta)
 	var night := is_night()
 	if night and not was_night and not indoors:
 		blood_moon = blood_moon_tonight()
@@ -139,10 +157,28 @@ func _sky() -> Color:
 	return SKY[0][1]
 
 
+func _read_biome(delta: float) -> void:
+	_biome_check -= delta
+	if _biome_check <= 0.0 and _player:
+		_biome_check = 0.5
+		if _world == null:
+			_world = _player.get_parent().get_node_or_null("World")
+		if _world and not indoors:
+			_biome_tile = _world.tile_type_at_position(_player.global_position)
+			_biome_target = BIOME_LIGHT.get(_biome_tile, Color.WHITE)
+	# Crossing into new land, the light shifts over a few seconds.
+	_biome = _biome.lerp(_biome_target, minf(1.0, delta * 0.5))
+
+
 func _apply() -> void:
 	var sky := _sky()
 	if blood_moon:
 		sky = sky.lerp(BLOOD_SKY, darkness() * 0.7)
+	# The land's own light, softer at night, except on snow, which holds
+	# the moonlight.
+	var snowy := _biome_tile in [TerrainTiles.Type.SNOW, TerrainTiles.Type.FROSTPINE, TerrainTiles.Type.PEAK]
+	var biome := Color.WHITE.lerp(_biome, 1.0 - darkness() * (0.0 if snowy else 0.45))
+	sky = Color(sky.r * biome.r, sky.g * biome.g, sky.b * biome.b)
 	color = Color(0.82, 0.8, 0.78).lerp(Color(0.07, 0.075, 0.12), cave_dark) if indoors else sky.lerp(Color(0.95, 0.97, 1.0), _lightning)
 	SunShadow.update(time, darkness(), indoors, _lightning)
 	if _light:
@@ -162,7 +198,8 @@ func _apply() -> void:
 			_light.texture_scale = lerpf(2.4, 0.62, cave_dark)
 			_light.color = Color(1.0, 0.9, 0.7).lerp(Color(0.7, 0.78, 1.0), cave_dark)
 		else:
+			# Snow throws the glow wider; ash and cinders warm it.
 			_light.energy = dark * 0.6
-			_light.texture_scale = 1.15
-			_light.color = Color(0.8, 0.86, 1.0)
+			_light.texture_scale = 1.45 if snowy else 1.15
+			_light.color = Color(0.86, 0.92, 1.0) if snowy else Color(1.0, 0.86, 0.72) if _biome_tile in [TerrainTiles.Type.ASH, TerrainTiles.Type.CINDER] else Color(0.8, 0.86, 1.0)
 		_light.enabled = _light.energy > 0.02

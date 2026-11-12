@@ -37,6 +37,8 @@ void fragment() {
 
 ## How deep the snow lies, 0 to 1. Shared so the minimap or others can ask.
 static var snow := 0.0
+## How much ash has settled on things during ashfall, 0 to 1.
+static var ash := 0.0
 
 var _player: Player
 var _world: World
@@ -195,6 +197,18 @@ func _settle_snow(delta: float) -> void:
 			snow = minf(snow + delta * 0.02, 0.8)
 		_:
 			snow = maxf(snow - delta * (0.004 + 0.008 * (1.0 - _day_night.darkness())), 0.0)
+	match Atmosphere.weather:
+		"Ashfall":
+			ash = minf(ash + delta * 0.01, 0.6)
+		"Ash storm":
+			ash = minf(ash + delta * 0.025, 0.85)
+		_:
+			ash = maxf(ash - delta * 0.006, 0.0)
+	# What has settled shows along the tops of trees, bushes and props.
+	if snow >= ash:
+		Wind.set_dusting(Color(0.94, 0.96, 1.0), minf(snow * 1.4, 1.0))
+	else:
+		Wind.set_dusting(Color(0.76, 0.74, 0.72), minf(ash * 1.3, 1.0))
 	_snow_layer.visible = snow > 0.005
 	if _snow_layer.visible:
 		_snow_material.set_shader_parameter("cover", snow)
