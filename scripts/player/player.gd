@@ -34,6 +34,11 @@ enum State { MOVE, ATTACK, DODGE, DEAD, REVIVING, ABILITY, GATHER }
 
 ## Stable id of the current class. Everyone starts as an Adventurer.
 var class_id := "adventurer"
+## The school of magic taken up at the Altar of Magic ("" for none), and
+## every school the player has learned there (they may switch among these
+## at the altar).
+var magic_school := ""
+var magic_schools: Array[String] = []
 ## Weapon category in hand; decides which mastery is trained.
 var weapon_type: String:
 	get:
@@ -879,8 +884,26 @@ func begin_rebirth() -> void:
 	rebirth_finished.emit()
 
 
+## Whether a magic weapon in the magic slot is the one in hand.
+func holding_magic() -> bool:
+	return equipment.active_slot == "weapon_1" and equipment.equipped.has("weapon_1")
+
+
+## Takes up a school of magic (at the altar). Returns "" or why not.
+func take_up_magic(school: String) -> String:
+	if not MagicDB.SCHOOLS.has(school):
+		return "No such magic."
+	if not school in magic_schools:
+		magic_schools.append(school)
+	magic_school = school
+	abilities.changed.emit()
+	Events.codex_event.emit("magic", 1)
+	SaveGame.request_save()
+	return ""
+
+
 func save_data() -> Dictionary:
-	return {"class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate()}
+	return {"magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate()}
 
 
 ## Changes how the player looks and redraws them.
@@ -893,6 +916,13 @@ func set_appearance(changes: Dictionary) -> void:
 
 func load_data(data: Dictionary) -> void:
 	class_id = str(data.get("class_id", class_id))
+	magic_school = str(data.get("magic_school", ""))
+	if not MagicDB.SCHOOLS.has(magic_school):
+		magic_school = ""
+	magic_schools.clear()
+	for school: Variant in data.get("magic_schools", []):
+		if MagicDB.SCHOOLS.has(str(school)):
+			magic_schools.append(str(school))
 	class_chosen_at = int(data.get("class_chosen_at", HeroClasses.CHOICE_LEVEL))
 	var saved_ranks: Variant = data.get("class_ranks", {})
 	class_ranks.clear()

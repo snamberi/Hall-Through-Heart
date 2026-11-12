@@ -48,6 +48,8 @@ var _danger := FastNoiseLite.new()
 var _warp := FastNoiseLite.new()
 var _islands := FastNoiseLite.new()
 var _cache: Dictionary = {}
+var _altar := Vector2i.ZERO
+var _altar_found := false
 
 
 func _init(p_seed: int) -> void:
@@ -106,6 +108,35 @@ func is_dry_land(cell: Vector2i) -> bool:
 ## Whether a cliff face stands on this tile: higher ground lies just north.
 func is_cliff_base(cell: Vector2i) -> bool:
 	return CliffFaces.level(tile_type_at(cell + Vector2i.UP)) > CliffFaces.level(tile_type_at(cell)) and not TerrainTiles.is_water(tile_type_at(cell))
+
+
+## Where the Altar of Magic stands: about MagicDB.ALTAR_DISTANCE tiles out
+## from the temple, in a direction the world's seed chooses, on the nearest
+## open dry ground.
+func magic_altar_cell() -> Vector2i:
+	if _altar_found:
+		return _altar
+	var random := RandomNumberGenerator.new()
+	random.seed = world_seed + 7177
+	var target := Vector2i(Vector2.from_angle(random.randf() * TAU) * MagicDB.ALTAR_DISTANCE)
+	_altar = target
+	for radius in 120:
+		var found := false
+		for y in range(-radius, radius + 1):
+			for x in range(-radius, radius + 1):
+				if maxi(absi(x), absi(y)) != radius:
+					continue
+				var cell := target + Vector2i(x, y)
+				if is_dry_land(cell) and not tile_type_at(cell) in TerrainTiles.HIGH and is_dry_land(cell + Vector2i(0, 2)) and is_dry_land(cell + Vector2i(0, -2)):
+					_altar = cell
+					found = true
+					break
+			if found:
+				break
+		if found:
+			break
+	_altar_found = true
+	return _altar
 
 
 func find_walkable_near(cell: Vector2i, max_radius: int = 64) -> Vector2i:

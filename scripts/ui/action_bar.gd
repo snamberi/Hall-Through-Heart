@@ -178,7 +178,7 @@ func _ability_text(id: String) -> String:
 
 func _ability_id(index: int) -> String:
 	var abilities := _player.abilities
-	return abilities.loadout[abilities.active_set * AbilityDB.SET_SIZE + index]
+	return abilities.slots()[index]
 
 
 func _key(action: String) -> String:
@@ -227,10 +227,11 @@ func _draw() -> void:
 		var abilities := _player.abilities
 		var other := (abilities.active_set + 1) % AbilityDB.SETS
 		var tab: Rect2 = _groups[0][1]
-		var set_text := "Set %d  %s" % [abilities.active_set + 1, _key("ability_swap")]
+		var casting := abilities.casting()
+		var set_text := "Set %d  %s" % [abilities.active_set + 1, _key("ability_swap")] if not casting else "%s magic" % MagicDB.SCHOOLS[_player.magic_school]["short"]
 		var text_width := _font.get_string_size(set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		draw_string(_font, tab.position + Vector2(tab.size.x - text_width - 4.0 - 4 * 14.0, 13), set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.DIM)
-		for index in AbilityDB.SET_SIZE:
+		for index in (0 if casting else AbilityDB.SET_SIZE):
 			var other_id: String = abilities.loadout[other * AbilityDB.SET_SIZE + index]
 			var mini_rect := Rect2(tab.end.x - 4.0 * 14.0 - 2.0 + index * 14.0, tab.position.y + 2.0, 12.0, 12.0)
 			draw_rect(mini_rect, Color(0.05, 0.05, 0.08))

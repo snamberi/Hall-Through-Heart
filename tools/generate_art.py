@@ -2142,6 +2142,8 @@ MAP_ICONS = [
     ("pet", [("grass_m", "ellipse", (6, 10, 15, 19)), ("grass_m", "ellipse", (2, 7, 6, 12)), ("grass_m", "ellipse", (6, 2, 10, 8)), ("grass_m", "ellipse", (11, 2, 15, 8)), ("grass_m", "ellipse", (15, 7, 19, 12))]),
     ("npc", [("sky_m", "ellipse", (6, 2, 15, 11)), ("sky_m", "poly", [(3, 20), (5, 12), (16, 12), (18, 20)]), ("night", "rect", (8, 6, 9, 7)), ("night", "rect", (12, 6, 13, 7))]),
     ("chest", [("wood", "rect", (3, 8, 18, 18)), ("wood", "ellipse", (3, 4, 18, 12)), ("coin", "rect", (3, 10, 18, 11)), ("coin", "rect", (9, 9, 12, 13))]),
+    ("altar", [("stone_m", "rect", (3, 16, 18, 19)), ("stone_m", "poly", [(5, 16), (7, 10), (14, 10), (16, 16)]), ("void_m", "ellipse", (7, 2, 14, 9)),
+               ("shell", "rect", (9, 4, 10, 5)), ("sky_m", "rect", (2, 12, 3, 16)), ("flame", "rect", (18, 12, 19, 16))]),
 ]
 
 # Things to gather in the world: 64px frames in one row. Pale parts are

@@ -294,6 +294,128 @@ const ABILITIES := {
 		"damage": 2.2, "stamina": 15.0, "mana": 25.0, "cooldown": 10.0, "targets": 6, "reach": 300.0, "jump": 200.0,
 		"color": Color(0.7, 0.85, 1.0), "text": "Lightning leaps from your blade through six enemies.",
 	},
+	# --- spells of the schools of magic (see MagicDB). "school" marks them;
+	# "level" is the character level each unlocks at. "heal" restores that
+	# share of health when cast.
+	"spell_fire_bolt": {
+		"name": "Fire Bolt", "school": "fire", "level": 1, "icon": 18, "shape": "shot", "magic": true,
+		"damage": 1.6, "mana": 10.0, "cooldown": 1.5, "count": 1, "spread": 0.0, "color": Color(1.0, 0.6, 0.2),
+		"projectile": {"sprite": 2, "speed": 600.0, "radius": 12.0, "range": 520.0, "explode": 60.0, "knockback": 260.0,
+			"status": {"status": "burn", "duration": 3.0, "power": 0.25}, "color": Color(1.0, 0.6, 0.2)},
+		"text": "A bolt of fire that bursts and sets enemies alight.",
+	},
+	"spell_flame_ring": {
+		"name": "Ring of Fire", "school": "fire", "level": 8, "icon": 27, "shape": "spin", "magic": true,
+		"damage": 1.8, "mana": 20.0, "cooldown": 7.0, "radius": 130.0, "hits": 1, "knockback": 380.0,
+		"status": {"status": "burn", "duration": 4.0, "power": 0.3}, "color": Color(1.0, 0.5, 0.15),
+		"text": "Flame bursts out all around you and leaves everything near burning.",
+	},
+	"spell_meteor": {
+		"name": "Falling Star", "school": "fire", "level": 16, "icon": 28, "shape": "slam", "magic": true,
+		"damage": 3.2, "mana": 35.0, "cooldown": 12.0, "radius": 110.0, "distance": 160.0, "knockback": 650.0,
+		"status": {"status": "burn", "duration": 5.0, "power": 0.35}, "color": Color(1.0, 0.45, 0.15),
+		"text": "Call down a burning star on the ground ahead.",
+	},
+	"spell_inferno_cloak": {
+		"name": "Inferno Cloak", "school": "fire", "level": 24, "icon": 55, "shape": "buff", "magic": true,
+		"mana": 25.0, "cooldown": 30.0, "duration": 20.0, "color": Color(1.0, 0.55, 0.2),
+		"mods": {"fire_damage": {"flat": 10.0}, "fire_resist": {"flat": 0.2}, "magic_power": {"percent": 0.1}},
+		"text": "Wrap yourself in fire: +10 fire damage, +20% fire resistance and +10% magic damage for 20 seconds.",
+	},
+	"spell_spark": {
+		"name": "Spark", "school": "lightning", "level": 1, "icon": 30, "shape": "shot", "magic": true,
+		"damage": 0.75, "mana": 8.0, "cooldown": 1.2, "count": 3, "spread": 18.0, "color": Color(0.6, 0.85, 1.0),
+		"projectile": {"sprite": 1, "speed": 950.0, "radius": 10.0, "range": 460.0, "knockback": 120.0, "color": Color(0.6, 0.85, 1.0)},
+		"text": "Three crackling sparks, quick and cheap.",
+	},
+	"spell_chain_lightning": {
+		"name": "Forked Lightning", "school": "lightning", "level": 8, "icon": 37, "shape": "chain", "magic": true,
+		"damage": 1.5, "mana": 22.0, "cooldown": 6.0, "targets": 6, "reach": 360.0, "jump": 190.0, "color": Color(0.7, 0.85, 1.0),
+		"text": "Lightning that leaps between up to six enemies.",
+	},
+	"spell_thunderclap": {
+		"name": "Thunderclap", "school": "lightning", "level": 16, "icon": 28, "shape": "slam", "magic": true,
+		"damage": 2.2, "mana": 28.0, "cooldown": 10.0, "radius": 145.0, "distance": 0.0, "knockback": 720.0,
+		"status": {"status": "chill", "duration": 2.5, "power": 0.7}, "color": Color(0.7, 0.9, 1.0),
+		"text": "A crack of thunder around you that hurls enemies back and leaves them dazed.",
+	},
+	"spell_storm_rush": {
+		"name": "Storm Rush", "school": "lightning", "level": 24, "icon": 9, "shape": "dash", "magic": true,
+		"damage": 1.6, "mana": 20.0, "cooldown": 7.0, "distance": 230.0, "radius": 44.0, "knockback": 300.0, "color": Color(0.6, 0.85, 1.0),
+		"text": "Become lightning for a moment and rush ahead through your enemies.",
+	},
+	"spell_shadow_bolt": {
+		"name": "Shadow Bolt", "school": "dark", "level": 1, "icon": 20, "shape": "shot", "magic": true,
+		"damage": 1.7, "mana": 12.0, "cooldown": 2.0, "count": 1, "spread": 0.0, "color": Color(0.62, 0.4, 0.95),
+		"projectile": {"sprite": 1, "speed": 560.0, "radius": 13.0, "range": 520.0, "knockback": 180.0,
+			"status": {"status": "poison", "duration": 4.0, "power": 0.3}, "color": Color(0.62, 0.4, 0.95)},
+		"text": "A bolt of shadow that rots what it touches.",
+	},
+	"spell_umbral_burst": {
+		"name": "Umbral Burst", "school": "dark", "level": 8, "icon": 27, "shape": "spin", "magic": true,
+		"damage": 1.6, "mana": 20.0, "cooldown": 8.0, "radius": 125.0, "hits": 2, "knockback": 260.0,
+		"status": {"status": "poison", "duration": 4.0, "power": 0.3}, "color": Color(0.55, 0.3, 0.9),
+		"text": "Darkness bursts from you twice, rotting everything near.",
+	},
+	"spell_void_rift": {
+		"name": "Void Rift", "school": "dark", "level": 16, "icon": 28, "shape": "slam", "magic": true,
+		"damage": 2.8, "mana": 30.0, "cooldown": 12.0, "radius": 120.0, "distance": 150.0, "knockback": -260.0,
+		"status": {"status": "chill", "duration": 3.0, "power": 0.6}, "color": Color(0.6, 0.35, 1.0),
+		"text": "Tear open the void ahead: it drags enemies in and holds them slow.",
+	},
+	"spell_dark_pact": {
+		"name": "Dark Pact", "school": "dark", "level": 24, "icon": 55, "shape": "buff", "magic": true,
+		"mana": 10.0, "cooldown": 30.0, "duration": 15.0, "color": Color(0.6, 0.3, 0.95),
+		"mods": {"magic_power": {"percent": 0.35}, "life_steal": {"flat": 0.06}, "damage_taken": {"percent": 0.15}},
+		"text": "+35% magic damage and 6% life steal for 15 seconds, but you take 15% more damage.",
+	},
+	"spell_holy_lance": {
+		"name": "Holy Lance", "school": "light", "level": 1, "icon": 63, "shape": "shot", "magic": true,
+		"damage": 1.6, "mana": 12.0, "cooldown": 2.0, "count": 1, "spread": 0.0, "color": Color(1.0, 0.92, 0.6),
+		"projectile": {"sprite": 1, "speed": 1000.0, "radius": 10.0, "range": 600.0, "knockback": 160.0, "pierce": true, "color": Color(1.0, 0.92, 0.6)},
+		"text": "A lance of light that passes through every enemy in a line.",
+	},
+	"spell_radiant_burst": {
+		"name": "Radiant Burst", "school": "light", "level": 8, "icon": 27, "shape": "spin", "magic": true,
+		"damage": 1.4, "mana": 24.0, "cooldown": 9.0, "radius": 135.0, "hits": 1, "knockback": 340.0, "heal": 0.12, "color": Color(1.0, 0.9, 0.55),
+		"text": "Light bursts from you, burning enemies and healing you for 12% of your health.",
+	},
+	"spell_smite": {
+		"name": "Smite", "school": "light", "level": 16, "icon": 28, "shape": "slam", "magic": true,
+		"damage": 3.0, "mana": 30.0, "cooldown": 10.0, "radius": 100.0, "distance": 130.0, "knockback": 560.0, "color": Color(1.0, 0.95, 0.7),
+		"text": "Judgement falls from the sky on the ground ahead.",
+	},
+	"spell_blessing": {
+		"name": "Blessing", "school": "light", "level": 24, "icon": 55, "shape": "buff", "magic": true,
+		"mana": 30.0, "cooldown": 35.0, "duration": 20.0, "heal": 0.25, "color": Color(1.0, 0.92, 0.6),
+		"mods": {"health_regen": {"flat": 4.0}, "armor": {"percent": 0.2}, "damage_taken": {"percent": -0.1}},
+		"text": "Heal 25% at once, then +4 health a second, +20% armor and 10% less damage taken for 20 seconds.",
+	},
+	"spell_ice_shard": {
+		"name": "Ice Shards", "school": "frost", "level": 1, "icon": 19, "shape": "shot", "magic": true,
+		"damage": 0.9, "mana": 10.0, "cooldown": 2.0, "count": 3, "spread": 28.0, "color": Color(0.7, 0.92, 1.0),
+		"projectile": {"sprite": 1, "speed": 700.0, "radius": 10.0, "range": 480.0, "knockback": 140.0,
+			"status": {"status": "chill", "duration": 2.5, "power": 0.35}, "color": Color(0.7, 0.92, 1.0)},
+		"text": "Three shards of ice that slow what they hit.",
+	},
+	"spell_frost_ring": {
+		"name": "Frost Ring", "school": "frost", "level": 8, "icon": 27, "shape": "spin", "magic": true,
+		"damage": 1.5, "mana": 20.0, "cooldown": 8.0, "radius": 140.0, "hits": 1, "knockback": 300.0,
+		"status": {"status": "chill", "duration": 4.0, "power": 0.5}, "color": Color(0.6, 0.9, 1.0),
+		"text": "A burst of cold around you that slows everything it touches.",
+	},
+	"spell_glacial_spike": {
+		"name": "Glacial Spike", "school": "frost", "level": 16, "icon": 28, "shape": "slam", "magic": true,
+		"damage": 3.0, "mana": 30.0, "cooldown": 11.0, "radius": 95.0, "distance": 140.0, "knockback": 520.0,
+		"status": {"status": "chill", "duration": 4.0, "power": 0.65}, "color": Color(0.65, 0.9, 1.0),
+		"text": "A spike of ice bursts up from the ground ahead.",
+	},
+	"spell_ice_armor": {
+		"name": "Ice Armour", "school": "frost", "level": 24, "icon": 55, "shape": "buff", "magic": true,
+		"mana": 25.0, "cooldown": 30.0, "duration": 20.0, "color": Color(0.7, 0.92, 1.0),
+		"mods": {"armor": {"percent": 0.35}, "frost_resist": {"flat": 0.25}, "knockback_resistance": {"flat": 0.3}},
+		"text": "+35% armor, +25% frost resistance and steady footing for 20 seconds.",
+	},
 }
 
 ## Number of ability slots on the bar.

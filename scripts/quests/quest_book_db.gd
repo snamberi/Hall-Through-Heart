@@ -241,6 +241,11 @@ static func _magic() -> void:
 		["magic_enchanting_25", "Enchanter", "Reach enchanting 25.", {"atlas": 52}, [_o("profession", {"profession": "enchanting", "level": 25})], 6.0],
 		["magic_enchant_25", "Runecarver", "Enchant gear 25 times.", {"atlas": 52}, [_stat("enchants", 25, "Enchant gear")], 8.0],
 	])
+	_chain(root, [
+		["magic_altar", "The Altar of Magic", "Find the Altar of Magic, about 500 tiles from the temple (it is on your map), and take up a school of magic.", {"atlas": 33}, [_stat("magic", 1, "Take up magic at the altar")], 6.0],
+		["magic_spells_100", "Spellweaver", "Cast spells of your school 100 times.", {"atlas": 37}, [_stat("spells_cast", 100, "Cast spells")], 8.0],
+		["magic_spells_1000", "Master of the Art", "Cast spells of your school 1000 times.", {"atlas": 37}, [_stat("spells_cast", 1000, "Cast spells")], 12.0],
+	])
 	var elements := {"flame_sword": "fire", "frost_sword": "frost", "dark_sword": "shadow", "fang": "poison", "ember_staff": "fire"}
 	var hub := _q("magic_elements", "The Five Elements", "Find a weapon steeped in an element.", {"atlas": 18}, [root], [_o("own_any", {"items": elements.keys(), "label": "Own an elemental weapon"})], 3.0)
 	for item: String in elements:

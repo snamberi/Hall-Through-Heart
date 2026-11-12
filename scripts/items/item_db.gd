@@ -201,6 +201,15 @@ const ITEMS := {
 		"weapon": {"type": "staves", "range": 480.0, "arc": 0.0, "cooldown": 0.55, "knockback": 160.0,
 			"projectile": {"sprite": 1, "speed": 560.0, "radius": 12.0, "range": 480.0, "color": Color(0.75, 0.55, 1.0)}},
 	},
+	# Given at the Altar of Magic to one who comes without a magic weapon:
+	# anyone can carry it.
+	"altar_staff": {
+		"name": "Altar Staff", "icon": 33, "visual": "staff", "slot": "main_hand", "tiered": true, "drop_weight": 0.0,
+		"damage": 4.5, "two_handed": true, "magic": true, "slash": Color(0.8, 0.6, 1.0),
+		"implicit": [{"stat": "max_mana", "kind": "flat", "base": 15.0, "per_level": 0.5}],
+		"weapon": {"type": "staves", "range": 480.0, "arc": 0.0, "cooldown": 0.55, "knockback": 160.0,
+			"projectile": {"sprite": 1, "speed": 560.0, "radius": 12.0, "range": 480.0, "color": Color(0.8, 0.6, 1.0)}},
+	},
 	"ember_staff": {
 		"name": "Emberstaff", "icon": 34, "visual": "ember_staff", "slot": "main_hand", "tiered": true,
 		"drop_weight": 1.5, "min_rarity": 1, "damage": 4.5, "two_handed": true, "magic": true,

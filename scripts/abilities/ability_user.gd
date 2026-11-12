@@ -4,7 +4,9 @@ extends Node
 ## of four, switched with a key), and using them with keys 1-4.
 ##
 ## Weapon abilities are known through mastery and only work with that kind
-## of weapon in hand; class abilities are learned in the class tree.
+## of weapon in hand; class abilities are learned in the class tree. With a
+## magic weapon in the magic slot in hand, the keys cast the four spells of
+## the player's school of magic instead (see MagicDB).
 ## Cooldowns are tracked per ability, so they keep running while unequipped.
 
 signal changed
@@ -43,6 +45,8 @@ func known() -> Array[String]:
 	var ids: Array[String] = []
 	for id: String in AbilityDB.ABILITIES:
 		var ability: Dictionary = AbilityDB.ABILITIES[id]
+		if ability.has("school"):
+			continue
 		if ability.has("class"):
 			if ability["class"] == _player.class_id and _player.has_class_node(id):
 				ids.append(id)
@@ -51,9 +55,20 @@ func known() -> Array[String]:
 	return ids
 
 
-## The four abilities the keys use right now.
+## The four abilities the keys use right now: the school's spells while
+## casting, else the active set.
 func slots() -> Array[String]:
+	if casting():
+		var result: Array[String] = []
+		for id: String in MagicDB.spells(_player.magic_school):
+			result.append(id)
+		return result
 	return loadout.slice(active_set * AbilityDB.SET_SIZE, (active_set + 1) * AbilityDB.SET_SIZE)
+
+
+## Whether the keys cast spells: a school taken up and magic in hand.
+func casting() -> bool:
+	return _player != null and _player.magic_school != "" and _player.holding_magic()
 
 
 func switch_set() -> void:
@@ -79,6 +94,10 @@ func clear_slot(slot: int) -> void:
 
 func rank(id: String) -> int:
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
+	if ability.has("school"):
+		if ability["school"] != _player.magic_school:
+			return 0
+		return AbilityDB.rank(id, _player.leveling.level)
 	if ability.has("class"):
 		if ability["class"] != _player.class_id or not _player.has_class_node(id):
 			return 0
@@ -102,6 +121,8 @@ func blocked_reason(id: String) -> String:
 		return "locked"
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
 	if ability.has("weapon") and ability["weapon"] != _player.weapon_type:
+		return "weapon"
+	if ability.has("school") and not _player.holding_magic():
 		return "weapon"
 	if cooldowns.has(id):
 		return "cooldown"
@@ -161,6 +182,8 @@ func use(id: String) -> bool:
 	cooldowns[id] = ability["cooldown"]
 	changed.emit()
 	Events.codex_event.emit("abilities_used", 1)
+	if ability.has("school"):
+		Events.codex_event.emit("spells_cast", 1)
 	_run(id, ability)
 	return true
 
@@ -172,6 +195,9 @@ func _run(id: String, ability: Dictionary) -> void:
 		damage *= _player.stats.get_stat("magic_power")
 	var weapon := _player.equipment.weapon_profile()
 	_player.face(direction)
+	if ability.has("heal"):
+		_player.health.heal(_player.health.max_health * float(ability["heal"]))
+		RingBurst.spawn(_player.get_parent(), _player.global_position + Vector2(0, -14), Color(0.6, 1.0, 0.6), 50.0)
 	match ability["shape"]:
 		"arc":
 			await _arc(ability, direction, damage, weapon)

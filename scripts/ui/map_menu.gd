@@ -11,7 +11,7 @@ const ICONS := {
 	"cave": [Color("8a8794"), "Cave"], "lair": [Color("e05a5a"), "Lair"], "portal": [Color("9a6cf0"), "Void portal"],
 	"camp": [Color("c0a080"), "Abandoned camp"], "waystone": [Color("8fe0ff"), "Waystone"], "obelisk": [Color("d0b0ff"), "Obelisk"],
 	"merchant": [Color("ffd060"), "Wandering merchant"], "shipwreck": [Color("a08060"), "Shipwreck"], "treasure": [Color("ff4030"), "Buried treasure"],
-	"boss": [Color("ff4d4d"), "World boss"], "dungeon": [Color("b0a0d0"), "Crypt"], "bounty": [Color("ff8a3a"), "Bounty target"],
+	"boss": [Color("ff4d4d"), "World boss"], "altar": [Color("c08cff"), "Altar of Magic"], "dungeon": [Color("b0a0d0"), "Crypt"], "bounty": [Color("ff8a3a"), "Bounty target"],
 	"temple": [Color("ffe8a0"), "The Sanctuary"], "home": [Color("8fd66a"), "Home"], "checkpoint": [Color("ffb060"), "Resting place"],
 }
 
@@ -188,7 +188,7 @@ func _collect_icons(origin: Vector2i, cells: Vector2i, offset: Vector2, scale: f
 		for cy in range(first_chunk.y, last_chunk.y + 1):
 			for cx in range(first_chunk.x, last_chunk.x + 1):
 				var site := structures.site_for(Vector2i(cx, cy))
-				if not site.is_empty() and _exploration.is_tile_seen(site["cell"]):
+				if not site.is_empty() and site["kind"] != "altar" and _exploration.is_tile_seen(site["cell"]):
 					_icons.append([to_view.call(site["cell"]), site["kind"]])
 	var first_region := Vector2i((Vector2(first_tile) / WorldGenerator.VILLAGE_REGION).floor())
 	var last_region := Vector2i((Vector2(last_tile) / WorldGenerator.VILLAGE_REGION).ceil())
@@ -199,6 +199,8 @@ func _collect_icons(origin: Vector2i, cells: Vector2i, offset: Vector2, scale: f
 				_icons.append([to_view.call(center), "village"])
 	if _exploration.is_tile_seen(Vector2i.ZERO):
 		_icons.append([to_view.call(Vector2i.ZERO), "temple"])
+	# The Altar of Magic is known by rumour from the start.
+	_icons.append([to_view.call(generator.magic_altar_cell()), "altar"])
 	var hunts: TreasureMaps = player.get_parent().get_node_or_null("TreasureMaps")
 	if hunts:
 		for spot: Dictionary in hunts.spots:

@@ -103,6 +103,12 @@ func site_for(chunk: Vector2i) -> Dictionary:
 	if _sites.has(chunk):
 		return _sites[chunk]
 	var site := {}
+	# The Altar of Magic has a chunk to itself.
+	var altar := _world.generator.magic_altar_cell()
+	if Vector2i((Vector2(altar) / World.CHUNK_SIZE).floor()) == chunk:
+		site = {"kind": "altar", "cell": altar, "key": "altar", "level": _world.generator.enemy_level_at(altar), "seed": 7177}
+		_sites[chunk] = site
+		return site
 	var random := RandomNumberGenerator.new()
 	random.seed = hash(Vector3i(chunk.x, chunk.y, _world.generator.world_seed + 4242))
 	var cell := chunk * World.CHUNK_SIZE + Vector2i(random.randi_range(4, World.CHUNK_SIZE - 5), random.randi_range(4, World.CHUNK_SIZE - 5))
@@ -267,6 +273,29 @@ func _build_ruin(cell: Vector2i, key: String, level: int, random: RandomNumberGe
 	_decor(placed, Prop.Decor.BRAZIER, cell + Vector2i(-2, -2), 8.0, true)
 	_decor(placed, Prop.Decor.BANNER, cell + Vector2i(2, -3), 4.0)
 	placed.append(_chest(cell, key, level, 1.0))
+
+
+## The Altar of Magic: a raised stone ring of obelisks and candles round an
+## altar that burns violet, with a pillar of light that shows from afar.
+## There the player takes up (or changes) their school of magic.
+func _build_altar(cell: Vector2i, _key: String, _level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	_floor(placed, cell, 5)
+	for index in 8:
+		var spot := cell + Vector2i(Vector2.from_angle(TAU * index / 8.0 + 0.2) * 4.6)
+		if index % 2 == 0:
+			_decor(placed, Prop.Decor.OBELISK, spot, 10.0)
+		else:
+			_decor(placed, Prop.Decor.CANDLES, spot, 0.0, true)
+	for i in 3:
+		_decor(placed, Prop.Decor.RUBBLE, cell + Vector2i(random.randi_range(-4, 4), random.randi_range(3, 5)))
+	var altar := Prop.create(Prop.Art.ALTAR, _at(cell), 14.0, "Commune with the altar", func(_player: Player) -> void:
+		Events.screen_requested.emit("magic")
+	)
+	altar.add_light(1.1, 2.6)
+	placed.append(altar)
+	var beam := AltarBeam.new()
+	beam.position = _at(cell) + Vector2(0, -30)
+	placed.append(beam)
 
 
 ## A standing stone ringed with candles. Praying there blesses the player
