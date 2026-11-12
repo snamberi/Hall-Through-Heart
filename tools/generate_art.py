@@ -172,6 +172,13 @@ HUSK_ORDER = ["back_arm", "leg_l", "leg_r", "torso", "head", "front_arm"]
 # Keys are the "visual" names used in scripts/items/item_db.py; the order is
 # also the order of the generated weapon icons, so only ever append.
 WEAPONS = {
+    # Tools, held like weapons while at work.
+    "pickaxe": [("wood", R(35, 10, 36.2, 37)), ("blade", [(26, 14), (29, 10.5), (35.6, 8.5), (42, 10.5), (45, 14), (41, 12.4), (35.6, 11.6), (30, 12.4)]),
+                ("guard", R(34.4, 8.6, 36.8, 12.4)), ("wrap", R(34.8, 30, 36.4, 32))],
+    "hatchet": [("wood", R(35, 13, 36.2, 37)), ("blade", [(36, 13), (41.5, 11), (44.5, 16.5), (41.5, 22), (36, 20)]),
+                ("blade", [(35, 14.5), (33, 16.5), (35, 18.5)]), ("guard", R(34.6, 13.6, 36.6, 19.6)), ("wrap", R(34.8, 31, 36.4, 33))],
+    "rod": [("wood", [(35, 37), (36.2, 37), (37.6, -2), (36.8, -2)]), ("guard", E(33.2, 27, 35.4, 30)), ("wrap", R(34.8, 31, 36.4, 34)),
+            ("bone", R(37.2, -2, 37.7, 12)), ("blade", [(36.8, 12), (38.2, 12), (38.2, 14.4), (37.2, 14.4)])],
     "sword": [("blade", R(34, 12, 37, 29.5)), ("blade", [(34, 12), (37, 12), (35.5, 8)]),
               ("guard", R(32, 30, 39, 31.5)), ("belt", R(35, 32, 36, 34)), ("guard", R(34.8, 34.5, 36.2, 35.5))],
     "greatsword": [("blade", R(33, 5, 38, 29.5)), ("blade", [(33, 5), (38, 5), (35.5, 0)]),

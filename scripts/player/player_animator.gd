@@ -244,9 +244,16 @@ func _on_splash(at: Vector2) -> void:
 func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 	if _layers.is_empty():
 		await ready
-	var weapon := equipment.get_item("main_hand")
-	_set_layer("weapon", weapon, "weapons/" + str(weapon.definition().get("visual", "")) if weapon else "", false)
-	_set_layer("shield", equipment.get_item("off_hand"), "layers/shield")
+	# The hand holds a weapon, a belt tool, or a tool taken up for a job.
+	var held := equipment.in_hand()
+	if held and held.is_tool():
+		var tool_kind: String = held.definition()["tool"]["kind"]
+		_set_layer("weapon", held, "weapons/" + tool_kind, false, held.definition().get("tint", Color.WHITE))
+	else:
+		_set_layer("weapon", held, "weapons/" + str(held.definition().get("visual", "")) if held else "", false)
+	# A shield stays on the back while both hands are busy.
+	var both_hands: bool = held != null and (held.is_tool() or held.definition().get("two_handed", false))
+	_set_layer("shield", null if both_hands else equipment.get_item("off_hand"), "layers/shield")
 	_set_layer("helmet", equipment.get_item("helmet") if show_helmet else null, "layers/helmet")
 	var chest := equipment.get_item("chest")
 	_set_layer("chest", chest, "layers/chest")
@@ -257,7 +264,7 @@ func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 		(_layers["cape"].material as ShaderMaterial).set_shader_parameter("tint", chest.color().darkened(0.15))
 
 	var best: Item = null
-	for item: Item in equipment.equipped.values():
+	for item: Item in equipment.counted():
 		if item.rarity >= AURA_FROM_RARITY and (best == null or item.rarity > best.rarity):
 			best = item
 	_aura_color = best.color() if best else Color.TRANSPARENT
@@ -388,7 +395,7 @@ func _on_animation_finished() -> void:
 
 ## Shows `item` on a layer using the sheet at assets/sprites/<path>.png, or
 ## hides the layer when item is null. Metal layers are tinted by tier.
-func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true) -> void:
+func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true, tint: Color = Color.WHITE) -> void:
 	var sprite := _layers[layer]
 	if item == null or path == "" or path.ends_with("/"):
 		sprite.visible = false
@@ -401,11 +408,12 @@ func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true)
 	sprite.frame = frame
 	sprite.visible = true
 	var material := sprite.material as ShaderMaterial
-	var look: Array = RARITY_LOOK[item.rarity]
-	material.set_shader_parameter("tint", ItemDB.tier_color(item.level) if tier_tint else Color.WHITE)
+	# Worn gear is drawn as part of the body: its own metal, a plain dark
+	# outline, no coloured edge or glow. Rarity shows in the aura underfoot.
+	material.set_shader_parameter("tint", ItemDB.tier_color(item.level) if tier_tint else tint)
 	material.set_shader_parameter("rarity_color", item.color())
-	material.set_shader_parameter("outline_mix", look[0])
-	material.set_shader_parameter("glow", look[1])
+	material.set_shader_parameter("outline_mix", 0.0)
+	material.set_shader_parameter("glow", 0.0)
 
 
 func _spawn_ghost() -> void:

@@ -86,6 +86,11 @@ func is_tool() -> bool:
 	return definition().has("tool")
 
 
+## A pack worn on the back for more room in the bag.
+func is_backpack() -> bool:
+	return definition().has("backpack")
+
+
 func is_consumable() -> bool:
 	return definition().has("use") or definition().has("boat") or definition().has("treasure_map") or definition().has("mount") or id == "taming_treat" or Crops.by_seed(id) != ""
 
@@ -96,7 +101,7 @@ func is_placeable() -> bool:
 
 
 func is_stackable() -> bool:
-	return not is_equipment() and not is_tool()
+	return not is_equipment() and not is_tool() and not is_backpack()
 
 
 ## Colour to tint the icon with (white for icons drawn in their own colours).

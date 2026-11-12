@@ -128,7 +128,7 @@ static func generate(player: Player) -> Dictionary:
 				var data: Dictionary = GatherDB.RESOURCES[id]
 				var profession: String = GatherDB.KINDS[data["kind"]]["profession"]
 				var tool: String = GatherDB.KINDS[data["kind"]]["tool"]
-				var tier := 0 if tool == "" else 0 if player.inventory.best_tool(tool) == null else int(player.inventory.best_tool(tool).definition()["tool"]["tier"])
+				var tier := 0 if tool == "" else 0 if player.equipment.tool(tool) == null else int(player.equipment.tool(tool).definition()["tool"]["tier"])
 				if player.professions.level(profession) >= data["level"] and (tool == "" or tier >= data["tier"]):
 					options.append(id)
 			var resource: Dictionary = GatherDB.RESOURCES[options.pick_random()]

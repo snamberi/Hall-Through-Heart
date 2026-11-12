@@ -16,6 +16,7 @@ const MATTER := {
 	"cinder_imp": [Color(1.0, 0.55, 0.2), "ember"], "bog_lurker": [Color(0.45, 0.65, 0.25), "slime"], "storm_harpy": [Color(0.6, 0.08, 0.1), "blood"],
 	"marsh_toad": [Color(0.5, 0.75, 0.3), "slime"], "shore_crab": [Color(0.85, 0.5, 0.4), "slime"],
 	"_dust": [Color(0.62, 0.56, 0.46), "smoke"],
+	"_wood": [Color(0.74, 0.56, 0.32), "stone"], "_stone": [Color(0.62, 0.62, 0.68), "stone"], "_leaf": [Color(0.42, 0.66, 0.3), "stone"],
 }
 
 var _drops: Array = []

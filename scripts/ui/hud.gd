@@ -169,25 +169,34 @@ func _draw_gather() -> void:
 		return
 	if _player.state != Player.State.MOVE:
 		return
+	var use_key := "[Right click]"
 	var npc := _player.nearest_npc()
 	if npc:
-		var talk := "[F]  %s" % npc.prompt()
+		var talk := "%s  %s" % [use_key, npc.prompt()]
 		_gather.draw_string_outline(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
 		_gather.draw_string(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.GOLD)
 		return
 	var prop := _player.nearest_prop()
 	if prop:
-		var action := "[F]  %s" % prop.prompt_text if prop.on_interact.is_valid() else prop.prompt_text
+		var action := "%s  %s" % [use_key, prop.prompt_text] if prop.on_interact.is_valid() else prop.prompt_text
 		_gather.draw_string_outline(font, Vector2(0, 16), action, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
 		_gather.draw_string(font, Vector2(0, 16), action, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.GOLD if prop.on_interact.is_valid() else UITheme.DIM)
 		return
-	var node := _player.nearest_resource()
-	if node == null:
+	# What a left click would work on: the thing under the mouse first.
+	var text := ""
+	var good := true
+	var node: ResourceNode = _player.hover_node if is_instance_valid(_player.hover_node) else _player.nearest_resource()
+	if node:
+		var reason := node.blocked_reason(_player)
+		good = reason == ""
+		var pointed := node == _player.hover_node
+		text = ("[Left click]  %s" if pointed else "Point and click:  %s") % node.prompt() if good else "%s  -  %s" % [GatherDB.display_name(node.resource_id), reason]
+	elif not _player.hover_record.is_empty():
+		text = "[Left click]  Take down the %s" % str(ItemDB.ITEMS[Buildings.KINDS[_player.hover_record["kind"]]["item"]]["name"]).to_lower()
+	if text == "":
 		return
-	var reason := node.blocked_reason(_player)
-	var text := "[F]  %s" % node.prompt() if reason == "" else "%s  -  %s" % [GatherDB.display_name(node.resource_id), reason]
 	_gather.draw_string_outline(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
-	_gather.draw_string(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.TEXT if reason == "" else UITheme.BAD)
+	_gather.draw_string(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.TEXT if good else UITheme.BAD)
 
 
 ## Draws `bar` as an ornate gauge: a dark trough, the fill with a sheen and
