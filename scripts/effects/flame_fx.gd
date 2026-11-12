@@ -9,6 +9,12 @@ var size := 1.0
 var smoke := true
 
 var _phase := randf() * 100.0
+
+
+func _ready() -> void:
+	# So the ambience can find the nearest fire and let it crackle.
+	add_to_group("fires")
+
 ## [position, age, life, drift]
 var _sparks: Array = []
 ## [position, age, life, size]

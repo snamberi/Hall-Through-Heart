@@ -41,7 +41,7 @@ func _process(delta: float) -> void:
 		glow.position = Vector2(0, -20)
 		add_child(glow)
 		glow.create_tween().tween_property(glow, "energy", 0.0, 0.34)
-		Audio.play("hit", 0.0, 0.0)
+		Audio.play("thunder", -2.0, 0.1)
 		RingBurst.spawn(get_parent(), global_position, Color(0.75, 0.88, 1.0), RADIUS + 20.0)
 		if is_instance_valid(_player) and not _player.is_dead() and _player.global_position.distance_to(global_position) < RADIUS:
 			_player.take_damage(_player.health.max_health * 0.12, global_position, 1, "storm")

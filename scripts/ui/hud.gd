@@ -249,7 +249,11 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 			bar.draw_circle(medal, radius + 2.0, Color("402f1c"))
 			bar.draw_circle(medal, radius, Color(0.07, 0.08, 0.13))
 			bar.draw_arc(medal, radius, 0.0, TAU, 24, Color("b08a4a"), 1.5)
-			bar.draw_texture_rect(ItemDB.icon(icon), Rect2(medal - Vector2(radius - 3.0, radius - 3.0), Vector2(radius - 3.0, radius - 3.0) * 2.0), false)
+			# The heart on the health bar beats with the player's own.
+			var beat := (radius - 3.0) * (1.0 + 0.28 * Heartbeat.pulse if icon == 35 else 1.0)
+			if icon == 35 and Heartbeat.tension > 0.22:
+				bar.draw_circle(medal, radius + 3.0 + 4.0 * Heartbeat.pulse, Color(0.9, 0.15, 0.15, 0.3 * Heartbeat.pulse))
+			bar.draw_texture_rect(ItemDB.icon(icon), Rect2(medal - Vector2(beat, beat), Vector2(beat, beat) * 2.0), false)
 		if values.is_valid() and size.y >= 14.0:
 			var font := UITheme.get_theme().default_font
 			var text: String = values.call()

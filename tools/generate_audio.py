@@ -153,18 +153,168 @@ def transform():
     return out
 
 
+def heartbeat():
+    """Lub-dub: two soft, low thumps."""
+    n = int(0.42 * RATE)
+    out = [0.0] * n
+    for start, strength, pitch in ((0.0, 1.0, 58.0), (0.17, 0.72, 72.0)):
+        for i in range(int(0.2 * RATE)):
+            t = i / RATE
+            j = int(start * RATE) + i
+            if j < n:
+                out[j] += 0.9 * strength * math.sin(2 * math.pi * (pitch - 60 * t) * t) * math.exp(-t * 26.0) * min(t / 0.006, 1.0)
+    return out
+
+
+def _filtered(seed, seconds, colour, level=1.0):
+    """Noise smoothed by a one-pole filter: colour near 0 is a low rumble, near 1 a hiss."""
+    rnd, low, out = noise(seed), 0.0, []
+    for _ in range(int(seconds * RATE)):
+        low += (rnd() - low) * colour
+        out.append(low * level)
+    return out
+
+
+def _loop(samples, overlap=0.25):
+    """Blends the tail into the head so the sound repeats without a click."""
+    k = int(overlap * RATE)
+    body = samples[:-k]
+    for i in range(k):
+        t = i / k
+        body[i] = body[i] * t + samples[len(samples) - k + i] * (1.0 - t)
+    return body
+
+
+def step(kind):
+    """One footfall: soft on grass, a click on stone, a crunch in snow, a plop in water, a hush on sand."""
+    n = int(0.11 * RATE)
+    rnd, low, out = noise({"grass": 11, "stone": 12, "snow": 13, "water": 14, "sand": 15}[kind]), 0.0, []
+    for i in range(n):
+        t = i / RATE
+        if kind == "stone":
+            low += (rnd() - low) * 0.6
+            out.append(0.5 * low * math.exp(-t * 70.0) + 0.3 * math.sin(2 * math.pi * 320 * t) * math.exp(-t * 90.0))
+        elif kind == "snow":
+            low += (rnd() - low) * 0.8
+            out.append(0.42 * low * math.sin(math.pi * min(t / 0.09, 1.0)) * (0.6 + 0.4 * math.sin(2 * math.pi * 55 * t)))
+        elif kind == "water":
+            low += (rnd() - low) * 0.35
+            out.append(0.5 * low * math.exp(-t * 28.0) + 0.25 * math.sin(2 * math.pi * (500 - 2400 * t) * t) * math.exp(-t * 40.0))
+        elif kind == "sand":
+            low += (rnd() - low) * 0.5
+            out.append(0.3 * low * math.sin(math.pi * min(t / 0.1, 1.0)))
+        else:
+            low += (rnd() - low) * 0.22
+            out.append(0.55 * low * math.exp(-t * 34.0))
+    return out
+
+
+def amb_wind():
+    """A slow sighing wind that loops."""
+    n = int(6.0 * RATE)
+    base = _filtered(21, 6.25, 0.035, 2.4)
+    return _loop([base[i] * (0.55 + 0.45 * math.sin(2 * math.pi * i / n) * math.sin(2 * math.pi * 2 * i / n + 1.0)) for i in range(len(base))])
+
+
+def amb_rain():
+    """Steady rain on leaves and ground, looping."""
+    hiss = _filtered(22, 4.25, 0.75, 0.33)
+    patter = _filtered(23, 4.25, 0.2, 0.9)
+    return _loop([hiss[i] + patter[i] * 0.5 for i in range(len(hiss))])
+
+
+def amb_night():
+    """Crickets: bursts of a high trill over a quiet bed, looping."""
+    n = int(5.25 * RATE)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        chirp = 1.0 if (t * 2.2) % 1.0 < 0.34 else 0.0
+        trill = 0.5 + 0.5 * math.sin(2 * math.pi * 38 * t)
+        second = 1.0 if ((t + 0.37) * 1.3) % 1.0 < 0.2 else 0.0
+        out.append(0.11 * chirp * trill * math.sin(2 * math.pi * 4300 * t) + 0.07 * second * trill * math.sin(2 * math.pi * 3600 * t))
+    return _loop(out)
+
+
+def amb_cave():
+    """The hollow breath of a cave: a low drone that swells and sinks, looping."""
+    n = int(6.25 * RATE)
+    rumble = _filtered(24, 6.25, 0.012, 5.0)
+    return _loop([rumble[i] * 0.7 + 0.05 * math.sin(2 * math.pi * 61 * i / RATE) * (0.5 + 0.5 * math.sin(2 * math.pi * i / n)) for i in range(n)])
+
+
+def amb_fire():
+    """A fire: a soft roar with pops and cracks, looping."""
+    n = int(3.25 * RATE)
+    roar = _filtered(25, 3.25, 0.06, 1.6)
+    rnd = noise(26)
+    out = [roar[i] * 0.5 for i in range(n)]
+    i = 0
+    while i < n - 400:
+        if rnd() > 0.9993:
+            strength = 0.3 + 0.5 * abs(rnd())
+            for k in range(300):
+                out[i + k] += strength * rnd() * math.exp(-k / 40.0)
+            i += 300
+        i += 1
+    return _loop(out)
+
+
+def bird():
+    """Two quick falling chirps."""
+    out = []
+    for start, pitch in ((0.0, 3200.0), (0.14, 2800.0)):
+        for i in range(int(0.14 * RATE)):
+            t = i / RATE
+            if t < 0.09:
+                out.append(0.28 * math.sin(2 * math.pi * (pitch + 900 * math.sin(t * 60.0)) * t) * math.sin(math.pi * t / 0.09))
+            else:
+                out.append(0.0)
+    return out
+
+
+def drip():
+    """A drop of water falling into a pool, with an echo."""
+    n = int(0.5 * RATE)
+    out = [0.0] * n
+    for start, strength in ((0.0, 1.0), (0.16, 0.3), (0.3, 0.12)):
+        for i in range(int(0.12 * RATE)):
+            t = i / RATE
+            j = int(start * RATE) + i
+            if j < n:
+                out[j] += 0.4 * strength * math.sin(2 * math.pi * (900 + 1400 * t) * t) * math.exp(-t * 34.0)
+    return out
+
+
+def thunder():
+    """A crack, then a long rolling rumble."""
+    n = int(2.4 * RATE)
+    rumble = _filtered(27, 2.4, 0.02, 6.0)
+    rnd = noise(28)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        crack = 0.7 * rnd() * math.exp(-t * 22.0)
+        out.append((crack + rumble[i] * (0.9 * math.exp(-t * 1.5) * (0.6 + 0.4 * math.sin(t * 9.0)))) * min(t / 0.004, 1.0))
+    return out
+
+
+SFX = (("ui_hover", lambda: ui_hover()), ("ui_click", lambda: ui_click()), ("chop", lambda: chop()), ("mine", lambda: mine()), ("transform", lambda: transform()),
+       ("heartbeat", lambda: heartbeat()), ("step_grass", lambda: step("grass")), ("step_stone", lambda: step("stone")), ("step_snow", lambda: step("snow")),
+       ("step_water", lambda: step("water")), ("step_sand", lambda: step("sand")), ("amb_wind", lambda: amb_wind()), ("amb_rain", lambda: amb_rain()),
+       ("amb_night", lambda: amb_night()), ("amb_cave", lambda: amb_cave()), ("amb_fire", lambda: amb_fire()), ("bird", lambda: bird()), ("drip", lambda: drip()),
+       ("thunder", lambda: thunder()))
+
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "sfx":
-        # Only the short effects; leaves the music alone.
-        for name, make in (("ui_hover", ui_hover), ("ui_click", ui_click), ("chop", chop), ("mine", mine), ("transform", transform)):
+        # Only the effects and ambience; leaves the music alone.
+        for name, make in SFX:
             write(name + ".wav", make())
         sys.exit(0)
-    write("ui_hover.wav", ui_hover())
-    write("ui_click.wav", ui_click())
-    write("chop.wav", chop())
-    write("mine.wav", mine())
-    write("transform.wav", transform())
+    for name, make in SFX:
+        write(name + ".wav", make())
     write("level_up.wav", level_up())
     write("swing.wav", swing())
     write("hit.wav", hit())

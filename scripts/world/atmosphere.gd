@@ -79,6 +79,7 @@ const PARTICLES := {
 	"dust": {"color": Color(0.9, 0.82, 0.62, 0.6), "gravity": Vector2(40, 2), "speed": 30.0, "size": 2.0, "amount": 50},
 	"leaves": {"color": Color(0.55, 0.75, 0.4, 0.85), "gravity": Vector2(14, 22), "speed": 15.0, "size": 2.5, "amount": 30},
 	"fireflies": {"color": Color(0.9, 1.0, 0.5, 1.0), "gravity": Vector2(0, 0), "speed": 18.0, "size": 2.0, "amount": 40},
+	"motes": {"color": Color(0.9, 0.85, 0.7, 0.5), "gravity": Vector2(2, 3), "speed": 6.0, "size": 1.6, "amount": 46},
 }
 
 var _player: Player
@@ -172,6 +173,9 @@ func _read_place() -> void:
 	var kind := ""
 	if _player.indoors:
 		_target_density = 0.0
+		# Dust hangs in the still air of caves and crypts.
+		if _day_night.cave_dark > 0.3:
+			kind = "motes"
 	else:
 		var tile := _world.tile_type_at_position(_player.global_position)
 		var weather: Array = WEATHER.get(tile, [Color(0.82, 0.84, 0.86), 0.1, ""])
@@ -206,7 +210,7 @@ func _read_place() -> void:
 	_particles.initial_velocity_min = settings["speed"] * 0.5
 	_particles.initial_velocity_max = settings["speed"]
 	_particles.direction = Vector2(0.3, 1.0) if kind in ["snow", "ash", "leaves"] else Vector2(0, -1)
-	_particles.spread = 180.0 if kind in ["fireflies", "spores", "void"] else 25.0
+	_particles.spread = 180.0 if kind in ["fireflies", "spores", "void", "motes"] else 25.0
 	_particles.scale_amount_min = settings["size"] * 0.7
 	_particles.scale_amount_max = settings["size"]
 	_particles.texture = _streak if settings.get("streak", false) else null

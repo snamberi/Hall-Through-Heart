@@ -107,6 +107,19 @@ func _ready() -> void:
 	$Exploration.setup(_player, _world)
 	_resources.setup(_world)
 	$Atmosphere.setup(_player, _world, _day_night)
+	var heart := Heartbeat.new()
+	heart.name = "Heartbeat"
+	add_child(heart)
+	move_child(heart, $Atmosphere.get_index() + 1)
+	heart.setup(_player)
+	var ambience := Ambience.new()
+	ambience.name = "Ambience"
+	add_child(ambience)
+	ambience.setup(_player, _world, _day_night)
+	var steps := Footsteps.new()
+	steps.name = "Footsteps"
+	_player.add_child(steps)
+	steps.setup(_player, _world)
 	var ground_fx := GroundFX.new()
 	ground_fx.name = "GroundFX"
 	add_child(ground_fx)

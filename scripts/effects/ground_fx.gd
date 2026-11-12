@@ -53,6 +53,9 @@ var _glints: Array = []
 var _waves: Array = []
 ## [position, age, on water]
 var _splashes: Array = []
+## Cloud shadows drifting over the land: [start offset, radius, speed scale].
+var _clouds: Array = []
+const CLOUD_FIELD := Vector2(2600.0, 1700.0)
 var _snow_layer: Node2D
 var _snow_material: ShaderMaterial
 var _snow_drawn := false
@@ -66,6 +69,8 @@ func setup(player: Player, world: World, day_night: DayNight) -> void:
 	_day_night = day_night
 	z_as_relative = false
 	z_index = -8
+	for k in 7:
+		_clouds.append([Vector2(randf() * CLOUD_FIELD.x, randf() * CLOUD_FIELD.y), randf_range(190.0, 380.0), randf_range(0.7, 1.3)])
 	var noise := FastNoiseLite.new()
 	noise.frequency = 0.02
 	noise.fractal_octaves = 3
@@ -208,6 +213,14 @@ func _draw_snow() -> void:
 func _draw() -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	var daylight := 1.0 - _day_night.darkness()
+	# Shadows of clouds crossing the land on a fair day.
+	if daylight > 0.25 and Atmosphere.weather == "":
+		var here := _player.global_position
+		for cloud: Array in _clouds:
+			var drifted: Vector2 = cloud[0] + Vector2(14.0, 5.0) * t * cloud[2]
+			var at := here + Vector2(wrapf(drifted.x - here.x, -CLOUD_FIELD.x / 2.0, CLOUD_FIELD.x / 2.0), wrapf(drifted.y - here.y, -CLOUD_FIELD.y / 2.0, CLOUD_FIELD.y / 2.0))
+			var radius: float = cloud[1]
+			draw_texture_rect(Prop.LIGHT, Rect2(at - Vector2(radius * 1.5, radius), Vector2(radius * 3.0, radius * 2.0)), false, Color(0.0, 0.0, 0.05, 0.3 * daylight))
 	# Foam lapping in and out along each shore.
 	for edge: Array in _foam:
 		var rect: Rect2 = edge[0]
