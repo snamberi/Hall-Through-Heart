@@ -146,6 +146,105 @@ HUMAN = {
 }
 HUMAN_ORDER = ["leg_l", "leg_r", "torso", "arm_l", "sword", "arm_r", "head"]
 
+# The player's own body is drawn bald: hair, beards, ears, horns, tails and
+# the rest are separate layers (LOOKS below), so each can be chosen and
+# coloured. NPCs keep the plain HUMAN head.
+HUMAN_BALD = dict(HUMAN, head=dict(parent="torso", pivot=(22, 25), parts=[
+    ("skin", E(12.5, 5.5, 31.5, 26)),
+    ("void", R(17, 17, 18, 19)), ("void", R(25, 17, 26, 19)),
+    ("skin_shade", R(21.6, 20.6, 22.4, 21.4))]))
+
+
+def _arc(cx, cy, rx, ry, start, end, steps=12):
+    """Points along an ellipse from angle start to end (degrees, y down)."""
+    return [(cx + rx * math.cos(math.radians(start + (end - start) * i / steps)),
+             cy + ry * math.sin(math.radians(start + (end - start) * i / steps))) for i in range(steps + 1)]
+
+
+def _mirror(points):
+    return [(44 - x, y) for x, y in reversed(points)]
+
+
+def _cap(fringe, rx=12, ry=10, cy=13):
+    """Hair over the top of the head: an arc from ear to ear, then back
+    along the fringe line (given right to left)."""
+    return _arc(22, cy, rx, ry, 180, 360) + fringe
+
+
+_TOUSLED = [(31, 14), (29, 12), (25, 9), (21, 12.5), (17, 9), (13, 13)]
+_LOCK_L = [(10, 13), (13.4, 13), (13.2, 19), (12, 22), (10.4, 19)]
+_CROP = [(31, 11), (27, 9.5), (22, 9), (17, 9.5), (13, 11)]
+_M = "plate"
+_D = "plate_dark"
+# Every layer is drawn in pale greys and coloured in the game (hair colour,
+# skin tone, eye colour), except bone, teeth and paint, which keep theirs.
+LOOKS = {
+    "hair_0": {"head": [(_M, _cap(_TOUSLED)), (_M, _LOCK_L), (_M, _mirror(_LOCK_L)), (_D, [(15, 7), (19, 5), (19.5, 6), (16, 8)])]},
+    "hair_1": {"head": [(_M, _cap(_CROP, 10.6, 8.6)), (_D, [(15, 8), (22, 6.4), (29, 8), (22, 7.4)])]},
+    "hair_2": {"head": [(_M, _cap(_TOUSLED)), (_M, [(10, 13), (13.4, 13), (13.6, 29), (10.6, 30.5), (8.6, 22)]), (_M, _mirror([(10, 13), (13.4, 13), (13.6, 29), (10.6, 30.5), (8.6, 22)])),
+                        (_D, R(11, 20, 11.8, 28)), (_D, R(32.2, 20, 33, 28))]},
+    "hair_3": {"head": [(_M, _cap(_CROP, 10.8, 9)), (_M, [(30, 7), (35, 8), (38.5, 13), (38, 22), (35, 26), (35.5, 16), (32, 11.5)]), ("guard", R(32.6, 8.6, 34.6, 10.6)),
+                        (_D, [(36, 14), (37, 14), (36.6, 22), (35.8, 22)])]},
+    "hair_4": {"head": [(_M, [(19.2, 11), (18.6, 3), (20, -0.5), (22, -3), (24, -0.5), (25.4, 3), (24.8, 11)]), (_D, R(21.6, -1, 22.4, 10))]},
+    "hair_5": {"head": [(_M, _cap(_CROP, 10.6, 8.6)), (_M, E(18.4, -2.5, 25.6, 4.8)), ("guard", R(19.6, 4, 24.4, 5.2))]},
+    "hair_6": {"head": [(_M, [(10, 13), (8, 8), (11.5, 9), (11, 3), (15, 6), (16, 0), (20, 4), (22, -2.5), (24, 4), (28, 0), (29, 6), (33, 3), (32.5, 9), (36, 8), (34, 13)] + _TOUSLED),
+                        (_M, _LOCK_L), (_M, _mirror(_LOCK_L))]},
+    "hair_7": {"head": [(_M, _cap([(31, 13.2), (22, 12.2), (13, 13.2)])), (_M, [(9.6, 13), (13.4, 13), (13.6, 23), (12, 25.5), (9.4, 23)]), (_M, _mirror([(9.6, 13), (13.4, 13), (13.6, 23), (12, 25.5), (9.4, 23)])),
+                        (_D, [(13, 11), (22, 10), (31, 11), (22, 10.8)])]},
+    "hair_8": {"head": [(_M, _cap(_TOUSLED)), (_M, R(10.4, 13, 13.2, 31)), (_M, R(30.8, 13, 33.6, 31)), ("guard", R(10.2, 20, 13.4, 21)), ("guard", R(10.2, 26, 13.4, 27)),
+                        ("guard", R(30.6, 20, 33.8, 21)), ("guard", R(30.6, 26, 33.8, 27))]},
+    "hair_9": {"head": [(_M, _cap(_TOUSLED, 14.5, 12.5)), (_M, [(7.5, 13), (13.4, 13), (13.4, 22), (11, 27.5), (8.5, 26), (6.5, 20)]), (_M, _mirror([(7.5, 13), (13.4, 13), (13.4, 22), (11, 27.5), (8.5, 26), (6.5, 20)])),
+                        (_D, [(12, 5), (16, 2), (17, 3), (13.5, 6.5)]), (_D, [(27, 2.5), (31, 5), (30, 6), (26.5, 3.5)])]},
+    "hair_10": {"head": [(_M, _cap([(31, 13), (27, 10), (22, 13), (18, 18.5), (14, 19.5), (12, 16)])), (_M, _mirror(_LOCK_L)), (_D, [(15, 9), (24, 8), (19, 15), (16.5, 16.5)])]},
+    "hair_11": {"head": [(_M, _arc(22, 9.5, 14, 11.5, 150, 390, 16) + [(31, 13.5), (28, 10.5), (22, 9.5), (16, 10.5), (13, 13.5)]),
+                         (_D, E(13, 2, 15, 4)), (_D, E(20, -0.5, 22, 1.5)), (_D, E(28, 1.5, 30, 3.5)), (_D, E(9.5, 9, 11.5, 11)), (_D, E(32.5, 8, 34.5, 10))]},
+    "hair_12": {"head": [(_M, _cap([(31, 16.5), (28, 11.5), (22, 8.5), (16, 11.5), (13, 16.5)])), (_M, _LOCK_L), (_M, _mirror(_LOCK_L)), (_D, R(21.7, 3.5, 22.3, 8.5))]},
+    "beard_1": {"head": [(_M, [(17.4, 21.8), (22, 21.2), (26.6, 21.8), (27.6, 23.2), (22, 22.6), (16.4, 23.2)])]},
+    "beard_2": {"head": [(_M, [(17.4, 21.8), (22, 21.2), (26.6, 21.8), (27.6, 23.2), (22, 22.6), (16.4, 23.2)]), (_M, [(19.8, 23.6), (24.2, 23.6), (23.4, 28), (22, 29), (20.6, 28)])]},
+    "beard_3": {"head": [(_M, [(13.6, 19), (15.6, 21.6), (18.4, 22.4), (22, 21.6), (25.6, 22.4), (28.4, 21.6), (30.4, 19), (30.2, 23.6), (27.4, 26.8), (22, 28), (16.6, 26.8), (13.8, 23.6)]),
+                         (_D, R(19.6, 23, 24.4, 23.7))]},
+    "beard_4": {"head": [(_M, [(13.6, 19), (15.6, 21.6), (18.4, 22.4), (22, 21.6), (25.6, 22.4), (28.4, 21.6), (30.4, 19), (30.4, 25), (27.6, 30), (22, 35), (16.4, 30), (13.6, 25)]),
+                         (_D, R(19.6, 23, 24.4, 23.7)), (_D, R(21.7, 26, 22.3, 33))]},
+    "beard_5": {"head": [(_M, [(13.8, 19.4), (15.6, 21.6), (18.4, 22.4), (22, 21.6), (25.6, 22.4), (28.4, 21.6), (30.2, 19.4), (30, 24), (27, 27), (25.6, 33), (23.4, 27.6), (22, 28), (20.6, 27.6),
+                                   (18.4, 33), (17, 27), (14, 24)]), ("guard", R(17.4, 29.6, 19.6, 30.6)), ("guard", R(24.4, 29.6, 26.6, 30.6))]},
+    "ears_1": {"head": [(_M, [(13.4, 15), (9, 11), (8.4, 13), (12.8, 20.4)]), (_M, _mirror([(13.4, 15), (9, 11), (8.4, 13), (12.8, 20.4)]))]},
+    "ears_2": {"head": [(_M, [(13.4, 15.6), (5, 11.6), (3.6, 13.4), (12.8, 21)]), (_M, _mirror([(13.4, 15.6), (5, 11.6), (3.6, 13.4), (12.8, 21)])),
+                        (_D, [(11.6, 16.6), (7, 14), (11.4, 19)]), (_D, _mirror([(11.6, 16.6), (7, 14), (11.4, 19)]))]},
+    "ears_3": {"head": [(_M, [(12.4, 9.4), (11.6, 1), (18.4, 5.6)]), (_M, _mirror([(12.4, 9.4), (11.6, 1), (18.4, 5.6)])), ("gill", [(13.4, 7.6), (13, 3.6), (16, 5.8)]),
+                        ("gill", _mirror([(13.4, 7.6), (13, 3.6), (16, 5.8)]))]},
+    "ears_4": {"head": [(_M, [(13.2, 14), (8, 9.6), (7.4, 14), (9.4, 16.4), (7.8, 20), (12.8, 21)]), (_M, _mirror([(13.2, 14), (8, 9.6), (7.4, 14), (9.4, 16.4), (7.8, 20), (12.8, 21)])),
+                        (_D, [(12, 15), (9, 12.4), (11.6, 17)]), (_D, _mirror([(12, 15), (9, 12.4), (11.6, 17)]))]},
+    "horns_1": {"head": [("bone", [(14.6, 8), (12.6, 1), (17.6, 5.6)]), ("bone", _mirror([(14.6, 8), (12.6, 1), (17.6, 5.6)]))]},
+    "horns_2": {"head": [("bone", [(15, 8.6), (11, 4), (7.4, 5.6), (6, 10), (8, 14), (11.6, 13.6), (10, 11), (10.4, 8.6), (12.6, 9.4)]),
+                         ("bone", _mirror([(15, 8.6), (11, 4), (7.4, 5.6), (6, 10), (8, 14), (11.6, 13.6), (10, 11), (10.4, 8.6), (12.6, 9.4)])),
+                         ("rib", [(8.6, 7), (9.4, 7.4), (8, 11), (7.4, 10.4)]), ("rib", _mirror([(8.6, 7), (9.4, 7.4), (8, 11), (7.4, 10.4)]))]},
+    "horns_3": {"head": [("bone", [(15, 8.4), (10.6, 3), (11.4, -4.6), (14.8, 0.6), (18.4, 6)]), ("bone", _mirror([(15, 8.4), (10.6, 3), (11.4, -4.6), (14.8, 0.6), (18.4, 6)]))]},
+    "horns_4": {"head": [("bone", [(15.4, 8), (13, 2), (9, -1), (9.6, -2), (13, 0), (12.4, -4), (13.6, -4), (14.4, 0.6), (16.6, -2.6), (17.6, -2), (15.2, 2.4), (17.4, 7)]),
+                         ("bone", _mirror([(15.4, 8), (13, 2), (9, -1), (9.6, -2), (13, 0), (12.4, -4), (13.6, -4), (14.4, 0.6), (16.6, -2.6), (17.6, -2), (15.2, 2.4), (17.4, 7)]))]},
+    "horns_5": {"head": [("crystal", [(14, 8.6), (12, 1), (16, 5)]), ("crystal", [(20, 6.6), (22, -3.4), (24, 6.6)]), ("crystal", [(30, 8.6), (32, 1), (28, 5)]), ("frost", [(21.4, 2), (22, -1.4), (22.6, 2)])]},
+    "horns_6": {"head": [("bone", [(20.4, 7.6), (22, -4.6), (23.6, 7.6)]), ("rib", R(20.8, 3.4, 23.2, 4)), ("rib", R(21.2, 0, 22.8, 0.6))]},
+    "tail_1": {"torso": [(_M, [(19, 31), (11, 34.6), (6.4, 31), (5, 25.4), (6.6, 25), (8.2, 29.6), (11.4, 32.4), (19, 29.4)]), (_M, [(5.8, 26), (2.6, 22), (9, 22.8)])]},
+    "tail_2": {"torso": [(_M, [(18, 31), (9.4, 31), (3.6, 25), (4.4, 18), (9, 19.6), (11.4, 26), (18, 28)]), ("bone", [(4.4, 18), (9, 19.6), (7.6, 23), (4.2, 22)])]},
+    "tail_3": {"torso": [(_M, [(19, 29.6), (10, 33), (3, 38.4), (0.6, 41), (6.4, 40.6), (13.4, 37.4), (20, 34)]), (_D, [(9, 34.4), (10, 34), (11.4, 37.4), (10.4, 37.8)]),
+                         (_D, [(5, 37.6), (6, 37.2), (7, 39.6), (6, 40)])]},
+    "wings_1": {"torso": [(_M, [(15, 26), (5, 11), (0.4, 17), (4.6, 27), (14, 29.4)]), (_M, [(15, 29.4), (5.4, 31), (3.6, 38), (12.4, 36.4)]),
+                          (_M, _mirror([(15, 26), (5, 11), (0.4, 17), (4.6, 27), (14, 29.4)])), (_M, _mirror([(15, 29.4), (5.4, 31), (3.6, 38), (12.4, 36.4)])),
+                          (_D, [(13.6, 26.4), (6, 14.6), (6.8, 14), (14.4, 26)]), (_D, _mirror([(13.6, 26.4), (6, 14.6), (6.8, 14), (14.4, 26)]))]},
+    "wings_2": {"torso": [(_M, [(16, 25), (8, 13), (1, 10), (3.6, 17), (0.6, 21), (5.6, 23), (3.6, 29), (9.4, 28), (15, 31)]),
+                          (_M, _mirror([(16, 25), (8, 13), (1, 10), (3.6, 17), (0.6, 21), (5.6, 23), (3.6, 29), (9.4, 28), (15, 31)])),
+                          (_D, [(15.4, 25.6), (8, 13.6), (8.8, 13), (16, 25)]), (_D, _mirror([(15.4, 25.6), (8, 13.6), (8.8, 13), (16, 25)]))]},
+    "mark_1": {"head": [("wound", [(24.6, 13.6), (25.5, 13.6), (27.2, 21.4), (26.3, 21.4)])]},
+    "mark_2": {"head": [("blood", R(15.4, 20.2, 19.6, 21)), ("blood", R(24.4, 20.2, 28.6, 21)), ("blood", R(21.5, 12, 22.5, 16))]},
+    "mark_3": {"head": [("skin_shade", R(16, 20.6, 16.7, 21.3)), ("skin_shade", R(18.4, 21.4, 19.1, 22.1)), ("skin_shade", R(25, 21.4, 25.7, 22.1)), ("skin_shade", R(27.4, 20.6, 28.1, 21.3)),
+                        ("skin_shade", R(20.4, 19.6, 21.1, 20.3))]},
+    "mark_4": {"head": [("gill", E(14.6, 20, 17.6, 22)), ("gill", E(26.4, 20, 29.4, 22))]},
+    "mark_5": {"head": [("glow_cyan", [(20.8, 12.6), (22, 10.6), (23.2, 12.6), (22, 14.6)]), ("shine", R(21.6, 11.6, 22.2, 12.2))]},
+    "mark_6": {"head": [("void", R(14.6, 19.6, 18.6, 20.1)), ("void", R(15.2, 21, 18, 21.5)), ("void", R(15.8, 22.4, 17.4, 22.9)), ("void", R(26.6, 14, 27.1, 16.6))]},
+    "mark_7": {"head": [("tooth", [(17.8, 23), (19.6, 23), (18.7, 19.6)]), ("tooth", [(24.4, 23), (26.2, 23), (25.3, 19.6)])]},
+    "mark_8": {"head": [("tooth", [(19.8, 22.4), (21.2, 22.4), (20.5, 24.6)]), ("tooth", [(22.8, 22.4), (24.2, 22.4), (23.5, 24.6)])]},
+    "eyes": {"head": [(_M, R(17, 18, 18, 19)), (_M, R(25, 18, 26, 19))]},
+}
+
 HUSK = {
     "root": dict(parent=None, pivot=(22, 41), parts=[]),
     "back_arm": dict(parent="torso", pivot=(13, 22), parts=[("flesh", R(12, 22, 14, 38)), ("bone", [(11, 38), (15, 38), (13, 42)])]),
@@ -319,7 +418,7 @@ def _finish(pixels, plain):
     return out
 
 
-def draw_frame(rig, order, pose, shadow=True, rich=False):
+def draw_frame(rig, order, pose, shadow=True, rich=False, outline=True):
     ox, oy = FRAME_OFFSET
     pixels = {}
     plain = set()
@@ -353,7 +452,7 @@ def draw_frame(rig, order, pose, shadow=True, rich=False):
         pixels = _finish(pixels, plain)
     for (x, y), colour in pixels.items():
         img.putpixel((x, y), rgba(colour))
-    for y in range(FRAME):
+    for y in range(FRAME if outline else 0):
         for x in range(FRAME):
             if (x, y) in pixels:
                 continue
@@ -1075,19 +1174,20 @@ def draw_npc(changes, extras):
         PALETTE.update(saved)
 
 
-def draw_sheet(rig, order, animations, shadow=True, rich=False):
+def draw_sheet(rig, order, animations, shadow=True, rich=False, outline=True):
     columns = max(len(poses) for _name, poses in animations)
     sheet = Image.new("RGBA", (columns * FRAME, len(animations) * FRAME), (0, 0, 0, 0))
     for row, (_name, poses) in enumerate(animations):
         for column, pose in enumerate(poses):
-            sheet.paste(draw_frame(rig, order, pose, shadow, rich), (column * FRAME, row * FRAME))
+            sheet.paste(draw_frame(rig, order, pose, shadow, rich, outline), (column * FRAME, row * FRAME))
     return sheet
 
 
-def draw_layer_sheet(parts_by_group):
-    """One piece of equipment alone, moving exactly as the body part it sits on."""
+def draw_layer_sheet(parts_by_group, outline=True):
+    """One piece of equipment alone, moving exactly as the body part it sits on.
+    Small marks on the skin (scars, paint, eye colour) are drawn without an outline."""
     rig = {name: dict(group, parts=parts_by_group.get(name, [])) for name, group in HUMAN.items()}
-    return draw_sheet(rig, [name for name in HUMAN_ORDER if name in parts_by_group], HUMAN_ANIMATIONS, shadow=False)
+    return draw_sheet(rig, [name for name in HUMAN_ORDER if name in parts_by_group], HUMAN_ANIMATIONS, shadow=False, outline=outline)
 
 
 def weapon_icon_parts(parts):
@@ -1627,7 +1727,10 @@ def _draw_icon(parts):
 def main():
     os.makedirs(os.path.join(ROOT, "sprites"), exist_ok=True)
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
-    draw_sheet(HUMAN, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
+    draw_sheet(HUMAN_BALD, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
+    os.makedirs(os.path.join(ROOT, "sprites", "looks"), exist_ok=True)
+    for name, parts_by_group in LOOKS.items():
+        draw_layer_sheet(parts_by_group, outline=not name.startswith(("mark_", "eyes"))).save(os.path.join(ROOT, "sprites", "looks", name + ".png"))
     draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS, rich=True).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
     for name, (changes, extras) in NPCS.items():
         draw_npc(changes, extras).save(os.path.join(ROOT, "sprites", "npc_%s.png" % name))

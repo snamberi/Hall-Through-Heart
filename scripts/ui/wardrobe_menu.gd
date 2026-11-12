@@ -1,10 +1,10 @@
 class_name WardrobeMenu
 extends GameMenu
-## Changing how the character looks: colours, and looks earned through
-## achievements.
+## Changing how the character looks: every part of their appearance except
+## their race, and whole looks earned through achievements.
 
 var _preview: CharacterPreview
-var _rows: Dictionary = {}
+var _editor: AppearanceEditor
 var _looks: VBoxContainer
 var _note: Label
 
@@ -28,22 +28,24 @@ func _build() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
 	middle.add_child(box)
-	for part: Array in [["skin", "Skin", Appearance.SKIN_TONES], ["hair", "Hair", Appearance.HAIR], ["clothes", "Clothes", Appearance.CLOTHES], ["trousers", "Trousers", Appearance.TROUSERS]]:
-		box.add_child(UITheme.heading(part[1], 17))
-		var row := Swatches.create(part[2], int(player.appearance.get(part[0], 0)))
-		var key: String = part[0]
-		row.picked.connect(func(index: int) -> void:
-			player.set_appearance({key: index})
-			refresh()
-		)
-		box.add_child(row)
-		_rows[key] = row
+	_editor = AppearanceEditor.new()
+	_editor.allow_race = false
+	_editor.appearance = player.appearance.duplicate()
+	_editor.changed.connect(func(look: Dictionary) -> void:
+		var changes := look.duplicate()
+		# Race and the achievement look are not the editor's to change.
+		changes.erase("race")
+		changes.erase("look")
+		player.set_appearance(changes)
+		refresh()
+	)
+	box.add_child(_editor)
 	_note = UITheme.label("", 13, UITheme.DIM)
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_note.custom_minimum_size = Vector2(320, 40)
+	_note.custom_minimum_size = Vector2(440, 36)
 	box.add_child(_note)
 	var right := UITheme.inset_panel()
-	right.custom_minimum_size = Vector2(320, 440)
+	right.custom_minimum_size = Vector2(300, 440)
 	columns.add_child(right)
 	_looks = VBoxContainer.new()
 	_looks.add_theme_constant_override("separation", 6)
@@ -54,7 +56,9 @@ func refresh() -> void:
 	var codex: Codex = player.get_parent().get_node("Codex")
 	var unlocked := codex.skins()
 	var current: String = player.appearance.get("look", "wanderer")
-	_note.text = "Colours apply to the Wanderer look. Other looks set their own." if current != "wanderer" else "Pick colours for your wanderer."
+	var race: String = Appearance.RACES[Appearance.resolved(player.appearance)["race"]]["name"]
+	_note.text = "%s. Colours apply to the Wanderer look; other looks set their own." % race if current != "wanderer" else "%s. Change anything you like; only your race is for life." % race
+	_editor.set_appearance(player.appearance)
 	for child in _looks.get_children():
 		child.queue_free()
 	_looks.add_child(UITheme.heading("Looks", 17))
@@ -64,10 +68,10 @@ func refresh() -> void:
 		var button := UITheme.button(("> " if id == current else "") + look["name"] + ("" if open else "  (locked)"), func() -> void:
 			player.set_appearance({"look": id})
 			refresh()
-		, 290.0)
+		, 270.0)
 		button.disabled = not open
 		_looks.add_child(button)
 		var text := UITheme.label(look["text"], 12, UITheme.DIM)
 		text.autowrap_mode = TextServer.AUTOWRAP_WORD
-		text.custom_minimum_size = Vector2(290, 0)
+		text.custom_minimum_size = Vector2(270, 0)
 		_looks.add_child(text)

@@ -56,5 +56,8 @@ func _process(_delta: float) -> void:
 		if sprite.visible:
 			sprite.texture = sources[index].sprite_frames.get_frame_texture("idle", frame)
 			sprite.material = sources[index].material
+			# The figure keeps its own height and build.
+			sprite.scale = body.scale * SCALE
+			sprite.self_modulate.a = body.self_modulate.a if sources[index] == body else 1.0
 			# Frames are 96px with the feet 23px below the middle.
-			sprite.position = feet - Vector2(0, 23.0 * SCALE)
+			sprite.position = feet - Vector2(0, 23.0 * SCALE * body.scale.y)

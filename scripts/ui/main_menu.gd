@@ -13,6 +13,12 @@ var _appearance: Dictionary = Appearance.DEFAULT.duplicate()
 var _difficulty_buttons: Dictionary[String, Button] = {}
 var _difficulty_text: Label
 var _armed_delete := ""
+var _hardcore: CheckBox
+var _class := "adventurer"
+var _class_buttons: Dictionary[String, Button] = {}
+var _class_text: RichTextLabel
+var _figure: LookPreview
+var _editor: AppearanceEditor
 
 
 func _ready() -> void:
@@ -134,8 +140,11 @@ func _fill_save_list() -> void:
 			heading.text += "   (last played)"
 		text.add_child(heading)
 		var played := Time.get_datetime_string_from_unix_time(int(meta.get("played_at", 0)), true)
-		text.add_child(UITheme.label("%s  -  Level %d  -  Day %d  -  last played %s" % [
-			Difficulty.display_name(str(meta.get("difficulty", "normal"))), int(meta.get("level", 1)), int(meta.get("day", 1)), played], 14, UITheme.DIM))
+		var race := str(Appearance.RACES.get(str((meta.get("appearance", {}) as Dictionary).get("race", "human")), Appearance.RACES["human"])["name"])
+		var calling := str(HeroClasses.CLASSES.get(str(meta.get("class", meta.get("class_id", "adventurer"))), HeroClasses.CLASSES["adventurer"])["name"])
+		text.add_child(UITheme.label("%s%s  -  %s %s  -  Level %d  -  Day %d  -  last played %s" % [
+			"HARDCORE  -  " if meta.get("hardcore", false) else "", Difficulty.display_name(str(meta.get("difficulty", "normal"))), race, calling,
+			int(meta.get("level", 1)), int(meta.get("day", 1)), played], 14, UITheme.BAD if meta.get("hardcore", false) else UITheme.DIM))
 		var play := UITheme.button("Play", _play.bind(slot["id"]), 100.0)
 		play.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(play)
@@ -159,48 +168,130 @@ func _delete(id: String) -> void:
 
 func _new_page() -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 12)
-	var title := UITheme.heading("NEW WORLD", 30)
+	box.add_theme_constant_override("separation", 6)
+	var title := UITheme.heading("NEW WORLD", 24)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
-	box.add_child(UITheme.label("Name", 16))
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 14)
+	box.add_child(columns)
+
+	# --- left: the world, and the class
+	var world_panel := UITheme.inset_panel()
+	columns.add_child(world_panel)
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 6)
+	left.custom_minimum_size = Vector2(330.0, 0.0)
+	world_panel.add_child(left)
+	left.add_child(UITheme.heading("The world", 17))
 	_name_field = LineEdit.new()
 	_name_field.placeholder_text = "World %d" % (SaveGame.list_slots().size() + 1)
-	_name_field.custom_minimum_size = Vector2(640.0, 36.0)
-	box.add_child(_name_field)
-	box.add_child(UITheme.label("Difficulty", 16))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	box.add_child(row)
+	_name_field.custom_minimum_size = Vector2(330.0, 32.0)
+	left.add_child(_name_field)
+	_seed_field = LineEdit.new()
+	_seed_field.placeholder_text = "Seed (empty for a random world)"
+	_seed_field.custom_minimum_size = Vector2(330.0, 32.0)
+	left.add_child(_seed_field)
+	left.add_child(UITheme.label("Difficulty", 14, UITheme.DIM))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 4)
+	row.add_theme_constant_override("v_separation", 4)
+	left.add_child(row)
 	for level in Difficulty.LEVELS:
 		var button := Button.new()
 		button.text = Difficulty.display_name(level)
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_NONE
-		button.custom_minimum_size = Vector2(122.0, 40.0)
+		button.custom_minimum_size = Vector2(62.0, 32.0)
+		button.add_theme_font_size_override("font_size", 13)
 		button.pressed.connect(_choose_difficulty.bind(level))
+		UITheme.sounds(button)
 		row.add_child(button)
 		_difficulty_buttons[level] = button
-	_difficulty_text = UITheme.label("", 14, UITheme.DIM)
+	_hardcore = CheckBox.new()
+	_hardcore.text = "Hardcore: one life, always Insane"
+	_hardcore.focus_mode = Control.FOCUS_NONE
+	_hardcore.add_theme_font_size_override("font_size", 14)
+	_hardcore.toggled.connect(func(on: bool) -> void:
+		for level in _difficulty_buttons:
+			_difficulty_buttons[level].disabled = on
+		_choose_difficulty("insane" if on else "normal")
+	)
+	left.add_child(_hardcore)
+	_difficulty_text = UITheme.label("", 13, UITheme.DIM)
 	_difficulty_text.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_difficulty_text.custom_minimum_size = Vector2(640.0, 44.0)
-	box.add_child(_difficulty_text)
-	box.add_child(UITheme.label("Your look", 16))
-	var looks := GridContainer.new()
-	looks.columns = 2
-	looks.add_theme_constant_override("h_separation", 14)
-	looks.add_theme_constant_override("v_separation", 6)
-	box.add_child(looks)
-	for part: Array in [["skin", "Skin", Appearance.SKIN_TONES.slice(0, 5)], ["hair", "Hair", Appearance.HAIR], ["clothes", "Clothes", Appearance.CLOTHES]]:
-		looks.add_child(UITheme.label(part[1], 14, UITheme.DIM))
-		var swatches := Swatches.create(part[2], 0)
-		var key: String = part[0]
-		swatches.picked.connect(func(index: int) -> void: _appearance[key] = index)
-		looks.add_child(swatches)
-	box.add_child(UITheme.label("Seed (leave empty for a random world)", 16))
-	_seed_field = LineEdit.new()
-	_seed_field.custom_minimum_size = Vector2(640.0, 36.0)
-	box.add_child(_seed_field)
+	_difficulty_text.custom_minimum_size = Vector2(330.0, 36.0)
+	left.add_child(_difficulty_text)
+	left.add_child(UITheme.heading("Your class", 17))
+	var classes := GridContainer.new()
+	classes.columns = 2
+	classes.add_theme_constant_override("h_separation", 4)
+	classes.add_theme_constant_override("v_separation", 4)
+	left.add_child(classes)
+	for id: String in HeroClasses.CLASSES:
+		var data: Dictionary = HeroClasses.CLASSES[id]
+		var button := Button.new()
+		button.text = "  " + (data["name"] if id != "adventurer" else "Decide later")
+		button.icon = ItemDB.icon(data["icon"])
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.toggle_mode = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = Vector2(163.0, 34.0)
+		button.add_theme_font_size_override("font_size", 14)
+		button.add_theme_constant_override("icon_max_width", 20)
+		button.pressed.connect(_choose_class.bind(id))
+		UITheme.sounds(button)
+		classes.add_child(button)
+		_class_buttons[id] = button
+	_class_text = RichTextLabel.new()
+	_class_text.bbcode_enabled = true
+	_class_text.fit_content = true
+	_class_text.scroll_active = false
+	_class_text.custom_minimum_size = Vector2(330.0, 92.0)
+	_class_text.add_theme_font_size_override("normal_font_size", 13)
+	_class_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_child(_class_text)
+
+	# --- middle: the character, alive
+	var figure_panel := UITheme.inset_panel()
+	columns.add_child(figure_panel)
+	var middle := VBoxContainer.new()
+	middle.add_theme_constant_override("separation", 8)
+	figure_panel.add_child(middle)
+	_figure = LookPreview.new()
+	_figure.custom_minimum_size = Vector2(270.0, 356.0)
+	middle.add_child(_figure)
+	var figure_buttons := HBoxContainer.new()
+	figure_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	figure_buttons.add_theme_constant_override("separation", 6)
+	middle.add_child(figure_buttons)
+	figure_buttons.add_child(UITheme.button("Randomise", func() -> void:
+		_appearance = Appearance.random()
+		_editor.set_appearance(_appearance)
+		_figure.show_look(_appearance)
+	, 130.0))
+	var walk := Button.new()
+	walk.text = "Walk"
+	walk.toggle_mode = true
+	walk.focus_mode = Control.FOCUS_NONE
+	walk.custom_minimum_size = Vector2(90.0, 32.0)
+	walk.toggled.connect(func(on: bool) -> void: _figure.set_walking(on))
+	UITheme.sounds(walk)
+	figure_buttons.add_child(walk)
+	var count := UITheme.label("%d choices to make them yours" % Appearance.option_count(), 12, UITheme.DIM)
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	middle.add_child(count)
+
+	# --- right: every part of their look
+	var look_panel := UITheme.inset_panel()
+	columns.add_child(look_panel)
+	_editor = AppearanceEditor.new()
+	_editor.changed.connect(func(look: Dictionary) -> void:
+		_appearance = look.duplicate()
+		_figure.show_look(_appearance)
+	)
+	look_panel.add_child(_editor)
+
 	var buttons := HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 12)
@@ -208,6 +299,7 @@ func _new_page() -> Control:
 	buttons.add_child(UITheme.button("Back", show_page.bind("home"), 200.0))
 	buttons.add_child(UITheme.button("Create World", _create, 200.0))
 	_choose_difficulty("normal")
+	_choose_class("adventurer")
 	return _framed(box)
 
 
@@ -216,6 +308,28 @@ func _choose_difficulty(level: String) -> void:
 	for other in _difficulty_buttons:
 		_difficulty_buttons[other].set_pressed_no_signal(other == level)
 	_difficulty_text.text = Difficulty.DATA[level]["text"]
+	if _hardcore and _hardcore.button_pressed:
+		_difficulty_text.text = "One life. When you die the world is deleted. " + Difficulty.DATA["insane"]["text"]
+
+
+func _choose_class(id: String) -> void:
+	_class = id
+	for other in _class_buttons:
+		_class_buttons[other].set_pressed_no_signal(other == id)
+	var data: Dictionary = HeroClasses.CLASSES[id]
+	var lines: PackedStringArray = []
+	if id == "adventurer":
+		lines.append("[color=#%s]Start as an Adventurer and choose a class at level %d, in the Class screen.[/color]" % [UITheme.DIM.to_html(false), HeroClasses.CHOICE_LEVEL])
+	else:
+		lines.append("[color=#%s]%s[/color]" % [UITheme.TEXT.to_html(false), data["text"]])
+		for stat: String in data["mods"]:
+			for kind: String in data["mods"][stat]:
+				lines.append("[color=#%s]%s[/color]" % [UITheme.GOOD.to_html(false), ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": data["mods"][stat][kind]})])
+		var weapons: PackedStringArray = []
+		for weapon: String in data["weapons"]:
+			weapons.append(weapon.capitalize())
+		lines.append("[color=#%s]Favours %s. Its abilities open from level %d.[/color]" % [UITheme.DIM.to_html(false), ", ".join(weapons).to_lower(), HeroClasses.CHOICE_LEVEL])
+	_class_text.text = "\n".join(lines)
 
 
 func _create() -> void:
@@ -226,7 +340,7 @@ func _create() -> void:
 	var world_seed := 0
 	if seed_text != "":
 		world_seed = int(seed_text) if seed_text.is_valid_int() else hash(seed_text)
-	var id := SaveGame.create_slot(world_name, _difficulty, world_seed, _appearance)
+	var id := SaveGame.create_slot(world_name, _difficulty, world_seed, _appearance, _class, _hardcore.button_pressed)
 	_play(id)
 
 

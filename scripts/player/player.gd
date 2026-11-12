@@ -140,12 +140,19 @@ const BOAT_SPEED := 1.35
 func _ready() -> void:
 	SaveGame.register("character", self)
 	if not SaveGame.get_section("character").has("appearance"):
-		# A new world: the look chosen when it was made.
-		var chosen: Variant = SaveGame.get_section("meta").get("appearance", {})
+		# A new world: the look and the class chosen when it was made.
+		var meta := SaveGame.get_section("meta")
+		var chosen: Variant = meta.get("appearance", {})
 		if chosen is Dictionary:
 			appearance.merge(chosen, true)
+		var chosen_class := str(meta.get("class_id", "adventurer"))
+		if HeroClasses.CLASSES.has(chosen_class) and chosen_class != "adventurer":
+			class_id = chosen_class
+			# Class points start to come at the level a class used to be chosen.
+			class_chosen_at = HeroClasses.CHOICE_LEVEL
 	_animator.apply_appearance(appearance)
 	stats.setup(attributes, mastery)
+	stats.set_modifiers_quietly("race", Appearance.race_mods(appearance))
 	buffs.setup(stats)
 	StatusFX.attach(self, active_statuses, 44.0, 12.0)
 	var uniques := Uniques.new()
@@ -856,6 +863,7 @@ func save_data() -> Dictionary:
 func set_appearance(changes: Dictionary) -> void:
 	appearance.merge(changes, true)
 	_animator.apply_appearance(appearance)
+	stats.set_modifiers("race", Appearance.race_mods(appearance))
 	SaveGame.request_save()
 
 
@@ -878,6 +886,7 @@ func load_data(data: Dictionary) -> void:
 		appearance.merge(saved_look, true)
 	if is_node_ready():
 		_animator.apply_appearance(appearance)
+		stats.set_modifiers("race", Appearance.race_mods(appearance))
 
 
 func _process_move(delta: float) -> void:

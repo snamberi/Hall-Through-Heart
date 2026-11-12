@@ -26,9 +26,19 @@ const ROWS: Array[Dictionary] = [
 ## Below this speed the player walks rather than runs, in pixels/second.
 const RUN_SPEED := 150.0
 
-## Equipment layers, back to front. "behind" layers draw under the body.
+## Layers over the body, back to front: first the character's own features
+## (hair, ears, horns... see Appearance), then what they wear. "behind"
+## layers draw under the body.
 const LAYERS: Array[Dictionary] = [
+	{"name": "look_tail", "behind": true},
+	{"name": "look_wings", "behind": true},
 	{"name": "cape", "behind": true},
+	{"name": "look_ears", "behind": false},
+	{"name": "look_eyes", "behind": false},
+	{"name": "look_mark", "behind": false},
+	{"name": "look_beard", "behind": false},
+	{"name": "look_hair", "behind": false},
+	{"name": "look_horns", "behind": false},
 	{"name": "chest", "behind": false},
 	{"name": "shoulders", "behind": false},
 	{"name": "helmet", "behind": false},
@@ -132,7 +142,7 @@ func _process(delta: float) -> void:
 	if _player.swimming:
 		var sink := 19.0 if _player.deep_water else 13.0
 		var bob := sin(Time.get_ticks_msec() / 220.0) * 1.5
-		position.y = -23.0 + sink + bob
+		position.y = _rest_y + sink + bob
 		# The waterline sits a little below the shoulders whatever the depth;
 		# the body below it is cut away so the real water shows through.
 		_water.position.y = 19.0 - sink
@@ -142,8 +152,8 @@ func _process(delta: float) -> void:
 		if _ripple_left <= 0.0 and _player.velocity.length() > 30.0:
 			_ripple_left = 0.22
 			_spawn_ripple()
-	elif position.y != -23.0:
-		position.y = -23.0
+	elif position.y != _rest_y:
+		position.y = _rest_y
 		_set_water_line(9999.0)
 		_water.position.y = 0.0
 
@@ -269,19 +279,59 @@ func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 			best = item
 	_aura_color = best.color() if best else Color.TRANSPARENT
 	_update_hood()
+	_show_features()
 	queue_redraw()
 
 
-## Recolours the body for the player's appearance.
+## Where the sprite's middle sits so the feet rest on the ground, whatever
+## the character's height.
+var _rest_y := -23.0
+## Features a helmet covers.
+const UNDER_HELMET: Array[String] = ["hair", "horns"]
+var _features: Dictionary = {}
+
+
+## Dresses the body for the player's appearance: colours, size, and the
+## feature layers (hair, beard, ears, horns, tail, wings, marks, eyes).
 func apply_appearance(appearance: Dictionary) -> void:
+	if _layers.is_empty():
+		await ready
 	if material is ShaderMaterial and (material as ShaderMaterial).shader.code == Appearance.SHADER:
 		Appearance.update_material(material, appearance)
 	else:
 		material = Appearance.make_material(appearance)
 		_water_line = 9999.0
+	scale = Appearance.body_scale(appearance)
+	_rest_y = -23.0 * scale.y
+	position.y = _rest_y
+	self_modulate.a = Appearance.alpha(appearance)
+	_features = Appearance.layers(appearance)
+	_show_features()
 	_hood_color = Appearance.hood(appearance)
-	if not _layers.is_empty():
-		_update_hood()
+	_update_hood()
+
+
+## Shows each feature layer the character has; a helmet hides hair and horns.
+func _show_features() -> void:
+	var helmeted := _layers["helmet"].visible or _layers["hood"].visible
+	for feature in Appearance.FEATURES:
+		var slot: String = feature[0]
+		var sprite := _layers["look_" + slot]
+		if not _features.has(slot) or (helmeted and slot in UNDER_HELMET):
+			sprite.visible = false
+			continue
+		var path: String = "looks/" + _features[slot]["sheet"]
+		if not _frames_cache.has(path):
+			_frames_cache[path] = SheetAnimations.build(load("res://assets/sprites/%s.png" % path), FRAME_SIZE, ROWS)
+		sprite.sprite_frames = _frames_cache[path]
+		sprite.animation = animation
+		sprite.frame = frame
+		sprite.visible = true
+		var look_material := sprite.material as ShaderMaterial
+		look_material.set_shader_parameter("tint", _features[slot]["tint"])
+		look_material.set_shader_parameter("rarity_color", Color.BLACK)
+		look_material.set_shader_parameter("outline_mix", 0.0)
+		look_material.set_shader_parameter("glow", 0.0)
 
 
 var _hood_color := Color.TRANSPARENT
