@@ -77,6 +77,8 @@ var swimming := false
 ## True while choosing where to set something down; clicks place it
 ## instead of attacking.
 var placing := false
+## The view pulls back a little in build mode (1 is normal).
+var view_zoom := 1.0
 ## True in deep water: slower still.
 var deep_water := false
 ## Seconds since the player was last hurt; health returns by itself after 5.
@@ -223,7 +225,7 @@ func _physics_process(delta: float) -> void:
 	if since_hurt > (2.0 if undying else 5.0):
 		health.heal((health.max_health * (0.04 if undying else 0.02) + stats.get_stat("health_regen")) * delta)
 	if state == State.MOVE or state == State.ATTACK:
-		var zoom := _height_zoom / GameSettings.ui_scale
+		var zoom := _height_zoom / GameSettings.ui_scale * view_zoom
 		camera.zoom = camera.zoom.lerp(Vector2(zoom, zoom), 1.5 * delta)
 		# Settle exactly on the target: at these zooms tile and chunk edges
 		# land on whole pixels, so no seams show between chunks.

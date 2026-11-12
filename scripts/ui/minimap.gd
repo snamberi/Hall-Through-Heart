@@ -35,7 +35,7 @@ func _process(delta: float) -> void:
 	if _player == null:
 		return
 	# There is no map of caves and interiors.
-	visible = GameSettings.show_minimap and not _player.indoors
+	visible = GameSettings.show_minimap and not _player.indoors and not BuildPalette.on
 	if not visible:
 		return
 	_refresh_left -= delta

@@ -12,6 +12,9 @@ var current := ""
 var _world: World
 var _player: Player
 
+## The cold light of a woken stone's runes.
+const GLOW := Color(0.55, 0.9, 1.0)
+
 
 func _ready() -> void:
 	SaveGame.register("waystones", self)
@@ -27,10 +30,10 @@ func setup(world: World, player: Player) -> void:
 
 ## Builds the stone as a prop at a cell.
 func make_stone(key: String, place_name: String, cell: Vector2i) -> Prop:
-	var stone := Prop.create_decor(Prop.Decor.OBELISK, _world.cell_to_world(cell), 10.0, "Touch the waystone", func(_p: Player) -> void: use(key, place_name, cell))
-	stone.sprite().modulate = Color(0.65, 0.9, 1.0) if known.has(key) else Color(0.6, 0.6, 0.65)
-	if known.has(key):
-		stone.add_light(0.8, 1.4)
+	var awake := known.has(key)
+	var stone := Prop.create_decor(Prop.Decor.WAYSTONE_LIT if awake else Prop.Decor.WAYSTONE, _world.cell_to_world(cell), 10.0, "Touch the waystone", func(_p: Player) -> void: use(key, place_name, cell))
+	if awake:
+		stone.add_light(0.5, 1.2, GLOW)
 	stone.set_meta("waystone", key)
 	return stone
 
@@ -43,8 +46,8 @@ func use(key: String, place_name: String, cell: Vector2i) -> void:
 		Audio.play("level_up", -6.0, 0.0)
 		for node in get_tree().get_nodes_in_group("props"):
 			if node.get_meta("waystone", "") == key:
-				node.sprite().modulate = Color(0.65, 0.9, 1.0)
-				node.add_light(0.8, 1.4)
+				node.sprite().frame = Prop.Decor.WAYSTONE_LIT
+				node.add_light(0.5, 1.2, GLOW)
 		SaveGame.request_save()
 	current = key
 	Events.screen_requested.emit("waystones")

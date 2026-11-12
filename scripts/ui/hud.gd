@@ -69,6 +69,10 @@ func setup(player: Player) -> void:
 	_item_bar.setup(player, tip)
 	add_child(_item_bar)
 	add_child(tip)
+	_palette = BuildPalette.new()
+	_palette.setup(player, player.get_parent().get_node("Builder"))
+	_palette.toggled.connect(_on_build_mode)
+	add_child(_palette)
 	_place_bars()
 	get_viewport().size_changed.connect(_place_bars)
 	GameSettings.changed.connect(_place_bars)
@@ -87,6 +91,9 @@ func setup(player: Player) -> void:
 	_refresh()
 
 
+var _palette: BuildPalette
+## What build mode hides, and what it was showing before.
+var _hidden_for_build: Dictionary = {}
 var _ability_bar: ActionBar
 var _item_bar: ActionBar
 
@@ -99,6 +106,24 @@ func _place_bars() -> void:
 	var room := get_viewport().get_visible_rect().size
 	_ability_bar.position = Vector2(14.0, (room.y - _ability_bar.size.y) / 2.0 + 20.0)
 	_item_bar.position = Vector2((room.x - _item_bar.size.x) / 2.0, room.y - _item_bar.size.y - 8.0)
+
+
+## Build mode: everything but the health bar and a boss's bar steps aside,
+## and the view pulls back a little.
+func _on_build_mode(on: bool) -> void:
+	if on:
+		_hidden_for_build.clear()
+		for child in get_children():
+			if child is CanvasItem and child != _palette and child != _health_bar and child != _boss_bar and not child is ItemTooltip and child.name != "LevelUpBanner" and child.name != "DeathMessage":
+				_hidden_for_build[child] = (child as CanvasItem).visible
+				(child as CanvasItem).visible = false
+		_player.view_zoom = 0.8
+	else:
+		for child: CanvasItem in _hidden_for_build:
+			if is_instance_valid(child):
+				child.visible = _hidden_for_build[child]
+		_hidden_for_build.clear()
+		_player.view_zoom = 1.0
 
 
 ## Words for the death screen, by what struck the last blow.
@@ -181,6 +206,8 @@ func _show_banner(title: String, detail: String) -> void:
 
 func _process(_delta: float) -> void:
 	_place_bars()
+	if Input.is_action_just_pressed("build_mode") and not get_tree().paused and not _player.is_dead():
+		_palette.toggle()
 	_gather.queue_redraw()
 	_boss_bar.queue_redraw()
 	_health_bar.queue_redraw()

@@ -58,6 +58,11 @@ func is_active() -> bool:
 	return _item != null
 
 
+## The id of what is in hand while placing.
+func held_id() -> String:
+	return _item_id if _item != null else ""
+
+
 func begin(item: Item) -> void:
 	_item = item
 	_item_id = item.id

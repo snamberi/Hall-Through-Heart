@@ -7,9 +7,10 @@ const SHEET: Texture2D = preload("res://assets/sprites/props.png")
 const FRAMES := 14
 const REACH := 70.0
 const DECOR: Texture2D = preload("res://assets/sprites/decor.png")
-const DECOR_FRAMES := 27
+const DECOR_FRAMES := 31
 enum Decor { FLOOR, RUBBLE, STATUE, BRAZIER, BANNER, BONES, CRATE, BARREL, WELL, FENCE, LANTERN, STALL, SIGNPOST,
-	RUG, SHELF, PLANT_POT, TABLE, CHAIR, CANDLES, CAGE, TENT, OBELISK, PALISADE, SPIKE_TRAP, BALLISTA, SOIL, SCARECROW }
+	RUG, SHELF, PLANT_POT, TABLE, CHAIR, CANDLES, CAGE, TENT, OBELISK, PALISADE, SPIKE_TRAP, BALLISTA, SOIL, SCARECROW,
+	TORCH, FIREPLACE, WAYSTONE, WAYSTONE_LIT }
 static var LIGHT: Texture2D = _make_light()
 ## Frame numbers in the sheet.
 enum Art { PILLAR, WALL, CHEST, CHEST_OPEN, ALTAR, CAVE, PORTAL, LADDER, TABLE, BED, DOOR, CAMPFIRE, TOTEM, HOUSE }
@@ -95,24 +96,27 @@ static func create_decor(index: int, at: Vector2, solid: float = 0.0, prompt: St
 	return prop
 
 
-## Where the flame sits on things that burn, and how big it is:
-## [offset, size, smoke]. Several entries for several flames (candles).
-const ART_FLAMES := {Art.CAMPFIRE: [[Vector2(0, -9), 1.25, true]], Art.ALTAR: [[Vector2(0, -33), 0.85, false]]}
+## Where the flames sit on things that burn: [where the flame's base
+## stands, size, smoke, flame sheet] for each one (candles have several).
+const ART_FLAMES := {Art.CAMPFIRE: [[Vector2(0, -5), 1.25, true, "campfire"]],
+	Art.ALTAR: [[Vector2(0, -25), 0.85, false, "torch"], [Vector2(-21, -9), 0.3, false, "candle"], [Vector2(21, -9), 0.3, false, "candle"]]}
 const DECOR_FLAMES := {
-	Decor.BRAZIER: [[Vector2(0, -30), 1.0, true]], Decor.LANTERN: [[Vector2(0, -33), 0.5, false]],
-	Decor.CANDLES: [[Vector2(-7, -22), 0.3, false], [Vector2(0, -27), 0.34, false], [Vector2(7, -21), 0.3, false]],
+	Decor.BRAZIER: [[Vector2(0, -15), 1.0, true, "brazier"]], Decor.LANTERN: [[Vector2(0, -35), 0.35, false, "candle"]],
+	Decor.CANDLES: [[Vector2(-8, -11), 0.3, false, "candle"], [Vector2(0, -17), 0.3, false, "candle"], [Vector2(8, -8), 0.3, false, "candle"]],
+	Decor.TORCH: [[Vector2(0, -40), 0.6, false, "torch"]], Decor.FIREPLACE: [[Vector2(0, 3), 1.2, true, "hearth"]],
 }
 
 
 ## Adds a warm glow around the prop, for torches, braziers, and lanterns,
 ## and sets its fire burning.
-func add_light(strength: float = 0.9, reach: float = 1.6) -> void:
+func add_light(strength: float = 0.9, reach: float = 1.6, tint := Color(1.0, 0.82, 0.55)) -> void:
 	var flames: Array = (DECOR_FLAMES if _sprite.texture == DECOR else ART_FLAMES).get(_sprite.frame, [])
 	for entry: Array in flames:
 		var flame := FlameFX.new()
 		flame.position = entry[0]
 		flame.size = entry[1]
 		flame.smoke = entry[2]
+		flame.kind = entry[3]
 		add_child(flame)
 	var light := FlickerLight.new()
 	light.texture = LIGHT
@@ -120,7 +124,7 @@ func add_light(strength: float = 0.9, reach: float = 1.6) -> void:
 	light.energy = strength
 	light.base_energy = strength
 	light.base_scale = reach
-	light.color = Color(1.0, 0.82, 0.55)
+	light.color = tint
 	light.position.y = -30.0
 	add_child(light)
 

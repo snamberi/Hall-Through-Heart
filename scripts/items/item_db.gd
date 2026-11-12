@@ -429,6 +429,7 @@ const ITEMS := {
 	"dining_table": {"name": "Dining Table", "decor": Prop.Decor.TABLE, "icon": 54, "material_rarity": 0, "place": "dining_table", "value": 35, "text": "A sturdy table to eat at. Use it to set it down."},
 	"chair": {"name": "Chair", "decor": Prop.Decor.CHAIR, "icon": 54, "material_rarity": 0, "place": "chair", "value": 12, "text": "Somewhere to sit. Use it to set it down."},
 	"candles": {"name": "Candles", "decor": Prop.Decor.CANDLES, "icon": 54, "material_rarity": 0, "place": "candles", "value": 10, "text": "A cluster of candles. Gives light. Use it to set it down."},
+	"fireplace": {"name": "Fireplace", "decor": Prop.Decor.FIREPLACE, "icon": 54, "material_rarity": 0, "place": "fireplace", "value": 70, "text": "A stone hearth with a chimney and a fire that never goes out. Warms and lights a room. Use it to set it down."},
 	"wall_banner": {"name": "Banner", "decor": Prop.Decor.BANNER, "icon": 54, "material_rarity": 0, "place": "wall_banner", "value": 25, "text": "A red banner on a pole. Use it to set it down."},
 	"barrel": {"name": "Barrel", "decor": Prop.Decor.BARREL, "icon": 54, "material_rarity": 0, "place": "barrel", "value": 12, "text": "A plain oak barrel. Use it to set it down."},
 	"crate": {"name": "Crate", "decor": Prop.Decor.CRATE, "icon": 54, "material_rarity": 0, "place": "crate", "value": 10, "text": "A wooden crate. Use it to set it down."},

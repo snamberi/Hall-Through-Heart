@@ -1383,6 +1383,9 @@ PLAIN_VARIANTS = 6
 WATER_FRAMES = 4
 
 
+C_NAIL = (54, 46, 44, 255)
+
+
 def draw_tile(row, variant, frame=0):
     name, style, base, light, dark, accent = TILES[row]
     base, light, dark, accent = rgba(base), rgba(light), rgba(dark), rgba(accent)
@@ -1451,13 +1454,44 @@ def draw_tile(row, variant, frame=0):
             d.line((x + 2, y + 6, x + 13, y + 6), fill=light)
         return img
     if style == "plank":
-        for y in range(0, N, 11):
-            d.line((0, y, N, y), fill=dark)
-            d.line((0, y + 1, N, y + 1), fill=light)
-            seam = r.randrange(6, N - 6)
-            d.line((seam, y, seam, y + 10), fill=dark)
-            for _ in range(3):
-                put(r.randrange(N), y + r.randrange(3, 10), accent)
+        # Floorboards: four boards across the tile, each its own tone of
+        # wood with long grain streaks and the odd knot; dark gaps between
+        # boards with a lit lip, butt joints with nail heads, and boards
+        # that run on across the tile edge (only one joint per board).
+        # Each row of boards keeps one tone on every tile, so a board's
+        # colour runs on unbroken from tile to tile.
+        tones = [_shift_rgb(base, -6), _shift_rgb(base, 7), _shift_rgb(base, -1), _shift_rgb(base, 12)]
+        for row_index, y in enumerate(range(0, N, 11)):
+            tone = tones[row_index]
+            d.rectangle((0, y, N - 1, y + 10), fill=tone)
+            # Grain: long thin streaks, a shade either side of the board.
+            for _ in range(4):
+                gy = y + r.randrange(2, 10)
+                gx = r.randrange(N)
+                length = r.randrange(10, 30)
+                col = _shift_rgb(tone, -16) if r.random() < 0.6 else _shift_rgb(tone, 12)
+                for k in range(length):
+                    put(gx + k, gy + (1 if (k + gx) % 17 == 0 else 0), col)
+            # A knot now and then: a dark eye with a ring of lighter grain.
+            if r.random() < 0.45:
+                kx, ky = r.randrange(4, N - 4), y + r.randrange(4, 8)
+                for dx in (-2, -1, 0, 1, 2):
+                    put(kx + dx, ky - 1, _shift_rgb(tone, 10))
+                    put(kx + dx, ky + 1, _shift_rgb(tone, 10))
+                put(kx, ky, dark)
+                put(kx + 1, ky, _shift_rgb(dark, 10))
+                put(kx - 1, ky, _shift_rgb(tone, -24))
+            # The gap above this board, and its lit top edge.
+            d.line((0, y, N, y), fill=_shift_rgb(dark, -14))
+            d.line((0, y + 1, N, y + 1), fill=_shift_rgb(tone, 18))
+            d.line((0, y + 10, N, y + 10), fill=_shift_rgb(tone, -18))
+            # One butt joint, with a nail either side.
+            seam = r.randrange(5, N - 5)
+            d.line((seam, y + 1, seam, y + 10), fill=_shift_rgb(dark, -14))
+            d.line((seam + 1, y + 1, seam + 1, y + 10), fill=_shift_rgb(tone, 14))
+            for nx in (seam - 2, seam + 3):
+                put(nx, y + 3, C_NAIL)
+                put(nx, y + 8, C_NAIL)
         return img
 
     for _ in range(90):
@@ -2262,8 +2296,8 @@ PROPS = [
     [("pstone", "rect", (9, 53, 55, 59)), ("pstone_l", "rect", (9, 53, 55, 54)), ("pstone", "rect", (13, 47, 51, 53)), ("pstone_l", "rect", (13, 47, 51, 48)), ("pstone", "rect", (18, 34, 46, 47)),
      ("pstone_l", "rect", (18, 34, 46, 35)), ("pdark", "rect", (18, 40, 46, 40)), ("pvoid", "rect", (30, 37, 34, 38)), ("pvoid", "rect", (31, 42, 33, 45)), ("pvoid", "rect", (28, 43, 36, 43)),
      ("pvoid", "rect", (22, 37, 23, 38)), ("pvoid", "rect", (41, 37, 42, 38)), ("pmetal", "poly", [(22, 34), (24, 28), (40, 28), (42, 34)]), ("pember", "ellipse", (26, 26, 38, 30)),
-     ("pfire", "poly", [(27, 28), (29, 21), (32, 25), (34, 16), (36, 24), (38, 20), (38, 28)]), ("pbone", "rect", (10, 46, 12, 53)), ("pfire", "rect", (10, 43, 12, 45)),
-     ("pbone", "rect", (52, 46, 54, 53)), ("pfire", "rect", (52, 43, 54, 45)), ("pmoss", "rect", (14, 51, 19, 53)), ("pdark", "line", (40, 36, 43, 44), 1)],
+     ("pbone", "rect", (10, 46, 12, 53)), ("pdark", "rect", (11, 45, 11, 45)),
+     ("pbone", "rect", (52, 46, 54, 53)), ("pdark", "rect", (53, 45, 53, 45)), ("pmoss", "rect", (14, 51, 19, 53)), ("pdark", "line", (40, 36, 43, 44), 1)],
     # 5 cave mouth: a mound of piled rock around a black opening with teeth of stone
     [("pstone", "poly", [(3, 58), (5, 40), (11, 27), (20, 18), (33, 13), (46, 17), (55, 28), (60, 42), (61, 58)]), ("pstone_l", "poly", [(12, 28), (20, 19), (33, 14), (44, 17), (38, 19), (24, 22)]),
      ("pdark", "line", (11, 36, 17, 30), 1), ("pdark", "line", (50, 30, 56, 40), 1), ("pdark", "line", (8, 46, 13, 44), 1), ("pdark", "line", (53, 46, 58, 49), 1),
@@ -2300,7 +2334,7 @@ PROPS = [
     # 11 campfire: a ring of stones, crossed logs, a bed of embers
     [("pstone", "ellipse", (10, 46, 20, 55)), ("pstone", "ellipse", (44, 46, 54, 55)), ("pstone", "ellipse", (16, 40, 25, 47)), ("pstone", "ellipse", (39, 40, 48, 47)), ("pstone", "ellipse", (27, 38, 37, 44)),
      ("pwood", "line", (16, 53, 46, 45), 5), ("pwood", "line", (18, 45, 48, 53), 5), ("pwood_d", "line", (26, 54, 38, 42), 4), ("pwood_l", "ellipse", (13, 50, 19, 56)), ("pwood_l", "ellipse", (45, 50, 51, 56)),
-     ("pember", "ellipse", (25, 45, 39, 52)), ("pfire", "poly", [(24, 48), (26, 36), (29, 42), (32, 28), (35, 40), (38, 34), (40, 48)]), ("pstone", "ellipse", (18, 52, 29, 60)),
+     ("pember", "ellipse", (25, 45, 39, 52)), ("pstone", "ellipse", (18, 52, 29, 60)),
      ("pstone", "ellipse", (35, 52, 46, 60)), ("pstone_l", "rect", (21, 53, 25, 54)), ("pstone_l", "rect", (38, 53, 42, 54)), ("pstone", "ellipse", (27, 54, 37, 61))],
     # 12 skull totem marking a lair: a horned skull on a bound pole, bones hanging
     [("pwood", "rect", (30, 26, 34, 59)), ("pwood_d", "rect", (33, 26, 34, 59)), ("prope", "rect", (29, 36, 35, 39)), ("prope", "rect", (29, 48, 35, 50)), ("pwood", "rect", (18, 30, 46, 33)),
@@ -2334,8 +2368,34 @@ def draw_icon(parts, size=None):
         ICON = saved
 
 
+# Light falls from the upper left: edges facing it catch a warm rim,
+# edges facing away fall into a cool shade, and where one part meets
+# another below or to the right a thin dark seam keeps them apart.
+WARM = (255, 236, 196)
+COOL = (34, 26, 64)
+
+
+def _tint(c, to, amount):
+    return tuple(int(round(c[i] + (to[i] - c[i]) * amount)) for i in range(3)) + (c[3],)
+
+
+def _lit(colour, x, y, pixels, owner):
+    me = owner[(x, y)]
+    up, left = owner.get((x, y - 1)), owner.get((x - 1, y))
+    down, right = owner.get((x, y + 1)), owner.get((x + 1, y))
+    if up is None or left is None:
+        return _tint(colour, WARM, 0.28)
+    if down is None or right is None:
+        return _tint(colour, COOL, 0.3)
+    if (down is not None and down > me) or (right is not None and right > me):
+        return _tint(colour, COOL, 0.2)
+    return colour
+
+
 def _draw_icon(parts):
     pixels = {}
+    owner = {}
+    owners = []
     for part in parts:
         material, shape, coords = part[0], part[1], part[2]
         mask = Image.new("L", (ICON, ICON), 0)
@@ -2359,9 +2419,11 @@ def _draw_icon(parts):
             t = 0.6 * (x - x0) / max(x1 - x0, 1) + 0.4 * (y - y0) / max(y1 - y0, 1)
             shades = ICON_PALETTE.get(material) or PALETTE[material]
             pixels[(x, y)] = shades[0 if t < 0.3 else 1 if t < 0.68 else 2]
+            owner[(x, y)] = len(owners)
+        owners.append(material)
     img = Image.new("RGBA", (ICON, ICON), (0, 0, 0, 0))
     for (x, y), colour in pixels.items():
-        img.putpixel((x, y), rgba(colour))
+        img.putpixel((x, y), _lit(rgba(colour), x, y, pixels, owner))
     for y in range(ICON):
         for x in range(ICON):
             if (x, y) not in pixels and any(

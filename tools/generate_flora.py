@@ -950,10 +950,20 @@ def decor(kind):
         c.shade("poly", [(38, 26), (48, 14), (50, 16), (40, 32)], STONE)
         c.fill("line", (24, 30, 22, 42), STONE[2], 2)
     elif kind == "brazier":
-        c.shade("poly", [(20, 40), (44, 40), (40, 50), (24, 50)], ramp("8a7a68", "5a4a40", "3a3028"))
-        c.shade("rect", (30, 50, 34, 60), ramp("8a7a68", "5a4a40", "3a3028"))
-        c.shade("rect", (24, 58, 40, 61), ramp("8a7a68", "5a4a40", "3a3028"))
-        c.shade("poly", [(22, 40), (26, 28), (30, 34), (32, 18), (35, 32), (38, 26), (42, 40)], ramp("ffd86b", "f08a2e", "b8401e"))
+        # An iron bowl on a stand, coals glowing in it; the flame is animated
+        # in game (tools/generate_fire.py).
+        iron = ramp("7a7680", "4e4a56", "2c2a32")
+        c.shade("rect", (23, 58, 41, 61), iron)
+        c.shade("poly", [(26, 58), (30, 48), (34, 48), (38, 58)], iron)
+        c.shade("rect", (30, 46, 34, 50), iron)
+        c.shade("poly", [(18, 39), (46, 39), (42, 47), (22, 47)], iron)
+        c.fill("rect", (18, 38, 46, 39), C("9a96a2"))
+        c.fill("ellipse", (21, 37, 43, 42), C("2a1a14"))
+        for (x, y, col) in [(24, 39, "f08a2e"), (28, 38, "ffd86b"), (31, 39, "c8361a"), (35, 38, "f08a2e"), (39, 39, "ffd86b"), (33, 40, "fff2a8")]:
+            c.put(x, y, C(col))
+            c.put(x + 1, y, C(col))
+        for x in (20, 44):
+            c.fill("rect", (x - 1, 40, x, 44), C("9a96a2"))
     elif kind == "banner":
         c.shade("rect", (30, 6, 33, 60), WOOD)
         c.shade("rect", (22, 8, 44, 10), WOOD)
@@ -987,10 +997,19 @@ def decor(kind):
         c.shade("rect", (6, 36, 58, 39), WOOD)
         c.shade("rect", (6, 48, 58, 51), WOOD)
     elif kind == "lantern":
-        c.shade("rect", (30, 14, 33, 62), ramp("4a4650", "33303a", "222028"))
-        c.shade("rect", (33, 14, 42, 16), ramp("4a4650", "33303a", "222028"))
-        c.shade("rect", (37, 17, 45, 28), ramp("ffe8a0", "f0c050", "a07020"))
-        c.fill("rect", (36, 16, 46, 17), OUTLINE)
+        # A lamp post: an iron cage of glass on a post; the flame inside is
+        # animated in game.
+        iron = ramp("4a4650", "33303a", "222028")
+        c.shade("rect", (30, 22, 33, 60), iron)
+        c.shade("rect", (26, 58, 37, 61), iron)
+        c.shade("poly", [(25, 8), (38, 8), (36, 5), (27, 5)], iron)
+        c.fill("rect", (31, 2, 32, 5), C("33303a"))
+        c.fill("rect", (26, 9, 37, 20), C("3a3020"))
+        c.fill("rect", (27, 10, 36, 19), C("f0d890", 120))
+        c.fill("rect", (26, 9, 26, 20), C("222028"))
+        c.fill("rect", (37, 9, 37, 20), C("222028"))
+        c.fill("rect", (31, 9, 32, 20), C("33303a", 200))
+        c.shade("rect", (25, 20, 38, 22), iron)
     elif kind == "stall":
         c.shade("rect", (8, 34, 56, 46), WOOD)
         c.shade("rect", (10, 46, 13, 62), WOOD)
@@ -1031,9 +1050,13 @@ def decor(kind):
         c.shade("rect", (39, 18, 42, 58), WOOD)
         c.shade("rect", (22, 38, 42, 42), WOOD)
     elif kind == "candles":
+        # Wax candles with drips and wicks; the flames are animated in game.
+        c.shade("ellipse", (16, 55, 48, 61), ramp("8a7a68", "6a5a4a", "4a3e34"))
         for (x, h) in [(24, 14), (32, 20), (40, 11)]:
             c.shade("rect", (x - 2, 58 - h, x + 2, 58), ramp("f4f2ec", "d4d0c4", "a8a498"))
-            c.fill("poly", [(x - 1, 57 - h), (x, 51 - h), (x + 1, 57 - h)], C("ffd86b"))
+            c.fill("rect", (x - 2, 58 - h, x - 2, 61 - h), C("fffbe8"))
+            c.fill("rect", (x + 2, 59 - h, x + 2, 63 - h), C("e8e2d0"))
+            c.put(x, 57 - h, C("2a2420"))
     elif kind == "cage":
         c.shade("rect", (14, 14, 50, 18), ramp("6a6670", "4a4650", "2a2830"))
         c.shade("rect", (14, 56, 50, 60), ramp("6a6670", "4a4650", "2a2830"))
@@ -1086,13 +1109,86 @@ def decor(kind):
         c.fill("rect", (28, 13, 29, 14), OUTLINE)
         c.fill("rect", (34, 13, 35, 14), OUTLINE)
         c.fill("line", (16, 30, 12, 36), ramp("e8d8a0", "c8b47a", "9a8656")[1], 1)
+    elif kind == "torch":
+        # A standing torch: a pole with a bound, pitch-soaked head in an iron
+        # cup, set in a few stones. The flame is animated in game.
+        wood = ramp("8a6a48", "6b4f36", "4a3626")
+        c.shade("ellipse", (24, 55, 40, 61), ramp("8a8794", "66636f", "45434d"))
+        c.shade("rect", (30, 22, 33, 58), wood)
+        for y in (30, 42):
+            c.fill("rect", (30, y, 33, y + 1), C("4a3626"))
+        c.shade("poly", [(27, 16), (36, 16), (35, 23), (28, 23)], ramp("6a6670", "4a4650", "2a2830"))
+        c.fill("rect", (28, 14, 35, 17), C("3a2418"))
+        c.fill("rect", (29, 13, 34, 14), C("1a1010"))
+        for x in (29, 32):
+            c.put(x, 15, C("f08a2e"))
+    elif kind == "fireplace":
+        # A stone hearth with a chimney and a wooden mantel; logs on the
+        # grate, the fire animated in game.
+        stone = ramp("a6a2b0", "7c7888", "56525e")
+        c.shade("rect", (22, 2, 42, 30), stone)
+        c.shade("rect", (10, 26, 54, 61), stone)
+        for y in range(30, 60, 6):
+            for x in range(11 + (y // 6 % 2) * 4, 53, 8):
+                c.fill("rect", (x, y, x, y + 5), C("56525e"))
+            c.fill("rect", (11, y, 53, y), C("56525e"))
+        for y in range(6, 30, 6):
+            c.fill("rect", (23, y, 41, y), C("56525e"))
+        c.fill("rect", (16, 34, 48, 59), C("120c0c"))
+        c.fill("rect", (17, 35, 47, 37), C("201414"))
+        c.shade("rect", (8, 27, 56, 31), ramp("9a7a58", "6b4f36", "4a3626"))
+        c.shade("line", (19, 57, 45, 55), ramp("8a6a48", "6b4f36", "4a3626"), width=3, dither=False)
+        c.shade("line", (19, 55, 45, 57), ramp("8a6a48", "6b4f36", "4a3626"), width=3, dither=False)
+        for x in range(20, 45, 3):
+            c.put(x, 58, C("f08a2e") if x % 2 else C("c8361a"))
+        c.fill("rect", (14, 59, 50, 61), C("3a3640"))
+    elif kind in ("waystone", "waystone_lit"):
+        # A rough menhir of granite: a jagged, leaning top, chipped facets
+        # and cracks, runes cut down its face (glowing when the stone is
+        # awake), lichen, and a few fallen stones and moss at its foot.
+        glow = kind == "waystone_lit"
+        granite = ramp("b4b0bc", "86828f", "57535f")
+        c.shade("ellipse", (13, 54, 51, 62), ramp("7d8a5a", "5d6e40", "3e4c2c"))
+        c.shade("poly", [(19, 59), (18, 44), (20, 26), (22, 15), (26, 8), (29, 9), (32, 4), (36, 6), (40, 12),
+                         (43, 22), (45, 36), (46, 50), (45, 59)], granite)
+        # Facets: a lit left face, a shadowed right face.
+        c.fill("poly", [(21, 56), (20, 30), (23, 15), (27, 10), (25, 30), (24, 56)], C("c2bec8"))
+        c.fill("poly", [(40, 14), (43, 24), (45, 38), (45, 58), (41, 58), (41, 36)], C("5f5b68"))
+        r = random.Random(41)
+        for _ in range(70):
+            x, y = r.randrange(20, 46), r.randrange(6, 58)
+            if (x, y) in c.filled:
+                c.put(x, y, C("6e6a78") if r.random() < 0.55 else C("a8a4b2"))
+        # Cracks.
+        for line in [((36, 7), (35, 13), (37, 18)), ((24, 40), (27, 44), (26, 49)), ((42, 30), (40, 35))]:
+            for (x0, y0), (x1, y1) in zip(line, line[1:]):
+                c.fill("line", (x0, y0, x1, y1), C("3e3a46"), 1)
+        # Runes: each a different glyph, cut in and lit from the upper left.
+        glyphs = [[(0, 0, 0, 6), (0, 0, 3, 2), (0, 3, 3, 5)], [(1, 0, 1, 6), (0, 2, 3, 2), (0, 5, 3, 4)],
+                  [(0, 0, 3, 3), (3, 3, 0, 6), (0, 0, 0, 6)], [(0, 6, 1, 0), (1, 0, 3, 6), (0, 3, 3, 3)],
+                  [(1, 0, 1, 6), (1, 2, 3, 0), (1, 2, -1, 0)]]
+        for (gx, gy), glyph in zip([(31, 12), (31, 21), (30, 30), (32, 39), (31, 48)], glyphs):
+            for (x0, y0, x1, y1) in glyph:
+                c.fill("line", (gx + x0 + 1, gy + y0 + 1, gx + x1 + 1, gy + y1 + 1), C("b4e8f0") if glow else C("a8a4b2"), 1)
+                c.fill("line", (gx + x0, gy + y0, gx + x1, gy + y1), C("4ad8f0") if glow else C("403c48"), 1)
+        if glow:
+            for (x, y) in [(28, 16), (37, 25), (27, 37), (37, 47), (33, 9)]:
+                c.put(x, y, C("dffcff"))
+        # Lichen and moss.
+        for (x, y) in [(22, 24), (23, 25), (43, 44), (44, 45), (42, 46), (21, 50)]:
+            c.put(x, y, C("9aa84e"))
+        for x in range(18, 47):
+            if r.random() < 0.6:
+                c.put(x, 58 - r.randrange(0, 3), C("5d7a3f") if r.random() < 0.6 else C("8aaa5a"))
+        c.shade("ellipse", (12, 55, 19, 60), ramp("9a96a4", "6e6a78", "4a4654"))
+        c.shade("ellipse", (46, 56, 51, 60), ramp("9a96a4", "6e6a78", "4a4654"))
     c.outline()
     return c.img
 
 
 DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate", "barrel", "well", "fence", "lantern",
          "stall", "signpost", "rug", "shelf", "plant_pot", "table", "chair", "candles", "cage", "tent", "obelisk",
-         "palisade", "spike_trap", "ballista", "soil", "scarecrow"]
+         "palisade", "spike_trap", "ballista", "soil", "scarecrow", "torch", "fireplace", "waystone", "waystone_lit"]
 
 
 def sheet(images, w, h):

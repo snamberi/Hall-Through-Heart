@@ -59,6 +59,7 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "crate", "profession": "building", "level": 1, "inputs": {"oak_wood": 4}, "item": "crate", "count": 1, "xp": 10.0},
 	{"id": "stone_statue", "profession": "building", "level": 4, "inputs": {"stone": 20}, "item": "stone_statue", "count": 1, "xp": 22.0},
 	{"id": "brazier", "profession": "building", "level": 4, "inputs": {"iron_ingot": 3, "stone": 4}, "item": "brazier", "count": 1, "xp": 22.0},
+	{"id": "fireplace", "profession": "building", "level": 6, "inputs": {"stone": 12, "oak_wood": 4, "iron_ingot": 1}, "item": "fireplace", "count": 1, "xp": 30.0},
 	{"id": "fence", "profession": "building", "level": 1, "inputs": {"oak_wood": 2}, "item": "fence", "count": 1, "xp": 10.0},
 	{"id": "lantern_post", "profession": "building", "level": 2, "inputs": {"oak_wood": 3, "copper_ingot": 1}, "item": "lantern_post", "count": 1, "xp": 14.0},
 	{"id": "stone_path", "profession": "building", "level": 1, "inputs": {"stone": 1}, "item": "stone_path", "count": 4, "xp": 2.0},
