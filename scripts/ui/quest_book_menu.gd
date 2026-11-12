@@ -672,7 +672,7 @@ func _xp_chip(amount: int) -> HBoxContainer:
 		badge.draw_circle(Vector2(11, 11), 10.5, Color(0.2, 0.1, 0.35))
 		badge.draw_circle(Vector2(11, 11), 9.0, PURPLE)
 		badge.draw_arc(Vector2(11, 11), 10.5, 0.0, TAU, 20, Color(0.85, 0.75, 1.0), 1.0)
-		badge.draw_string(UITheme.bold(), Vector2(0, 15), "XP", HORIZONTAL_ALIGNMENT_CENTER, 22, 10, Color.WHITE)
+		badge.draw_string(UITheme.bold(), Vector2(0, 15), "XP", HORIZONTAL_ALIGNMENT_CENTER, 22, 12, Color.WHITE)
 	)
 	chip.add_child(badge)
 	chip.add_child(UITheme.label("+%d XP" % amount, 14, Color(0.8, 0.68, 1.0)))

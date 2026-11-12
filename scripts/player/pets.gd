@@ -255,8 +255,8 @@ func _draw() -> void:
 	var font := UITheme.get_theme().default_font
 	var top := -34.0 if pet["kind"] == "critter" else -52.0 * _sprite.scale.y - 8.0
 	var label := "%s  %d" % [pet["name"], pet["level"]]
-	draw_string_outline(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 10, 3, Color(0, 0, 0, 0.8))
-	draw_string(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 10, Color(0.7, 1.0, 0.72))
+	draw_string_outline(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 13, 3, Color(0, 0, 0, 0.8))
+	draw_string(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 13, Color(0.7, 1.0, 0.72))
 	for heart: Array in _hearts:
 		if heart[1] < 0.0:
 			continue

@@ -178,6 +178,12 @@ func _show(id: String) -> void:
 	_fit.call_deferred()
 
 
+func _process(_delta: float) -> void:
+	# Screens can change size as they fill in; keep them inside the window.
+	if is_open() and _open_id != "wheel":
+		_fit()
+
+
 ## Where the Back button leads from the open screen.
 func _go_back() -> void:
 	var target: String = BACK.get(_open_id, "wheel")

@@ -18,12 +18,14 @@ func _process(_delta: float) -> void:
 		queue_redraw()
 
 
+## What to show: [title, [[objective text, have, need], ...], tracked].
 func _lines() -> Array:
 	var result: Array = []
 	if _book == null:
 		_book = _player.get_parent().get_node_or_null("QuestBook")
 	if _book:
 		var ids: Array = _book.tracked.duplicate()
+		var chosen := not ids.is_empty()
 		if ids.is_empty():
 			for quest in QuestBookDB.all():
 				if quest["chapter"] == "main" and _book.is_open(quest["id"]):
@@ -34,33 +36,57 @@ func _lines() -> Array:
 			var quest := QuestBookDB.find(id)
 			if quest.is_empty() or _book.is_done(id):
 				continue
-			var steps: PackedStringArray = []
+			var steps: Array = []
 			for objective: Dictionary in quest["objectives"]:
-				var have := _book.progress(objective)
-				var need := _book.goal(objective)
-				if have < need:
-					steps.append("%s  %d/%d" % [_book.describe(objective), have, need])
-			result.append([quest["title"], steps.slice(0, 2)])
+				steps.append([_book.describe(objective), _book.progress(objective), _book.goal(objective)])
+			result.append([quest["title"], steps.slice(0, 3), chosen])
 	for quest in _player.quests.active.slice(0, 2):
 		var objective: Dictionary = quest["objective"]
-		result.append([quest["title"], ["%s  %d/%d" % [QuestDB.describe_objective(objective), quest["progress"], objective["count"]]]])
+		result.append([quest["title"], [[QuestDB.describe_objective(objective), quest["progress"], objective["count"]]], false])
 	return result
 
 
+## A panel under the minimap: each quest's title by a diamond (filled gold
+## when you chose to track it), and its steps with tick boxes and counts.
 func _draw() -> void:
 	if _player == null:
 		return
+	var entries := _lines().slice(0, 4)
+	if entries.is_empty():
+		return
 	var font := UITheme.get_theme().default_font
 	var bold := UITheme.bold()
-	# Sit just under the minimap, or at the top when it is hidden.
-	var y := 202.0 if GameSettings.show_minimap else 14.0
-	var width := size.x
-	for entry: Array in _lines().slice(0, 4):
-		draw_string_outline(bold, Vector2(0, y), entry[0], HORIZONTAL_ALIGNMENT_RIGHT, width, 14, 4, Color.BLACK)
-		draw_string(bold, Vector2(0, y), entry[0], HORIZONTAL_ALIGNMENT_RIGHT, width, 14, UITheme.HEADING)
-		y += 17.0
-		for line: String in entry[1]:
-			draw_string_outline(font, Vector2(0, y), line, HORIZONTAL_ALIGNMENT_RIGHT, width, 13, 4, Color.BLACK)
-			draw_string(font, Vector2(0, y), line, HORIZONTAL_ALIGNMENT_RIGHT, width, 13, UITheme.TEXT)
-			y += 16.0
+	const WIDTH := 262.0
+	const LINE := 19.0
+	var height := 10.0
+	for entry: Array in entries:
+		height += 22.0 + (entry[1] as Array).size() * LINE + 6.0
+	var top := 202.0 if GameSettings.show_minimap else 14.0
+	var panel := Rect2(size.x - WIDTH, top, WIDTH, height)
+	draw_rect(panel, Color(0.035, 0.045, 0.08, 0.72))
+	draw_rect(panel, Color("5a4a32"), false, 1.0)
+	draw_line(panel.position + Vector2(8, 0), Vector2(panel.end.x - 8.0, panel.position.y), Color("b08a4a"), 1.5)
+	var y := top + 8.0
+	for entry: Array in entries:
+		var marker := Vector2(panel.position.x + 14.0, y + 9.0)
+		var diamond := PackedVector2Array([marker + Vector2(0, -6), marker + Vector2(6, 0), marker + Vector2(0, 6), marker + Vector2(-6, 0)])
+		draw_colored_polygon(diamond, UITheme.GOLD if entry[2] else Color(0.12, 0.13, 0.18))
+		draw_polyline(diamond + PackedVector2Array([diamond[0]]), UITheme.GOLD, 1.5)
+		draw_string_outline(bold, Vector2(panel.position.x + 26.0, y + 15.0), entry[0], HORIZONTAL_ALIGNMENT_LEFT, WIDTH - 34.0, 15, 3, Color(0, 0, 0, 0.7))
+		draw_string(bold, Vector2(panel.position.x + 26.0, y + 15.0), entry[0], HORIZONTAL_ALIGNMENT_LEFT, WIDTH - 34.0, 15, UITheme.HEADING)
+		y += 22.0
+		for step: Array in entry[1]:
+			var done: bool = step[1] >= step[2]
+			var box := Rect2(panel.position.x + 14.0, y + 3.0, 11.0, 11.0)
+			draw_rect(box, Color(0.05, 0.06, 0.09))
+			draw_rect(box, Color("8a683a") if not done else UITheme.GOOD, false, 1.5)
+			if done:
+				draw_polyline(PackedVector2Array([box.position + Vector2(2, 6), box.position + Vector2(5, 9), box.position + Vector2(10, 1)]), UITheme.GOOD, 2.0)
+			var color := UITheme.DIM if done else UITheme.TEXT
+			var count := "%d / %d" % [mini(step[1], step[2]), step[2]]
+			var count_width := font.get_string_size(count, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+			draw_string_outline(font, Vector2(panel.position.x + 32.0, y + 13.0), step[0], HORIZONTAL_ALIGNMENT_LEFT, WIDTH - 50.0 - count_width, 14, 3, Color(0, 0, 0, 0.6))
+			draw_string(font, Vector2(panel.position.x + 32.0, y + 13.0), step[0], HORIZONTAL_ALIGNMENT_LEFT, WIDTH - 50.0 - count_width, 14, color)
+			draw_string(font, Vector2(panel.end.x - 10.0 - count_width, y + 13.0), count, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.GOOD if done else UITheme.GOLD)
+			y += LINE
 		y += 6.0

@@ -18,6 +18,7 @@ func _build() -> void:
 	_note.custom_minimum_size.x = 1000.0
 	content.add_child(_note)
 	var grid := GridContainer.new()
+	grid.name = "Grid"
 	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
@@ -82,6 +83,8 @@ func _build() -> void:
 
 
 func refresh() -> void:
+	# As many cards a row as the window has room for.
+	(content.get_node("Grid") as GridContainer).columns = columns_for(Vector2(272.0, 268.0), Transformations.FORMS.size(), 2, 4)
 	var forms := player.transformations
 	var key := GameSettings.describe("transform").split(" / ")[0]
 	_note.text = "The meter on the left of the screen fills in a minute, or with %d blows landed. When it is full, hold %s for %d seconds to change shape." % [Transformations.CHARGE_HITS, key, roundi(Transformations.HOLD_SECONDS)]

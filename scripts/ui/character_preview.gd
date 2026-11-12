@@ -3,7 +3,7 @@ extends Control
 ## A large, breathing copy of the player with their visible equipment, for
 ## the inventory screen. It mirrors the player's own sprite layers.
 
-const SCALE := 3.0
+const SCALE := 3.6
 const IDLE_FPS := 6.0
 
 var _player: Player

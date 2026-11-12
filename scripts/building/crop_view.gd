@@ -60,5 +60,5 @@ func _draw() -> void:
 									draw_circle(base + Vector2(-3 + k * 3 + sway, -tall * 0.6 - k % 2 * 3), 1.8, fruit)
 	if stage == 3:
 		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 250.0)
-		draw_string_outline(UITheme.get_theme().default_font, Vector2(-30, -26), "Ripe", HORIZONTAL_ALIGNMENT_CENTER, 60, 11, 3, Color.BLACK)
-		draw_string(UITheme.get_theme().default_font, Vector2(-30, -26), "Ripe", HORIZONTAL_ALIGNMENT_CENTER, 60, 11, Color(1.0, 0.9, 0.5, 0.6 + 0.4 * pulse))
+		draw_string_outline(UITheme.get_theme().default_font, Vector2(-30, -26), "Ripe", HORIZONTAL_ALIGNMENT_CENTER, 60, 13, 3, Color.BLACK)
+		draw_string(UITheme.get_theme().default_font, Vector2(-30, -26), "Ripe", HORIZONTAL_ALIGNMENT_CENTER, 60, 13, Color(1.0, 0.9, 0.5, 0.6 + 0.4 * pulse))

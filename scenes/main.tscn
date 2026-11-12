@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
@@ -10,7 +10,6 @@
 [ext_resource type="Script" path="res://scripts/ui/menu_manager.gd" id="8_menus"]
 [ext_resource type="Script" path="res://scripts/items/loot_dropper.gd" id="10_loot"]
 [ext_resource type="Script" path="res://scripts/effects/death_cinematic.gd" id="11_cinematic"]
-[ext_resource type="Script" path="res://scripts/ui/ability_bar.gd" id="12_bar"]
 [ext_resource type="Script" path="res://scripts/world/resource_spawner.gd" id="13_resources"]
 [ext_resource type="Script" path="res://scripts/ui/minimap.gd" id="14_minimap"]
 [ext_resource type="Script" path="res://scripts/world/npc_spawner.gd" id="15_npcs"]
@@ -201,19 +200,6 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 20
 horizontal_alignment = 1
-
-[node name="AbilityBar" type="Control" parent="HUD"]
-layout_mode = 3
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_left = 20.0
-offset_top = -140.0
-offset_right = 120.0
-offset_bottom = 160.0
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("12_bar")
 
 [node name="BuffLabel" type="Label" parent="HUD"]
 offset_left = 14.0

@@ -8,7 +8,7 @@ signal chosen(id: String)
 
 const OUTER := 262.0
 const INNER := 108.0
-const PLATE := 28.0
+const PLATE := 31.0
 
 ## [{"id", "title", "icon", "text"}], clockwise from the top.
 var entries: Array[Dictionary] = []
@@ -103,7 +103,7 @@ func _draw() -> void:
 		draw_circle(spot + Vector2(0, -8), plate + 2.0, Color(0.03, 0.035, 0.055, 0.95 * fade))
 		draw_circle(spot + Vector2(0, -8), plate, Color(0.14, 0.16, 0.22, fade).lerp(Color(0.24, 0.2, 0.12, fade), lift))
 		draw_arc(spot + Vector2(0, -8), plate, 0.0, TAU, 40, Color(0.54, 0.41, 0.23, fade).lerp(Color(UITheme.GOLD, fade), lift), 1.5)
-		var icon_size := 40.0 + lift * 6.0
+		var icon_size := 46.0 + lift * 8.0
 		draw_texture_rect(ItemDB.icon(entries[index]["icon"]), Rect2(spot - Vector2(icon_size / 2.0, icon_size / 2.0 + 8.0), Vector2(icon_size, icon_size)), false, Color(1, 1, 1, fade))
 	# Names and badges go on last, so no plate ever covers a neighbour's name.
 	for index in count:
@@ -113,8 +113,9 @@ func _draw() -> void:
 		var spot := center + push + Vector2.from_angle(middle) * ((inner + outer) / 2.0 - 6.0)
 		var plate := PLATE + lift * 4.0
 		var title: String = entries[index]["title"]
-		draw_string_outline(font, spot + Vector2(-70.0, plate + 9.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 14, 4, Color(0, 0, 0, 0.8 * fade))
-		draw_string(font, spot + Vector2(-70.0, plate + 9.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 14, Color(UITheme.TEXT.lerp(UITheme.GOLD, lift), fade))
+		var title_font: Font = UITheme.bold() if lift > 0.5 else font
+		draw_string_outline(title_font, spot + Vector2(-70.0, plate + 9.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 15, 4, Color(0, 0, 0, 0.85 * fade))
+		draw_string(title_font, spot + Vector2(-70.0, plate + 9.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 15, Color(UITheme.TEXT.lerp(UITheme.GOLD, lift), fade))
 		# Something waiting here.
 		var waiting: int = badge_for.call(entries[index]["id"]) if badge_for.is_valid() else 0
 		if waiting > 0:
@@ -136,15 +137,17 @@ func _draw() -> void:
 	var width := (inner - 16.0) * 2.0
 	if _hovered >= 0 and _hovered < count:
 		var entry: Dictionary = entries[_hovered]
-		draw_string(UITheme.bold(), center + Vector2(-width / 2.0, -18.0), entry["title"], HORIZONTAL_ALIGNMENT_CENTER, width, 22, Color(UITheme.HEADING, fade))
-		draw_multiline_string(font, center + Vector2(-width / 2.0, 4.0), entry.get("text", ""), HORIZONTAL_ALIGNMENT_CENTER, width, 13, 3, Color(UITheme.DIM, fade))
+		# The name large and bright; what it is for smaller and quieter below a rule.
+		draw_string(UITheme.bold(), center + Vector2(-width / 2.0, -16.0), entry["title"], HORIZONTAL_ALIGNMENT_CENTER, width, 27, Color(UITheme.GOLD, fade))
+		draw_line(center + Vector2(-34, -6), center + Vector2(34, -6), Color(0.54, 0.41, 0.23, fade), 1.0)
+		draw_multiline_string(font, center + Vector2(-width / 2.0, 12.0), entry.get("text", ""), HORIZONTAL_ALIGNMENT_CENTER, width, 14, 3, Color(UITheme.DIM, fade))
 		var waiting: int = badge_for.call(entry["id"]) if badge_for.is_valid() else 0
 		if waiting > 0:
-			draw_string(font, center + Vector2(-width / 2.0, 58.0), "%d waiting" % waiting, HORIZONTAL_ALIGNMENT_CENTER, width, 13, Color(1.0, 0.55, 0.45, fade))
+			draw_string(font, center + Vector2(-width / 2.0, 62.0), "%d waiting" % waiting, HORIZONTAL_ALIGNMENT_CENTER, width, 14, Color(1.0, 0.55, 0.45, fade))
 	else:
 		var lines: Array = hub_text.call() if hub_text.is_valid() else ["Menu", ""]
 		draw_string(UITheme.bold(), center + Vector2(-width / 2.0, -6.0), lines[0], HORIZONTAL_ALIGNMENT_CENTER, width, 24, Color(UITheme.HEADING, fade))
-		draw_multiline_string(font, center + Vector2(-width / 2.0, 18.0), lines[1], HORIZONTAL_ALIGNMENT_CENTER, width, 13, 3, Color(UITheme.DIM, fade))
+		draw_multiline_string(font, center + Vector2(-width / 2.0, 18.0), lines[1], HORIZONTAL_ALIGNMENT_CENTER, width, 14, 3, Color(UITheme.DIM, fade))
 
 
 func _arc_line(center: Vector2, radius: float, from: float, to: float, color: Color, width: float) -> void:

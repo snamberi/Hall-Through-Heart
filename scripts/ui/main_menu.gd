@@ -62,6 +62,14 @@ func _draw() -> void:
 
 func _process(_delta: float) -> void:
 	queue_redraw()
+	# A page too big for a small window (or a large interface size) shrinks to fit.
+	var room := get_viewport().get_visible_rect().size - Vector2(24.0, 24.0)
+	for page: Control in _pages.values():
+		if page.visible:
+			var need := page.get_combined_minimum_size()
+			var fit := minf(1.0, minf(room.x / maxf(need.x, 1.0), room.y / maxf(need.y, 1.0)))
+			page.pivot_offset = page.size / 2.0
+			page.scale = Vector2(fit, fit)
 
 
 func _framed(inner: Control) -> PanelContainer:
@@ -248,7 +256,7 @@ func _new_page() -> Control:
 	_class_text.fit_content = true
 	_class_text.scroll_active = false
 	_class_text.custom_minimum_size = Vector2(330.0, 92.0)
-	_class_text.add_theme_font_size_override("normal_font_size", 13)
+	_class_text.add_theme_font_size_override("normal_font_size", 14)
 	_class_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.add_child(_class_text)
 

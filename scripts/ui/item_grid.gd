@@ -104,8 +104,9 @@ func _item(index: int) -> Item:
 ## A slot frame in the item's rarity colour; the chosen item's is bright.
 static func frame_style(item: Item, chosen: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("151823")
-	style.border_color = Color("3a3e50")
+	# Empty slots are lighter than the panel behind them, so they read as slots.
+	style.bg_color = Color("1a1e2b")
+	style.border_color = Color("4a4f64")
 	style.set_border_width_all(2)
 	style.set_content_margin_all(5)
 	if item:
@@ -117,15 +118,25 @@ static func frame_style(item: Item, chosen: bool) -> StyleBoxFlat:
 	return style
 
 
-## Dresses any button as an item slot.
+## Dresses any button as an item slot, with the same four states everywhere:
+## hover lifts the fill and brightens the edge, pressed sinks it, disabled
+## greys it.
 static func style_slot(button: Button, item: Item, chosen: bool = false) -> void:
 	var style := frame_style(item, chosen)
-	var hover := style.duplicate()
-	hover.bg_color = style.bg_color.lightened(0.08)
+	var hover := style.duplicate() as StyleBoxFlat
+	hover.bg_color = style.bg_color.lightened(0.1)
+	if not chosen:
+		hover.border_color = style.border_color.lightened(0.35)
+	var pressed := style.duplicate() as StyleBoxFlat
+	pressed.bg_color = style.bg_color.darkened(0.3)
+	var disabled := style.duplicate() as StyleBoxFlat
+	disabled.bg_color = style.bg_color.darkened(0.25)
+	disabled.border_color = style.border_color.darkened(0.4)
 	button.add_theme_stylebox_override("normal", style)
-	button.add_theme_stylebox_override("pressed", style)
+	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("disabled", style)
+	button.add_theme_stylebox_override("hover_pressed", pressed)
+	button.add_theme_stylebox_override("disabled", disabled)
 	button.icon = item.icon() if item else null
 	var tint := item.icon_tint() if item else Color.WHITE
 	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color", "icon_disabled_color"]:

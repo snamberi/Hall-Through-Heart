@@ -148,8 +148,8 @@ func _draw_node(id: String) -> void:
 	_canvas.draw_texture_rect(icon, Rect2(at - Vector2(size, size) / 2.0, Vector2(size, size)), false, shade)
 	if node["max"] > 1:
 		var label := "%d/%d" % [rank, node["max"]]
-		_canvas.draw_string_outline(_font, at + Vector2(-20, radius + 14.0 * _zoom), label, HORIZONTAL_ALIGNMENT_CENTER, 40, 12, 4, Color.BLACK)
-		_canvas.draw_string(_font, at + Vector2(-20, radius + 14.0 * _zoom), label, HORIZONTAL_ALIGNMENT_CENTER, 40, 12, UITheme.GOLD if rank >= node["max"] else UITheme.TEXT)
+		_canvas.draw_string_outline(_font, at + Vector2(-20, radius + 14.0 * _zoom), label, HORIZONTAL_ALIGNMENT_CENTER, 40, 13, 4, Color.BLACK)
+		_canvas.draw_string(_font, at + Vector2(-20, radius + 14.0 * _zoom), label, HORIZONTAL_ALIGNMENT_CENTER, 40, 13, UITheme.GOLD if rank >= node["max"] else UITheme.TEXT)
 
 
 func _describe(id: String) -> void:

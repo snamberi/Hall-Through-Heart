@@ -49,7 +49,7 @@ func _draw() -> void:
 		draw_arc(face, 21.0, 0.0, TAU, 32, Color("5a4a32"), 2.0)
 		draw_texture_rect(ItemDB.icon(92), Rect2(face - Vector2(15, 15), Vector2(30, 30)), false, Color(1, 1, 1, 0.25))
 		draw_string(font, Vector2(52.0, 21.0), "Forms", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.DIM)
-		draw_string(font, Vector2(52.0, 38.0), "at level %d" % Transformations.first_level(), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.DIM)
+		draw_string(font, Vector2(52.0, 38.0), "at level %d" % Transformations.first_level(), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.DIM)
 		return
 	var form: Dictionary = Transformations.FORMS[id]
 	var color: Color = form["color"]
@@ -63,7 +63,7 @@ func _draw() -> void:
 		draw_arc(face, 21.0, -PI / 2.0, -PI / 2.0 + TAU * share, 40, color, 3.0)
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, bar.size.y)), color)
 		draw_string(font, Vector2(52.0, 22.0), form["name"], HORIZONTAL_ALIGNMENT_LEFT, 76.0, 13, color.lightened(0.3))
-		draw_string(font, Vector2(52.0, 49.0), "%d s" % ceili(forms.time_left), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT)
+		draw_string(font, Vector2(52.0, 49.0), "%d s" % ceili(forms.time_left), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT)
 	else:
 		var ready := forms.charge >= 1.0
 		var pulse := 0.5 + 0.5 * sin(t * 5.0)
@@ -81,5 +81,5 @@ func _draw() -> void:
 		if ready:
 			draw_rect(rect.grow(1.0 + pulse * 2.0), Color(color, 0.5 * pulse), false, 1.5)
 		else:
-			draw_string(font, Vector2(52.0, 49.0), "%d%%" % roundi(forms.charge * 100.0), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.DIM)
+			draw_string(font, Vector2(52.0, 49.0), "%d%%" % roundi(forms.charge * 100.0), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.DIM)
 	draw_rect(bar, Color("8a683a"), false, 1.0)

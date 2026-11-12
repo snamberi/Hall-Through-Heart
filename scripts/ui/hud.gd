@@ -57,13 +57,14 @@ func setup(player: Player) -> void:
 	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
 		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
 	)
-	$AbilityBar.setup(player)
-	var hotbar_ui := HotbarUI.new()
-	hotbar_ui.setup(player)
-	hotbar_ui.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	hotbar_ui.size = hotbar_ui.custom_minimum_size
-	hotbar_ui.position = Vector2(-hotbar_ui.size.x / 2.0, -hotbar_ui.size.y - 6.0)
-	add_child(hotbar_ui)
+	# One framed bar along the bottom: abilities, then the hotbar in groups.
+	var tip := ItemTooltip.new()
+	var bar := ActionBar.new()
+	bar.setup(player, tip)
+	bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	bar.position = Vector2(-bar.size.x / 2.0, -bar.size.y - 8.0)
+	add_child(bar)
+	add_child(tip)
 	var meter := TransformMeter.new()
 	meter.setup(player)
 	meter.position = Vector2(14.0, 152.0)

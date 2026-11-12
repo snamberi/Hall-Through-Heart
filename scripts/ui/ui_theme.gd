@@ -38,10 +38,14 @@ static func apply(layer: Node) -> void:
 			child.theme = get_theme()
 
 
+## The smallest text the game shows: Almendra blurs into illegibility below it.
+const MIN_TEXT := 13
+
+
 static func label(text: String, font_size: int = 16, color: Color = TEXT) -> Label:
 	var result := Label.new()
 	result.text = text
-	result.add_theme_font_size_override("font_size", font_size)
+	result.add_theme_font_size_override("font_size", maxi(font_size, MIN_TEXT))
 	result.add_theme_color_override("font_color", color)
 	return result
 

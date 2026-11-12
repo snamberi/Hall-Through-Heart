@@ -41,7 +41,7 @@ func _ready() -> void:
 	_text.fit_content = true
 	_text.scroll_active = false
 	_text.custom_minimum_size.x = WIDTH
-	_text.add_theme_font_size_override("normal_font_size", 13)
+	_text.add_theme_font_size_override("normal_font_size", 14)
 	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(_text)
 

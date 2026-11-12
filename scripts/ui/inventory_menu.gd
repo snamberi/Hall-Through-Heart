@@ -100,7 +100,7 @@ func _build() -> void:
 		var button := Button.new()
 		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(104.0, 50.0)
-		button.add_theme_font_size_override("font_size", 12)
+		button.add_theme_font_size_override("font_size", 13)
 		button.text = RecipeDB.display_name(recipe)
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -168,6 +168,13 @@ func _build() -> void:
 			button.position = Vector2(side[1], 6.0 + row * (DOLL_SLOT + 16.0))
 			button.size = Vector2(DOLL_SLOT, DOLL_SLOT)
 			_wire(button, func() -> Item: return player.equipment.get_item(slot), Equipment.BELT_NAMES.get(slot, ItemDB.SLOT_NAMES.get(slot, slot)))
+			# The slot's name, always shown, in the gap beneath it.
+			var name_label := UITheme.label(Equipment.BELT_NAMES.get(slot, ItemDB.SLOT_NAMES.get(slot, slot)), 13, Color("a89a80"))
+			name_label.position = Vector2(side[1] - 10.0, 6.0 + row * (DOLL_SLOT + 16.0) + DOLL_SLOT - 2.0)
+			name_label.size = Vector2(DOLL_SLOT + 20.0, 16.0)
+			name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			doll.add_child(name_label)
 			doll.add_child(button)
 			_slot_buttons[slot] = button
 	_set_label = UITheme.label("", 13, UITheme.GOOD)
@@ -283,7 +290,7 @@ func refresh() -> void:
 		if item == null:
 			# A faint outline of what belongs here.
 			button.icon = ItemDB.icon(SLOT_ICONS[slot])
-			_tint_icon(button, Color(1, 1, 1, 0.16))
+			_tint_icon(button, Color(1, 1, 1, 0.3))
 	var progress := player.equipment.set_progress()
 	var notes: PackedStringArray = []
 	if progress["count"] >= 2:
@@ -473,29 +480,11 @@ func _tint_icon(button: Button, tint: Color) -> void:
 
 ## A slot frame in the item's rarity colour; the selected item's is bright.
 func _frame_style(item: Item, selected: bool) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("151823")
-	style.border_color = Color("3a3e50")
-	style.set_border_width_all(2)
-	style.set_content_margin_all(5)
-	if item:
-		style.border_color = item.color().darkened(0.2)
-		style.bg_color = item.color().darkened(0.84)
-		if selected:
-			style.border_color = Color.WHITE
-			style.set_border_width_all(3)
-	return style
+	return ItemGrid.frame_style(item, selected)
 
 
 func _style_button(button: Button, item: Item) -> void:
-	var style := _frame_style(item, item != null and item == _selected)
-	var hover := style.duplicate()
-	hover.bg_color = style.bg_color.lightened(0.08)
-	button.add_theme_stylebox_override("normal", style)
-	button.add_theme_stylebox_override("pressed", style)
-	button.add_theme_stylebox_override("hover", hover)
-	button.icon = item.icon() if item else null
-	_tint_icon(button, item.icon_tint() if item else Color.WHITE)
+	ItemGrid.style_slot(button, item, item != null and item == _selected)
 
 
 ## Hotbar keys put the hovered (or selected) item in that slot; the

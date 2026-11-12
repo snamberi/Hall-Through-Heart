@@ -223,7 +223,7 @@ func _creature_page(codex: Codex, id: String) -> void:
 		for notch: Array in [[Codex.REVEAL["weakness"], "weakness"], [Codex.REVEAL["drops"], "drops"], [Codex.REVEAL["mark"], "mark"]]:
 			var x := track.size.x * float(notch[0]) / goal
 			bar.draw_line(Vector2(x - 1.0, 2), Vector2(x - 1.0, 18), Color("f0d28a"), 1.5)
-			bar.draw_string(font, Vector2(x - 80.0, 31), "%s %d" % [notch[1], notch[0]], HORIZONTAL_ALIGNMENT_RIGHT, 78.0, 11, UITheme.GOOD if kills >= int(notch[0]) else UITheme.DIM)
+			bar.draw_string(font, Vector2(x - 80.0, 31), "%s %d" % [notch[1], notch[0]], HORIZONTAL_ALIGNMENT_RIGHT, 78.0, 13, UITheme.GOOD if kills >= int(notch[0]) else UITheme.DIM)
 		bar.draw_string(font, Vector2(4, 14), "%d slain" % kills, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color.WHITE)
 	)
 	_right.add_child(bar)
@@ -308,7 +308,7 @@ func _achievements(codex: Codex) -> void:
 				card.draw_colored_polygon(PackedVector2Array([medal + Vector2(0, -9), medal + Vector2(2.6, -3), medal + Vector2(9, -3), medal + Vector2(4, 1.4), medal + Vector2(6, 8),
 					medal + Vector2(0, 4), medal + Vector2(-6, 8), medal + Vector2(-4, 1.4), medal + Vector2(-9, -3), medal + Vector2(-2.6, -3)]), Color("fff4c0"))
 			card.draw_string(UITheme.bold(), Vector2(58, 20), achievement["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UITheme.HEADING if done else UITheme.TEXT)
-			card.draw_string(font, Vector2(58, 37), achievement["text"], HORIZONTAL_ALIGNMENT_LEFT, 300.0, 12, UITheme.TEXT if done else UITheme.DIM)
+			card.draw_string(font, Vector2(58, 37), achievement["text"], HORIZONTAL_ALIGNMENT_LEFT, 300.0, 13, UITheme.TEXT if done else UITheme.DIM)
 			var rewards: PackedStringArray = ["%d gold" % achievement.get("gold", 0)]
 			if achievement.has("title"):
 				rewards.append("title")
