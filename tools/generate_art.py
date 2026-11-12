@@ -2206,6 +2206,16 @@ MAP_ICONS = [
     ("chest", [("wood", "rect", (3, 8, 18, 18)), ("wood", "ellipse", (3, 4, 18, 12)), ("coin", "rect", (3, 10, 18, 11)), ("coin", "rect", (9, 9, 12, 13))]),
     ("altar", [("stone_m", "rect", (3, 16, 18, 19)), ("stone_m", "poly", [(5, 16), (7, 10), (14, 10), (16, 16)]), ("void_m", "ellipse", (7, 2, 14, 9)),
                ("shell", "rect", (9, 4, 10, 5)), ("sky_m", "rect", (2, 12, 3, 16)), ("flame", "rect", (18, 12, 19, 16))]),
+    ("watchtower", [("stone_m", "poly", [(5, 20), (5, 5), (8, 3), (10, 5), (12, 2), (16, 5), (16, 20)]), ("night", "rect", (10, 7, 11, 10)),
+                    ("night", "poly", [(8, 20), (8, 14), (10.5, 12), (13, 14), (13, 20)]), ("stone_m", "rect", (17, 17, 20, 20))]),
+    ("graveyard", [("stone_m", "poly", [(3, 19), (3, 9), (6, 6), (9, 9), (9, 19)]), ("stone_m", "poly", [(12, 19), (12, 6), (15.5, 3), (19, 6), (19, 19)]),
+                   ("night", "rect", (15, 7, 16, 14)), ("night", "rect", (13, 9, 18, 10)), ("grass_m", "rect", (1, 19, 20, 20))]),
+    ("henge", [("stone_m", "rect", (2, 8, 5, 19)), ("stone_m", "rect", (16, 8, 19, 19)), ("stone_m", "rect", (1, 5, 20, 8)), ("stone_m", "rect", (9, 11, 12, 19)),
+               ("sky_m", "rect", (10, 13, 11, 14)), ("grass_m", "rect", (0, 19, 21, 20))]),
+    ("farmstead", [("wall_w", "rect", (3, 10, 13, 19)), ("roof", "poly", [(1, 10), (8, 3), (15, 10)]), ("night", "rect", (7, 13, 9, 19)),
+                   ("wood", "rect", (15, 12, 15, 19)), ("wood", "rect", (19, 12, 19, 19)), ("wood", "rect", (15, 14, 19, 14)), ("grass_m", "rect", (14, 17, 20, 19))]),
+    ("library", [("wood", "rect", (3, 3, 18, 19)), ("night", "rect", (5, 5, 16, 17)), ("danger", "rect", (6, 6, 7, 10)), ("sky_m", "rect", (8, 6, 9, 10)), ("coin", "rect", (10, 7, 11, 10)),
+                 ("grass_m", "rect", (13, 6, 14, 10)), ("shell", "rect", (6, 12, 8, 16)), ("danger", "rect", (10, 12, 11, 16)), ("coin", "rect", (13, 13, 15, 16))]),
 ]
 
 # Things to gather in the world: 64px frames in one row. Pale parts are

@@ -13,6 +13,8 @@ const ICONS := {
 	"merchant": [Color("ffd060"), "Wandering merchant"], "shipwreck": [Color("a08060"), "Shipwreck"], "treasure": [Color("ff4030"), "Buried treasure"],
 	"boss": [Color("ff4d4d"), "World boss"], "altar": [Color("c08cff"), "Altar of Magic"], "dungeon": [Color("b0a0d0"), "Crypt"], "bounty": [Color("ff8a3a"), "Bounty target"],
 	"temple": [Color("ffe8a0"), "The Sanctuary"], "home": [Color("8fd66a"), "Home"], "checkpoint": [Color("ffb060"), "Resting place"],
+	"watchtower": [Color("b0acb8"), "Ruined watchtower"], "graveyard": [Color("a0a8b8"), "Graveyard"], "henge": [Color("9ad0c0"), "Standing stones"],
+	"farmstead": [Color("d8b070"), "Abandoned farmstead"], "library": [Color("c8a070"), "Ruined library"],
 }
 
 var _view: Control

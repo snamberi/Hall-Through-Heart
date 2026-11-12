@@ -1182,13 +1182,69 @@ def decor(kind):
                 c.put(x, 58 - r.randrange(0, 3), C("5d7a3f") if r.random() < 0.6 else C("8aaa5a"))
         c.shade("ellipse", (12, 55, 19, 60), ramp("9a96a4", "6e6a78", "4a4654"))
         c.shade("ellipse", (46, 56, 51, 60), ramp("9a96a4", "6e6a78", "4a4654"))
+    elif kind == "gravestone":
+        # A weathered headstone, rounded at the top, a cross cut into it,
+        # leaning a little, with a mound of earth and grass in front.
+        stone = ramp("a8a4b0", "7e7a88", "56525e")
+        c.shade("ellipse", (18, 52, 46, 61), ramp("6a5a44", "54463a", "3e342a"))
+        c.shade("poly", [(22, 56), (22, 30), (25, 25), (32, 22), (39, 25), (42, 30), (42, 56)], stone)
+        c.fill("line", (24, 31, 24, 54), C("c4c0cc"), 1)
+        c.fill("rect", (31, 30, 33, 46), C("44414e"))
+        c.fill("rect", (27, 34, 37, 36), C("44414e"))
+        c.fill("line", (34, 31, 34, 46), C("9a96a4"), 1)
+        r = random.Random(9)
+        for _ in range(18):
+            x, y = r.randrange(23, 42), r.randrange(28, 55)
+            if (x, y) in c.filled:
+                c.put(x, y, C("6e6a78") if r.random() < 0.6 else C("5d7a3f"))
+        for x in range(20, 45):
+            if r.random() < 0.5:
+                c.put(x, 56 - r.randrange(0, 2), C("5d7a3f") if r.random() < 0.6 else C("8aaa5a"))
+    elif kind == "ruined_tower":
+        # The stump of a round watchtower: courses of stone, a broken
+        # jagged top, an arrow slit, a dark doorway and fallen blocks.
+        stone = ramp("aaa6b2", "7e7a88", "54505e")
+        c.shade("ellipse", (8, 52, 56, 62), ramp("7a7686", "5a5664", "3e3a46"))
+        c.shade("poly", [(12, 58), (12, 16), (16, 12), (20, 15), (24, 6), (29, 10), (33, 4), (38, 11), (42, 8), (47, 14), (52, 12), (52, 58)], stone)
+        for y in range(18, 58, 6):
+            c.fill("line", (13, y, 51, y), C("4a4654"), 1)
+            for x in range(14 + (y // 6 % 2) * 5, 51, 10):
+                c.fill("line", (x, y + 1, x, y + 5), C("4a4654"), 1)
+        c.fill("rect", (13, 17, 16, 57), C("b8b4c0"))
+        c.fill("rect", (47, 17, 51, 57), C("5e5a68"))
+        c.fill("rect", (31, 22, 33, 30), C("16141c"))
+        c.shade("poly", [(26, 58), (26, 44), (32, 39), (38, 44), (38, 58)], ramp("221e28", "18151c", "100e14"))
+        c.fill("line", (26, 44, 32, 39), C("9a96a4"), 1)
+        c.shade("rect", (4, 54, 11, 60), stone)
+        c.shade("rect", (53, 52, 59, 58), stone)
+        r = random.Random(13)
+        for _ in range(16):
+            x, y = r.randrange(14, 50), r.randrange(14, 56)
+            if (x, y) in c.filled:
+                c.put(x, y, C("5d7a3f"))
+    elif kind == "cart":
+        # A broken handcart tipped on one wheel, a plank missing, a sack
+        # spilled out of it.
+        wood = ramp("9a7a52", "6b4f36", "4a3626")
+        c.shade("poly", [(10, 40), (46, 34), (48, 46), (12, 52)], wood)
+        for x in (18, 28, 38):
+            c.fill("line", (x, 38 + (46 - x) // 12, x + 1, 50 - (x - 10) // 8), C("4a3626"), 1)
+        c.shade("line", (46, 40, 60, 30), wood, width=2, dither=False)
+        c.shade("ellipse", (20, 44, 34, 58), ramp("8a6a48", "5a4230", "3a2a1e"))
+        c.fill("ellipse", (24, 48, 30, 54), C("2a1e16"))
+        c.fill("line", (27, 45, 27, 57), C("6b4f36"), 1)
+        c.fill("line", (21, 51, 33, 51), C("6b4f36"), 1)
+        c.shade("ellipse", (40, 48, 54, 58), ramp("d8c8a0", "b8a478", "8a7654"))
+        c.fill("line", (46, 48, 48, 46), C("6a5a44"), 1)
+        for (x, y) in [(55, 57), (57, 56), (52, 59)]:
+            c.put(x, y, C("e0c870"))
     c.outline()
     return c.img
 
 
 DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate", "barrel", "well", "fence", "lantern",
          "stall", "signpost", "rug", "shelf", "plant_pot", "table", "chair", "candles", "cage", "tent", "obelisk",
-         "palisade", "spike_trap", "ballista", "soil", "scarecrow", "torch", "fireplace", "waystone", "waystone_lit"]
+         "palisade", "spike_trap", "ballista", "soil", "scarecrow", "torch", "fireplace", "waystone", "waystone_lit", "gravestone", "ruined_tower", "cart"]
 
 
 def sheet(images, w, h):

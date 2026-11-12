@@ -10,7 +10,8 @@ extends Node2D
 const T := TerrainTiles.Type
 ## Chance per chunk of each structure, checked in this order.
 const CHANCES: Array[Array] = [["ruin", 0.07], ["shrine", 0.03], ["cave", 0.035], ["lair", 0.03], ["portal", 0.02], ["dungeon", 0.014], ["boss", 0.009],
-	["camp", 0.04], ["waystone", 0.025], ["obelisk", 0.015], ["merchant", 0.015]]
+	["camp", 0.04], ["waystone", 0.025], ["obelisk", 0.015], ["merchant", 0.015],
+	["watchtower", 0.02], ["graveyard", 0.02], ["henge", 0.015], ["farmstead", 0.02], ["library", 0.012]]
 ## Notes left in abandoned camps.
 const NOTES: Array[String] = [
 	"Day nine. The husks came again at dusk. We burned the fence to keep them back. No fence now.",
@@ -27,7 +28,7 @@ const NOTES: Array[String] = [
 ## How far an obelisk shows the land around it, in tiles.
 const OBELISK_SIGHT := 90
 ## Lairs and portals only appear where the area is at least this level.
-const MIN_LEVEL := {"lair": 3, "portal": 4, "dungeon": 4, "boss": 6}
+const MIN_LEVEL := {"lair": 3, "portal": 4, "dungeon": 4, "boss": 6, "watchtower": 2, "graveyard": 2}
 ## Nothing but the temple within this many tiles of the origin.
 const CLEAR_RADIUS := 26.0
 ## How far a structure's grounds reach, in tiles: nothing grows inside.
@@ -178,21 +179,32 @@ func _at(cell: Vector2i, offset: Vector2 = Vector2.ZERO) -> Vector2:
 	return _world.cell_to_world(cell) + offset
 
 
-## Paving laid flat under a structure.
-func _floor(placed: Array, center: Vector2i, reach: int) -> void:
+## Paving laid flat under a structure, one flagstone tile per world tile
+## (tools/generate_floors.py). The rim uses worn tiles with stones missing,
+## so the floor crumbles into the ground around it.
+const FLOORS: Texture2D = preload("res://assets/tiles/floors.png")
+const FLOOR_STYLES: Array[String] = ["temple", "ruin", "shrine", "basalt"]
+
+
+func _floor(placed: Array, center: Vector2i, reach: int, style: String = "ruin") -> void:
+	var row := maxi(FLOOR_STYLES.find(style), 0)
+	var inside := func(dx: int, dy: int) -> bool: return Vector2(dx, dy).length() <= reach + 0.3
 	for dy in range(-reach, reach + 1):
 		for dx in range(-reach, reach + 1):
-			if Vector2(dx, dy).length() <= reach + 0.3:
-				# One tile of the paving picture per tile, laid flat and dimmed.
-				var slab := Sprite2D.new()
-				slab.texture = Prop.DECOR
-				slab.region_enabled = true
-				var corner := Vector2(posmod(dx * 7 + dy * 3, 3) * 8 + 2, posmod(dx * 5 - dy, 2) * 10 + 2)
-				slab.region_rect = Rect2(Vector2(Prop.Decor.FLOOR * 64, 0) + corner, Vector2(44, 44))
-				slab.position = _at(center + Vector2i(dx, dy))
-				slab.modulate = Color(0.78, 0.76, 0.8)
-				slab.z_index = -8
-				placed.append(slab)
+			if not inside.call(dx, dy):
+				continue
+			var rim: bool = not (inside.call(dx + 1, dy) and inside.call(dx - 1, dy) and inside.call(dx, dy + 1) and inside.call(dx, dy - 1))
+			var pick := posmod(hash(Vector3i(center.x + dx, center.y + dy, row)), 97)
+			# Now and then a worn tile inside too, so big floors look old.
+			var worn := rim or (reach >= 3 and pick % 13 == 0 and style != "temple")
+			var column := (4 if worn else 0) + pick % 4
+			var slab := Sprite2D.new()
+			slab.texture = FLOORS
+			slab.region_enabled = true
+			slab.region_rect = Rect2(column * 44, row * 44, 44, 44)
+			slab.position = _at(center + Vector2i(dx, dy))
+			slab.z_index = -8
+			placed.append(slab)
 
 
 func _decor(placed: Array, art: Prop.Decor, cell: Vector2i, solid: float = 0.0, lit: bool = false, offset: Vector2 = Vector2.ZERO) -> Prop:
@@ -205,7 +217,7 @@ func _decor(placed: Array, art: Prop.Decor, cell: Vector2i, solid: float = 0.0, 
 
 ## The Sanctuary: paving, a ring of pillars, statues, braziers, and the altar.
 func _build_temple(placed: Array) -> void:
-	_floor(placed, Vector2i(0, -1), 3)
+	_floor(placed, Vector2i(0, -1), 3, "temple")
 	for index in 10:
 		var angle := TAU * index / 10.0 + 0.3
 		# Leave the south side open as the way out.
@@ -279,7 +291,7 @@ func _build_ruin(cell: Vector2i, key: String, level: int, random: RandomNumberGe
 ## altar that burns violet, with a pillar of light that shows from afar.
 ## There the player takes up (or changes) their school of magic.
 func _build_altar(cell: Vector2i, _key: String, _level: int, random: RandomNumberGenerator, placed: Array) -> void:
-	_floor(placed, cell, 5)
+	_floor(placed, cell, 5, "shrine")
 	for index in 8:
 		var spot := cell + Vector2i(Vector2.from_angle(TAU * index / 8.0 + 0.2) * 4.6)
 		if index % 2 == 0:
@@ -301,7 +313,7 @@ func _build_altar(cell: Vector2i, _key: String, _level: int, random: RandomNumbe
 ## A standing stone ringed with candles. Praying there blesses the player
 ## for a while, once a day.
 func _build_shrine(cell: Vector2i, key: String, _level: int, random: RandomNumberGenerator, placed: Array) -> void:
-	_floor(placed, cell, 2)
+	_floor(placed, cell, 2, "shrine")
 	for index in 6:
 		_decor(placed, Prop.Decor.CANDLES, cell + Vector2i(Vector2.from_angle(TAU * index / 6.0) * 2.2), 0.0, index % 2 == 0)
 	_decor(placed, Prop.Decor.STATUE, cell + Vector2i(-2, -2), 12.0)
@@ -410,7 +422,7 @@ func _build_portal(cell: Vector2i, key: String, level: int, random: RandomNumber
 func _build_boss(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
 	var boss_id := BossDB.for_site(_world.generator.tile_type_at(cell), level, hash(key))
 	var data: Dictionary = BossDB.BOSSES[boss_id]
-	_floor(placed, cell, 5)
+	_floor(placed, cell, 5, "basalt")
 	for index in 10:
 		var spot := cell + Vector2i(Vector2.from_angle(TAU * index / 10.0) * 6.0)
 		if index % 2 == 0:
@@ -556,7 +568,7 @@ func _build_shipwreck(cell: Vector2i, key: String, level: int, random: RandomNum
 func _build_dungeon(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
 	var dungeon_seed := random.randi()
 	var boss_id := BossDB.for_site(_world.generator.tile_type_at(cell), level, dungeon_seed)
-	_floor(placed, cell, 3)
+	_floor(placed, cell, 3, "basalt")
 	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(-2, -1), 10.0)
 	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(2, -1), 10.0)
 	_decor(placed, Prop.Decor.STATUE, cell + Vector2i(-3, 1), 12.0)
@@ -572,6 +584,134 @@ func _build_dungeon(cell: Vector2i, key: String, level: int, random: RandomNumbe
 	)
 	entrance.sprite().modulate = Color(0.7, 0.65, 0.8)
 	placed.append(entrance)
+
+
+## A ruined watchtower: the stump of a round tower on old paving, fallen
+## blocks, a lookout's brazier, and archers holding it until its chest is
+## taken.
+func _build_watchtower(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	_floor(placed, cell + Vector2i(0, 1), 2)
+	_decor(placed, Prop.Decor.RUINED_TOWER, cell, 26.0)
+	for i in 4:
+		_decor(placed, Prop.Decor.RUBBLE, cell + Vector2i(random.randi_range(-3, 3), random.randi_range(1, 3)), 0.0, false, Vector2(random.randf_range(-8.0, 8.0), 0))
+	_decor(placed, Prop.Decor.BRAZIER, cell + Vector2i(2, 2), 8.0, true)
+	_decor(placed, Prop.Decor.BANNER, cell + Vector2i(-2, 1), 4.0)
+	_decor(placed, Prop.Decor.CRATE, cell + Vector2i(-2, 3), 10.0)
+	placed.append(_chest(cell + Vector2i(1, 3), key, level, 1.3))
+	if used.has(key):
+		return
+	for spot: Vector2i in [Vector2i(-3, 2), Vector2i(3, 1)]:
+		placed.append(_spawner.spawn_at(_at(cell + spot), level, Enemy.Rank.NORMAL, "bone_archer"))
+
+
+## An old graveyard: rows of headstones inside a broken fence, candles on
+## a few graves, and a crypt chest the dead still guard.
+func _build_graveyard(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	for dx in range(-4, 5):
+		for dy: int in [-4, 4]:
+			if absi(dx) > 1 or dy == -4:
+				if random.randf() < 0.8:
+					_decor(placed, Prop.Decor.FENCE, cell + Vector2i(dx, dy), 8.0)
+	for dy in range(-3, 4):
+		for dx: int in [-4, 4]:
+			if random.randf() < 0.8:
+				_decor(placed, Prop.Decor.FENCE, cell + Vector2i(dx, dy), 8.0)
+	for row in 3:
+		for column in 4:
+			if random.randf() < 0.85:
+				var grave := cell + Vector2i(-3 + column * 2, -3 + row * 2)
+				if grave == cell + Vector2i(1, -1):
+					continue
+				_decor(placed, Prop.Decor.GRAVESTONE, grave, 8.0, false, Vector2(random.randf_range(-4.0, 4.0), 0))
+				if random.randf() < 0.25:
+					_decor(placed, Prop.Decor.CANDLES, grave + Vector2i(0, 1), 0.0, true)
+	_floor(placed, cell + Vector2i(0, 2), 1)
+	_decor(placed, Prop.Decor.BONES, cell + Vector2i(-1, 2))
+	var contents: Array = roll_chest(level, 1.5)
+	contents.append(Item.create("bone", random.randi_range(2, 5)).to_dict())
+	placed.append(_chest(cell + Vector2i(0, 2), key, level, 1.5, contents))
+	if used.has(key):
+		return
+	for spot: Vector2i in [Vector2i(-2, 1), Vector2i(2, 1), Vector2i(0, -2)]:
+		placed.append(_spawner.spawn_at(_at(cell + spot), level, Enemy.Rank.NORMAL, "husk" if spot.y > 0 else "bone_archer"))
+
+
+## Standing stones: a ring of carved menhirs round a capstone. Laying a
+## hand on it blesses the traveller for a while.
+func _build_henge(cell: Vector2i, _key: String, _level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	_floor(placed, cell, 1)
+	for index in 8:
+		var spot := cell + Vector2i((Vector2.from_angle(TAU * index / 8.0 + 0.2) * Vector2(4.2, 3.6)).round())
+		if random.randf() < 0.85:
+			_decor(placed, Prop.Decor.WAYSTONE, spot, 10.0)
+		else:
+			_decor(placed, Prop.Decor.RUBBLE, spot)
+	var stone := Prop.create_decor(Prop.Decor.OBELISK, _at(cell), 12.0, "Lay a hand on the old stone", func(player: Player) -> void:
+		player.buffs.add("henge", "Blessing of the Stones", 300.0, {"physical_damage": {"percent": 0.08}, "magic_power": {"percent": 0.08}, "health_regen": {"flat": 1.0}}, null, "blessing")
+		Events.announcement.emit("BLESSING OF THE STONES", "Stronger blows and spells, and wounds that close, for five minutes.")
+		Audio.play("level_up", -8.0, 0.0)
+	)
+	stone.add_light(0.5, 1.2, Waystones.GLOW)
+	placed.append(stone)
+
+
+## An abandoned farmstead: a cottage, plots gone to weeds, a scarecrow, a
+## well and a tipped cart, with seed and food left in the store.
+func _build_farmstead(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	var house := Prop.create(Prop.Art.HOUSE, _at(cell + Vector2i(-2, -2)), 30.0)
+	HouseStyles.dress(house, _world.generator.tile_type_at(cell))
+	placed.append(house)
+	for row in 2:
+		for column in 3:
+			_decor(placed, Prop.Decor.SOIL, cell + Vector2i(1 + column, row))
+	_decor(placed, Prop.Decor.SCARECROW, cell + Vector2i(2, 2), 6.0)
+	_decor(placed, Prop.Decor.WELL, cell + Vector2i(-3, 2), 14.0)
+	_decor(placed, Prop.Decor.CART, cell + Vector2i(0, 3), 14.0)
+	_decor(placed, Prop.Decor.BARREL, cell + Vector2i(-1, 0), 10.0)
+	for dx in range(0, 5):
+		if random.randf() < 0.7:
+			_decor(placed, Prop.Decor.FENCE, cell + Vector2i(dx, -2), 8.0)
+	var seeds: Array[String] = ["wheat_seeds", "carrot_seeds", "potato_seeds", "pumpkin_seeds"]
+	var contents: Array = roll_chest(level, 0.8)
+	for i in 2:
+		contents.append(Item.create(seeds[random.randi_range(0, seeds.size() - 1)], random.randi_range(2, 5)).to_dict())
+	contents.append(Item.create("bread", random.randi_range(1, 3)).to_dict())
+	placed.append(_chest(cell + Vector2i(-2, 0), key, level, 0.8, contents))
+
+
+## A ruined library: broken walls round shelves of rotten books, a reading
+## table lit by candles, and one book still worth reading.
+func _build_library(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	_floor(placed, cell, 3, "temple")
+	var wall_cells: Array = []
+	for dx in range(-4, 5):
+		if random.randf() < 0.75:
+			wall_cells.append(cell + Vector2i(dx, -4))
+	for dy in range(-3, 3):
+		for dx: int in [-4, 4]:
+			if random.randf() < 0.6:
+				wall_cells.append(cell + Vector2i(dx, dy))
+	for piece in StoneWall.build(wall_cells, func(c: Vector2i) -> Vector2: return _at(c)):
+		placed.append(piece)
+	for dx: int in [-3, -1, 1, 3]:
+		_decor(placed, Prop.Decor.SHELF, cell + Vector2i(dx, -3), 12.0)
+	_decor(placed, Prop.Decor.CHAIR, cell + Vector2i(-1, 1))
+	_decor(placed, Prop.Decor.CANDLES, cell + Vector2i(1, 1), 0.0, true)
+	_decor(placed, Prop.Decor.RUBBLE, cell + Vector2i(3, 2))
+	var read_key := key + ":read"
+	var table := Prop.create_decor(Prop.Decor.TABLE, _at(cell), 14.0, "The book is read" if used.has(read_key) else "Read the old book")
+	table.on_interact = func(player: Player) -> void:
+		if used.has(read_key):
+			return
+		used[read_key] = true
+		var gained := maxi(40, roundi(player.leveling.xp_to_next() * 0.2))
+		player.leveling.add_xp(gained, "library")
+		table.prompt_text = "The book is read"
+		Events.announcement.emit("AN OLD BOOK", "You read until the candles gutter. +%d experience." % gained)
+		Events.codex_event.emit("notes", 1)
+		SaveGame.request_save()
+	placed.append(table)
+	placed.append(_chest(cell + Vector2i(2, -1), key, level, 1.2))
 
 
 ## A chest whose contents are rolled the first time it is opened (or given
