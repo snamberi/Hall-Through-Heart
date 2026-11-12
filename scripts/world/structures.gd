@@ -215,7 +215,7 @@ func _build_temple(placed: Array) -> void:
 	placed.append(_waystones().make_stone("sanctuary", "The Sanctuary", Vector2i(3, 4)))
 	# A first weapon for the taking, so nobody has to fight bare-handed for long.
 	if not used.has("temple:sword"):
-		placed.append(_chest(Vector2i(0, -5), "temple:sword", 1, 0.0, [LootGenerator.make_equipment(1, 0, "sword").to_dict(), Item.create("bandage", 3).to_dict()]))
+		placed.append(_chest(Vector2i(0, -5), "temple:sword", 1, 0.0, [LootGenerator.make_equipment(1, 0, "sword").to_dict(), Item.create("bandage", 3).to_dict(), Item.create("torch", 4).to_dict()]))
 
 
 ## Somewhere to rest: heals, and becomes where the player wakes after dying.
