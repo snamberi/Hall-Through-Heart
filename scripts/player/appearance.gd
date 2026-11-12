@@ -106,7 +106,7 @@ const RACES := {
 	"undead": {"name": "Undead", "text": "Died once already and did not care for it. Shadow holds no fear for the dead.",
 		"look": {"skin": 9, "hair_style": 13, "eyes": 8, "build": 0}, "mods": {"shadow_resist": {"flat": 0.4}, "life_steal": {"flat": 0.03}, "holy_resist": {"flat": -0.2}}},
 	"demonkin": {"name": "Demonkin", "text": "Horned children of the ember fields. Fire is in their blood.",
-		"look": {"skin": 10, "horns": 3, "tail": 1, "hair": 1, "hair_style": 10, "eyes": 3}, "mods": {"fire_damage": {"flat": 3.0}, "fire_resist": {"flat": 0.4}, "physical_damage": {"percent": 0.05}, "frost_resist": {"flat": -0.15}}},
+		"look": {"skin": 10, "horns": 3, "tail": 1, "hair": 1, "hair_style": 1, "eyes": 3}, "mods": {"fire_damage": {"flat": 3.0}, "fire_resist": {"flat": 0.4}, "physical_damage": {"percent": 0.05}, "frost_resist": {"flat": -0.15}}},
 	"beastkin": {"name": "Beastkin", "text": "Ears that hear a twig snap a field away, and legs to match.",
 		"look": {"skin": 17, "ears": 3, "tail": 2, "hair_style": 9, "hair": 11, "eyes": 3}, "mods": {"attack_speed": {"percent": 0.08}, "move_speed": {"percent": 0.06}, "critical_chance": {"flat": 0.03}}},
 	"lizardfolk": {"name": "Lizardfolk", "text": "Cold-blooded, thick-scaled and patient.",
@@ -162,8 +162,13 @@ uniform vec3 target[14];
 // Below this line (in the sprite's own pixels) the body is under water.
 uniform float water_line = 9999.0;
 varying float local_y;
+// The sprite's modulate on its own: in fragment() COLOR already holds the
+// texture's colour too, and multiplying by that again would darken every
+// recoloured pixel (each colour squared).
+varying vec4 modulate;
 void vertex() {
 	local_y = VERTEX.y;
+	modulate = COLOR;
 }
 void fragment() {
 	if (local_y > water_line) {
@@ -176,7 +181,7 @@ void fragment() {
 			result = target[i];
 		}
 	}
-	COLOR = vec4(result, pixel.a) * COLOR;
+	COLOR = vec4(result, pixel.a) * modulate;
 	COLOR.rgb = mix(COLOR.rgb, vec3(0.75, 0.88, 0.95), step(water_line - 1.5, local_y) * 0.55);
 }
 """
