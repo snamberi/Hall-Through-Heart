@@ -35,9 +35,9 @@ static func texture(appearance: Dictionary, whole: bool = false) -> Texture2D:
 	var layers := Appearance.layers(worn)
 	var behind: Array = []
 	var front: Array = []
-	for feature in Appearance.FEATURES:
-		if layers.has(feature[0]):
-			(behind if feature[3] else front).append(layers[feature[0]])
+	for entry: Array in Appearance.LAYER_ORDER:
+		if layers.has(entry[0]):
+			(behind if entry[1] else front).append(layers[entry[0]])
 	for layer: Dictionary in behind:
 		_lay(canvas, _frame("looks/" + layer["sheet"]).get_region(cut), layer["tint"])
 	_lay(canvas, _recolour(_frame("player_sheet").get_region(cut), worn), Color.WHITE)

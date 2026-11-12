@@ -34,15 +34,15 @@ func _ready() -> void:
 	_body = AnimatedSprite2D.new()
 	_body.sprite_frames = _sheet("player_sheet")
 	_holder.add_child(_body)
-	for feature in Appearance.FEATURES:
+	for entry: Array in Appearance.LAYER_ORDER:
 		var sprite := AnimatedSprite2D.new()
 		var layer_material := ShaderMaterial.new()
 		layer_material.shader = _shader
 		sprite.material = layer_material
-		sprite.show_behind_parent = feature[3]
+		sprite.show_behind_parent = entry[1]
 		sprite.visible = false
 		_body.add_child(sprite)
-		_layers[feature[0]] = sprite
+		_layers[entry[0]] = sprite
 	_body.play(pose)
 	resized.connect(_place)
 	show_look(_appearance)

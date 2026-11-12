@@ -34,8 +34,10 @@ const LAYERS: Array[Dictionary] = [
 	{"name": "look_wings", "behind": true},
 	{"name": "cape", "behind": true},
 	{"name": "look_ears", "behind": false},
+	{"name": "look_race", "behind": false},
 	{"name": "look_eyes", "behind": false},
 	{"name": "look_mark", "behind": false},
+	{"name": "look_race_accent", "behind": false},
 	{"name": "look_beard", "behind": false},
 	{"name": "look_hair", "behind": false},
 	{"name": "look_horns", "behind": false},
@@ -344,8 +346,11 @@ func apply_appearance(appearance: Dictionary) -> void:
 ## Shows each feature layer the character has; a helmet hides hair and horns.
 func _show_features() -> void:
 	var helmeted := _layers["helmet"].visible or _layers["hood"].visible
+	var slots: Array[String] = []
 	for feature in Appearance.FEATURES:
-		var slot: String = feature[0]
+		slots.append(feature[0])
+	slots.append_array(Appearance.RACE_LAYERS)
+	for slot: String in slots:
 		var sprite := _layers["look_" + slot]
 		if not _features.has(slot) or (helmeted and slot in UNDER_HELMET):
 			sprite.visible = false

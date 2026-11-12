@@ -39,6 +39,10 @@ var class_id := "adventurer"
 ## at the altar).
 var magic_school := ""
 var magic_schools: Array[String] = []
+## Race evolution (EvolutionDB): the path chosen (-1 for none yet) and the
+## stage reached on it (0-4).
+var evolution_path := -1
+var evolution_stage := 0
 ## Weapon category in hand; decides which mastery is trained.
 var weapon_type: String:
 	get:
@@ -158,6 +162,7 @@ func _ready() -> void:
 	_animator.apply_appearance(appearance)
 	stats.setup(attributes, mastery)
 	stats.set_modifiers_quietly("race", Appearance.race_mods(appearance))
+	stats.set_modifiers_quietly("evolution", EvolutionDB.mods(race(), evolution_path, evolution_stage))
 	buffs.setup(stats)
 	StatusFX.attach(self, active_statuses, 44.0, 12.0)
 	var uniques := Uniques.new()
@@ -889,6 +894,54 @@ func holding_magic() -> bool:
 	return equipment.active_slot == "weapon_1" and equipment.equipped.has("weapon_1")
 
 
+func race() -> String:
+	return str(appearance.get("race", "human"))
+
+
+## Why the next stage of a race path cannot be taken now, or "".
+func evolution_blocked(path: int) -> String:
+	if evolution_path != -1 and path != evolution_path:
+		return "You have already taken another path."
+	if evolution_stage >= 4:
+		return "You have gone as far as this path goes."
+	var need := EvolutionDB.cost(race(), path, evolution_stage + 1)
+	if leveling.level < int(need["level"]):
+		return "Reach level %d." % need["level"]
+	var codex: Node = get_parent().get_node_or_null("Codex")
+	var bosses: int = int(codex.stats.get("bosses", 0)) if codex else 0
+	if bosses < int(need["bosses"]):
+		return "Beat %d world boss%s (%d so far)." % [need["bosses"], "" if int(need["bosses"]) == 1 else "es", bosses]
+	for id: String in need["items"]:
+		if inventory.count_of(id) < int(need["items"][id]):
+			return "Bring %d %s." % [need["items"][id], ItemDB.ITEMS[id]["name"]]
+	return ""
+
+
+## Takes the next stage of a race path: gives up the offering, changes for
+## good, and takes the new gifts. Returns "" or why not.
+func evolve(path: int) -> String:
+	var problem := evolution_blocked(path)
+	if problem != "":
+		return problem
+	var need := EvolutionDB.cost(race(), path, evolution_stage + 1)
+	for id: String in need["items"]:
+		inventory.take(id, int(need["items"][id]))
+	evolution_path = path
+	evolution_stage += 1
+	_apply_evolution()
+	var data: Dictionary = EvolutionDB.paths(race())[path]
+	# From the second stage the path may change how the character looks.
+	if evolution_stage >= 2 and data.has("look"):
+		set_appearance(data["look"])
+	Events.codex_event.emit("evolutions", 1)
+	SaveGame.request_save()
+	return ""
+
+
+func _apply_evolution() -> void:
+	stats.set_modifiers("evolution", EvolutionDB.mods(race(), evolution_path, evolution_stage))
+
+
 ## Takes up a school of magic (at the altar). Returns "" or why not.
 func take_up_magic(school: String) -> String:
 	if not MagicDB.SCHOOLS.has(school):
@@ -903,7 +956,7 @@ func take_up_magic(school: String) -> String:
 
 
 func save_data() -> Dictionary:
-	return {"magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate()}
+	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate()}
 
 
 ## Changes how the player looks and redraws them.
@@ -923,6 +976,8 @@ func load_data(data: Dictionary) -> void:
 	for school: Variant in data.get("magic_schools", []):
 		if MagicDB.SCHOOLS.has(str(school)):
 			magic_schools.append(str(school))
+	evolution_path = clampi(int(data.get("evolution_path", -1)), -1, 2)
+	evolution_stage = clampi(int(data.get("evolution_stage", 0)), 0, 4) if evolution_path != -1 else 0
 	class_chosen_at = int(data.get("class_chosen_at", HeroClasses.CHOICE_LEVEL))
 	var saved_ranks: Variant = data.get("class_ranks", {})
 	class_ranks.clear()
@@ -941,6 +996,7 @@ func load_data(data: Dictionary) -> void:
 	if is_node_ready():
 		_animator.apply_appearance(appearance)
 		stats.set_modifiers("race", Appearance.race_mods(appearance))
+		_apply_evolution()
 
 
 func _process_move(delta: float) -> void:

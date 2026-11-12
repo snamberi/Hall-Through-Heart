@@ -149,6 +149,11 @@ const FEATURES: Array[Array] = [
 	["tail", "tail", "TAILS", true], ["wings", "wings", "WINGS", true], ["ears", "ears", "EARS", false], ["eyes", "eyes", "", false],
 	["mark", "mark", "MARKS", false], ["beard", "beard", "BEARDS", false], ["hair", "hair_style", "HAIR_STYLES", false], ["horns", "horns", "HORNS", false],
 ]
+## Layers every race has of its own (not chosen in the creator).
+const RACE_LAYERS: Array[String] = ["race", "race_accent"]
+## Every look layer in drawing order, back to front: [slot, behind body].
+const LAYER_ORDER: Array[Array] = [["tail", true], ["wings", true], ["ears", false], ["race", false], ["eyes", false], ["mark", false],
+	["race_accent", false], ["beard", false], ["hair", false], ["horns", false]]
 
 const SHADER := """
 shader_type canvas_item;
@@ -305,6 +310,13 @@ static func layers(appearance: Dictionary) -> Dictionary:
 		elif choice.has("color"):
 			tint = choice["color"]
 		result[slot] = {"sheet": choice["sheet"], "tint": tint}
+	# Each race's own details: one layer in the skin's colours, one that
+	# keeps its own (tusks, embers, moss, fin glints...).
+	var race: String = str(worn.get("race", "human"))
+	if ResourceLoader.exists("res://assets/sprites/looks/race_%s.png" % race):
+		result["race"] = {"sheet": "race_" + race, "tint": skin}
+	if ResourceLoader.exists("res://assets/sprites/looks/race_%s_accent.png" % race):
+		result["race_accent"] = {"sheet": "race_%s_accent" % race, "tint": Color.WHITE}
 	return result
 
 

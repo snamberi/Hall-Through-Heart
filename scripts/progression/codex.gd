@@ -22,6 +22,8 @@ const ACHIEVEMENTS: Array[Dictionary] = [
 	{"id": "champion_bane", "name": "Champion's Bane", "text": "Defeat 10 Champions.", "stat": "champions", "goal": 10, "gold": 250, "title": "Champion's Bane"},
 	{"id": "giant_slayer", "name": "Giant Slayer", "text": "Defeat 5 Ancient mini-bosses.", "stat": "minibosses", "goal": 5, "gold": 300},
 	{"id": "kingslayer", "name": "Kingslayer", "text": "Defeat a world boss.", "stat": "bosses", "goal": 1, "gold": 500, "title": "Kingslayer"},
+	{"id": "first_change", "name": "First Change", "text": "Take the first stage of a race evolution.", "stat": "evolutions", "goal": 1, "gold": 200},
+	{"id": "fully_grown", "name": "Fully Grown", "text": "Reach the fourth stage of a race evolution.", "stat": "evolutions", "goal": 4, "gold": 2000, "title": "the Evolved"},
 	{"id": "legend_hunter", "name": "Legend Hunter", "text": "Slay 5 named monsters roaming the wilds.", "stat": "named", "goal": 5, "gold": 400, "title": "Legend Hunter"},
 	{"id": "deaths_hand", "name": "Death's Hand", "text": "Defeat all thirteen world bosses.", "stat": "boss_kinds", "goal": 13, "gold": 3000, "title": "Death's Hand", "skin": "reaper"},
 	{"id": "unbroken", "name": "Unbroken", "text": "Parry 50 blows.", "stat": "parries", "goal": 50, "gold": 200, "title": "the Unbroken"},
