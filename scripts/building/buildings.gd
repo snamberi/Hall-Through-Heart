@@ -32,6 +32,12 @@ const KINDS := {
 	"ballista": {"item": "ballista", "decor": Prop.Decor.BALLISTA, "solid": 14.0, "outdoors": true},
 	## One tile of floor inside a house; the record keeps the item and tile.
 	"floor": {"item": "", "solid": 0.0, "flat": true},
+	## One tile of laid ground outdoors (path, decking, turf, pond...); the
+	## record keeps the item and the terrain it lays.
+	"ground": {"item": "", "solid": 0.0, "flat": true, "outdoors": true},
+	## One tile of wall outdoors, joined to the walls beside it; the record
+	## keeps the item and its style.
+	"wall": {"item": "", "solid": 0.0, "outdoors": true},
 }
 ## Inside of a house by tier, in tiles, not counting the walls.
 const HOUSE_SIZES := {1: Vector2i(9, 6), 2: Vector2i(13, 8), 3: Vector2i(17, 11)}
@@ -58,6 +64,8 @@ var _props: Dictionary = {}
 var _next_id := 1
 ## Furniture props standing in the room the player is in.
 var _room_props: Array = []
+## Outdoor walls: cell -> the StoneWall piece drawn there.
+var _wall_nodes: Dictionary = {}
 
 
 func _ready() -> void:
@@ -68,6 +76,13 @@ func setup(player: Player, instances: Instances) -> void:
 	_player = player
 	_instances = instances
 	instances.left.connect(func() -> void: _room_props.clear())
+	var laid: Array = []
+	for record in records:
+		if record["kind"] == "ground":
+			_world().generator.overrides[Vector2i(int(record["x"]), int(record["y"]))] = int(record["tile"])
+			laid.append(Vector2i(int(record["x"]), int(record["y"])))
+	if not laid.is_empty():
+		_world().refresh_cells(laid)
 	for record in records:
 		if record["where"] == "world":
 			_spawn(record)
@@ -208,8 +223,39 @@ func current_place() -> String:
 	return "world"
 
 
+func _world() -> World:
+	return get_parent().get_node("World")
+
+
+## The outdoor wall or laid ground record on a cell, if any.
+func _cell_record(kind: String, cell: Vector2i) -> Dictionary:
+	for record in records:
+		if record["kind"] == kind and record["where"] == "world" and int(record["x"]) == cell.x and int(record["y"]) == cell.y:
+			return record
+	return {}
+
+
 ## Why a kind of building cannot go at a world position, or "".
 func placement_problem(kind: String, at: Vector2) -> String:
+	if kind in ["ground", "wall"]:
+		if _instances.is_inside():
+			return "This belongs outdoors"
+		if at.distance_to(_player.global_position) > 6.0 * TerrainTiles.TILE_SIZE:
+			return "Too far away"
+		var cell := _world().world_to_cell(at)
+		var type := _world().generator.tile_type_at(cell)
+		if TerrainTiles.is_solid(type) or type == TerrainTiles.Type.DEEP_WATER or type in TerrainTiles.HIGH:
+			return "Not on this ground"
+		if Vector2(cell).length() < 6.0:
+			return "Not on the temple's ground"
+		if kind == "wall":
+			if not _cell_record("wall", cell).is_empty():
+				return "There is a wall here already"
+			if TerrainTiles.is_water(type):
+				return "Not in water"
+			if at.distance_to(_player.global_position) < 30.0:
+				return "You are standing there"
+		return ""
 	if at.distance_to(_player.global_position) > 5.0 * TerrainTiles.TILE_SIZE:
 		return "Too far away"
 	var place := current_place()
@@ -243,9 +289,15 @@ func placement_problem(kind: String, at: Vector2) -> String:
 
 
 ## Sets a building down. The caller has already checked placement_problem.
-func place(kind: String, at: Vector2, item_id: String = "") -> void:
+## `flip` mirrors it left to right.
+func place(kind: String, at: Vector2, item_id: String = "", flip: bool = false) -> void:
 	var where := current_place()
 	var record := {"id": _next_id, "kind": kind, "where": where, "x": at.x, "y": at.y, "items": []}
+	if flip:
+		record["flip"] = true
+	if kind in ["ground", "wall"]:
+		_place_tile(kind, _world().world_to_cell(at), item_id)
+		return
 	if kind == "house":
 		record["tier"] = 1
 	if kind == "floor":
@@ -278,6 +330,53 @@ func place(kind: String, at: Vector2, item_id: String = "") -> void:
 	SaveGame.request_save()
 
 
+## Lays ground or raises a wall on one outdoor cell.
+func _place_tile(kind: String, cell: Vector2i, item_id: String) -> void:
+	var record := {"id": _next_id, "kind": kind, "where": "world", "x": cell.x, "y": cell.y, "items": [], "item": item_id}
+	_next_id += 1
+	if kind == "ground":
+		# New ground replaces what was laid there, and hands it back.
+		var old := _cell_record("ground", cell)
+		if not old.is_empty():
+			records.erase(old)
+			_player.inventory.add(Item.create(old["item"]))
+		record["tile"] = int(ItemDB.ITEMS[item_id]["ground"])
+		records.append(record)
+		_world().generator.overrides[cell] = record["tile"]
+		_world().refresh_cells([cell])
+		_player.professions.add_xp("building", 2.0)
+	else:
+		record["style"] = str(ItemDB.ITEMS[item_id]["wall"])
+		records.append(record)
+		_rebuild_walls(cell)
+		_player.professions.add_xp("building", 4.0)
+	Events.codex_event.emit("built_tiles", 1)
+	SaveGame.request_save()
+
+
+## Redraws the outdoor wall pieces on and around a cell, each joined to
+## the walls beside it.
+func _rebuild_walls(cell: Vector2i) -> void:
+	for offset: Vector2i in [Vector2i.ZERO, Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		var here: Vector2i = cell + offset
+		if is_instance_valid(_wall_nodes.get(here)):
+			(_wall_nodes[here] as Node).queue_free()
+		_wall_nodes.erase(here)
+		var record := _cell_record("wall", here)
+		if record.is_empty():
+			continue
+		var piece := StoneWall.new()
+		piece.style = str(record.get("style", "wood"))
+		piece.north = not _cell_record("wall", here + Vector2i.UP).is_empty()
+		piece.south = not _cell_record("wall", here + Vector2i.DOWN).is_empty()
+		piece.east = not _cell_record("wall", here + Vector2i.RIGHT).is_empty()
+		piece.west = not _cell_record("wall", here + Vector2i.LEFT).is_empty()
+		piece.variation = absi(hash(here * 31 + Vector2i(7, 3)))
+		piece.position = _world().cell_to_world(here) + Vector2(0, StoneWall.THICK / 2.0)
+		add_child(piece)
+		_wall_nodes[here] = piece
+
+
 ## Takes down the player's nearest building and hands the item back.
 ## Returns "" or why it could not be done.
 func dismantle_nearest() -> String:
@@ -299,6 +398,14 @@ func dismantle_nearest() -> String:
 ## The placed thing under a point (the mouse), if the player standing at
 ## `from` can reach it. {} if there is none.
 func record_at(point: Vector2, from: Vector2) -> Dictionary:
+	# Walls and laid ground: whatever is on the tile under the point.
+	if not _instances.is_inside() and point.distance_to(from) < 4.0 * TerrainTiles.TILE_SIZE:
+		var cell := _world().world_to_cell(point)
+		var wall := _cell_record("wall", cell)
+		if wall.is_empty():
+			wall = _cell_record("wall", _world().world_to_cell(point + Vector2(0, 18)))
+		if not wall.is_empty():
+			return wall
 	var best: Dictionary = {}
 	var best_distance := 34.0
 	for record in records:
@@ -323,9 +430,22 @@ func take_down_problem(record: Dictionary) -> String:
 		return "Empty the chest first."
 	if record["kind"] == "house" and not records.filter(func(r: Dictionary) -> bool: return r["where"] == "house:%d" % record["id"] and r["kind"] != "floor").is_empty():
 		return "Clear out the house first."
-	if not _player.inventory.has_room_for(Item.create(KINDS[record["kind"]]["item"])):
+	if not _player.inventory.has_room_for(Item.create(_item_of(record))):
 		return "Inventory is full."
 	return ""
+
+
+## The item a placed thing came from (walls and ground keep their own).
+func _item_of(record: Dictionary) -> String:
+	return str(record.get("item", "")) if record.has("item") and str(record.get("item", "")) != "" else KINDS[record["kind"]]["item"]
+
+
+## Takes up the laid ground on a cell (the land returns to what it was).
+func take_up_ground(cell: Vector2i) -> String:
+	var record := _cell_record("ground", cell)
+	if record.is_empty():
+		return "Nothing laid here."
+	return take_down(record)
 
 
 ## Packs up something placed and hands its item back. Returns "" or why not.
@@ -336,7 +456,22 @@ func take_down(record: Dictionary) -> String:
 	if record["kind"] == "house":
 		# Floors and upgrades are lost with the house.
 		records = records.filter(func(r: Dictionary) -> bool: return r["where"] != "house:%d" % record["id"])
-	_player.inventory.add(Item.create(KINDS[record["kind"]]["item"]))
+	_player.inventory.add(Item.create(_item_of(record)))
+	if record["kind"] == "ground":
+		var cell := Vector2i(int(record["x"]), int(record["y"]))
+		records.erase(record)
+		_world().generator.overrides.erase(cell)
+		_world().generator.forget(cell)
+		_world().refresh_cells([cell])
+		SaveGame.request_save()
+		return ""
+	if record["kind"] == "wall":
+		var cell := Vector2i(int(record["x"]), int(record["y"]))
+		records.erase(record)
+		_rebuild_walls(cell)
+		Audio.play("pickup", -6.0, 0.1)
+		SaveGame.request_save()
+		return ""
 	if is_instance_valid(_props.get(record["id"])):
 		_props[record["id"]].queue_free()
 	_props.erase(record["id"])
@@ -479,7 +614,10 @@ func _room_cell(at: Vector2) -> Vector2i:
 ## Makes the prop for a record, in the world or in the room being shown.
 func _spawn(record: Dictionary) -> void:
 	var kind: Dictionary = KINDS[record["kind"]]
-	if record["kind"] == "floor":
+	if record["kind"] in ["floor", "ground"]:
+		return
+	if record["kind"] == "wall":
+		_rebuild_walls(Vector2i(int(record["x"]), int(record["y"])))
 		return
 	var in_room: bool = record["where"] != "world"
 	if in_room and (not _instances.is_inside() or current_place() != record["where"]):
@@ -516,6 +654,8 @@ func _spawn(record: Dictionary) -> void:
 		prop.reach = 110.0 + 20.0 * (int(record.get("tier", 1)) - 1)
 	if record["kind"] == "table":
 		prop.add_to_group("crafting_tables")
+	if record.get("flip", false) and prop.sprite():
+		prop.sprite().flip_h = true
 	_props[record["id"]] = prop
 	if in_room:
 		_instances.room.add_prop(prop)

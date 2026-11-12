@@ -157,6 +157,8 @@ func is_unique() -> bool:
 
 
 func icon() -> Texture2D:
+	if definition().has("ground"):
+		return TerrainTiles.icon(definition()["ground"])
 	if definition().has("flora"):
 		return Flora.small_texture(definition()["flora"])
 	if definition().has("decor"):

@@ -120,7 +120,23 @@ func _chunk_distance(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
 
-func _build_chunk(chunk: Vector2i) -> void:
+## Redraws the ground of the chunks holding these cells (and their edges)
+## after the player has changed it, without disturbing what stands there.
+func refresh_cells(cells: Array) -> void:
+	var chunks := {}
+	for cell: Vector2i in cells:
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				chunks[cell_to_chunk(cell + Vector2i(dx, dy))] = true
+	for chunk: Vector2i in chunks:
+		if not _chunks.has(chunk):
+			continue
+		(_chunks[chunk] as Node).queue_free()
+		_chunks.erase(chunk)
+		_build_chunk(chunk, false)
+
+
+func _build_chunk(chunk: Vector2i, announce: bool = true) -> void:
 	if _chunks.has(chunk):
 		return
 	var layer := TileMapLayer.new()
@@ -198,4 +214,5 @@ func _build_chunk(chunk: Vector2i) -> void:
 		layer.add_child(cliffs)
 	add_child(layer)
 	_chunks[chunk] = layer
-	chunk_built.emit(chunk)
+	if announce:
+		chunk_built.emit(chunk)

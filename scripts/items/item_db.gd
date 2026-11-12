@@ -532,6 +532,18 @@ const ITEMS := {
 	"crafting_table": {"name": "Crafting Table", "icon": 54, "material_rarity": 0, "place": "table", "value": 30, "text": "Stand beside one to craft. Use it from your bag to set it down."},
 	"storage_chest": {"name": "Storage Chest", "icon": 55, "material_rarity": 0, "place": "chest", "value": 50, "text": "Holds 24 stacks. Use it from your bag to set it down."},
 	"bed": {"name": "Bed", "icon": 57, "material_rarity": 0, "place": "bed", "value": 60, "text": "Sleep in it to make this place home. Use it from your bag to set it down."},
+	# --- shaping the land: each lays one tile of ground outdoors (taken up
+	# again, the land returns to what it was)
+	"stone_path": {"name": "Path Stones", "icon": 42, "tint": Color("a39478"), "ground": TerrainTiles.Type.PATH, "material_rarity": 0, "place": "ground", "value": 2, "text": "Lays a tile of stone path outdoors."},
+	"wooden_decking": {"name": "Wooden Decking", "icon": 43, "tint": Color("b08a5a"), "ground": TerrainTiles.Type.PLANK, "material_rarity": 0, "place": "ground", "value": 3, "text": "Lays a tile of plank decking outdoors."},
+	"flagstones": {"name": "Flagstones", "icon": 42, "tint": Color("8f8a90"), "ground": TerrainTiles.Type.CAVE_FLOOR, "material_rarity": 0, "place": "ground", "value": 3, "text": "Lays a tile of flat grey stone outdoors."},
+	"grass_turf": {"name": "Grass Turf", "icon": 44, "tint": Color("4e8a4a"), "ground": TerrainTiles.Type.DARK_GRASS, "material_rarity": 0, "place": "ground", "value": 2, "text": "Lays a tile of green grass, even on ash or sand."},
+	"sand_sack": {"name": "Sack of Sand", "icon": 42, "tint": Color("c8b080"), "ground": TerrainTiles.Type.SAND, "material_rarity": 0, "place": "ground", "value": 2, "text": "Spreads a tile of sand."},
+	"water_bucket": {"name": "Bucket of Water", "icon": 47, "tint": Color("5a8ac8"), "ground": TerrainTiles.Type.SHALLOW_WATER, "material_rarity": 0, "place": "ground", "value": 4, "text": "Digs a tile of shallow pond. Lay several for a pond."},
+	# --- walls that join their neighbours, built tile by tile outdoors
+	"wooden_wall": {"name": "Wooden Wall", "icon": 43, "tint": Color("8a6238"), "wall": "wood", "material_rarity": 0, "place": "wall", "value": 6, "text": "A tile of stake wall. Walls join their neighbours; leave a gap for a way through."},
+	"stone_wall_block": {"name": "Stone Wall", "icon": 42, "tint": Color("a8a5b2"), "wall": "keep", "material_rarity": 0, "place": "wall", "value": 8, "text": "A tile of cut-stone wall with capstones. Walls join their neighbours."},
+	"ruined_wall_block": {"name": "Ruined Wall", "icon": 42, "tint": Color("7d7986"), "wall": "ruin", "material_rarity": 0, "place": "wall", "value": 5, "text": "A tile of old, broken wall with moss, for a ruin of your own."},
 	"house_kit": {"name": "House Kit", "icon": 56, "material_rarity": 1, "place": "house", "value": 300, "text": "Everything needed to raise a small house. Use it from your bag to choose the spot."},
 	# --- tools: needed to gather; higher tiers reach better materials and work faster
 	"worn_pickaxe": {"name": "Worn Pickaxe", "icon": 49, "tint": Color("9a98a0"), "material_rarity": 0, "tool": {"kind": "pickaxe", "tier": 1, "speed": 1.0}, "text": "Tier 1 pickaxe."},

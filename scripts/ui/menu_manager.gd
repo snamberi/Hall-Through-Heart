@@ -25,6 +25,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "forms", "title": "Forms", "icon": 92, "text": "Beasts and legends\nto transform into"},
 	{"id": "magic", "title": "Magic", "icon": 33, "text": "Schools of magic\nand their spells"},
 	{"id": "evolution", "title": "Evolution", "icon": 92, "text": "Your race's three\npaths of change"},
+	{"id": "build", "title": "Build", "icon": 56, "text": "Walls, ground,\nfurniture and more"},
 	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions\nand mounts"},
 	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours"},
 	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options, save,\nand quit"},
@@ -107,6 +108,7 @@ func setup(player: Player) -> void:
 	_add("forms", FormsMenu.new())
 	_add("magic", MagicMenu.new())
 	_add("evolution", EvolutionMenu.new())
+	_add("build", BuildMenu.new())
 	_add("wardrobe", WardrobeMenu.new())
 	_add("storage", StorageMenu.new())
 	Events.screen_requested.connect(func(id: String) -> void:

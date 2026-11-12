@@ -48,6 +48,9 @@ var _danger := FastNoiseLite.new()
 var _warp := FastNoiseLite.new()
 var _islands := FastNoiseLite.new()
 var _cache: Dictionary = {}
+## Ground the player has laid or dug (paths, decking, turf, ponds...):
+## cell -> terrain type, over whatever the world would have there.
+var overrides: Dictionary = {}
 var _altar := Vector2i.ZERO
 var _altar_found := false
 
@@ -79,6 +82,9 @@ func enemy_level_at(cell: Vector2i) -> int:
 
 
 func tile_type_at(cell: Vector2i) -> int:
+	var forced: Variant = overrides.get(cell)
+	if forced != null:
+		return forced
 	var cached: Variant = _cache.get(cell)
 	if cached != null:
 		return cached
@@ -137,6 +143,11 @@ func magic_altar_cell() -> Vector2i:
 			break
 	_altar_found = true
 	return _altar
+
+
+## Drops a cell's remembered terrain, so it is worked out afresh.
+func forget(cell: Vector2i) -> void:
+	_cache.erase(cell)
 
 
 func find_walkable_near(cell: Vector2i, max_radius: int = 64) -> Vector2i:

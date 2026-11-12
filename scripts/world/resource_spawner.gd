@@ -59,7 +59,7 @@ func _cover_tile(cover: GroundCover, cell: Vector2i, local: Vector2i, tile: int,
 	# About an old site: bones, thicker the closer.
 	for site: Vector2i in sites:
 		var away := Vector2(cell - site).length()
-		if away > Structures.GROUNDS and away < Structures.GROUNDS + 5.0 and random.randf() < 0.32 * (1.0 - (away - Structures.GROUNDS) / 5.0):
+		if away > Structures.GROUNDS and away < Structures.GROUNDS + 5.0 and random.randf() < 0.14 * (1.0 - (away - Structures.GROUNDS) / 5.0):
 			cover.plants.append([spot.call(), Flora.BONES, random.randf() < 0.5])
 			if random.randf() < 0.3:
 				cover.decals.append([spot.call(), Flora.DUST_DECAL, random.randf() < 0.5])

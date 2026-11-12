@@ -63,6 +63,17 @@ const PLAIN_VARIANTS := 6
 const FEATURE_CHANCE := 22
 
 static var _priority: Array[int] = []
+static var _icons: Dictionary = {}
+
+
+## A tile of a terrain as a picture (for the items that lay it).
+static func icon(type: int) -> Texture2D:
+	if not _icons.has(type):
+		var atlas := AtlasTexture.new()
+		atlas.atlas = ATLAS
+		atlas.region = Rect2(Vector2(atlas_coords(type, 0) * TILE_SIZE) + Vector2(4, 4), Vector2(TILE_SIZE - 8, TILE_SIZE - 8))
+		_icons[type] = atlas
+	return _icons[type]
 static var _ground_material: ShaderMaterial
 
 
