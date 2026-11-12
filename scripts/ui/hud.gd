@@ -57,14 +57,21 @@ func setup(player: Player) -> void:
 	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
 		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
 	)
-	# One framed bar along the bottom: abilities, then the hotbar in groups.
+	# Two framed bars along the bottom: the abilities on their own in the
+	# bottom-left corner, the hotbar in groups in the middle.
 	var tip := ItemTooltip.new()
-	var bar := ActionBar.new()
-	bar.setup(player, tip)
-	bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	bar.position = Vector2(-bar.size.x / 2.0, -bar.size.y - 8.0)
-	add_child(bar)
+	_ability_bar = ActionBar.new()
+	_ability_bar.show_items = false
+	_ability_bar.setup(player, tip)
+	add_child(_ability_bar)
+	_item_bar = ActionBar.new()
+	_item_bar.show_abilities = false
+	_item_bar.setup(player, tip)
+	add_child(_item_bar)
 	add_child(tip)
+	_place_bars()
+	get_viewport().size_changed.connect(_place_bars)
+	GameSettings.changed.connect(_place_bars)
 	var meter := TransformMeter.new()
 	meter.setup(player)
 	meter.position = Vector2(14.0, 152.0)
@@ -78,6 +85,21 @@ func setup(player: Player) -> void:
 	_death_message.visible = false
 	_banner.visible = false
 	_refresh()
+
+
+var _ability_bar: ActionBar
+var _item_bar: ActionBar
+
+
+## The ability bar keeps to the bottom-left corner; the hotbar sits in the
+## middle, nudged right if the window is too narrow for both.
+func _place_bars() -> void:
+	if _ability_bar == null:
+		return
+	var room := get_viewport().get_visible_rect().size
+	_ability_bar.position = Vector2(14.0, room.y - _ability_bar.size.y - 8.0)
+	var left := maxf((room.x - _item_bar.size.x) / 2.0, _ability_bar.position.x + _ability_bar.size.x + 14.0)
+	_item_bar.position = Vector2(left, room.y - _item_bar.size.y - 8.0)
 
 
 ## Words for the death screen, by what struck the last blow.
@@ -159,6 +181,7 @@ func _show_banner(title: String, detail: String) -> void:
 
 
 func _process(_delta: float) -> void:
+	_place_bars()
 	# Running buffs with their time left, under the bars.
 	var lines: PackedStringArray = []
 	for id: String in _player.buffs.active:

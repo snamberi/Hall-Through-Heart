@@ -1,9 +1,10 @@
 class_name ActionBar
 extends Control
-## The bar along the bottom of the screen, in one worked frame: the four
-## abilities the keys use now, then the hotbar in labelled groups (the quick
-## item, weapons with the off hand beside them, tools, supplies) and what is
-## worn. Hover anything for what it is; click a hotbar slot to use it.
+## A framed bar along the bottom of the screen. The HUD uses two: the four
+## abilities the keys use now, on their own in the bottom-left corner, and
+## the hotbar in the middle in labelled groups (the quick item, weapons
+## with the off hand beside them, tools, supplies) and what is worn. Hover
+## anything for what it is; click a hotbar slot to use it.
 ##
 ## Abilities show at a glance whether they can be used: bright and edged in
 ## gold when ready (with a flash the moment a cooldown ends), a clock-hand
@@ -19,6 +20,10 @@ const TITLE := 17.0
 const PAD := 12.0
 const ARMOUR: Array[String] = ["helmet", "chest", "legs", "boots"]
 const ARMOUR_ICONS := {"helmet": 6, "chest": 7, "legs": 8, "boots": 9}
+
+## What this bar holds; set before setup().
+var show_abilities := true
+var show_items := true
 
 var _player: Player
 var _tip: ItemTooltip
@@ -53,36 +58,38 @@ func _layout() -> void:
 	_groups.clear()
 	var top := PAD + TITLE
 	var x := PAD
-	# Abilities.
 	var start := x
-	for index in AbilityDB.SET_SIZE:
-		_spots.append([Rect2(x, top, ABILITY, ABILITY), "ability", index])
-		x += ABILITY + GAP
-	_groups.append(["Abilities", Rect2(start - 4.0, top - TITLE, x - GAP - start + 8.0, ABILITY + TITLE + 4.0)])
-	x += GROUP - GAP
-	var y := top + ABILITY - SLOT
-	# The quick item.
-	_spots.append([Rect2(x, y, SLOT, SLOT), "quick", 0])
-	_groups.append(["Quick", Rect2(x - 4.0, y - TITLE, SLOT + 8.0, SLOT + TITLE + 4.0)])
-	x += SLOT + GROUP
-	# Weapons (with the off hand), tools, supplies.
-	for group: Array in [["Weapons", 0, 3], ["Tools", 3, 6], ["Supplies", 6, 9]]:
-		start = x
-		for index in range(group[1], group[2]):
-			_spots.append([Rect2(x, y, SLOT, SLOT), "hotbar", index])
-			x += SLOT + GAP
-		if group[0] == "Weapons":
-			_spots.append([Rect2(x, y + SLOT - MINI, MINI, MINI), "off", 0])
-			x += MINI + GAP
-		_groups.append([group[0], Rect2(start - 4.0, y - TITLE, x - GAP - start + 8.0, SLOT + TITLE + 4.0)])
+	if show_abilities:
+		for index in AbilityDB.SET_SIZE:
+			_spots.append([Rect2(x, top, ABILITY, ABILITY), "ability", index])
+			x += ABILITY + GAP
+		_groups.append(["Abilities", Rect2(start - 4.0, top - TITLE, x - GAP - start + 8.0, ABILITY + TITLE + 4.0)])
 		x += GROUP - GAP
-	# What is worn.
-	start = x
-	for index in ARMOUR.size():
-		_spots.append([Rect2(x + (index % 2) * (MINI + 2.0), y + (index / 2) * (MINI + 2.0) - 2.0, MINI, MINI), "armour", index])
-	x += MINI * 2.0 + 2.0
-	_groups.append(["Worn", Rect2(start - 4.0, y - TITLE, x - start + 8.0, SLOT + TITLE + 4.0)])
-	custom_minimum_size = Vector2(x + PAD, top + ABILITY + PAD)
+	if show_items:
+		var y := top + ABILITY - SLOT if show_abilities else top
+		# The quick item.
+		_spots.append([Rect2(x, y, SLOT, SLOT), "quick", 0])
+		_groups.append(["Quick", Rect2(x - 4.0, y - TITLE, SLOT + 8.0, SLOT + TITLE + 4.0)])
+		x += SLOT + GROUP
+		# Weapons (with the off hand), tools, supplies.
+		for group: Array in [["Weapons", 0, 3], ["Tools", 3, 6], ["Supplies", 6, 9]]:
+			start = x
+			for index in range(group[1], group[2]):
+				_spots.append([Rect2(x, y, SLOT, SLOT), "hotbar", index])
+				x += SLOT + GAP
+			if group[0] == "Weapons":
+				_spots.append([Rect2(x, y + SLOT - MINI, MINI, MINI), "off", 0])
+				x += MINI + GAP
+			_groups.append([group[0], Rect2(start - 4.0, y - TITLE, x - GAP - start + 8.0, SLOT + TITLE + 4.0)])
+			x += GROUP - GAP
+		# What is worn.
+		start = x
+		for index in ARMOUR.size():
+			_spots.append([Rect2(x + (index % 2) * (MINI + 2.0), y + (index / 2) * (MINI + 2.0) - 2.0, MINI, MINI), "armour", index])
+		x += MINI * 2.0 + 2.0
+		_groups.append(["Worn", Rect2(start - 4.0, y - TITLE, x - start + 8.0, SLOT + TITLE + 4.0)])
+		x += GROUP
+	custom_minimum_size = Vector2(x - GROUP + PAD, top + (ABILITY if show_abilities else SLOT) + PAD)
 	size = custom_minimum_size
 	_press_flash.resize(Hotbar.SIZE)
 	_press_flash.fill(0.0)
@@ -216,18 +223,19 @@ func _draw() -> void:
 		draw_rect(rect, Color("5a4a32"), false, 1.0)
 		draw_string(_font, rect.position + Vector2(5, 13), group[0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, Color("c8b07a"))
 	# The other ability set, small, on the Abilities tab.
-	var abilities := _player.abilities
-	var other := (abilities.active_set + 1) % AbilityDB.SETS
-	var tab: Rect2 = _groups[0][1]
-	var set_text := "Set %d  %s" % [abilities.active_set + 1, _key("ability_swap")]
-	var text_width := _font.get_string_size(set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	draw_string(_font, tab.position + Vector2(tab.size.x - text_width - 4.0 - 4 * 14.0, 13), set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.DIM)
-	for index in AbilityDB.SET_SIZE:
-		var other_id: String = abilities.loadout[other * AbilityDB.SET_SIZE + index]
-		var mini_rect := Rect2(tab.end.x - 4.0 * 14.0 - 2.0 + index * 14.0, tab.position.y + 2.0, 12.0, 12.0)
-		draw_rect(mini_rect, Color(0.05, 0.05, 0.08))
-		if other_id != "":
-			draw_texture_rect(ItemDB.icon(AbilityDB.ABILITIES[other_id]["icon"]), mini_rect, false, Color(0.7, 0.7, 0.75))
+	if show_abilities:
+		var abilities := _player.abilities
+		var other := (abilities.active_set + 1) % AbilityDB.SETS
+		var tab: Rect2 = _groups[0][1]
+		var set_text := "Set %d  %s" % [abilities.active_set + 1, _key("ability_swap")]
+		var text_width := _font.get_string_size(set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_string(_font, tab.position + Vector2(tab.size.x - text_width - 4.0 - 4 * 14.0, 13), set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.DIM)
+		for index in AbilityDB.SET_SIZE:
+			var other_id: String = abilities.loadout[other * AbilityDB.SET_SIZE + index]
+			var mini_rect := Rect2(tab.end.x - 4.0 * 14.0 - 2.0 + index * 14.0, tab.position.y + 2.0, 12.0, 12.0)
+			draw_rect(mini_rect, Color(0.05, 0.05, 0.08))
+			if other_id != "":
+				draw_texture_rect(ItemDB.icon(AbilityDB.ABILITIES[other_id]["icon"]), mini_rect, false, Color(0.7, 0.7, 0.75))
 	for index in _spots.size():
 		var spot: Array = _spots[index]
 		var rect: Rect2 = spot[0]
