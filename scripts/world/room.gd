@@ -28,6 +28,8 @@ var entry := Vector2i.ZERO
 var enemies: Array = []
 ## How the walls' faces look: "rock", "stone", "wood" or "void".
 var wall_style := "rock"
+## How dark it is inside: 0 for a lit house, near 1 for a cave.
+var gloom := 0.0
 
 var _layer: TileMapLayer
 var _faces: WallFaces

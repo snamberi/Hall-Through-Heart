@@ -103,6 +103,11 @@ func is_dry_land(cell: Vector2i) -> bool:
 
 
 ## Nearest dry tile to `cell`, searching outward in square rings.
+## Whether a cliff face stands on this tile: higher ground lies just north.
+func is_cliff_base(cell: Vector2i) -> bool:
+	return CliffFaces.level(tile_type_at(cell + Vector2i.UP)) > CliffFaces.level(tile_type_at(cell)) and not TerrainTiles.is_water(tile_type_at(cell))
+
+
 func find_walkable_near(cell: Vector2i, max_radius: int = 64) -> Vector2i:
 	for radius in max_radius + 1:
 		for y in range(-radius, radius + 1):

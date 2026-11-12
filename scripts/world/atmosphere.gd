@@ -165,7 +165,7 @@ func _process(delta: float) -> void:
 	if camera:
 		var view := get_viewport().get_visible_rect().size / camera.zoom
 		_material.set_shader_parameter("anchor", camera.get_screen_center_position() / view)
-	_material.set_shader_parameter("vignette", 0.55 if _player.indoors else 0.28 + 0.25 * _day_night.darkness())
+	_material.set_shader_parameter("vignette", 0.4 if _player.indoors else 0.14 + 0.2 * _day_night.darkness())
 
 
 func _read_place() -> void:
@@ -176,21 +176,23 @@ func _read_place() -> void:
 		var tile := _world.tile_type_at_position(_player.global_position)
 		var weather: Array = WEATHER.get(tile, [Color(0.82, 0.84, 0.86), 0.1, ""])
 		_target_tint = weather[0]
-		# Mist gathers at dawn and in the dark.
-		var hour_fog := 0.12 if _day_night.phase() in ["Dawn", "Dusk"] else 0.06 * _day_night.darkness()
-		# Clear land keeps only a whisper of haze; marsh and ash still fog up.
-		_target_density = weather[1] * 0.55 + hour_fog * 0.6
+		# The air is clear: nothing hangs over the screen in fair weather.
+		# Only a real storm (blizzard, sandstorm, ash storm, thunder) thickens it.
+		_target_density = 0.0
 		kind = weather[2]
 		Atmosphere.weather = _weather_for(tile)
 		if Atmosphere.weather != "":
 			var info: Dictionary = WEATHERS[Atmosphere.weather]
-			_target_density += info["fog"]
+			if _storminess >= 2:
+				_target_density = info["fog"] * 0.55
 			_target_tint = _target_tint.lerp(info["tint"], 0.7)
 			kind = info["particles"]
 		if _day_night.is_night() and tile in [TerrainTiles.Type.DARK_GRASS, TerrainTiles.Type.DEAD_GRASS, TerrainTiles.Type.BOG, TerrainTiles.Type.FUNGAL]:
 			kind = "fireflies"
 	if _player.indoors:
 		Atmosphere.weather = ""
+	# The trees feel the weather.
+	Wind.set_strength(2.0 if Atmosphere.weather == "" else 3.6 if _storminess < 2 else 6.5)
 	if kind == _kind:
 		return
 	_kind = kind

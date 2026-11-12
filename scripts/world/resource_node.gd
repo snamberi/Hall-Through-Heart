@@ -40,6 +40,7 @@ func _ready() -> void:
 		sprite.position.y = -42.0
 		sprite.flip_h = hash(cell) % 2 == 0
 		sprite.add_to_group("occluders")
+		sprite.material = Wind.material
 		add_child(sprite)
 		SunShadow.cast(sprite)
 		solid = 9.0 if _data["kind"] == "tree" else 0.0

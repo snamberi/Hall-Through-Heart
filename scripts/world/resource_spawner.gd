@@ -47,8 +47,9 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 	# Village and structure grounds stay clear of growth.
 	var villages: Villages = get_parent().get_node_or_null("Villages")
 	var structures: Structures = get_parent().get_node_or_null("Structures")
+	# Nothing grows on built-up ground, nor on the face of a cliff.
 	var keep_clear := func(c: Vector2i) -> bool:
-		return (villages != null and villages.is_built_up(c)) or (structures != null and structures.is_reserved(c))
+		return (villages != null and villages.is_built_up(c)) or (structures != null and structures.is_reserved(c)) or generator.is_cliff_base(c)
 
 	# Things to gather, a few per chunk.
 	for kind: String in GatherDB.PER_CHUNK:
@@ -139,6 +140,7 @@ func _scenery(look: int, at: Vector2, solid: float) -> Node2D:
 	sprite.region_rect = Flora.tall_region(look)
 	sprite.position.y = -42.0
 	sprite.flip_h = hash(at) % 2 == 0
+	sprite.material = Wind.material
 	holder.add_child(sprite)
 	SunShadow.cast(sprite)
 	if solid > 0.0:

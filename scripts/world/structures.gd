@@ -236,16 +236,20 @@ func _rest_spot(art: Prop.Art, cell: Vector2i, place_name: String) -> Prop:
 ## corners, rubble, a statue, a brazier, and a chest at the heart.
 func _build_ruin(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
 	_floor(placed, cell, 3)
+	# Walls in runs with gaps where they have fallen, and a doorway to the south.
+	var wall_cells: Array = []
 	for dx in range(-4, 5):
 		for dy: int in [-4, 4]:
 			if absi(dx) <= 1 and dy == 4:
 				continue
-			if random.randf() < 0.75:
-				placed.append(Prop.create(Prop.Art.WALL, _at(cell + Vector2i(dx, dy)), 14.0))
+			if random.randf() < 0.8:
+				wall_cells.append(cell + Vector2i(dx, dy))
 	for dy in range(-3, 4):
 		for dx: int in [-4, 4]:
-			if random.randf() < 0.7:
-				placed.append(Prop.create(Prop.Art.WALL, _at(cell + Vector2i(dx, dy)), 14.0))
+			if random.randf() < 0.75:
+				wall_cells.append(cell + Vector2i(dx, dy))
+	for piece in StoneWall.build(wall_cells, func(c: Vector2i) -> Vector2: return _at(c)):
+		placed.append(piece)
 	for corner: Vector2i in [Vector2i(-4, -4), Vector2i(4, -4), Vector2i(-4, 4), Vector2i(4, 4)]:
 		placed.append(Prop.create(Prop.Art.PILLAR, _at(cell + corner + Vector2i(0, 1)), 9.0))
 	for i in 3:

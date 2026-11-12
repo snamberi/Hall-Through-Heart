@@ -84,7 +84,9 @@ func enter(new_room: Room) -> void:
 	add_child(room)
 	_world.target = null
 	_player.indoors = true
-	(get_parent().get_node("DayNight") as DayNight).indoors = true
+	var day_night := get_parent().get_node("DayNight") as DayNight
+	day_night.indoors = true
+	day_night.cave_dark = room.gloom
 	_player.global_position = room.cell_position(room.entry)
 	_player.velocity = Vector2.ZERO
 	_player.camera.reset_smoothing()
@@ -100,7 +102,9 @@ func leave(at: Variant = null) -> void:
 	_discard_room()
 	_waves_total = 0
 	_player.indoors = false
-	(get_parent().get_node("DayNight") as DayNight).indoors = false
+	var day_night := get_parent().get_node("DayNight") as DayNight
+	day_night.indoors = false
+	day_night.cave_dark = 0.0
 	_player.global_position = at if at != null else _return_position
 	_player.velocity = Vector2.ZERO
 	_world.target = _player
@@ -121,6 +125,7 @@ func enter_cave(cave_seed: int, level: int, lair: bool, on_chest: Callable) -> v
 	var theme: Dictionary = CAVE_THEMES[theme_key]
 	_choose_origin()
 	var cave := Room.new()
+	cave.gloom = 0.92
 	cave.title = theme["title"] + (" (Lair)" if lair else "")
 	Events.codex_event.emit("caves", 1)
 	Events.codex_event.emit("cave_" + theme_key, 1)
@@ -264,6 +269,7 @@ func enter_dungeon(dungeon_seed: int, level: int, boss_id: String, on_cleared: C
 	_choose_origin()
 	var crypt := Room.new()
 	crypt.wall_style = "stone"
+	crypt.gloom = 0.85
 	crypt.title = "Crypt of %s" % (BossDB.BOSSES[boss_id]["name"] as String).trim_prefix("The ")
 	# A wandering line of rooms on a grid.
 	var count := random.randi_range(4, 6)
@@ -417,6 +423,7 @@ func enter_arena(arena_seed: int, level: int, on_cleared: Callable) -> void:
 	_choose_origin()
 	var arena := Room.new()
 	arena.wall_style = "void"
+	arena.gloom = 0.45
 	arena.title = "The Void"
 	for y in range(-ARENA_RADIUS - 1, ARENA_RADIUS + 2):
 		for x in range(-ARENA_RADIUS - 1, ARENA_RADIUS + 2):

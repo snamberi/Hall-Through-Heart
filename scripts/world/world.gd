@@ -32,6 +32,9 @@ var target: Node2D
 
 var _tile_set: TileSet
 var _chunks: Dictionary[Vector2i, TileMapLayer] = {}
+## Called with a tile; true where a structure or village has levelled the
+## ground, so cliffs do not cut through it. Set by the game before chunks load.
+var levelled: Callable
 var _queue: Array[Vector2i] = []
 var _center := Vector2i.MAX
 
@@ -169,12 +172,6 @@ func _build_chunk(chunk: Vector2i) -> void:
 				if TerrainTiles.priority(other) > rank:
 					spills[side] = true
 					fringes[side].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(0, other), TURNS[side])
-			# A cliff face where high ground drops away to the south.
-			var above := types[y * span + x + 1]
-			if above in TerrainTiles.HIGH and not type in TerrainTiles.HIGH:
-				fringes[4].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(2, above))
-			elif above == TerrainTiles.Type.PEAK and type == TerrainTiles.Type.ROCK:
-				fringes[4].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(2, above))
 			# A corner piece where only the diagonal neighbour spills over.
 			for side in 4:
 				if spills[side] or spills[(side + 1) % 4]:
@@ -183,6 +180,19 @@ func _build_chunk(chunk: Vector2i) -> void:
 				var other := types[(y + 1 + diagonal.y) * span + x + 1 + diagonal.x]
 				if TerrainTiles.priority(other) > rank:
 					fringes[side].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(1, other), TURNS[side])
+	# Cliffs: the faces, edges and shadows where high ground drops away.
+	var has_high := false
+	for type in types:
+		if type in TerrainTiles.HIGH:
+			has_high = true
+			break
+	if has_high:
+		var cliffs := CliffFaces.new()
+		cliffs.types = types
+		cliffs.span = span
+		cliffs.origin = origin
+		cliffs.levelled = levelled
+		layer.add_child(cliffs)
 	add_child(layer)
 	_chunks[chunk] = layer
 	chunk_built.emit(chunk)

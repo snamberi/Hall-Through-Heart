@@ -63,6 +63,12 @@ func _ready() -> void:
 	var flat: Array[int] = FLAT_DECOR if _sprite.texture == DECOR else FLAT_ART
 	if not _sprite.frame in flat:
 		SunShadow.cast(_sprite)
+	if _sprite.texture == DECOR and _sprite.frame == Decor.BANNER:
+		_sprite.material = Wind.material
+	elif _sprite.texture == SHEET and _sprite.frame == Art.PORTAL:
+		var swirl := PortalFX.new()
+		swirl.position = Vector2(0, -24)
+		add_child(swirl)
 
 
 ## A prop drawn from the decor sheet (tools/generate_flora.py) instead.
@@ -87,8 +93,25 @@ static func create_decor(index: int, at: Vector2, solid: float = 0.0, prompt: St
 	return prop
 
 
-## Adds a warm glow around the prop, for torches, braziers, and lanterns.
+## Where the flame sits on things that burn, and how big it is:
+## [offset, size, smoke]. Several entries for several flames (candles).
+const ART_FLAMES := {Art.CAMPFIRE: [[Vector2(0, -9), 1.25, true]], Art.ALTAR: [[Vector2(0, -33), 0.85, false]]}
+const DECOR_FLAMES := {
+	Decor.BRAZIER: [[Vector2(0, -30), 1.0, true]], Decor.LANTERN: [[Vector2(0, -33), 0.5, false]],
+	Decor.CANDLES: [[Vector2(-7, -22), 0.3, false], [Vector2(0, -27), 0.34, false], [Vector2(7, -21), 0.3, false]],
+}
+
+
+## Adds a warm glow around the prop, for torches, braziers, and lanterns,
+## and sets its fire burning.
 func add_light(strength: float = 0.9, reach: float = 1.6) -> void:
+	var flames: Array = (DECOR_FLAMES if _sprite.texture == DECOR else ART_FLAMES).get(_sprite.frame, [])
+	for entry: Array in flames:
+		var flame := FlameFX.new()
+		flame.position = entry[0]
+		flame.size = entry[1]
+		flame.smoke = entry[2]
+		add_child(flame)
 	var light := FlickerLight.new()
 	light.texture = LIGHT
 	light.texture_scale = reach

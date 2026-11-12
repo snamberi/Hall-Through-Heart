@@ -112,6 +112,8 @@ func _ready() -> void:
 	add_child(ground_fx)
 	ground_fx.setup(_player, _world, _day_night)
 	$Npcs.setup(_world)
+	var villages: Villages = $Villages
+	_world.levelled = func(cell: Vector2i) -> bool: return _structures.is_reserved(cell) or villages.is_built_up(cell)
 	_place_player_at_start()
 	if saved_world.has("position"):
 		# Carry on from where the game was left.

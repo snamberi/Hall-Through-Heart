@@ -1597,6 +1597,51 @@ ICONS += [
     ("paw", [("fur", "ellipse", (6, 10, 15, 19)), ("fur", "ellipse", (2, 7, 6, 12)), ("fur", "ellipse", (6, 2, 10, 8)), ("fur", "ellipse", (11, 2, 15, 8)), ("fur", "ellipse", (15, 7, 19, 12))]),
 ]
 
+# Icons for the map and minimap: one row of 22px cells in assets/icons/map.png.
+# The order is MapIcons.KINDS in the game.
+ICON_PALETTE.update({"roof": ["d86a5a", "b04a40", "7c3030"], "wall_w": ["f0e4c8", "cdbf9e", "9a8d70"], "stone_m": ["b4b0bd", "8a8794", "5c5966"],
+                     "tent": ["d8b07a", "b08a54", "7c5e36"], "void_m": ["c8a0ff", "9a6cf0", "5e3aa8"], "coin": ["ffe27a", "f0b830", "b07c10"],
+                     "hide_m": ["c89a6a", "a07848", "70522e"], "skull": ["f4f0e4", "d2ccba", "9c9686"], "danger": ["ff7a6a", "e0443c", "9c2420"],
+                     "sky_m": ["9fe8ff", "5cc0f0", "2c80c0"], "grass_m": ["9ad86a", "6aae44", "447a2a"]})
+MAP_ICONS = [
+    ("village", [("wall_w", "rect", (2, 11, 10, 19)), ("roof", "poly", [(1, 11), (6, 5), (11, 11)]), ("wall_w", "rect", (11, 9, 19, 19)), ("roof", "poly", [(10, 9), (15, 2), (20, 9)]),
+                 ("night", "rect", (5, 14, 7, 19)), ("night", "rect", (14, 13, 16, 19)), ("coin", "rect", (17, 11, 18, 12))]),
+    ("ruin", [("stone_m", "rect", (2, 10, 6, 19)), ("stone_m", "rect", (8, 6, 12, 19)), ("stone_m", "rect", (14, 12, 19, 19)), ("stone_m", "poly", [(2, 10), (4, 7), (6, 10)]),
+              ("stone_m", "rect", (7, 4, 13, 6)), ("grass_m", "rect", (14, 11, 17, 12)), ("night", "rect", (9, 9, 10, 10))]),
+    ("shrine", [("stone_m", "poly", [(4, 19), (6, 12), (15, 12), (17, 19)]), ("stone_m", "rect", (8, 6, 13, 12)), ("void_m", "poly", [(8, 6), (10.5, 1), (13, 6)]),
+                ("void_m", "rect", (10, 8, 11, 10))]),
+    ("cave", [("stone_m", "poly", [(1, 19), (3, 9), (8, 4), (14, 4), (18, 9), (20, 19)]), ("night", "poly", [(6, 19), (7, 12), (10.5, 9), (14, 12), (15, 19)]),
+              ("stone_m", "rect", (3, 17, 6, 19))]),
+    ("lair", [("skull", "ellipse", (4, 3, 17, 15)), ("skull", "rect", (7, 13, 14, 18)), ("night", "ellipse", (6, 7, 10, 11)), ("night", "ellipse", (11, 7, 15, 11)),
+              ("night", "poly", [(10, 12), (11, 12), (10.5, 14)]), ("night", "rect", (9, 15, 9, 18)), ("night", "rect", (12, 15, 12, 18)), ("danger", "rect", (7, 8, 8, 9)), ("danger", "rect", (13, 8, 14, 9))]),
+    ("portal", [("void_m", "ring", (3, 1, 18, 20), 3), ("night", "ellipse", (6, 4, 15, 17)), ("void_m", "rect", (10, 9, 11, 12)), ("shell", "rect", (8, 6, 8, 6)), ("shell", "rect", (13, 14, 13, 14))]),
+    ("camp", [("tent", "poly", [(2, 18), (10.5, 3), (19, 18)]), ("night", "poly", [(8, 18), (10.5, 9), (13, 18)]), ("wood", "rect", (10, 1, 10, 4)), ("flame", "poly", [(16, 19), (17.5, 14), (19, 19)])]),
+    ("waystone", [("stone_m", "poly", [(7, 19), (7, 6), (10.5, 1), (14, 6), (14, 19)]), ("sky_m", "rect", (10, 6, 11, 8)), ("sky_m", "rect", (9, 10, 12, 11)), ("sky_m", "rect", (10, 13, 11, 16)),
+                  ("stone_m", "rect", (5, 18, 16, 20))]),
+    ("obelisk", [("stone_m", "poly", [(8, 19), (9, 4), (10.5, 0), (12, 4), (13, 19)]), ("void_m", "rect", (10, 6, 11, 7)), ("void_m", "rect", (10, 10, 11, 11)), ("void_m", "rect", (10, 14, 11, 15)),
+                 ("stone_m", "rect", (6, 18, 15, 20))]),
+    ("merchant", [("tent", "poly", [(4, 9), (17, 9), (19, 19), (2, 19)]), ("tent", "poly", [(6, 9), (8, 5), (13, 5), (15, 9)]), ("wood", "rect", (9, 3, 12, 5)), ("coin", "ellipse", (7, 11, 14, 18)),
+                  ("night", "rect", (10, 12, 11, 17))]),
+    ("shipwreck", [("wood", "poly", [(1, 13), (20, 11), (17, 19), (5, 19)]), ("wood", "rect", (9, 2, 10, 12)), ("shell", "poly", [(10, 3), (17, 7), (10, 10)]), ("sky_m", "rect", (1, 19, 20, 20))]),
+    ("treasure", [("wood", "rect", (3, 9, 18, 18)), ("wood", "ellipse", (3, 5, 18, 13)), ("coin", "rect", (3, 11, 18, 12)), ("coin", "rect", (9, 10, 12, 14)), ("danger", "poly", [(15, 1), (20, 6), (19, 7), (14, 2)]),
+                  ("danger", "poly", [(19, 1), (20, 2), (15, 7), (14, 6)])]),
+    ("boss", [("coin", "poly", [(2, 8), (6, 12), (10.5, 3), (15, 12), (19, 8), (17, 18), (4, 18)]), ("danger", "ellipse", (9, 12, 12, 15)), ("coin", "rect", (4, 18, 17, 20)), ("danger", "rect", (5, 14, 6, 15)),
+              ("danger", "rect", (15, 14, 16, 15))]),
+    ("dungeon", [("stone_m", "rect", (3, 6, 18, 19)), ("stone_m", "poly", [(2, 6), (10.5, 0), (19, 6)]), ("night", "poly", [(7, 19), (7, 11), (10.5, 8), (14, 11), (14, 19)]), ("skull", "ellipse", (9, 2, 12, 5))]),
+    ("bounty", [("shell", "rect", (4, 2, 17, 19)), ("danger", "ellipse", (7, 5, 14, 12)), ("night", "rect", (9, 8, 9, 8)), ("night", "rect", (12, 8, 12, 8)), ("night", "rect", (6, 14, 15, 14)), ("night", "rect", (6, 16, 13, 16))]),
+    ("temple", [("wall_w", "rect", (3, 9, 5, 18)), ("wall_w", "rect", (8, 9, 10, 18)), ("wall_w", "rect", (12, 9, 14, 18)), ("wall_w", "rect", (16, 9, 18, 18)), ("coin", "poly", [(1, 9), (10.5, 2), (20, 9)]),
+                ("wall_w", "rect", (1, 18, 20, 20)), ("flame", "rect", (10, 5, 11, 7))]),
+    ("home", [("wall_w", "rect", (4, 10, 17, 19)), ("grass_m", "poly", [(2, 10), (10.5, 2), (19, 10)]), ("night", "rect", (9, 13, 12, 19)), ("coin", "rect", (5, 12, 7, 14)), ("wood", "rect", (14, 3, 15, 7))]),
+    ("checkpoint", [("wood", "rect", (5, 17, 16, 18)), ("wood", "rect", (7, 15, 14, 16)), ("flame", "poly", [(6, 16), (8, 9), (10, 12), (11, 4), (13, 11), (15, 8), (15, 16)]), ("ember_glow", "poly", [(9, 16), (10.5, 10), (12, 16)])]),
+    ("player", [("coin", "poly", [(10.5, 1), (19, 19), (10.5, 14), (2, 19)]), ("shell", "poly", [(10.5, 5), (14.5, 14.5), (10.5, 12), (6.5, 14.5)])]),
+    ("animal", [("hide_m", "ellipse", (3, 9, 16, 17)), ("hide_m", "ellipse", (13, 5, 19, 12)), ("hide_m", "rect", (5, 16, 6, 20)), ("hide_m", "rect", (13, 16, 14, 20)), ("skull", "poly", [(15, 5), (14, 1), (16, 3), (18, 0), (18, 5)]),
+                ("night", "rect", (17, 8, 17, 8)), ("skull", "ellipse", (1, 9, 4, 12))]),
+    ("monster", [("danger", "poly", [(10.5, 2), (19, 10.5), (10.5, 19), (2, 10.5)]), ("night", "rect", (7, 9, 9, 11)), ("night", "rect", (12, 9, 14, 11)), ("night", "rect", (8, 14, 13, 14))]),
+    ("pet", [("grass_m", "ellipse", (6, 10, 15, 19)), ("grass_m", "ellipse", (2, 7, 6, 12)), ("grass_m", "ellipse", (6, 2, 10, 8)), ("grass_m", "ellipse", (11, 2, 15, 8)), ("grass_m", "ellipse", (15, 7, 19, 12))]),
+    ("npc", [("sky_m", "ellipse", (6, 2, 15, 11)), ("sky_m", "poly", [(3, 20), (5, 12), (16, 12), (18, 20)]), ("night", "rect", (8, 6, 9, 7)), ("night", "rect", (12, 6, 13, 7))]),
+    ("chest", [("wood", "rect", (3, 8, 18, 18)), ("wood", "ellipse", (3, 4, 18, 12)), ("coin", "rect", (3, 10, 18, 11)), ("coin", "rect", (9, 9, 12, 13))]),
+]
+
 # Things to gather in the world: 64px frames in one row. Pale parts are
 # tinted in game. Order: rock, ore flecks, tree, herb, fishing ripple.
 NODE = 64
@@ -1624,55 +1669,113 @@ NODES = [
 # The order is the frame number used in scripts/world/prop.gd - only append.
 PROP_PALETTE = {
     "pstone": ["a6a2b0", "7c7888", "56525e"],
+    "pstone_l": ["c8c4d2", "b0acba", "8e8a98"],
     "pdark": ["3a3642", "26232c", "14121a"],
     "pwood": ["8a6a48", "6b4f36", "4a3626"],
+    "pwood_l": ["b08a5c", "96744a", "74583a"],
+    "pwood_d": ["5a4230", "443224", "2e2018"],
     "pgold": ["f0cf6a", "c09a3c", "866a26"],
+    "pmetal": ["8a8e98", "646872", "42464e"],
     "pfire": ["ffd86b", "f08a2e", "b8401e"],
+    "pember": ["ff9a3c", "d8521e", "8a2a12"],
     "pvoid": ["c9a0f0", "8e5cc8", "5c3690"],
     "pcloth": ["b3434a", "8a2c37", "5c1c28"],
+    "pcloth_l": ["d8686c", "b3434a", "8a2c37"],
     "pbone": ["f2efe2", "cfcbb8", "9b9889"],
+    "pmoss": ["7fa055", "5d7a3f", "3f5a2c"],
+    "pplaster": ["e6d8bc", "c8b898", "a09070"],
+    "proof": ["b8584a", "8e3c34", "602624"],
+    "pglass": ["ffe9a0", "f0c050", "c08a28"],
+    "prope": ["d0b888", "a89060", "786440"],
+    "pruby": ["ff6a7a", "d02c44", "8a1428"],
+    "pwhite": ["ffffff"] * 3,
     "pblack": ["0b0a12"] * 3,
 }
 PROPS = [
-    # 0 pillar
-    [("pstone", "rect", (24, 14, 40, 54)), ("pstone", "rect", (20, 8, 44, 15)), ("pstone", "rect", (20, 52, 44, 59)), ("pdark", "rect", (30, 16, 31, 51))],
-    # 1 broken wall
-    [("pstone", "poly", [(10, 58), (10, 34), (18, 30), (22, 38), (30, 26), (38, 32), (44, 24), (54, 36), (54, 58)]),
-     ("pdark", "rect", (12, 44, 52, 45)), ("pdark", "rect", (30, 34, 31, 57))],
-    # 2 chest, closed
-    [("pwood", "rect", (14, 30, 50, 54)), ("pwood", "poly", [(14, 30), (18, 22), (46, 22), (50, 30)]), ("pgold", "rect", (14, 36, 50, 38)),
-     ("pgold", "rect", (29, 33, 35, 42)), ("pdark", "rect", (31, 36, 33, 39))],
-    # 3 chest, open
-    [("pdark", "rect", (16, 26, 48, 36)), ("pwood", "poly", [(14, 26), (18, 12), (46, 12), (50, 26)]), ("pwood", "rect", (14, 34, 50, 54)),
-     ("pgold", "rect", (14, 34, 50, 36)), ("pgold", "ellipse", (22, 28, 30, 34)), ("pgold", "ellipse", (33, 27, 42, 34))],
-    # 4 altar with a flame: a place to rest
-    [("pstone", "poly", [(16, 58), (20, 44), (44, 44), (48, 58)]), ("pstone", "rect", (22, 36, 42, 45)), ("pdark", "rect", (24, 34, 40, 37)),
-     ("pfire", "poly", [(26, 35), (28, 24), (31, 30), (33, 16), (36, 28), (38, 22), (39, 35)])],
-    # 5 cave mouth
-    [("pstone", "poly", [(6, 58), (8, 34), (18, 20), (34, 14), (48, 20), (58, 36), (58, 58)]),
-     ("pblack", "poly", [(18, 58), (19, 40), (26, 30), (36, 28), (44, 34), (46, 58)])],
-    # 6 void portal
-    [("pvoid", "ring", (14, 8, 50, 58), 5), ("pblack", "ellipse", (19, 13, 45, 53)), ("pvoid", "ellipse", (29, 28, 35, 38)),
-     ("pvoid", "rect", (24, 20, 25, 21)), ("pvoid", "rect", (38, 42, 39, 43)), ("pvoid", "rect", (39, 24, 40, 25))],
-    # 7 ladder up and out
-    [("pwood", "rect", (22, 8, 25, 58)), ("pwood", "rect", (39, 8, 42, 58)), ("pwood", "rect", (22, 16, 42, 18)), ("pwood", "rect", (22, 28, 42, 30)),
-     ("pwood", "rect", (22, 40, 42, 42)), ("pwood", "rect", (22, 52, 42, 54))],
-    # 8 crafting table
-    [("pwood", "rect", (12, 30, 52, 38)), ("pwood", "rect", (14, 38, 18, 56)), ("pwood", "rect", (46, 38, 50, 56)), ("pstone", "rect", (18, 24, 28, 30)),
-     ("pstone", "line", (34, 28, 46, 20), 2), ("pwood", "line", (40, 30, 48, 24), 2)],
-    # 9 bed
-    [("pwood", "rect", (12, 26, 52, 54)), ("pcloth", "rect", (14, 34, 50, 52)), ("pbone", "rect", (16, 28, 34, 35)), ("pwood", "rect", (12, 22, 52, 27))],
-    # 10 doorway (the way out of a house)
-    [("pwood", "rect", (18, 12, 46, 58)), ("pdark", "rect", (22, 16, 42, 58)), ("pgold", "rect", (38, 36, 40, 38))],
-    # 11 campfire
-    [("pwood", "line", (16, 52, 46, 44), 4), ("pwood", "line", (18, 44, 48, 52), 4),
-     ("pfire", "poly", [(22, 46), (25, 32), (29, 40), (32, 22), (36, 38), (40, 30), (43, 46)])],
-    # 12 skull totem marking a lair
-    [("pwood", "rect", (30, 26, 34, 58)), ("pbone", "ellipse", (22, 8, 42, 28)), ("pblack", "ellipse", (25, 14, 30, 20)), ("pblack", "ellipse", (34, 14, 39, 20)),
-     ("pbone", "rect", (27, 26, 37, 30))],
-    # 13 house, seen from outside (uses most of the frame)
-    [("pwood", "rect", (6, 30, 58, 60)), ("pcloth", "poly", [(2, 32), (32, 6), (62, 32)]), ("pdark", "rect", (27, 42, 37, 60)),
-     ("pgold", "rect", (34, 50, 35, 51)), ("pdark", "rect", (11, 38, 20, 46)), ("pdark", "rect", (44, 38, 53, 46)), ("pwood", "rect", (6, 30, 58, 32))],
+    # 0 pillar: a fluted column on a stepped base, cracked and mossy
+    [("pstone", "rect", (17, 53, 47, 59)), ("pstone_l", "rect", (17, 53, 47, 54)), ("pstone", "rect", (20, 49, 44, 53)), ("pstone", "rect", (23, 15, 41, 49)),
+     ("pstone_l", "rect", (24, 15, 26, 49)), ("pdark", "rect", (28, 17, 28, 47)), ("pdark", "rect", (32, 17, 32, 47)), ("pdark", "rect", (36, 17, 36, 47)),
+     ("pstone_l", "rect", (29, 17, 29, 47)), ("pstone_l", "rect", (33, 17, 33, 47)), ("pstone", "rect", (20, 10, 44, 15)), ("pstone", "rect", (18, 6, 46, 10)),
+     ("pstone_l", "rect", (18, 6, 46, 7)), ("pdark", "rect", (20, 14, 44, 14)), ("pdark", "line", (38, 21, 40, 28), 1), ("pdark", "line", (40, 28, 38, 34), 1),
+     ("pmoss", "ellipse", (18, 48, 26, 54)), ("pmoss", "rect", (39, 10, 44, 12)), ("pmoss", "rect", (22, 44, 24, 49))],
+    # 1 a lone stretch of broken wall (walls are drawn by StoneWall now)
+    [("pstone", "poly", [(8, 58), (8, 36), (16, 36), (16, 30), (26, 30), (26, 24), (38, 24), (38, 32), (48, 32), (48, 40), (56, 40), (56, 58)]),
+     ("pdark", "rect", (8, 44, 56, 44)), ("pdark", "rect", (8, 51, 56, 51)), ("pdark", "rect", (16, 37, 48, 37)), ("pdark", "rect", (20, 38, 20, 43)), ("pdark", "rect", (34, 38, 34, 43)),
+     ("pdark", "rect", (14, 45, 14, 50)), ("pdark", "rect", (28, 45, 28, 50)), ("pdark", "rect", (44, 45, 44, 50)), ("pdark", "rect", (22, 52, 22, 57)), ("pdark", "rect", (38, 52, 38, 57)),
+     ("pstone_l", "rect", (26, 24, 38, 25)), ("pmoss", "rect", (9, 54, 15, 58)), ("pmoss", "rect", (40, 32, 46, 33))],
+    # 2 chest, closed: planks, iron bands, a brass lock
+    [("pwood", "rect", (12, 32, 52, 56)), ("pwood", "poly", [(12, 32), (13, 25), (18, 19), (46, 19), (51, 25), (52, 32)]), ("pwood_l", "rect", (18, 20, 46, 21)),
+     ("pwood_d", "rect", (24, 22, 24, 54)), ("pwood_d", "rect", (40, 22, 40, 54)), ("pwood_d", "rect", (12, 54, 52, 56)), ("pmetal", "rect", (12, 30, 52, 33)),
+     ("pmetal", "rect", (16, 19, 19, 56)), ("pmetal", "rect", (45, 19, 48, 56)), ("pgold", "rect", (17, 24, 18, 25)), ("pgold", "rect", (46, 24, 47, 25)), ("pgold", "rect", (17, 44, 18, 45)),
+     ("pgold", "rect", (46, 44, 47, 45)), ("pgold", "rect", (28, 29, 36, 41)), ("pdark", "rect", (31, 33, 33, 35)), ("pdark", "rect", (32, 35, 32, 38)), ("pgold", "rect", (30, 26, 34, 29))],
+    # 3 chest, open: the lid thrown back, gold and gems heaped inside
+    [("pwood", "poly", [(12, 30), (14, 9), (50, 9), (52, 30)]), ("pwood_d", "rect", (17, 13, 47, 28)), ("pmetal", "rect", (14, 9, 50, 11)), ("pmetal", "rect", (20, 11, 22, 30)),
+     ("pmetal", "rect", (42, 11, 44, 30)), ("pdark", "rect", (14, 28, 50, 36)), ("pgold", "ellipse", (15, 26, 30, 36)), ("pgold", "ellipse", (26, 23, 42, 35)), ("pgold", "ellipse", (37, 27, 50, 36)),
+     ("pruby", "poly", [(21, 27), (24, 24), (27, 27), (24, 30)]), ("pvoid", "rect", (40, 28, 43, 31)), ("pwhite", "rect", (30, 25, 30, 25)), ("pwhite", "rect", (36, 28, 36, 28)),
+     ("pwhite", "rect", (19, 30, 19, 30)), ("pwood", "rect", (12, 35, 52, 56)), ("pwood_d", "rect", (24, 37, 24, 54)), ("pwood_d", "rect", (40, 37, 40, 54)), ("pwood_d", "rect", (12, 54, 52, 56)),
+     ("pmetal", "rect", (12, 34, 52, 37)), ("pmetal", "rect", (16, 34, 19, 56)), ("pmetal", "rect", (45, 34, 48, 56)), ("pgold", "rect", (28, 36, 36, 44)), ("pdark", "rect", (31, 38, 33, 41))],
+    # 4 altar: stepped stone, a carved block, a bowl of fire, candles at its feet
+    [("pstone", "rect", (9, 53, 55, 59)), ("pstone_l", "rect", (9, 53, 55, 54)), ("pstone", "rect", (13, 47, 51, 53)), ("pstone_l", "rect", (13, 47, 51, 48)), ("pstone", "rect", (18, 34, 46, 47)),
+     ("pstone_l", "rect", (18, 34, 46, 35)), ("pdark", "rect", (18, 40, 46, 40)), ("pvoid", "rect", (30, 37, 34, 38)), ("pvoid", "rect", (31, 42, 33, 45)), ("pvoid", "rect", (28, 43, 36, 43)),
+     ("pvoid", "rect", (22, 37, 23, 38)), ("pvoid", "rect", (41, 37, 42, 38)), ("pmetal", "poly", [(22, 34), (24, 28), (40, 28), (42, 34)]), ("pember", "ellipse", (26, 26, 38, 30)),
+     ("pfire", "poly", [(27, 28), (29, 21), (32, 25), (34, 16), (36, 24), (38, 20), (38, 28)]), ("pbone", "rect", (10, 46, 12, 53)), ("pfire", "rect", (10, 43, 12, 45)),
+     ("pbone", "rect", (52, 46, 54, 53)), ("pfire", "rect", (52, 43, 54, 45)), ("pmoss", "rect", (14, 51, 19, 53)), ("pdark", "line", (40, 36, 43, 44), 1)],
+    # 5 cave mouth: a mound of piled rock around a black opening with teeth of stone
+    [("pstone", "poly", [(3, 58), (5, 40), (11, 27), (20, 18), (33, 13), (46, 17), (55, 28), (60, 42), (61, 58)]), ("pstone_l", "poly", [(12, 28), (20, 19), (33, 14), (44, 17), (38, 19), (24, 22)]),
+     ("pdark", "line", (11, 36, 17, 30), 1), ("pdark", "line", (50, 30, 56, 40), 1), ("pdark", "line", (8, 46, 13, 44), 1), ("pdark", "line", (53, 46, 58, 49), 1),
+     ("pdark", "poly", [(14, 58), (15, 42), (21, 31), (30, 26), (39, 27), (46, 33), (50, 44), (50, 58)]), ("pblack", "poly", [(17, 58), (18, 43), (23, 34), (31, 30), (38, 31), (44, 36), (47, 45), (47, 58)]),
+     ("pstone", "poly", [(22, 34), (24, 40), (26, 33)]), ("pstone", "poly", [(30, 30), (32, 37), (34, 30)]), ("pstone", "poly", [(38, 31), (40, 38), (42, 34)]),
+     ("pstone", "ellipse", (4, 51, 13, 59)), ("pstone", "ellipse", (51, 52, 60, 59)), ("pstone_l", "rect", (6, 52, 10, 53)), ("pmoss", "ellipse", (22, 12, 34, 17)), ("pmoss", "rect", (40, 16, 46, 18)),
+     ("pmoss", "rect", (5, 56, 12, 58))],
+    # 6 void portal: an arch of rune-cut stones round a turning dark
+    [("pstone", "ring", (11, 5, 53, 61), 6), ("pstone", "rect", (9, 53, 21, 60)), ("pstone", "rect", (43, 53, 55, 60)), ("pstone_l", "rect", (9, 53, 21, 54)), ("pstone_l", "rect", (43, 53, 55, 54)),
+     ("pblack", "ellipse", (17, 11, 47, 56)), ("pvoid", "ring", (20, 15, 44, 51), 2), ("pvoid", "ring", (25, 22, 39, 44), 1), ("pvoid", "ellipse", (29, 29, 35, 37)), ("pwhite", "rect", (31, 32, 32, 33)),
+     ("pvoid", "rect", (23, 19, 24, 20)), ("pvoid", "rect", (40, 43, 41, 44)), ("pvoid", "rect", (41, 22, 42, 23)), ("pvoid", "rect", (21, 40, 22, 41)), ("pvoid", "rect", (30, 6, 34, 7)),
+     ("pvoid", "rect", (12, 28, 13, 32)), ("pvoid", "rect", (51, 28, 52, 32)), ("pvoid", "rect", (15, 14, 16, 16)), ("pvoid", "rect", (48, 14, 49, 16)), ("pdark", "line", (14, 44, 16, 50), 1),
+     ("pdark", "line", (49, 42, 50, 49), 1)],
+    # 7 ladder up and out: rails, worn rungs, rope lashings
+    [("pwood", "rect", (21, 6, 25, 59)), ("pwood", "rect", (39, 6, 43, 59)), ("pwood_l", "rect", (21, 6, 22, 59)), ("pwood_l", "rect", (39, 6, 40, 59)), ("pwood_l", "rect", (24, 14, 40, 17)),
+     ("pwood_l", "rect", (24, 25, 40, 28)), ("pwood_l", "rect", (24, 36, 40, 39)), ("pwood_l", "rect", (24, 47, 40, 50)), ("pwood_d", "rect", (24, 17, 40, 17)), ("pwood_d", "rect", (24, 28, 40, 28)),
+     ("pwood_d", "rect", (24, 39, 40, 39)), ("pwood_d", "rect", (24, 50, 40, 50)), ("prope", "rect", (20, 13, 26, 18)), ("prope", "rect", (38, 13, 44, 18)), ("prope", "rect", (20, 46, 26, 51)),
+     ("prope", "rect", (38, 46, 44, 51)), ("pwood_d", "rect", (22, 30, 22, 34)), ("pwood_d", "rect", (41, 20, 41, 23))],
+    # 8 crafting table: a thick bench with a vise, a hammer, a saw and a plank
+    [("pwood_d", "rect", (14, 40, 18, 58)), ("pwood_d", "rect", (46, 40, 50, 58)), ("pwood_d", "line", (17, 54, 47, 44), 2), ("pwood", "rect", (9, 28, 55, 34)), ("pwood_l", "rect", (9, 28, 55, 29)),
+     ("pwood", "rect", (11, 34, 53, 40)), ("pwood_d", "rect", (11, 39, 53, 40)), ("pwood_d", "rect", (22, 29, 22, 33)), ("pwood_d", "rect", (38, 29, 38, 33)), ("pmetal", "rect", (12, 20, 20, 28)),
+     ("pmetal", "rect", (10, 18, 22, 21)), ("pdark", "rect", (15, 22, 17, 27)), ("pwood_l", "line", (27, 26, 36, 19), 2), ("pmetal", "rect", (33, 14, 40, 20)), ("pmetal", "poly", [(40, 27), (53, 22), (54, 24), (41, 28)]),
+     ("pwood_l", "rect", (38, 25, 42, 28)), ("pwood_l", "rect", (24, 25, 31, 27)), ("pgold", "rect", (45, 26, 45, 27)), ("pgold", "rect", (48, 26, 48, 27))],
+    # 9 bed: a wooden frame, a headboard, a pillow and a folded blanket
+    [("pwood_d", "rect", (11, 52, 15, 59)), ("pwood_d", "rect", (49, 52, 53, 59)), ("pwood", "rect", (10, 28, 54, 55)), ("pwood", "rect", (9, 16, 55, 29)), ("pwood_l", "rect", (9, 16, 55, 17)),
+     ("pwood_d", "rect", (20, 18, 20, 27)), ("pwood_d", "rect", (32, 18, 32, 27)), ("pwood_d", "rect", (44, 18, 44, 27)), ("pbone", "rect", (13, 29, 51, 53)), ("pbone", "ellipse", (16, 30, 36, 39)),
+     ("pcloth", "rect", (13, 40, 51, 53)), ("pcloth_l", "rect", (13, 40, 51, 43)), ("pcloth_l", "rect", (22, 44, 23, 53)), ("pcloth_l", "rect", (40, 44, 41, 53)), ("pwood", "rect", (10, 52, 54, 55)),
+     ("pwood_l", "rect", (10, 52, 54, 52))],
+    # 10 doorway: a stone frame, a plank door banded with iron, a ring to pull
+    [("pstone", "rect", (14, 8, 50, 59)), ("pstone_l", "rect", (14, 8, 50, 9)), ("pstone", "rect", (12, 6, 52, 10)), ("pdark", "rect", (14, 24, 18, 24)), ("pdark", "rect", (14, 40, 18, 40)),
+     ("pdark", "rect", (46, 24, 50, 24)), ("pdark", "rect", (46, 40, 50, 40)), ("pwood", "rect", (19, 13, 45, 59)), ("pwood_d", "rect", (25, 13, 25, 59)), ("pwood_d", "rect", (32, 13, 32, 59)),
+     ("pwood_d", "rect", (39, 13, 39, 59)), ("pmetal", "rect", (19, 20, 45, 23)), ("pmetal", "rect", (19, 46, 45, 49)), ("pgold", "ring", (36, 33, 42, 39), 1), ("pgold", "rect", (38, 31, 40, 33)),
+     ("pgold", "rect", (21, 21, 22, 22)), ("pgold", "rect", (42, 21, 43, 22)), ("pgold", "rect", (21, 47, 22, 48)), ("pgold", "rect", (42, 47, 43, 48))],
+    # 11 campfire: a ring of stones, crossed logs, a bed of embers
+    [("pstone", "ellipse", (10, 46, 20, 55)), ("pstone", "ellipse", (44, 46, 54, 55)), ("pstone", "ellipse", (16, 40, 25, 47)), ("pstone", "ellipse", (39, 40, 48, 47)), ("pstone", "ellipse", (27, 38, 37, 44)),
+     ("pwood", "line", (16, 53, 46, 45), 5), ("pwood", "line", (18, 45, 48, 53), 5), ("pwood_d", "line", (26, 54, 38, 42), 4), ("pwood_l", "ellipse", (13, 50, 19, 56)), ("pwood_l", "ellipse", (45, 50, 51, 56)),
+     ("pember", "ellipse", (25, 45, 39, 52)), ("pfire", "poly", [(24, 48), (26, 36), (29, 42), (32, 28), (35, 40), (38, 34), (40, 48)]), ("pstone", "ellipse", (18, 52, 29, 60)),
+     ("pstone", "ellipse", (35, 52, 46, 60)), ("pstone_l", "rect", (21, 53, 25, 54)), ("pstone_l", "rect", (38, 53, 42, 54)), ("pstone", "ellipse", (27, 54, 37, 61))],
+    # 12 skull totem marking a lair: a horned skull on a bound pole, bones hanging
+    [("pwood", "rect", (30, 26, 34, 59)), ("pwood_d", "rect", (33, 26, 34, 59)), ("prope", "rect", (29, 36, 35, 39)), ("prope", "rect", (29, 48, 35, 50)), ("pwood", "rect", (18, 30, 46, 33)),
+     ("pbone", "rect", (20, 33, 21, 42)), ("pbone", "ellipse", (19, 41, 22, 44)), ("pbone", "rect", (43, 33, 44, 40)), ("pbone", "ellipse", (42, 39, 45, 42)), ("pcloth", "poly", [(24, 33), (27, 33), (25, 41)]),
+     ("pcloth", "poly", [(37, 33), (40, 33), (39, 40)]), ("pbone", "poly", [(23, 12), (15, 4), (17, 13), (22, 18)]), ("pbone", "poly", [(41, 12), (49, 4), (47, 13), (42, 18)]),
+     ("pbone", "ellipse", (21, 7, 43, 27)), ("pbone", "rect", (26, 24, 38, 30)), ("pblack", "ellipse", (24, 13, 31, 20)), ("pblack", "ellipse", (33, 13, 40, 20)), ("pember", "rect", (27, 16, 28, 17)),
+     ("pember", "rect", (36, 16, 37, 17)), ("pblack", "poly", [(31, 21), (33, 21), (32, 24)]), ("pblack", "rect", (28, 26, 28, 29)), ("pblack", "rect", (31, 26, 31, 29)), ("pblack", "rect", (34, 26, 34, 29)),
+     ("pdark", "line", (36, 8, 39, 12), 1)],
+    # 13 house, seen from outside: a timber-framed cottage with a shingled roof
+    [("pstone", "rect", (6, 54, 58, 61)), ("pstone_l", "rect", (6, 54, 58, 55)), ("pplaster", "rect", (7, 30, 57, 55)), ("pwood", "rect", (7, 30, 9, 55)), ("pwood", "rect", (55, 30, 57, 55)),
+     ("pwood", "rect", (7, 30, 57, 32)), ("pwood", "rect", (7, 44, 57, 45)), ("pwood", "line", (9, 44, 22, 32), 1), ("pwood", "line", (55, 44, 42, 32), 1), ("pwood", "rect", (23, 32, 24, 55)),
+     ("pwood", "rect", (40, 32, 41, 55)), ("pwood_d", "rect", (26, 40, 38, 55)), ("pwood", "rect", (27, 41, 37, 55)), ("pwood_d", "rect", (32, 41, 32, 55)), ("pgold", "rect", (35, 48, 36, 49)),
+     ("pstone", "rect", (25, 55, 39, 58)), ("pwood_d", "rect", (11, 35, 20, 43)), ("pglass", "rect", (12, 36, 19, 42)), ("pwood_d", "rect", (15, 36, 15, 42)), ("pwood_d", "rect", (12, 39, 19, 39)),
+     ("pwood_d", "rect", (44, 35, 53, 43)), ("pglass", "rect", (45, 36, 52, 42)), ("pwood_d", "rect", (48, 36, 48, 42)), ("pwood_d", "rect", (45, 39, 52, 39)), ("pmoss", "rect", (11, 44, 20, 46)),
+     ("pruby", "rect", (13, 43, 14, 44)), ("pgold", "rect", (17, 43, 18, 44)), ("pstone", "rect", (44, 6, 51, 20)), ("pstone_l", "rect", (43, 5, 52, 7)), ("pdark", "rect", (44, 12, 51, 12)),
+     ("proof", "poly", [(1, 33), (32, 5), (63, 33), (58, 33), (32, 10), (6, 33)]), ("proof", "poly", [(4, 32), (32, 7), (60, 32)]), ("pdark", "line", (11, 26, 53, 26), 1), ("pdark", "line", (17, 20, 47, 20), 1),
+     ("pdark", "line", (24, 14, 40, 14), 1), ("pdark", "rect", (15, 27, 15, 31)), ("pdark", "rect", (27, 27, 27, 31)), ("pdark", "rect", (39, 27, 39, 31)), ("pdark", "rect", (51, 27, 51, 31)),
+     ("pdark", "rect", (21, 21, 21, 25)), ("pdark", "rect", (33, 21, 33, 25)), ("pdark", "rect", (45, 21, 45, 25)), ("pdark", "rect", (28, 15, 28, 19)), ("pdark", "rect", (37, 15, 37, 19)),
+     ("pwood_l", "poly", [(1, 33), (32, 5), (63, 33), (61, 34), (32, 8), (3, 34)])],
 ]
 
 

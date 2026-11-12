@@ -131,9 +131,19 @@ func _draw_view() -> void:
 	# The player, pointing the way they face.
 	var tile := _world.world_to_cell(player.global_position if not player.indoors else player.get_parent().get_node("Instances").return_position())
 	var at := (Vector2(tile) / Exploration.CELL - _center) * scale + _view.size / 2.0
-	var facing := player.facing.normalized() if player.facing != Vector2.ZERO else Vector2.DOWN
-	_view.draw_colored_polygon(PackedVector2Array([at + facing * 9.0, at + facing.rotated(2.4) * 6.0, at + facing.rotated(-2.4) * 6.0]), Color.WHITE)
-	_view.draw_polyline(PackedVector2Array([at + facing * 9.0, at + facing.rotated(2.4) * 6.0, at + facing.rotated(-2.4) * 6.0, at + facing * 9.0]), Color.BLACK, 1.5)
+	# Living things near the player: beasts, monsters, companions, people.
+	if not player.indoors:
+		var to_map := func(world_position: Vector2) -> Vector2:
+			return (world_position / TerrainTiles.TILE_SIZE / Exploration.CELL - _center) * scale + _view.size / 2.0
+		for node in get_tree().get_nodes_in_group("enemies"):
+			var enemy := node as Enemy
+			if enemy and not enemy.health.is_dead():
+				MapIcons.draw(_view, to_map.call(enemy.global_position), "animal" if enemy.is_wild() else "monster", 14.0 if enemy.is_wild() else 12.0)
+		for node in get_tree().get_nodes_in_group("npcs"):
+			MapIcons.draw(_view, to_map.call((node as Node2D).global_position), "npc", 14.0)
+		if player.pets and player.pets.active >= 0:
+			MapIcons.draw(_view, to_map.call(player.pets.global_position), "pet", 13.0)
+	MapIcons.draw_player(_view, at, player.facing, 22.0)
 	# A frame around the map.
 	_view.draw_rect(Rect2(Vector2.ZERO, _view.size), Color("402f1c"), false, 4.0)
 	_view.draw_rect(Rect2(Vector2(2, 2), _view.size - Vector2(4, 4)), Color("8a683a"), false, 1.5)
@@ -209,51 +219,7 @@ func _collect_icons(origin: Vector2i, cells: Vector2i, offset: Vector2, scale: f
 
 
 func _draw_icon(at: Vector2, kind: String) -> void:
-	var color: Color = ICONS[kind][0]
-	var dark := Color(0, 0, 0, 0.85)
-	match kind:
-		"village":
-			_view.draw_rect(Rect2(at + Vector2(-7, -3), Vector2(14, 9)), dark)
-			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-9, -2), at + Vector2(0, -10), at + Vector2(9, -2)]), dark)
-			_view.draw_rect(Rect2(at + Vector2(-6, -2), Vector2(12, 7)), color)
-			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-7, -3), at + Vector2(0, -8), at + Vector2(7, -3)]), Color("c05a5a"))
-		"temple", "shrine":
-			_view.draw_circle(at, 7.0, dark)
-			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -6), at + Vector2(5, 4), at + Vector2(-5, 4)]), color)
-		"lair":
-			_view.draw_circle(at, 7.0, dark)
-			_view.draw_circle(at + Vector2(0, -1), 4.5, color)
-			_view.draw_rect(Rect2(at + Vector2(-2.5, -2), Vector2(2, 2)), dark)
-			_view.draw_rect(Rect2(at + Vector2(0.5, -2), Vector2(2, 2)), dark)
-		"cave":
-			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-8, 5), at + Vector2(0, -7), at + Vector2(8, 5)]), dark)
-			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-6, 4), at + Vector2(0, -5), at + Vector2(6, 4)]), color)
-			_view.draw_rect(Rect2(at + Vector2(-2, 0), Vector2(4, 4)), dark)
-		"boss":
-			_view.draw_circle(at, 8.0, dark)
-			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-6, 3), at + Vector2(-6, -5), at + Vector2(-3, -1), at + Vector2(0, -6), at + Vector2(3, -1), at + Vector2(6, -5), at + Vector2(6, 3)]), color)
-		"dungeon":
-			_view.draw_rect(Rect2(at + Vector2(-7, -7), Vector2(14, 14)), dark)
-			_view.draw_rect(Rect2(at + Vector2(-5, -5), Vector2(10, 10)), color)
-			_view.draw_rect(Rect2(at + Vector2(-2, -1), Vector2(4, 6)), dark)
-		"treasure":
-			_view.draw_line(at + Vector2(-5, -5), at + Vector2(5, 5), dark, 5.0)
-			_view.draw_line(at + Vector2(-5, 5), at + Vector2(5, -5), dark, 5.0)
-			_view.draw_line(at + Vector2(-5, -5), at + Vector2(5, 5), color, 2.5)
-			_view.draw_line(at + Vector2(-5, 5), at + Vector2(5, -5), color, 2.5)
-		"waystone", "obelisk":
-			_view.draw_rect(Rect2(at + Vector2(-4, -8), Vector2(8, 15)), dark)
-			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-2.5, 6), at + Vector2(-2.5, -4), at + Vector2(0, -7), at + Vector2(2.5, -4), at + Vector2(2.5, 6)]), color)
-		"bounty":
-			_view.draw_circle(at, 7.0, dark)
-			_view.draw_circle(at + Vector2(0, -1), 4.5, color)
-			_view.draw_line(at + Vector2(-5, 5), at + Vector2(5, -5), dark, 1.5)
-		"portal":
-			_view.draw_circle(at, 7.0, dark)
-			_view.draw_arc(at, 4.5, 0.0, TAU, 16, color, 2.5)
-		"home":
-			_view.draw_circle(at, 7.0, dark)
-			_view.draw_colored_polygon(PackedVector2Array([at + Vector2(-5, 0), at + Vector2(0, -5), at + Vector2(5, 0), at + Vector2(5, 5), at + Vector2(-5, 5)]), color)
-		_:
-			_view.draw_circle(at, 6.0, dark)
-			_view.draw_circle(at, 4.0, color)
+	# A dark pad under each picture keeps it clear of the land's colours.
+	var size := 24.0 if kind in ["village", "temple", "boss", "home"] else 20.0
+	_view.draw_circle(at + Vector2(0, 1), size * 0.5, Color(0, 0, 0, 0.45))
+	MapIcons.draw(_view, at, kind, size)
