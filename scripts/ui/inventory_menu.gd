@@ -15,7 +15,7 @@ const DOLL_SLOT := 60.0
 const LEFT_SLOTS: Array[String] = ["necklace", "ring_1", "ring_2", "artifact", "backpack"]
 const RIGHT_SLOTS: Array[String] = ["helmet", "chest", "legs", "boots", "off_hand"]
 ## Faint icon shown in an empty equipment slot.
-const SLOT_ICONS := {"necklace": 10, "ring_1": 11, "ring_2": 11, "artifact": 12, "backpack": 13,
+const SLOT_ICONS := {"necklace": 10, "ring_1": 11, "ring_2": 11, "artifact": 12, "backpack": 93,
 	"helmet": 6, "chest": 7, "legs": 8, "boots": 9, "off_hand": 5,
 	"weapon_1": 27, "weapon_2": 0, "weapon_3": 0, "tool_pickaxe": 49, "tool_hatchet": 50, "tool_rod": 51}
 const BELT_SLOT := 46.0
@@ -285,7 +285,13 @@ func refresh() -> void:
 			button.icon = ItemDB.icon(SLOT_ICONS[slot])
 			_tint_icon(button, Color(1, 1, 1, 0.16))
 	var progress := player.equipment.set_progress()
-	_set_label.text = "%s set  %d / %d" % [progress["tier"], progress["count"], ItemDB.SET_SLOTS.size()] if progress["count"] >= 2 else ""
+	var notes: PackedStringArray = []
+	if progress["count"] >= 2:
+		notes.append("%s set  %d / %d" % [progress["tier"], progress["count"], ItemDB.SET_SLOTS.size()])
+	var attuned := player.equipment.attunement()
+	if not attuned.is_empty():
+		notes.append(attuned["name"])
+	_set_label.text = "   -   ".join(notes)
 	_refresh_details()
 
 

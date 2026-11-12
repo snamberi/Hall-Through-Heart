@@ -186,6 +186,23 @@ func implicit_modifiers() -> Array[Dictionary]:
 	return result
 
 
+## The bonus Epic gear and better carries just for being what it is:
+## weapons strike harder, armour gives more life, trinkets a little of both.
+func rarity_gift() -> Array[Dictionary]:
+	var gift: float = ItemDB.RARITIES[rarity]["gift"]
+	var result: Array[Dictionary] = []
+	if gift <= 0.0 or not is_equipment():
+		return result
+	if definition().has("damage"):
+		result.append({"stat": "physical_damage", "kind": "percent", "value": gift})
+	elif definition().has("armor"):
+		result.append({"stat": "max_health", "kind": "percent", "value": gift * 0.6})
+	else:
+		result.append({"stat": "physical_damage", "kind": "percent", "value": gift * 0.4})
+		result.append({"stat": "max_health", "kind": "percent", "value": gift * 0.3})
+	return result
+
+
 ## Everything this item changes when equipped.
 func all_modifiers() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -194,6 +211,7 @@ func all_modifiers() -> Array[Dictionary]:
 	if definition().has("armor"):
 		result.append({"stat": "armor", "kind": "flat", "value": base_power("armor")})
 	result.append_array(implicit_modifiers())
+	result.append_array(rarity_gift())
 	result.append_array(mods)
 	if not enchant.is_empty():
 		result.append(enchant)

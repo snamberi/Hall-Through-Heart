@@ -22,7 +22,8 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "journal", "title": "Quests", "icon": 41, "text": "The quest book:\nevery chapter and goal"},
 	{"id": "map", "title": "Map", "icon": 12, "text": "The land as far\nas you have walked"},
 	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary, feats,\ntitles and lore"},
-	{"id": "pets", "title": "Pets", "icon": 36, "text": "Companions\nand mounts"},
+	{"id": "forms", "title": "Forms", "icon": 92, "text": "Beasts and legends\nto transform into"},
+	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions\nand mounts"},
 	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours"},
 	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options, save,\nand quit"},
 ]
@@ -101,6 +102,7 @@ func setup(player: Player) -> void:
 	_add("recruit", RecruitMenu.new())
 	_add("codex", CodexMenu.new())
 	_add("pets", PetsMenu.new())
+	_add("forms", FormsMenu.new())
 	_add("wardrobe", WardrobeMenu.new())
 	_add("storage", StorageMenu.new())
 	Events.screen_requested.connect(func(id: String) -> void:

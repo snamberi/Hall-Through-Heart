@@ -64,6 +64,12 @@ func setup(player: Player) -> void:
 	hotbar_ui.size = hotbar_ui.custom_minimum_size
 	hotbar_ui.position = Vector2(-hotbar_ui.size.x / 2.0, -hotbar_ui.size.y - 6.0)
 	add_child(hotbar_ui)
+	var meter := TransformMeter.new()
+	meter.setup(player)
+	meter.position = Vector2(14.0, 152.0)
+	add_child(meter)
+	# Buffs list to the right of the left-hand blocks, clear of them.
+	_buff_label.position = Vector2(158.0, 138.0)
 	var menu_button := HudMenuButton.new()
 	menu_button.setup(player)
 	menu_button.position = Vector2(14.0, 110.0)

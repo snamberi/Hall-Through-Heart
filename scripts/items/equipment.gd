@@ -243,7 +243,7 @@ func modifiers() -> Dictionary:
 			if not totals.has(stat):
 				totals[stat] = {"flat": 0.0, "percent": 0.0}
 			totals[stat][modifier["kind"]] += modifier["value"]
-	var bonuses: Array = [set_bonus()]
+	var bonuses: Array = [set_bonus(), attunement().get("mods", {})]
 	var named := named_set_counts()
 	for set_id: String in named:
 		for needed: int in ItemDB.ITEM_SETS[set_id]["bonuses"]:
@@ -256,6 +256,23 @@ func modifiers() -> Dictionary:
 			for kind: String in bonus[stat]:
 				totals[stat][kind] += bonus[stat][kind]
 	return totals
+
+
+## The rarity attunement earned: {"rarity", "name", "mods", "count"} for the
+## best rarity with enough pieces worn at that rarity or better, or {}.
+func attunement() -> Dictionary:
+	var worn := counted()
+	for rarity: int in [5, 4, 3, 2]:
+		var count := 0
+		for item in worn:
+			if item.rarity >= rarity:
+				count += 1
+		if count >= ItemDB.ATTUNE_PIECES:
+			var found: Dictionary = (ItemDB.ATTUNEMENTS[rarity] as Dictionary).duplicate()
+			found["rarity"] = rarity
+			found["count"] = count
+			return found
+	return {}
 
 
 ## How many pieces of each named set are worn: {"gravewarden": 3}.

@@ -1483,6 +1483,19 @@ ICONS += [
     ("seeds", [("leather", "poly", [(5, 8), (17, 8), (19, 18), (3, 18)]), ("leather", "rect", (7, 5, 15, 8)), ("plate", "ellipse", (8, 12, 10, 14)), ("plate", "ellipse", (12, 13, 14, 15))]),
     ("mushroom", [("stalk", "rect", (9, 10, 13, 19)), ("plate", "ellipse", (3, 4, 19, 13)), ("wool", "ellipse", (6, 6, 8, 8)), ("wool", "ellipse", (13, 7, 15, 9))]),
 ]
+# 92 onward: a wolf's head (forms), a backpack (its flap takes the item's
+# colour), a burning torch, a paw print.
+ICON_PALETTE.update({"flame": ["fff2a8", "ffb03a", "e0541e"], "ember_glow": ["ffe27a", "ffd24a", "f0a020"], "night": ["3a3a4a", "26262f", "18181e"]})
+ICONS += [
+    ("wolf", [("fur", "poly", [(4, 8), (3, 1), (8, 5)]), ("fur", "poly", [(18, 8), (19, 1), (14, 5)]), ("fur", "poly", [(4, 7), (11, 3), (18, 7), (19, 13), (14, 17), (11, 20), (8, 17), (3, 13)]),
+              ("wool", "poly", [(8, 13), (14, 13), (13, 18), (11, 20), (9, 18)]), ("night", "rect", (10, 17, 12, 18)), ("ember_glow", "rect", (6, 9, 8, 10)), ("ember_glow", "rect", (14, 9, 16, 10)),
+              ("night", "rect", (7, 9, 7, 10)), ("night", "rect", (15, 9, 15, 10)), ("flesh", "poly", [(4, 6), (4, 3), (6, 5)]), ("flesh", "poly", [(18, 6), (18, 3), (16, 5)])]),
+    ("backpack", [("leather", "rect", (4, 6, 17, 19)), ("leather", "ellipse", (4, 3, 17, 10)), ("plate", "poly", [(4, 6), (17, 6), (17, 11), (11, 14), (4, 11)]), ("leather", "rect", (7, 14, 14, 18)),
+                  ("gold", "rect", (10, 10, 11, 12)), ("wood", "rect", (2, 7, 3, 16)), ("wood", "rect", (18, 7, 19, 16)), ("wood", "poly", [(8, 3), (13, 3), (12, 1), (9, 1)])]),
+    ("torch", [("wood", "poly", [(9, 20), (12, 20), (13, 10), (8, 10)]), ("leather", "rect", (8, 9, 13, 11)), ("flame", "poly", [(6, 9), (5, 5), (8, 6), (10, 0), (13, 5), (16, 3), (15, 9)]),
+               ("ember_glow", "poly", [(9, 9), (9, 6), (11, 4), (12, 7), (12, 9)])]),
+    ("paw", [("fur", "ellipse", (6, 10, 15, 19)), ("fur", "ellipse", (2, 7, 6, 12)), ("fur", "ellipse", (6, 2, 10, 8)), ("fur", "ellipse", (11, 2, 15, 8)), ("fur", "ellipse", (15, 7, 19, 12))]),
+]
 
 # Things to gather in the world: 64px frames in one row. Pale parts are
 # tinted in game. Order: rock, ore flecks, tree, herb, fishing ripple.

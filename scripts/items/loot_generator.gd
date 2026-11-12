@@ -45,7 +45,8 @@ static func make_equipment(
 	var worst_roll := 0.6 + minf(magic_find, 1.0) * 0.2
 	for index in mini(ItemDB.RARITIES[rarity]["mods"], pool.size()):
 		var affix := pool[index]
-		var value: float = (affix["base"] + affix["per_level"] * item.level) * randf_range(worst_roll, 1.0)
+		# Rarer gear rolls bigger bonuses, not just more of them.
+		var value: float = (affix["base"] + affix["per_level"] * item.level) * randf_range(worst_roll, 1.0) * ItemDB.RARITIES[rarity]["affix"]
 		if affix["kind"] == "flat" and affix["base"] >= 1.0:
 			value = maxf(roundf(value), 1.0)
 		else:

@@ -70,6 +70,8 @@ static func describe(item: Item, player: Player) -> String:
 		lines.append("[color=#%s]Heals you for %d%% of damage dealt[/color]" % [UITheme.GOOD.to_html(false), roundi(def["life_steal"] * 100.0)])
 	if def.has("unique"):
 		lines.append("[color=#ff9a2e]Unique: %s[/color]" % Uniques.TEXT[def["unique"]])
+	for modifier in item.rarity_gift():
+		lines.append("[color=#%s]%s: %s[/color]" % [item.color().to_html(false), rarity, ItemDB.describe_modifier(modifier)])
 	for modifier in item.implicit_modifiers():
 		lines.append("[color=#%s]+[/color] %s" % [UITheme.HEADING.to_html(false), ItemDB.describe_modifier(modifier)])
 	for modifier in item.mods:

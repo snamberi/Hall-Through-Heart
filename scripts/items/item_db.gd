@@ -14,14 +14,27 @@ const MAX_STACK := 999
 ## Index is the rarity number stored on items.
 ## "mods": random modifiers rolled. "power": multiplier on base damage/armor.
 ## "weight": relative drop chance before magic find.
+## Rarity is what makes gear strong: "power" multiplies an item's damage or
+## armour, "affix" its random bonuses, and "gift" is a bonus of its own that
+## Epic gear and better carries. A Legendary blade ten levels old still
+## beats a fresh Common one.
 const RARITIES: Array[Dictionary] = [
-	{"id": "common", "name": "Common", "color": Color("c8c4b8"), "mods": 0, "power": 1.0, "weight": 600.0},
-	{"id": "uncommon", "name": "Uncommon", "color": Color("5fd068"), "mods": 1, "power": 1.1, "weight": 250.0},
-	{"id": "rare", "name": "Rare", "color": Color("4f9dff"), "mods": 2, "power": 1.2, "weight": 100.0},
-	{"id": "epic", "name": "Epic", "color": Color("b565f0"), "mods": 3, "power": 1.35, "weight": 40.0},
-	{"id": "legendary", "name": "Legendary", "color": Color("ff9a2e"), "mods": 4, "power": 1.5, "weight": 9.0},
-	{"id": "mythic", "name": "Mythic", "color": Color("ff4d6d"), "mods": 5, "power": 1.7, "weight": 1.0},
+	{"id": "common", "name": "Common", "color": Color("c8c4b8"), "mods": 0, "power": 1.0, "affix": 1.0, "gift": 0.0, "weight": 600.0},
+	{"id": "uncommon", "name": "Uncommon", "color": Color("5fd068"), "mods": 1, "power": 1.3, "affix": 1.15, "gift": 0.0, "weight": 250.0},
+	{"id": "rare", "name": "Rare", "color": Color("4f9dff"), "mods": 2, "power": 1.7, "affix": 1.35, "gift": 0.0, "weight": 100.0},
+	{"id": "epic", "name": "Epic", "color": Color("b565f0"), "mods": 3, "power": 2.25, "affix": 1.6, "gift": 0.05, "weight": 40.0},
+	{"id": "legendary", "name": "Legendary", "color": Color("ff9a2e"), "mods": 4, "power": 3.0, "affix": 1.9, "gift": 0.1, "weight": 9.0},
+	{"id": "mythic", "name": "Mythic", "color": Color("ff4d6d"), "mods": 5, "power": 4.0, "affix": 2.3, "gift": 0.16, "weight": 1.0},
 ]
+## Wearing several pieces of one rarity (or better) attunes them. The best
+## tier with ATTUNE_PIECES pieces counts: rarity -> bonuses.
+const ATTUNE_PIECES := 4
+const ATTUNEMENTS := {
+	2: {"name": "Rare attunement", "mods": {"max_health": {"percent": 0.06}, "physical_damage": {"percent": 0.06}}},
+	3: {"name": "Epic attunement", "mods": {"max_health": {"percent": 0.1}, "physical_damage": {"percent": 0.1}, "critical_chance": {"flat": 0.04}}},
+	4: {"name": "Legendary attunement", "mods": {"max_health": {"percent": 0.16}, "physical_damage": {"percent": 0.16}, "critical_chance": {"flat": 0.07}, "move_speed": {"percent": 0.06}}},
+	5: {"name": "Mythic attunement", "mods": {"max_health": {"percent": 0.25}, "physical_damage": {"percent": 0.25}, "critical_chance": {"flat": 0.1}, "move_speed": {"percent": 0.1}}},
+}
 
 const SLOTS: Array[String] = [
 	"main_hand", "off_hand", "helmet", "chest", "legs", "boots",
@@ -50,7 +63,7 @@ const TIERS: Array[Array] = [
 	[20, "Silver", Color("eef2f6")], [10, "Iron", Color("aab2bc")], [1, "Copper", Color("d99a6c")],
 ]
 ## Base damage and armor grow by this share per item level above 1.
-const POWER_PER_LEVEL := 0.15
+const POWER_PER_LEVEL := 0.08
 
 ## Colour and name for each status a weapon can inflict.
 const STATUSES := {
@@ -359,7 +372,7 @@ const ITEMS := {
 	"bloodcap_draught": {"name": "Bloodcap Draught", "icon": 47, "tint": Color("c02a3a"), "material_rarity": 2, "use": {"buff": "draught", "name": "Bloodthirst", "duration": 90.0, "mods": {"life_steal": {"flat": 0.05}}}, "text": "Heal for 5% of damage dealt for 90 seconds."},
 	"void_tonic": {"name": "Void Tonic", "icon": 47, "tint": Color("9a6cf0"), "material_rarity": 3, "use": {"buff": "tonic", "name": "Void-touched", "duration": 90.0, "mods": {"magic_power": {"percent": 0.25}}}, "text": "+25% magic damage for 90 seconds."},
 	"bandage": {"name": "Bandage", "icon": 43, "tint": Color("f4f2ec"), "material_rarity": 0, "use": {"heal": 0.2}, "value": 8, "text": "Rough cloth and herbs. Restores 20% health."},
-	"torch": {"name": "Torch", "icon": 43, "tint": Color("f08a2e"), "material_rarity": 0, "place": "torch", "value": 4, "text": "Lights the dark. Use it to set it down."},
+	"torch": {"name": "Torch", "icon": 94, "tint": Color("f08a2e"), "material_rarity": 0, "place": "torch", "value": 4, "text": "Lights the dark. Use it to set it down."},
 	"venom_sac": {"name": "Venom Sac", "icon": 16, "tint": Color("b06ad0"), "material_rarity": 1, "text": "Handle with care."},
 	"ember_core": {"name": "Ember Core", "icon": 16, "tint": Color("f08a2e"), "material_rarity": 2, "text": "Still warm."},
 	"stone_heart": {"name": "Stone Heart", "icon": 42, "tint": Color("8a8794"), "material_rarity": 2, "text": "The slow-beating core of a golem."},
@@ -493,9 +506,9 @@ const ITEMS := {
 	"iron_hatchet": {"name": "Iron Hatchet", "icon": 50, "tint": Color("aab2bc"), "material_rarity": 2, "tool": {"kind": "hatchet", "tier": 3, "speed": 1.4}, "text": "Tier 3 hatchet."},
 	"mithril_hatchet": {"name": "Mithril Hatchet", "icon": 50, "tint": Color("8fe0e8"), "material_rarity": 3, "tool": {"kind": "hatchet", "tier": 4, "speed": 1.7}, "text": "Tier 4 hatchet."},
 	"adamantite_hatchet": {"name": "Adamantite Hatchet", "icon": 50, "tint": Color("d06a5a"), "material_rarity": 4, "tool": {"kind": "hatchet", "tier": 5, "speed": 2.0}, "text": "Tier 5 hatchet."},
-	"satchel": {"name": "Satchel", "icon": 13, "tint": Color("b08a5a"), "material_rarity": 1, "backpack": 10, "value": 60, "text": "A small leather pack. Wear it for 10 more bag slots."},
-	"backpack": {"name": "Backpack", "icon": 13, "tint": Color("8a6a48"), "material_rarity": 2, "backpack": 20, "value": 220, "text": "A sturdy framed pack. Wear it for 20 more bag slots."},
-	"explorers_pack": {"name": "Explorer's Pack", "icon": 13, "tint": Color("6a8ab0"), "material_rarity": 3, "backpack": 30, "value": 700, "text": "Pockets on its pockets. Wear it for 30 more bag slots."},
+	"satchel": {"name": "Satchel", "icon": 93, "tint": Color("b08a5a"), "material_rarity": 1, "backpack": 10, "value": 60, "text": "A small leather pack. Wear it for 10 more bag slots."},
+	"backpack": {"name": "Backpack", "icon": 93, "tint": Color("8a6a48"), "material_rarity": 2, "backpack": 20, "value": 220, "text": "A sturdy framed pack. Wear it for 20 more bag slots."},
+	"explorers_pack": {"name": "Explorer's Pack", "icon": 93, "tint": Color("6a8ab0"), "material_rarity": 3, "backpack": 30, "value": 700, "text": "Pockets on its pockets. Wear it for 30 more bag slots."},
 	"fishing_rod": {"name": "Fishing Rod", "icon": 51, "material_rarity": 0, "tool": {"kind": "rod", "tier": 1, "speed": 1.0}, "text": "For the patient."},
 }
 
@@ -505,8 +518,10 @@ const TIER_INGOTS := {1: "copper_ingot", 10: "iron_ingot", 20: "silver_ingot", 3
 ## Wearing several armour pieces of one tier gives a set bonus.
 const SET_SLOTS: Array[String] = ["off_hand", "helmet", "chest", "legs", "boots"]
 const SET_BONUSES := {
-	2: {"max_health": {"percent": 0.05}},
-	4: {"max_health": {"percent": 0.05}, "armor": {"percent": 0.1}, "physical_damage": {"percent": 0.05}},
+	2: {"max_health": {"percent": 0.06}},
+	3: {"max_health": {"percent": 0.08}, "armor": {"percent": 0.1}},
+	4: {"max_health": {"percent": 0.12}, "armor": {"percent": 0.15}, "physical_damage": {"percent": 0.08}},
+	5: {"max_health": {"percent": 0.16}, "armor": {"percent": 0.22}, "physical_damage": {"percent": 0.12}},
 }
 ## Named sets: pieces drop from bosses and Champions, at Epic power.
 ## Bonuses add up as more pieces are worn.
