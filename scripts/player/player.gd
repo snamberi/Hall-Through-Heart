@@ -526,11 +526,33 @@ func use_item(item: Item) -> String:
 		stamina.current = minf(stamina.current + stamina.max_value * use["stamina"], stamina.max_value)
 		stamina.changed.emit(stamina.current, stamina.max_value)
 	if use.has("buff"):
-		buffs.add(use["buff"], use["name"], use["duration"], use["mods"])
+		var buff_id: String = use["buff"]
+		var mods: Dictionary = use["mods"]
+		var duration: float = use["duration"]
+		var course := ItemDB.course_of(item.id)
+		if course != "":
+			# Food: one buff per course, made stronger and longer by the
+			# eater's own cooking skill.
+			buff_id = "food_" + course
+			var skill := food_potency()
+			duration *= 1.0 + (skill - 1.0) * 0.8
+			var scaled := {}
+			for stat: String in mods:
+				scaled[stat] = {}
+				for kind: String in mods[stat]:
+					scaled[stat][kind] = float(mods[stat][kind]) * skill
+			mods = scaled
+		buffs.add(buff_id, use["name"], duration, mods, item.icon(), course if course != "" else "potion")
 	Events.codex_event.emit("meals" if int(item.definition().get("icon", 0)) == 48 else "potions", 1)
 	inventory.take(item.id, 1)
 	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), item.tint(), 50.0)
 	return ""
+
+
+## How much more a meal does in this player's hands: +0.4% per level of
+## cooking (up to +40%).
+func food_potency() -> float:
+	return 1.0 + professions.level("cooking") * 0.004
 
 
 ## Drinks a health potion if there is one (the quick-use key).

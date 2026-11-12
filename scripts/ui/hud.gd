@@ -76,8 +76,12 @@ func setup(player: Player) -> void:
 	meter.setup(player)
 	meter.position = Vector2(14.0, 152.0)
 	add_child(meter)
-	# Buffs list to the right of the left-hand blocks, clear of them.
-	_buff_label.position = Vector2(158.0, 138.0)
+	# Buffs as icons to the right of the left-hand blocks, clear of them.
+	_buff_label.visible = false
+	var buff_bar := BuffBar.new()
+	buff_bar.setup(player)
+	buff_bar.position = Vector2(158.0, 112.0)
+	add_child(buff_bar)
 	var menu_button := HudMenuButton.new()
 	menu_button.setup(player)
 	menu_button.position = Vector2(14.0, 110.0)
@@ -182,11 +186,6 @@ func _show_banner(title: String, detail: String) -> void:
 
 func _process(_delta: float) -> void:
 	_place_bars()
-	# Running buffs with their time left, under the bars.
-	var lines: PackedStringArray = []
-	for id: String in _player.buffs.active:
-		lines.append("%s  %ds" % [_player.buffs.active[id]["name"], ceili(_player.buffs.active[id]["time"])])
-	_buff_label.text = "\n".join(lines)
 	_gather.queue_redraw()
 	_boss_bar.queue_redraw()
 	_health_bar.queue_redraw()

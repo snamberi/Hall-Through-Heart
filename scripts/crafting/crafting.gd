@@ -21,6 +21,11 @@ static func blocked_reason(player: Player, recipe: Dictionary) -> String:
 	return ""
 
 
+## How likely a cook of this level makes a spare serving.
+static func extra_serving_chance(cooking_level: int) -> float:
+	return clampf(cooking_level * 0.006, 0.0, 0.6)
+
+
 static func craft(player: Player, recipe: Dictionary) -> String:
 	var reason := blocked_reason(player, recipe)
 	if reason != "":
@@ -35,6 +40,10 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 		made = LootGenerator.make_equipment(recipe["item_level"], rarity, recipe["equipment"], skill / 100.0)
 	else:
 		made = Item.create(recipe["item"], recipe["count"])
+		# A practised cook stretches a pot further: a chance of a spare serving.
+		if recipe["profession"] == "cooking" and randf() < extra_serving_chance(skill):
+			made.count += recipe["count"]
+			DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -56), "An extra serving!", UITheme.GOOD, 13)
 	player.inventory.add(made)
 	player.professions.add_xp(recipe["profession"], recipe["xp"])
 	Events.item_crafted.emit(recipe["id"])

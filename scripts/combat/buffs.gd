@@ -5,7 +5,8 @@ extends Node
 
 signal changed
 
-## buff id -> {"name": String, "time": seconds left}
+## buff id -> {"name": String, "time": seconds left, "total": seconds,
+## "icon": Texture2D or null, "kind": "meal", "drink", "treat", "potion"...}
 var active: Dictionary = {}
 
 var _stats: CharacterStats
@@ -17,8 +18,8 @@ func setup(stats: CharacterStats) -> void:
 
 ## Starts a buff, or restarts its timer if it is already running.
 ## `modifiers` maps stat id -> {"flat": float, "percent": float}.
-func add(id: String, display_name: String, duration: float, modifiers: Dictionary) -> void:
-	active[id] = {"name": display_name, "time": duration}
+func add(id: String, display_name: String, duration: float, modifiers: Dictionary, icon: Texture2D = null, kind: String = "") -> void:
+	active[id] = {"name": display_name, "time": duration, "total": duration, "icon": icon, "kind": kind, "mods": modifiers}
 	_stats.set_modifiers("buff:" + id, modifiers)
 	changed.emit()
 

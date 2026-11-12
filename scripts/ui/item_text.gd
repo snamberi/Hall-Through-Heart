@@ -159,6 +159,9 @@ static func effects(item: Item) -> Array:
 			for kind: String in use["mods"][stat]:
 				parts.append(ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": use["mods"][stat][kind]}))
 		lines.append([ItemDB.icon(55), "%s (%s): %s" % [use.get("name", "Buff"), time, ", ".join(parts)], UITheme.GOOD])
+		var course := ItemDB.course_of(item.id)
+		if course != "":
+			lines.append([ItemDB.icon(48), "%s: one at a time, works alongside a %s" % [ItemDB.COURSE_NAMES[course], " and a ".join(["meal", "drink", "treat"].filter(func(c: String) -> bool: return c != course))], UITheme.DIM])
 	return lines
 
 

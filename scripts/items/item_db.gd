@@ -73,6 +73,22 @@ const STATUSES := {
 	"chill": {"name": "Chill", "color": Color(0.6, 0.85, 1.0)},
 }
 
+## Courses of food. Each course is its own buff, so one meal, one drink and
+## one treat can all work at once; another of the same course replaces it.
+## Food not listed here is a meal.
+const DRINKS: Array[String] = ["frost_tea", "hunters_brew", "swiftfoot_tea", "ironbark_tonic", "sages_infusion", "ember_ale", "sunroot_cordial"]
+const TREATS: Array[String] = ["berry_tart", "thornberry_jam", "frostberry_tart", "sweet_roll", "candied_frostberries", "pumpkin_bread"]
+const COURSE_NAMES := {"meal": "Meal", "drink": "Drink", "treat": "Treat"}
+
+
+## "meal", "drink" or "treat" for food; "" for anything else.
+static func course_of(item_id: String) -> String:
+	var use: Dictionary = ITEMS.get(item_id, {}).get("use", {})
+	if use.get("buff", "") != "food":
+		return ""
+	return "drink" if item_id in DRINKS else "treat" if item_id in TREATS else "meal"
+
+
 ## Fighting bare-handed.
 const UNARMED := {"type": "unarmed", "range": 44.0, "arc": 100.0, "cooldown": 0.3, "knockback": 300.0}
 
@@ -368,6 +384,17 @@ const ITEMS := {
 	"glowshroom_soup": {"name": "Glowshroom Soup", "icon": 69, "tint": Color("3ab088"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"mana_regen": {"percent": 0.6}, "max_mana": {"flat": 30.0}}}, "text": "Mana comes back 60% faster; +30 mana for 5 minutes."},
 	"thornberry_jam": {"name": "Thornberry Jam", "icon": 70, "tint": Color("b02a3a"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"critical_chance": {"flat": 0.06}}}, "text": "+6% critical-hit chance for 5 minutes."},
 	"ember_stew": {"name": "Ember Stew", "icon": 69, "tint": Color("f08a2e"), "material_rarity": 2, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"physical_damage": {"percent": 0.12}, "max_health": {"flat": 60.0}}}, "text": "+12% damage and +60 maximum HP for 5 minutes."},
+	# --- drinks and treats: each course is its own buff, so a meal, a drink
+	# and a treat can all be working at once (see ItemDB.course_of)
+	"hunters_brew": {"name": "Hunter's Brew", "icon": 47, "tint": Color("b8743a"), "material_rarity": 0, "use": {"buff": "food", "name": "Refreshed", "duration": 300.0, "mods": {"attack_speed": {"percent": 0.1}, "critical_chance": {"flat": 0.04}}}, "value": 22, "text": "Dark and bitter. +10% attack speed and +4% critical-hit chance for 5 minutes."},
+	"swiftfoot_tea": {"name": "Swiftfoot Tea", "icon": 47, "tint": Color("8ad0b0"), "material_rarity": 1, "use": {"buff": "food", "name": "Refreshed", "duration": 300.0, "mods": {"move_speed": {"percent": 0.1}, "stamina_regen": {"percent": 0.3}}}, "value": 30, "text": "+10% movement speed and stamina back 30% faster for 5 minutes."},
+	"ironbark_tonic": {"name": "Ironbark Tonic", "icon": 47, "tint": Color("8a6a48"), "material_rarity": 1, "use": {"buff": "food", "name": "Refreshed", "duration": 300.0, "mods": {"armor": {"percent": 0.15}, "knockback_resistance": {"flat": 0.25}}}, "value": 34, "text": "+15% armor and hard to knock down for 5 minutes."},
+	"sages_infusion": {"name": "Sage's Infusion", "icon": 47, "tint": Color("7aa8ff"), "material_rarity": 1, "use": {"buff": "food", "name": "Refreshed", "duration": 360.0, "mods": {"magic_power": {"percent": 0.1}, "mana_regen": {"percent": 0.4}}}, "value": 40, "text": "+10% magic damage and mana back 40% faster for 6 minutes."},
+	"ember_ale": {"name": "Ember Ale", "icon": 47, "tint": Color("f08a2e"), "material_rarity": 2, "use": {"buff": "food", "name": "Refreshed", "duration": 300.0, "mods": {"fire_damage": {"flat": 6.0}, "fire_resist": {"flat": 0.15}}}, "value": 55, "text": "Warms all the way down. +6 fire damage and +15% fire resistance for 5 minutes."},
+	"sunroot_cordial": {"name": "Sunroot Cordial", "icon": 47, "tint": Color("ffe060"), "material_rarity": 2, "use": {"buff": "food", "name": "Refreshed", "duration": 360.0, "mods": {"holy_damage": {"flat": 6.0}, "health_regen": {"flat": 1.5}}}, "value": 70, "text": "+6 holy damage and +1.5 health a second for 6 minutes."},
+	"sweet_roll": {"name": "Sweet Roll", "icon": 70, "tint": Color("e0b070"), "material_rarity": 0, "use": {"buff": "food", "name": "Sweet Tooth", "duration": 300.0, "mods": {"critical_damage": {"flat": 0.1}, "dodge_efficiency": {"flat": 0.05}}}, "value": 18, "text": "+10% critical damage and dodges cost less for 5 minutes."},
+	"candied_frostberries": {"name": "Candied Frostberries", "icon": 80, "tint": Color("a8d8f0"), "material_rarity": 1, "use": {"buff": "food", "name": "Sweet Tooth", "duration": 300.0, "mods": {"frost_resist": {"flat": 0.15}, "max_mana": {"flat": 20.0}}}, "value": 32, "text": "+15% frost resistance and +20 mana for 5 minutes."},
+	"pumpkin_bread": {"name": "Pumpkin Bread", "icon": 70, "tint": Color("e09a40"), "material_rarity": 1, "use": {"buff": "food", "name": "Sweet Tooth", "duration": 360.0, "mods": {"max_stamina": {"flat": 30.0}, "stamina_regen": {"percent": 0.2}}}, "value": 36, "text": "+30 stamina and stamina back 20% faster for 6 minutes."},
 	"aloe_salve": {"name": "Aloe Salve", "icon": 47, "tint": Color("aac87a"), "material_rarity": 0, "use": {"heal": 0.3, "buff": "salve", "name": "Soothed", "duration": 20.0, "mods": {"health_regen": {"flat": 3.0}}}, "text": "Restores 30% health and more over 20 seconds."},
 	"bloodcap_draught": {"name": "Bloodcap Draught", "icon": 47, "tint": Color("c02a3a"), "material_rarity": 2, "use": {"buff": "draught", "name": "Bloodthirst", "duration": 90.0, "mods": {"life_steal": {"flat": 0.05}}}, "text": "Heal for 5% of damage dealt for 90 seconds."},
 	"void_tonic": {"name": "Void Tonic", "icon": 47, "tint": Color("9a6cf0"), "material_rarity": 3, "use": {"buff": "tonic", "name": "Void-touched", "duration": 90.0, "mods": {"magic_power": {"percent": 0.25}}}, "text": "+25% magic damage for 90 seconds."},
