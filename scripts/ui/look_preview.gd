@@ -7,6 +7,13 @@ extends Control
 
 const SCALE := 4.0
 
+## How large the figure is drawn, and whether it stands on a niche and plinth.
+var zoom := SCALE
+var framed := true
+## The animation it plays ("idle", "walk", "attack", "hurt"...).
+var pose := "idle"
+var _facing := 1.0
+
 var _holder: Node2D
 var _body: AnimatedSprite2D
 var _layers: Dictionary = {}
@@ -36,7 +43,7 @@ func _ready() -> void:
 		sprite.visible = false
 		_body.add_child(sprite)
 		_layers[feature[0]] = sprite
-	_body.play("idle")
+	_body.play(pose)
 	resized.connect(_place)
 	show_look(_appearance)
 
@@ -68,16 +75,29 @@ func show_look(appearance: Dictionary) -> void:
 ## Walks on the spot (true) or stands (false).
 func set_walking(walking: bool) -> void:
 	_walking = walking
-	if _body:
-		_body.play("walk" if walking else "idle")
+	play(("walk" if walking else "idle"))
+
+
+## Plays one of the body's animations, looping it.
+func play(animation_name: String) -> void:
+	pose = animation_name
+	if _body and _body.sprite_frames.has_animation(animation_name):
+		_body.sprite_frames.set_animation_loop(animation_name, true)
+		_body.play(animation_name)
+
+
+## Turns the figure to face the other way.
+func turn() -> void:
+	_facing = -_facing
+	_place()
 
 
 func _place() -> void:
 	if _holder == null:
 		return
-	_holder.scale = Vector2(SCALE, SCALE)
+	_holder.scale = Vector2(zoom * _facing, zoom)
 	# Feet on the plinth: frames are 96px with the feet 23px below the middle.
-	_holder.position = Vector2(size.x / 2.0, size.y - 64.0)
+	_holder.position = Vector2(size.x / 2.0, size.y - (64.0 if framed else 14.0))
 	_body.position = Vector2(0, -23.0 * _body.scale.y)
 
 
@@ -92,6 +112,11 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
+	if not framed:
+		draw_set_transform(Vector2(size.x / 2.0, size.y - 12.0), 0.0, Vector2(1.0, 0.32))
+		draw_circle(Vector2.ZERO, size.x * 0.36, Color("2a2c36"))
+		draw_set_transform(Vector2.ZERO)
+		return
 	# A stone niche and a plinth for the figure to stand on.
 	var center := size / 2.0
 	draw_rect(Rect2(center.x - 96.0, 30.0, 192.0, size.y - 90.0), Color("0b0e17"))

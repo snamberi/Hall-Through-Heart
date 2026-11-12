@@ -174,68 +174,153 @@ func _delete(id: String) -> void:
 	_fill_save_list()
 
 
+## A step of the character creator: [id, title, hint].
+const STEPS: Array[Array] = [["look", "Race & Look", "Who they are"], ["class", "Class", "Their calling"], ["world", "World", "Where they wake"]]
+
+
 func _new_page() -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
-	var title := UITheme.heading("NEW WORLD", 24)
+	var title := UITheme.heading("HALL THROUGH HEART", 26)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
-	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 14)
-	box.add_child(columns)
+	var subtitle := UITheme.label("CHARACTER CREATION", 14, UITheme.DIM)
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(subtitle)
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 10)
+	box.add_child(body)
 
-	# --- left: the world, and the class
-	var world_panel := UITheme.inset_panel()
-	columns.add_child(world_panel)
-	var left := VBoxContainer.new()
-	left.add_theme_constant_override("separation", 6)
-	left.custom_minimum_size = Vector2(330.0, 0.0)
-	world_panel.add_child(left)
-	left.add_child(UITheme.heading("The world", 17))
-	_name_field = LineEdit.new()
-	_name_field.placeholder_text = "World %d" % (SaveGame.list_slots().size() + 1)
-	_name_field.custom_minimum_size = Vector2(330.0, 32.0)
-	left.add_child(_name_field)
-	_seed_field = LineEdit.new()
-	_seed_field.placeholder_text = "Seed (empty for a random world)"
-	_seed_field.custom_minimum_size = Vector2(330.0, 32.0)
-	left.add_child(_seed_field)
-	left.add_child(UITheme.label("Difficulty", 14, UITheme.DIM))
-	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 4)
-	row.add_theme_constant_override("v_separation", 4)
-	left.add_child(row)
-	for level in Difficulty.LEVELS:
+	# --- the steps, down the left side
+	var steps := VBoxContainer.new()
+	steps.add_theme_constant_override("separation", 6)
+	body.add_child(steps)
+	for index in STEPS.size():
+		var step: Array = STEPS[index]
 		var button := Button.new()
-		button.text = Difficulty.display_name(level)
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_NONE
-		button.custom_minimum_size = Vector2(62.0, 32.0)
-		button.add_theme_font_size_override("font_size", 13)
-		button.pressed.connect(_choose_difficulty.bind(level))
+		button.custom_minimum_size = Vector2(108.0, 70.0)
+		button.text = "%d\n%s" % [index + 1, step[1]]
+		button.add_theme_font_size_override("font_size", 15)
+		button.tooltip_text = step[2]
+		button.pressed.connect(_show_step.bind(step[0]))
 		UITheme.sounds(button)
-		row.add_child(button)
-		_difficulty_buttons[level] = button
-	_hardcore = CheckBox.new()
-	_hardcore.text = "Hardcore: one life, always Insane"
-	_hardcore.focus_mode = Control.FOCUS_NONE
-	_hardcore.add_theme_font_size_override("font_size", 14)
-	_hardcore.toggled.connect(func(on: bool) -> void:
-		for level in _difficulty_buttons:
-			_difficulty_buttons[level].disabled = on
-		_choose_difficulty("insane" if on else "normal")
-	)
-	left.add_child(_hardcore)
-	_difficulty_text = UITheme.label("", 13, UITheme.DIM)
-	_difficulty_text.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_difficulty_text.custom_minimum_size = Vector2(330.0, 36.0)
-	left.add_child(_difficulty_text)
-	left.add_child(UITheme.heading("Your class", 17))
+		steps.add_child(button)
+		_step_buttons[step[0]] = button
+	var pages := HBoxContainer.new()
+	body.add_child(pages)
+
+	# --- step 1: race, the figure, and every part of the look
+	var look := HBoxContainer.new()
+	look.add_theme_constant_override("separation", 10)
+	pages.add_child(look)
+	_step_pages["look"] = look
+	var races_panel := UITheme.inset_panel()
+	look.add_child(races_panel)
+	var races_box := VBoxContainer.new()
+	races_box.add_theme_constant_override("separation", 6)
+	races_panel.add_child(races_box)
+	races_box.add_child(UITheme.heading("Choose a race", 17))
+	var races_scroll := ScrollContainer.new()
+	races_scroll.custom_minimum_size = Vector2(300.0, 238.0)
+	races_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	races_box.add_child(races_scroll)
+	var race_grid := GridContainer.new()
+	race_grid.columns = 3
+	race_grid.add_theme_constant_override("h_separation", 5)
+	race_grid.add_theme_constant_override("v_separation", 5)
+	races_scroll.add_child(race_grid)
+	for race: String in Appearance.RACES:
+		var button := Button.new()
+		button.toggle_mode = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = Vector2(92.0, 92.0)
+		var picture := TextureRect.new()
+		picture.texture = AppearanceEditor.race_portrait(race)
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 4)
+		picture.offset_bottom = -20.0
+		button.add_child(picture)
+		var name_label := UITheme.label(Appearance.RACES[race]["name"], 14)
+		name_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		name_label.offset_top = -22.0
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(name_label)
+		button.pressed.connect(func() -> void:
+			_editor.choose_race(race)
+		)
+		UITheme.sounds(button)
+		race_grid.add_child(button)
+		_race_buttons[race] = button
+	_race_info = RichTextLabel.new()
+	_race_info.bbcode_enabled = true
+	_race_info.fit_content = true
+	_race_info.scroll_active = false
+	_race_info.custom_minimum_size = Vector2(300.0, 150.0)
+	_race_info.add_theme_font_size_override("normal_font_size", 14)
+	_race_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	races_box.add_child(_race_info)
+	# The figure: turn it, roll a new one, see it move.
+	var figure_panel := UITheme.inset_panel()
+	look.add_child(figure_panel)
+	var middle := VBoxContainer.new()
+	middle.add_theme_constant_override("separation", 6)
+	figure_panel.add_child(middle)
+	_figure = LookPreview.new()
+	_figure.custom_minimum_size = Vector2(250.0, 290.0)
+	middle.add_child(_figure)
+	var turn_row := HBoxContainer.new()
+	turn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	turn_row.add_theme_constant_override("separation", 6)
+	middle.add_child(turn_row)
+	turn_row.add_child(UITheme.button("<", func() -> void: _figure.turn(), 40.0))
+	turn_row.add_child(UITheme.button("Randomise", _randomise, 130.0))
+	turn_row.add_child(UITheme.button(">", func() -> void: _figure.turn(), 40.0))
+	middle.add_child(UITheme.label("Preview", 14, UITheme.DIM))
+	var poses := HBoxContainer.new()
+	poses.add_theme_constant_override("separation", 2)
+	middle.add_child(poses)
+	for pose: String in ["idle", "walk", "attack", "hurt"]:
+		var small := LookPreview.new()
+		small.zoom = 1.5
+		small.framed = false
+		small.pose = pose
+		small.custom_minimum_size = Vector2(61.0, 76.0)
+		poses.add_child(small)
+		_poses.append(small)
+	var count := UITheme.label("%d choices" % Appearance.option_count(), 13, UITheme.DIM)
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	middle.add_child(count)
+	# Every part of the look.
+	var look_panel := UITheme.inset_panel()
+	look.add_child(look_panel)
+	_editor = AppearanceEditor.new()
+	_editor.allow_race = false
+	_editor.width = 400.0
+	_editor.changed.connect(_on_look_changed)
+	look_panel.add_child(_editor)
+
+	# --- step 2: the class
+	var class_page := HBoxContainer.new()
+	class_page.add_theme_constant_override("separation", 10)
+	pages.add_child(class_page)
+	_step_pages["class"] = class_page
+	var class_panel := UITheme.inset_panel()
+	class_page.add_child(class_panel)
+	var class_box := VBoxContainer.new()
+	class_box.add_theme_constant_override("separation", 6)
+	class_panel.add_child(class_box)
+	class_box.add_child(UITheme.heading("Choose a class", 17))
 	var classes := GridContainer.new()
 	classes.columns = 2
-	classes.add_theme_constant_override("h_separation", 4)
-	classes.add_theme_constant_override("v_separation", 4)
-	left.add_child(classes)
+	classes.add_theme_constant_override("h_separation", 6)
+	classes.add_theme_constant_override("v_separation", 6)
+	class_box.add_child(classes)
 	for id: String in HeroClasses.CLASSES:
 		var data: Dictionary = HeroClasses.CLASSES[id]
 		var button := Button.new()
@@ -244,71 +329,170 @@ func _new_page() -> Control:
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_NONE
-		button.custom_minimum_size = Vector2(163.0, 34.0)
-		button.add_theme_font_size_override("font_size", 14)
-		button.add_theme_constant_override("icon_max_width", 20)
+		button.custom_minimum_size = Vector2(240.0, 52.0)
+		button.add_theme_font_size_override("font_size", 16)
+		button.add_theme_constant_override("icon_max_width", 30)
 		button.pressed.connect(_choose_class.bind(id))
 		UITheme.sounds(button)
 		classes.add_child(button)
 		_class_buttons[id] = button
+	var class_detail := UITheme.inset_panel()
+	class_page.add_child(class_detail)
+	var detail_box := VBoxContainer.new()
+	class_detail.add_child(detail_box)
+	_class_figure = LookPreview.new()
+	_class_figure.custom_minimum_size = Vector2(300.0, 220.0)
+	_class_figure.pose = "attack"
+	detail_box.add_child(_class_figure)
 	_class_text = RichTextLabel.new()
 	_class_text.bbcode_enabled = true
 	_class_text.fit_content = true
 	_class_text.scroll_active = false
-	_class_text.custom_minimum_size = Vector2(330.0, 92.0)
+	_class_text.custom_minimum_size = Vector2(300.0, 180.0)
 	_class_text.add_theme_font_size_override("normal_font_size", 14)
 	_class_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	left.add_child(_class_text)
+	detail_box.add_child(_class_text)
 
-	# --- middle: the character, alive
-	var figure_panel := UITheme.inset_panel()
-	columns.add_child(figure_panel)
-	var middle := VBoxContainer.new()
-	middle.add_theme_constant_override("separation", 8)
-	figure_panel.add_child(middle)
-	_figure = LookPreview.new()
-	_figure.custom_minimum_size = Vector2(270.0, 356.0)
-	middle.add_child(_figure)
-	var figure_buttons := HBoxContainer.new()
-	figure_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	figure_buttons.add_theme_constant_override("separation", 6)
-	middle.add_child(figure_buttons)
-	figure_buttons.add_child(UITheme.button("Randomise", func() -> void:
-		_appearance = Appearance.random()
-		_editor.set_appearance(_appearance)
-		_figure.show_look(_appearance)
-	, 130.0))
-	var walk := Button.new()
-	walk.text = "Walk"
-	walk.toggle_mode = true
-	walk.focus_mode = Control.FOCUS_NONE
-	walk.custom_minimum_size = Vector2(90.0, 32.0)
-	walk.toggled.connect(func(on: bool) -> void: _figure.set_walking(on))
-	UITheme.sounds(walk)
-	figure_buttons.add_child(walk)
-	var count := UITheme.label("%d choices to make them yours" % Appearance.option_count(), 12, UITheme.DIM)
-	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	middle.add_child(count)
-
-	# --- right: every part of their look
-	var look_panel := UITheme.inset_panel()
-	columns.add_child(look_panel)
-	_editor = AppearanceEditor.new()
-	_editor.changed.connect(func(look: Dictionary) -> void:
-		_appearance = look.duplicate()
-		_figure.show_look(_appearance)
+	# --- step 3: the world
+	var world_panel := UITheme.inset_panel()
+	pages.add_child(world_panel)
+	_step_pages["world"] = world_panel
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 8)
+	left.custom_minimum_size = Vector2(560.0, 0.0)
+	world_panel.add_child(left)
+	left.add_child(UITheme.heading("The world", 17))
+	left.add_child(UITheme.label("Name", 14, UITheme.DIM))
+	_name_field = LineEdit.new()
+	_name_field.placeholder_text = "World %d" % (SaveGame.list_slots().size() + 1)
+	_name_field.custom_minimum_size = Vector2(560.0, 34.0)
+	left.add_child(_name_field)
+	left.add_child(UITheme.label("Seed", 14, UITheme.DIM))
+	_seed_field = LineEdit.new()
+	_seed_field.placeholder_text = "Empty for a random world"
+	_seed_field.custom_minimum_size = Vector2(560.0, 34.0)
+	left.add_child(_seed_field)
+	left.add_child(UITheme.label("Difficulty", 14, UITheme.DIM))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	left.add_child(row)
+	for level in Difficulty.LEVELS:
+		var button := Button.new()
+		button.text = Difficulty.display_name(level)
+		button.toggle_mode = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = Vector2(106.0, 36.0)
+		button.add_theme_font_size_override("font_size", 15)
+		button.pressed.connect(_choose_difficulty.bind(level))
+		UITheme.sounds(button)
+		row.add_child(button)
+		_difficulty_buttons[level] = button
+	_difficulty_text = UITheme.label("", 14, UITheme.DIM)
+	_difficulty_text.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_difficulty_text.custom_minimum_size = Vector2(560.0, 44.0)
+	left.add_child(_difficulty_text)
+	_hardcore = CheckBox.new()
+	_hardcore.text = "Hardcore: one life, always Insane. Dying deletes the world."
+	_hardcore.focus_mode = Control.FOCUS_NONE
+	_hardcore.add_theme_font_size_override("font_size", 15)
+	_hardcore.toggled.connect(func(on: bool) -> void:
+		for level in _difficulty_buttons:
+			_difficulty_buttons[level].disabled = on
+		_choose_difficulty("insane" if on else "normal")
 	)
-	look_panel.add_child(_editor)
+	left.add_child(_hardcore)
+	_summary = RichTextLabel.new()
+	_summary.bbcode_enabled = true
+	_summary.fit_content = true
+	_summary.scroll_active = false
+	_summary.custom_minimum_size = Vector2(560.0, 80.0)
+	_summary.add_theme_font_size_override("normal_font_size", 15)
+	_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_child(_summary)
 
+	# --- along the bottom
 	var buttons := HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 12)
 	box.add_child(buttons)
-	buttons.add_child(UITheme.button("Back", show_page.bind("home"), 200.0))
-	buttons.add_child(UITheme.button("Create World", _create, 200.0))
+	_back_button = UITheme.button("<  Back", _step_back, 180.0)
+	buttons.add_child(_back_button)
+	buttons.add_child(UITheme.button("Randomise", _randomise, 160.0))
+	_next_button = UITheme.button("Next  >", _step_next, 220.0)
+	buttons.add_child(_next_button)
 	_choose_difficulty("normal")
 	_choose_class("adventurer")
+	_on_look_changed(_appearance)
+	_show_step("look")
 	return _framed(box)
+
+
+## The creator's steps.
+var _step := "look"
+var _step_buttons: Dictionary[String, Button] = {}
+var _step_pages: Dictionary[String, Control] = {}
+var _race_buttons: Dictionary[String, Button] = {}
+var _race_info: RichTextLabel
+var _poses: Array[LookPreview] = []
+var _class_figure: LookPreview
+var _summary: RichTextLabel
+var _back_button: Button
+var _next_button: Button
+
+
+func _show_step(step: String) -> void:
+	_step = step
+	for id in _step_pages:
+		_step_pages[id].visible = id == step
+		_step_buttons[id].set_pressed_no_signal(id == step)
+	_next_button.text = "Create World  >" if step == "world" else "Next  >"
+	_back_button.text = "<  Title" if step == "look" else "<  Back"
+	if step == "world":
+		_update_summary()
+
+
+func _step_next() -> void:
+	var index := STEPS.map(func(s: Array) -> String: return s[0]).find(_step)
+	if index >= STEPS.size() - 1:
+		_create()
+	else:
+		_show_step(STEPS[index + 1][0])
+
+
+func _step_back() -> void:
+	var index := STEPS.map(func(s: Array) -> String: return s[0]).find(_step)
+	if index <= 0:
+		show_page("home")
+	else:
+		_show_step(STEPS[index - 1][0])
+
+
+func _randomise() -> void:
+	_appearance = Appearance.random()
+	_editor.set_appearance(_appearance)
+	_on_look_changed(_appearance)
+
+
+## The look changed: the figures, the race buttons, the race's words.
+func _on_look_changed(look: Dictionary) -> void:
+	_appearance = look.duplicate()
+	_figure.show_look(_appearance)
+	_class_figure.show_look(_appearance)
+	for small in _poses:
+		small.show_look(_appearance)
+		small.play(small.pose)
+	var race: String = Appearance.resolved(_appearance)["race"]
+	for id in _race_buttons:
+		_race_buttons[id].set_pressed_no_signal(id == race)
+	_race_info.text = AppearanceEditor.race_text(race)
+
+
+func _update_summary() -> void:
+	var worn := Appearance.resolved(_appearance)
+	_summary.text = "[color=#%s]You will begin as a[/color] [color=#%s]%s %s[/color][color=#%s], on %s.[/color]" % [
+		UITheme.DIM.to_html(false), UITheme.GOLD.to_html(false), Appearance.RACES[worn["race"]]["name"],
+		HeroClasses.CLASSES[_class]["name"] if _class != "adventurer" else "Adventurer", UITheme.DIM.to_html(false),
+		"Hardcore" if _hardcore.button_pressed else Difficulty.display_name(_difficulty)]
 
 
 func _choose_difficulty(level: String) -> void:
@@ -322,6 +506,8 @@ func _choose_difficulty(level: String) -> void:
 
 func _choose_class(id: String) -> void:
 	_class = id
+	if _class_figure:
+		_class_figure.play("attack" if id != "adventurer" else "idle")
 	for other in _class_buttons:
 		_class_buttons[other].set_pressed_no_signal(other == id)
 	var data: Dictionary = HeroClasses.CLASSES[id]

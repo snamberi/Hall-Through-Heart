@@ -4,7 +4,7 @@ extends GameMenu
 ## until first slain), achievements and titles, and a record of what has
 ## been gathered, caught and done.
 
-const TILE := Vector2(78, 92)
+const TILE := Vector2(98, 112)
 
 var _tab := "bestiary"
 var _tabs: Dictionary = {}
@@ -155,14 +155,23 @@ func _creature_tile(codex: Codex, id: String) -> Button:
 	atlas.region = Rect2(16, 14, 64, 64)
 	picture.texture = atlas
 	picture.position = Vector2(7, 4)
-	picture.size = Vector2(64, 64)
+	picture.size = Vector2(84, 84)
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Unmet creatures are only a shape in the dark.
-	picture.modulate = Color.WHITE if kills > 0 else Color(0.02, 0.02, 0.05)
+	# Unmet creatures are a shape in the dark, with a question over them: a
+	# mystery, not a missing picture.
+	picture.modulate = Color.WHITE if kills > 0 else Color(0.16, 0.14, 0.3)
 	button.add_child(picture)
-	var label := UITheme.label(str(kills) if kills > 0 else "?", 12, UITheme.GOLD if marked else UITheme.TEXT if kills > 0 else UITheme.DIM)
+	if kills == 0:
+		var ask := UITheme.label("?", 30, Color(0.85, 0.75, 0.5, 0.55))
+		ask.add_theme_font_override("font", UITheme.bold())
+		ask.position = Vector2(0, 26)
+		ask.size = Vector2(TILE.x, 40)
+		ask.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ask.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(ask)
+	var label := UITheme.label(("%d slain" % kills) if kills > 0 else "unknown", 13, UITheme.GOLD if marked else UITheme.TEXT if kills > 0 else UITheme.DIM)
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	label.offset_top = -20.0
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -228,7 +237,7 @@ func _creature_page(codex: Codex, id: String) -> void:
 	)
 	_right.add_child(bar)
 	if kills >= int(Codex.REVEAL["weakness"]):
-		_say("[color=#%s]%s[/color]" % [UITheme.INFO.to_html(false), Elements.describe_monster(id)])
+		_right.add_child(_element_row(id))
 	else:
 		_say("[color=#%s]Weaknesses: slay %d to learn.[/color]" % [UITheme.DIM.to_html(false), Codex.REVEAL["weakness"]])
 	if kills >= int(Codex.REVEAL["drops"]):
@@ -244,6 +253,39 @@ func _creature_page(codex: Codex, id: String) -> void:
 		_say("[color=#%s]What it leaves behind: slay %d to learn.[/color]" % [UITheme.DIM.to_html(false), Codex.REVEAL["drops"]])
 	if kills >= goal:
 		_say("[color=#%s]Hunter's Mark: you deal 5%% more damage to this kind.[/color]" % UITheme.GOLD.to_html(false))
+
+
+## What the creature fights with, what hurts it and what it shrugs off,
+## as coloured chips.
+func _element_row(id: String) -> Control:
+	var info: Dictionary = Elements.MONSTERS.get(id, {})
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	for group: Array in [["Attacks with", [info["attack"]] if info.has("attack") else []], ["Weak to", info.get("weak", [])], ["Resists", info.get("hardy", [])]]:
+		if (group[1] as Array).is_empty():
+			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var title := UITheme.label(group[0], 14, UITheme.DIM)
+		title.custom_minimum_size.x = 96.0
+		row.add_child(title)
+		for element: String in group[1]:
+			var chip := PanelContainer.new()
+			var style := StyleBoxFlat.new()
+			style.bg_color = Elements.color(element).darkened(0.7)
+			style.border_color = Elements.color(element)
+			style.set_border_width_all(1)
+			style.set_corner_radius_all(3)
+			style.set_content_margin_all(3)
+			style.content_margin_left = 8
+			style.content_margin_right = 8
+			chip.add_theme_stylebox_override("panel", style)
+			chip.add_child(UITheme.label(Elements.name_of(element), 14, Elements.color(element)))
+			row.add_child(chip)
+		box.add_child(row)
+	if box.get_child_count() == 0:
+		box.add_child(UITheme.label("No weakness and no resistance.", 14, UITheme.DIM))
+	return box
 
 
 ## An item's picture in a slot with a word beside it; hover for the item.

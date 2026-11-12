@@ -59,13 +59,19 @@ func _draw() -> void:
 
 ## One tongue of flame: a teardrop whose tip wanders.
 func _tongue(width: float, height: float, lean: float, color: Color, t: float) -> void:
+	# A dying fire's tongues get too small to draw; the wobble shrinks with
+	# them so the outline never folds over itself.
+	if width < 1.5 or height < 2.0:
+		return
+	var wobble := minf(1.0, width / 8.0)
+	lean = clampf(lean, -width * 0.4, width * 0.4)
 	var points := PackedVector2Array()
 	var half := width / 2.0
 	points.append(Vector2(-half, 0))
 	points.append(Vector2(-half * 1.05, -height * 0.25))
-	points.append(Vector2(-half * 0.7 + lean * 0.3, -height * 0.55 + sin(t * 9.0) * 0.8))
-	points.append(Vector2(lean + sin(t * 13.0) * 1.2, -height))
-	points.append(Vector2(half * 0.7 + lean * 0.3, -height * 0.5 + cos(t * 8.0) * 0.8))
+	points.append(Vector2(-half * 0.7 + lean * 0.3, -height * 0.55 + sin(t * 9.0) * 0.8 * wobble))
+	points.append(Vector2(lean + sin(t * 13.0) * 1.2 * wobble, -height))
+	points.append(Vector2(half * 0.7 + lean * 0.3, -height * 0.5 + cos(t * 8.0) * 0.8 * wobble))
 	points.append(Vector2(half * 1.05, -height * 0.22))
 	points.append(Vector2(half, 0))
 	draw_colored_polygon(points, color)

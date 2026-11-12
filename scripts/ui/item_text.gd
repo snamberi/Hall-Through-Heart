@@ -47,11 +47,11 @@ static func describe(item: Item, player: Player) -> String:
 	lines.append("")
 	if def.has("damage"):
 		var weapon: Dictionary = def["weapon"]
-		lines.append("[color=#%s]Damage[/color]  [font_size=20]%d[/font_size]%s" % [text, roundi(item.base_power("damage")), "  [color=#%s](magic)[/color]" % dim if def.get("magic", false) else ""])
+		lines.append("[color=#%s]Damage[/color]  [font_size=20]%d[/font_size]%s%s" % [text, roundi(item.base_power("damage")), _delta(item, player, "damage"), "  [color=#%s](magic)[/color]" % dim if def.get("magic", false) else ""])
 		var action := "shots, range" if weapon.has("projectile") else "swings, reach"
 		lines.append("[color=#%s]%.2fs between %s %d[/color]" % [dim, weapon["cooldown"], action, roundi(weapon["range"])])
 	if def.has("armor"):
-		lines.append("[color=#%s]Armor[/color]  [font_size=20]%d[/font_size]" % [text, roundi(item.base_power("armor"))])
+		lines.append("[color=#%s]Armor[/color]  [font_size=20]%d[/font_size]%s" % [text, roundi(item.base_power("armor")), _delta(item, player, "armor")])
 	var level_ok := player.leveling.level >= item.level
 	lines.append("[i][color=#%s]Requires level %d[/color][/i]" % [UITheme.HEADING.to_html(false) if level_ok else UITheme.BAD.to_html(false), item.level])
 	var requirements := item.attribute_requirements()
@@ -96,11 +96,11 @@ static func describe(item: Item, player: Player) -> String:
 					var text_part := ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": absf(value)})
 					parts.append(text_part if value >= 0.0 else "-" + text_part.substr(1))
 			lines.append("[color=#%s](%d) %s[/color]" % [ItemDB.SET_COLOR.to_html(false) if worn >= needed else dim, needed, ", ".join(parts)])
-	if player.equipment.slot_of(item) == "":
-		var current := player.equipment.get_item(player.equipment.target_slot(item))
-		if current:
-			lines.append("")
-			lines.append("[color=#%s]Wearing: %s[/color]" % [dim, current.display_name()])
+	# What changes against what is worn in its place.
+	var comparison := compare(item, player)
+	if comparison != "":
+		lines.append("")
+		lines.append(comparison)
 	return "\n".join(lines)
 
 
@@ -125,4 +125,103 @@ static func describe_recipe(recipe: Dictionary, player: Player) -> String:
 	else:
 		lines.append("")
 		lines.append("[color=#%s]Click to make it[/color]" % UITheme.GOOD.to_html(false))
+	return "\n".join(lines)
+
+
+## A small picture for each stat, from the item icon sheet.
+const STAT_ICONS := {
+	"physical_damage": 0, "magic_power": 33, "max_health": 35, "health_regen": 35, "max_mana": 36, "mana_regen": 36,
+	"max_stamina": 37, "stamina_regen": 37, "critical_chance": 26, "critical_damage": 26, "attack_speed": 31,
+	"move_speed": 9, "armor": 7, "damage_taken": 5, "dodge_efficiency": 29, "life_steal": 21, "magic_find": 12,
+	"gold_find": 17, "mining_efficiency": 49, "fire_damage": 18, "frost_damage": 19, "shadow_damage": 20,
+	"holy_damage": 63, "poison_damage": 24, "fire_resist": 18, "frost_resist": 19, "shadow_resist": 20,
+	"holy_resist": 63, "poison_resist": 24, "elemental_resistance": 5, "knockback_resistance": 5,
+}
+
+
+static func stat_icon(stat: String) -> Texture2D:
+	return ItemDB.icon(STAT_ICONS.get(stat, 12))
+
+
+## What using an item does, as [icon, words, colour] lines: what it
+## restores, and the buff it gives with its time.
+static func effects(item: Item) -> Array:
+	var lines: Array = []
+	var use: Dictionary = item.definition().get("use", {})
+	for pair: Array in [["heal", 35, "health", Color("ff7a7a")], ["mana", 36, "mana", Color("7aa8ff")], ["stamina", 37, "stamina", Color("ffd25a")]]:
+		if use.has(pair[0]):
+			lines.append([ItemDB.icon(pair[1]), "Restores %d%% %s" % [roundi(float(use[pair[0]]) * 100.0), pair[2]], pair[3]])
+	if use.has("buff"):
+		var minutes := float(use["duration"]) / 60.0
+		var time := "%d min" % roundi(minutes) if minutes >= 1.0 else "%d s" % roundi(use["duration"])
+		var parts: PackedStringArray = []
+		for stat: String in use["mods"]:
+			for kind: String in use["mods"][stat]:
+				parts.append(ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": use["mods"][stat][kind]}))
+		lines.append([ItemDB.icon(55), "%s (%s): %s" % [use.get("name", "Buff"), time, ", ".join(parts)], UITheme.GOOD])
+	return lines
+
+
+## How an item compares with what is worn in its place, as BBCode lines:
+## each stat that would change, green for better and red for worse.
+## What a piece of gear would be measured against: the worn piece in its
+## slot, or for a weapon the one in hand (a free second weapon slot is no
+## rival worth comparing with).
+static func rival(item: Item, player: Player) -> Item:
+	var equipment := player.equipment
+	if item.slot() == "main_hand" and not item.definition().get("magic", false):
+		for slot: String in [equipment.active_slot, "weapon_2", "weapon_3"]:
+			if slot in ["weapon_2", "weapon_3"] and equipment.equipped.has(slot):
+				return equipment.equipped[slot]
+		return null
+	return equipment.equipped.get(equipment.target_slot(item))
+
+
+## Beside a weapon's damage or armour's armor: how far it is above or below
+## what is worn in its place, in green or red, so a glance is enough.
+static func _delta(item: Item, player: Player, key: String) -> String:
+	var worn := rival(item, player)
+	if worn == item or player.equipment.slot_of(item) != "":
+		return ""
+	var change := item.base_power(key) - (worn.base_power(key) if worn and worn.definition().has(key) else 0.0)
+	if absf(change) < 0.5:
+		return "  [color=#%s](same as worn)[/color]" % UITheme.DIM.to_html(false)
+	return "  [color=#%s]%s%d %s[/color]" % [(UITheme.GOOD if change > 0.0 else UITheme.BAD).to_html(false), "+" if change > 0.0 else "-", roundi(absf(change)), "vs worn" if worn else "(slot empty)"]
+
+
+static func compare(item: Item, player: Player) -> String:
+	if not item.is_equipment():
+		return ""
+	var slot := player.equipment.target_slot(item)
+	var worn := rival(item, player)
+	if worn == item or player.equipment.slot_of(item) != "":
+		return ""
+	var totals := func(source: Item) -> Dictionary:
+		var result := {}
+		if source == null:
+			return result
+		for modifier in source.all_modifiers():
+			var key: String = modifier["stat"] + ":" + modifier["kind"]
+			result[key] = result.get(key, 0.0) + float(modifier["value"])
+		return result
+	var mine: Dictionary = totals.call(item)
+	var theirs: Dictionary = totals.call(worn)
+	var keys: Array = mine.keys()
+	for key: String in theirs:
+		if not key in keys:
+			keys.append(key)
+	var lines: PackedStringArray = []
+	lines.append("[color=#%s]Compared with %s:[/color]" % [UITheme.DIM.to_html(false), worn.display_name() if worn else "an empty %s slot" % str(Equipment.BELT_NAMES.get(slot, ItemDB.SLOT_NAMES.get(slot, slot))).to_lower()])
+	var any := false
+	for key: String in keys:
+		var change: float = mine.get(key, 0.0) - theirs.get(key, 0.0)
+		if absf(change) < 0.0005:
+			continue
+		any = true
+		var parts := key.split(":")
+		var words := ItemDB.describe_modifier({"stat": parts[0], "kind": parts[1], "value": absf(change)})
+		var better := change > 0.0 if parts[0] != "damage_taken" else change < 0.0
+		lines.append("[color=#%s]%s %s[/color]" % [(UITheme.GOOD if better else UITheme.BAD).to_html(false), "+" if change > 0.0 else "-", words.substr(1)])
+	if not any:
+		lines.append("[color=#%s]No difference.[/color]" % UITheme.DIM.to_html(false))
 	return "\n".join(lines)
