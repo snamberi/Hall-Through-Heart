@@ -243,7 +243,7 @@ func _draw() -> void:
 			draw_rect(mini_rect, Color(0.05, 0.05, 0.08, 0.85))
 			var other_id: String = abilities.loadout[other * AbilityDB.SET_SIZE + index] if not casting else ""
 			if other_id != "":
-				draw_texture_rect(ItemDB.icon(AbilityDB.ABILITIES[other_id]["icon"]), mini_rect.grow(-3.0), false, Color(0.62, 0.62, 0.68))
+				draw_texture_rect(AbilityDB.icon(other_id), mini_rect.grow(-3.0), false, Color(0.62, 0.62, 0.68))
 			draw_rect(mini_rect, Color(0.3, 0.28, 0.26), false, 1.0)
 		var label := "Set %d  %s" % [abilities.active_set + 1, _key("ability_swap")] if not casting else "%s magic" % MagicDB.SCHOOLS[_player.magic_school]["short"]
 		var bottom: Rect2 = _groups[0][1]
@@ -262,7 +262,7 @@ func _draw() -> void:
 			var mini_rect := Rect2(tab.end.x - 4.0 * 14.0 - 2.0 + index * 14.0, tab.position.y + 2.0, 12.0, 12.0)
 			draw_rect(mini_rect, Color(0.05, 0.05, 0.08))
 			if other_id != "":
-				draw_texture_rect(ItemDB.icon(AbilityDB.ABILITIES[other_id]["icon"]), mini_rect, false, Color(0.7, 0.7, 0.75))
+				draw_texture_rect(AbilityDB.icon(other_id), mini_rect, false, Color(0.7, 0.7, 0.75))
 	for index in _spots.size():
 		var spot: Array = _spots[index]
 		var rect: Rect2 = spot[0]
@@ -302,7 +302,7 @@ func _draw_ability(rect: Rect2, index: int, hovered: bool) -> void:
 		return
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
 	var reason := _player.abilities.blocked_reason(id)
-	var icon := ItemDB.icon(ability["icon"])
+	var icon := AbilityDB.icon(id)
 	var t := Time.get_ticks_msec() / 1000.0
 	var border := Color(0.95, 0.82, 0.48)
 	match reason:
@@ -342,12 +342,14 @@ func _draw_ability(rect: Rect2, index: int, hovered: bool) -> void:
 			border = color.lerp(Color.WHITE, 0.15 + 0.15 * sin(t * 5.0))
 		_:
 			# Locked, or the wrong weapon in hand.
-			draw_texture_rect(icon, rect.grow(-7.0), false, Color(0.25, 0.25, 0.3))
-			draw_rect(rect, Color(0.0, 0.0, 0.0, 0.45))
-			var lock := rect.get_center() + Vector2(0, -3)
-			draw_arc(lock + Vector2(0, -4), 5.0, PI, TAU, 10, Color(0.85, 0.78, 0.6), 2.0)
-			draw_rect(Rect2(lock + Vector2(-7, -4), Vector2(14, 11)), Color(0.85, 0.78, 0.6))
-			draw_rect(Rect2(lock + Vector2(-1, -1), Vector2(2, 4)), Color(0.15, 0.12, 0.08))
+			# The icon stays readable, greyed, with a small padlock in the corner.
+			draw_texture_rect(icon, rect.grow(-7.0), false, Color(0.5, 0.5, 0.56))
+			draw_rect(rect, Color(0.0, 0.0, 0.0, 0.22))
+			var lock := rect.end + Vector2(-11, -rect.size.y + 15)
+			draw_rect(Rect2(lock + Vector2(-7, -9), Vector2(14, 17)), Color(0.05, 0.05, 0.08, 0.85))
+			draw_arc(lock + Vector2(0, -3), 3.5, PI, TAU, 8, Color(0.85, 0.78, 0.6), 2.0)
+			draw_rect(Rect2(lock + Vector2(-5, -3), Vector2(10, 8)), Color(0.85, 0.78, 0.6))
+			draw_rect(Rect2(lock + Vector2(-1, -1), Vector2(2, 3)), Color(0.15, 0.12, 0.08))
 			# What it waits for, in a word or a number (the tooltip says the rest).
 			var note := str(ability["mastery"]) if reason == "locked" and ability.has("mastery") else str(ability.get("level", "")) if reason == "locked" else "weapon"
 			draw_string_outline(_font, Vector2(rect.position.x, rect.end.y - 5.0), note, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 14, 3, Color.BLACK)

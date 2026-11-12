@@ -39,7 +39,7 @@ func _build() -> void:
 		top.add_theme_constant_override("separation", 8)
 		box.add_child(top)
 		var icon := TextureRect.new()
-		icon.texture = ItemDB.icon(data["icon"])
+		icon.texture = AbilityDB.icon(data["spells"][0])
 		icon.custom_minimum_size = Vector2(40, 40)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -61,11 +61,10 @@ func _build() -> void:
 			row.add_theme_constant_override("separation", 6)
 			row.tooltip_text = "%s\n%s\nMana %d, cooldown %ss" % [ability["name"], ability["text"], roundi(ability.get("mana", 0.0)), str(ability["cooldown"])]
 			var spell_icon := TextureRect.new()
-			spell_icon.texture = ItemDB.icon(ability["icon"])
+			spell_icon.texture = AbilityDB.icon(spell)
 			spell_icon.custom_minimum_size = Vector2(26, 26)
 			spell_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			spell_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			spell_icon.modulate = data["color"].lightened(0.3)
 			row.add_child(spell_icon)
 			var words := VBoxContainer.new()
 			words.add_theme_constant_override("separation", -2)

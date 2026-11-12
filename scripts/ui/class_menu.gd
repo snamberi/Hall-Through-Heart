@@ -200,7 +200,6 @@ func _fill_tree(column: String, entries: Array) -> void:
 		var id: String = entry[0]
 		var rank: int = player.class_ranks.get(id, 0)
 		var max_rank: int = 1 if abilities else entry[2]
-		var icon: int = AbilityDB.ABILITIES[id]["icon"] if abilities else entry[4]
 		var problem := player.class_node_problem(id)
 		var learned := rank > 0
 		var open := problem == "" and rank < max_rank
@@ -218,7 +217,7 @@ func _fill_tree(column: String, entries: Array) -> void:
 		node.add_theme_stylebox_override("hover", hover)
 		node.add_theme_stylebox_override("pressed", hover)
 		var picture := TextureRect.new()
-		picture.texture = ItemDB.icon(icon)
+		picture.texture = AbilityDB.icon(id) if abilities else ItemDB.icon(entry[4])
 		picture.modulate = Color.WHITE if learned or open else Color(0.45, 0.45, 0.5)
 		picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 10)
 		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -284,7 +283,7 @@ func _pick(id: String, ability: bool, entry: Array) -> void:
 	var ranks: PackedStringArray = []
 	if ability:
 		var data: Dictionary = AbilityDB.ABILITIES[id]
-		_detail_icon.texture = ItemDB.icon(data["icon"])
+		_detail_icon.texture = AbilityDB.icon(id)
 		head.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [UITheme.HEADING.to_html(false), data["name"]])
 		head.append("[color=#%s]Active ability  -  level %d[/color]" % [UITheme.DIM.to_html(false), entry[1]])
 		head.append("Rank: [color=#%s]%d / %d[/color]" % [UITheme.GOLD.to_html(false), rank, max_rank])

@@ -93,7 +93,7 @@ func refresh() -> void:
 		var button := Button.new()
 		var source: String = ("Class" if ability.has("class") else WeaponMastery.NAMES[ability["weapon"]])
 		button.text = " %s   (%s)" % [ability["name"], source]
-		button.icon = ItemDB.icon(ability["icon"])
+		button.icon = AbilityDB.icon(id)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.toggle_mode = true
 		button.button_pressed = id == _picked
@@ -111,7 +111,7 @@ func refresh() -> void:
 		_list.add_child(button)
 	for slot in _slots.size():
 		var id: String = player.abilities.loadout[slot]
-		_slots[slot].icon = ItemDB.icon(AbilityDB.ABILITIES[id]["icon"]) if id != "" else null
+		_slots[slot].icon = AbilityDB.icon(id) if id != "" else null
 		_slots[slot].text = "" if id != "" else "empty"
 	var keys: PackedStringArray = []
 	for index in AbilityDB.SET_SIZE:

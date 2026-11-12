@@ -420,6 +420,26 @@ const ABILITIES := {
 
 ## Number of ability slots on the bar.
 ## Abilities on the bar: two sets of SET_SIZE, switched with a key.
+## Every ability's own icon, in the order of ABILITIES (drawn by
+## tools/generate_ability_icons.py).
+const ICON_SHEET: Texture2D = preload("res://assets/icons/abilities.png")
+const ICON_SIZE := 24
+const ICON_COLUMNS := 8
+static var _icons: Dictionary = {}
+
+
+static func icon(id: String) -> Texture2D:
+	if not _icons.has(id):
+		var index := ABILITIES.keys().find(id)
+		if index < 0:
+			return ItemDB.icon(0)
+		var atlas := AtlasTexture.new()
+		atlas.atlas = ICON_SHEET
+		atlas.region = Rect2(index % ICON_COLUMNS * ICON_SIZE, index / ICON_COLUMNS * ICON_SIZE, ICON_SIZE, ICON_SIZE)
+		_icons[id] = atlas
+	return _icons[id]
+
+
 const SET_SIZE := 4
 const SETS := 2
 const SLOTS := SET_SIZE * SETS
