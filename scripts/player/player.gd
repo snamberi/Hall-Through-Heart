@@ -108,10 +108,21 @@ var _parry_cooldown := 0.0
 @onready var abilities: AbilityUser = $Abilities
 @onready var buffs: Buffs = $Buffs
 var hotbar: Hotbar
+var transformations: Transformations
+## Camera zoom multiplier, for moments like the build-up to a transformation.
+var zoom_boost := 1.0
+var _form: FormSprite
 ## Skin tone, hair, clothes, trousers and look (see Appearance).
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()
 ## The mount being ridden (Mount.MOUNTS id), or "".
 var mount_id := ""
+## What last hurt the player: an element, a status, or "blow". Shapes the
+## words on the death screen.
+var last_harm := "blow"
+## Shift toggles between walking and sprinting; sprinting burns stamina.
+var sprinting := false
+const SPRINT_SPEED := 1.4
+const SPRINT_STAMINA := 7.0
 var _mount: Mount
 var pets: Pets
 ## Sailing a rowboat: water is crossed quickly and dry.
@@ -129,12 +140,19 @@ const BOAT_SPEED := 1.35
 func _ready() -> void:
 	SaveGame.register("character", self)
 	if not SaveGame.get_section("character").has("appearance"):
-		# A new world: the look chosen when it was made.
-		var chosen: Variant = SaveGame.get_section("meta").get("appearance", {})
+		# A new world: the look and the class chosen when it was made.
+		var meta := SaveGame.get_section("meta")
+		var chosen: Variant = meta.get("appearance", {})
 		if chosen is Dictionary:
 			appearance.merge(chosen, true)
+		var chosen_class := str(meta.get("class_id", "adventurer"))
+		if HeroClasses.CLASSES.has(chosen_class) and chosen_class != "adventurer":
+			class_id = chosen_class
+			# Class points start to come at the level a class used to be chosen.
+			class_chosen_at = HeroClasses.CHOICE_LEVEL
 	_animator.apply_appearance(appearance)
 	stats.setup(attributes, mastery)
+	stats.set_modifiers_quietly("race", Appearance.race_mods(appearance))
 	buffs.setup(stats)
 	StatusFX.attach(self, active_statuses, 44.0, 12.0)
 	var uniques := Uniques.new()
@@ -145,6 +163,8 @@ func _ready() -> void:
 	_mount.name = "Mount"
 	add_child(_mount)
 	_mount.setup(self)
+	SunShadow.follow(_mount)
+	SunShadow.follow(_animator)
 	var fader := OcclusionFader.new()
 	add_child(fader)
 	fader.setup(self)
@@ -155,6 +175,14 @@ func _ready() -> void:
 	hotbar = Hotbar.new()
 	hotbar.name = "Hotbar"
 	add_child(hotbar)
+	_form = FormSprite.new()
+	_form.setup(self)
+	_visual.add_child(_form)
+	SunShadow.follow(_form)
+	transformations = Transformations.new()
+	transformations.name = "Transformations"
+	add_child(transformations)
+	transformations.setup(self)
 	talents.setup(leveling, stats)
 	_apply_class()
 	equipment.setup(inventory, leveling, attributes)
@@ -167,6 +195,7 @@ func _ready() -> void:
 		inventory.tools_given = true
 		for tool_id: String in ["worn_pickaxe", "worn_hatchet", "fishing_rod"]:
 			inventory.add(Item.create(tool_id))
+		equipment.stow_loose_tools()
 	mastery.changed.connect(_apply_mastery_passive)
 	equipment.changed.connect(_on_equipment_changed)
 	stats.changed.connect(_apply_stats)
@@ -181,6 +210,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_attack_cooldown_left = maxf(_attack_cooldown_left - delta, 0.0)
 	_dodge_cooldown_left = maxf(_dodge_cooldown_left - delta, 0.0)
+	_confirm_break_left = maxf(_confirm_break_left - delta, 0.0)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
 	_unbreakable_left = maxf(_unbreakable_left - delta, 0.0)
@@ -195,11 +225,12 @@ func _physics_process(delta: float) -> void:
 	if since_hurt > (2.0 if undying else 5.0):
 		health.heal((health.max_health * (0.04 if undying else 0.02) + stats.get_stat("health_regen")) * delta)
 	if state == State.MOVE or state == State.ATTACK:
-		camera.zoom = camera.zoom.lerp(Vector2(_height_zoom, _height_zoom), 1.5 * delta)
+		var zoom := _height_zoom / GameSettings.ui_scale * zoom_boost
+		camera.zoom = camera.zoom.lerp(Vector2(zoom, zoom), 1.5 * delta)
 		# Settle exactly on the target: at these zooms tile and chunk edges
 		# land on whole pixels, so no seams show between chunks.
-		if absf(camera.zoom.x - _height_zoom) < 0.01:
-			camera.zoom = Vector2(_height_zoom, _height_zoom)
+		if absf(camera.zoom.x - zoom) < 0.01:
+			camera.zoom = Vector2(zoom, zoom)
 	_unstick(delta)
 	if not _afflictions.is_empty():
 		_process_afflictions(delta)
@@ -243,6 +274,7 @@ func attack(direction: Vector2) -> void:
 	velocity = direction * 130.0
 	# The swing animation fills the gap until the next swing is ready.
 	_animator.play_attack(clampf(_attack_cooldown_left, attack_duration, 0.4))
+	_form.act("lunge", clampf(_attack_cooldown_left, attack_duration, 0.4))
 	Audio.play("swing", -6.0)
 	# With enough mastery, every third attack in a row is a finisher.
 	var multiplier := 1.0
@@ -366,6 +398,13 @@ func face(direction: Vector2) -> void:
 
 func play_attack_animation(duration: float, heavy: bool = false) -> void:
 	_animator.play_attack(duration, heavy)
+	_form.act("lunge" if not heavy else "windup", duration)
+
+
+## Puts on (or, with "", takes off) the body of a transformation.
+func set_form(id: String) -> void:
+	_form.wear(id)
+	_animator.visible = id == ""
 
 
 ## One blow against one enemy: rolls a critical, deals the damage, and
@@ -674,6 +713,7 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		_invulnerable_left = 2.0
 		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -40), "Unbreakable", UITheme.GOLD, 14)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(0.95, 0.3, 0.3))
+	last_harm = element if element != "" else "blow"
 	health.take_damage(amount)
 	DamageNumber.spawn(get_parent(), global_position, amount, Color(0.95, 0.3, 0.3))
 	if health.is_dead():
@@ -686,6 +726,7 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		_stop_gathering()
 	if state == State.MOVE:
 		_animator.play_hurt()
+		_form.act("hurt", 0.25)
 	var resistance := stats.get_stat("knockback_resistance")
 	velocity = source_position.direction_to(global_position) * 300.0 * (1.0 - resistance)
 	return true
@@ -737,6 +778,7 @@ func _process_afflictions(delta: float) -> void:
 			affliction["tick"] += 0.5
 			var amount: float = maxf(affliction["power"] * 0.5, 1.0)
 			DamageNumber.spawn(get_parent(), global_position, amount, ItemDB.STATUSES[id]["color"])
+			last_harm = id
 			health.take_damage(amount)
 			since_hurt = 0.0
 			if health.is_dead():
@@ -821,6 +863,7 @@ func save_data() -> Dictionary:
 func set_appearance(changes: Dictionary) -> void:
 	appearance.merge(changes, true)
 	_animator.apply_appearance(appearance)
+	stats.set_modifiers("race", Appearance.race_mods(appearance))
 	SaveGame.request_save()
 
 
@@ -843,14 +886,30 @@ func load_data(data: Dictionary) -> void:
 		appearance.merge(saved_look, true)
 	if is_node_ready():
 		_animator.apply_appearance(appearance)
+		stats.set_modifiers("race", Appearance.race_mods(appearance))
 
 
 func _process_move(delta: float) -> void:
+	if transformations.is_channeling():
+		# Rooted while the change gathers.
+		velocity = velocity.move_toward(Vector2.ZERO, acceleration * delta)
+		return
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if input != Vector2.ZERO:
 		facing = input.normalized()
 		_face_visual(input.x)
-	velocity = velocity.move_toward(input * stats.get_stat("move_speed") * _ground_speed, acceleration * delta)
+	if Input.is_action_just_pressed("sprint"):
+		sprinting = not sprinting
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), "Sprinting" if sprinting else "Walking", UITheme.DIM, 12)
+	var pace := 1.0
+	if sprinting and input != Vector2.ZERO and not swimming and mount_id == "" and parry_left == 0.0:
+		# Out of breath: drop back to a walk until stamina returns.
+		if stamina.current < 1.0:
+			sprinting = false
+		else:
+			stamina.spend(SPRINT_STAMINA * stats.get_stat("stamina_cost_multiplier") * delta)
+			pace = SPRINT_SPEED
+	velocity = velocity.move_toward(input * stats.get_stat("move_speed") * _ground_speed * pace, acceleration * delta)
 	if deep_water:
 		# Both hands are busy keeping afloat.
 		return
@@ -867,21 +926,24 @@ func _process_move(delta: float) -> void:
 			var problem := ride("")
 			if problem != "":
 				DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
+	_update_hover()
 	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0 and not swimming:
 		_try_dodge()
-	elif Input.is_action_just_pressed("parry") and _parry_cooldown == 0.0 and not placing and not swimming:
-		_start_parry()
 	elif abilities.try_use_pressed():
 		pass
-	elif Input.is_action_just_pressed("quick_potion"):
-		quick_potion()
-	elif Input.is_action_just_pressed("interact"):
-		_start_gathering()
+	elif Input.is_action_just_pressed("quick_use"):
+		var problem := hotbar.use_quick()
+		if problem != "":
+			DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
+	elif Input.is_action_just_pressed("interact") and _try_interact(not Input.is_action_just_pressed("parry")):
+		pass
+	elif Input.is_action_just_pressed("parry") and _parry_cooldown == 0.0 and not placing and not swimming:
+		_start_parry()
 	elif Input.is_action_just_pressed("recall_home"):
 		Events.recall_requested.emit()
-	elif Input.is_action_just_pressed("dismantle"):
-		Events.dismantle_requested.emit()
-	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing:
+	elif Input.is_action_just_pressed("attack") and not placing and not HudMenuButton.hovered and _try_work():
+		pass
+	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing and not HudMenuButton.hovered:
 		attack(aim_direction())
 
 
@@ -1015,48 +1077,182 @@ func nearest_prop() -> Prop:
 	return best
 
 
-func _start_gathering() -> void:
+## How near the mouse must be to a thing to count as pointing at it.
+const POINT_RADIUS := 30.0
+
+## The resource node the mouse is on (and the player can reach), lit up so
+## it is clear what a click will do.
+var hover_node: ResourceNode
+## One of the player's own placed things under the mouse, for breaking.
+var hover_record: Dictionary = {}
+## The placed thing being broken down, while state is GATHER.
+var break_record: Dictionary = {}
+var _swing_left := 0.0
+var _confirm_break_id := -1
+var _confirm_break_left := 0.0
+
+
+## Finds what the mouse is pointing at, each frame the player is free.
+func _update_hover() -> void:
+	var mouse := get_global_mouse_position()
+	var found: ResourceNode = null
+	var best := POINT_RADIUS
+	for node: ResourceNode in get_tree().get_nodes_in_group("resource_nodes"):
+		if node.global_position.distance_to(global_position) > ResourceNode.REACH + 14.0:
+			continue
+		# Trees are tall: point anywhere on the trunk or crown.
+		var distance := minf(node.global_position.distance_to(mouse), (node.global_position + Vector2(0, -36)).distance_to(mouse) if node.is_tall() else INF)
+		if distance < best:
+			best = distance
+			found = node
+	if found != hover_node:
+		if is_instance_valid(hover_node):
+			hover_node.set_lit(false)
+		hover_node = found
+		if found:
+			found.set_lit(true)
+	hover_record = {}
+	if found == null:
+		var buildings: Buildings = get_parent().get_node_or_null("Buildings")
+		if buildings:
+			hover_record = buildings.record_at(mouse, global_position)
+
+
+## Left click on something to work on: gather a node, or break down
+## something of the player's own. Returns whether work began.
+func _try_work() -> bool:
+	if is_instance_valid(hover_node):
+		_start_gathering(hover_node)
+		return true
+	if not hover_record.is_empty():
+		var buildings: Buildings = get_parent().get_node("Buildings")
+		var problem := buildings.take_down_problem(hover_record)
+		if problem != "":
+			DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -40), problem, UITheme.BAD, 12)
+			return true
+		# A house is not knocked down by one stray click.
+		if hover_record["kind"] == "house" and (_confirm_break_id != hover_record["id"] or _confirm_break_left <= 0.0):
+			_confirm_break_id = hover_record["id"]
+			_confirm_break_left = 4.0
+			Events.announcement.emit("TAKE DOWN YOUR HOUSE?", "Click it again to pack it up. Floors and upgrades are lost.")
+			return true
+		break_record = hover_record
+		gather_target = null
+		gather_seconds = 1.6 if hover_record["kind"] == "house" else 0.7
+		gather_progress = 0.0
+		_swing_left = 0.0
+		state = State.GATHER
+		velocity = Vector2.ZERO
+		_take_tool("hatchet")
+		return true
+	return false
+
+
+## Right click (or the interact key): talk, open, use. With the mouse it is
+## whatever is pointed at; with the key, whatever is nearest. Returns
+## whether there was something to do.
+func _try_interact(by_key: bool) -> bool:
 	var npc := nearest_npc()
+	var prop := nearest_prop()
+	if not by_key:
+		var mouse := get_global_mouse_position()
+		if npc and (npc.global_position + Vector2(0, -20)).distance_to(mouse) > 46.0:
+			npc = null
+		if prop and (prop.global_position + Vector2(0, -20)).distance_to(mouse) > maxf(46.0, prop.reach * 0.6):
+			prop = null
 	if npc:
 		velocity = Vector2.ZERO
 		Events.npc_interacted.emit(npc)
-		return
-	var prop := nearest_prop()
+		return true
 	if prop:
 		velocity = Vector2.ZERO
 		prop.interact(self)
-		return
-	var node := nearest_resource()
-	if node == null:
-		return
+		return true
+	if by_key:
+		var node := nearest_resource()
+		if node:
+			_start_gathering(node)
+			return true
+	return false
+
+
+func _start_gathering(node: ResourceNode) -> void:
 	var reason := node.blocked_reason(self)
 	if reason != "":
 		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -30), reason, UITheme.BAD, 12)
 		return
+	break_record = {}
 	gather_target = node
 	gather_seconds = node.gather_seconds(self)
 	gather_progress = 0.0
+	_swing_left = 0.0
 	state = State.GATHER
 	velocity = Vector2.ZERO
 	_face_visual(node.global_position.x - global_position.x)
+	_take_tool(node.tool_kind())
+
+
+## Shows the right tool in hand for a job; "" for bare hands.
+func _take_tool(kind: String) -> void:
+	equipment.working_tool = equipment.tool(kind) if kind != "" else null
+	_animator.update_equipment(equipment, show_helmet)
 
 
 func _process_gather(delta: float) -> void:
 	velocity = Vector2.ZERO
 	var moving := Input.get_vector("move_left", "move_right", "move_up", "move_down") != Vector2.ZERO
-	if moving or not is_instance_valid(gather_target):
+	if moving or (break_record.is_empty() and not is_instance_valid(gather_target)):
 		_stop_gathering()
 		return
+	# Swing the tool: each blow lands with a sound and a spray of chips.
+	_swing_left -= delta
+	if _swing_left <= 0.0:
+		_swing_left = 0.5
+		_animator.play_attack(0.38, false)
+		get_tree().create_timer(0.2).timeout.connect(_work_blow)
 	gather_progress += delta
 	if gather_progress >= gather_seconds:
+		if not break_record.is_empty():
+			var record := break_record
+			_stop_gathering()
+			var problem: String = (get_parent().get_node("Buildings") as Buildings).take_down(record)
+			if problem != "":
+				DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -40), problem, UITheme.BAD, 12)
+			return
 		var node := gather_target
 		_stop_gathering()
 		node.harvest(self)
 
 
+## One blow of the tool landing on what is being worked.
+func _work_blow() -> void:
+	if state != State.GATHER:
+		return
+	if not break_record.is_empty():
+		Audio.play("chop", -6.0, 0.15)
+		Gore.spray(get_parent(), Vector2(break_record["x"], break_record["y"]) if break_record["where"] == "world" else global_position + facing * 20.0, "_dust", Vector2.UP, 5, false)
+		return
+	if not is_instance_valid(gather_target):
+		return
+	match gather_target.kind():
+		"tree":
+			Audio.play("chop", -5.0, 0.15)
+		"ore":
+			Audio.play("mine", -7.0, 0.12)
+		"fish":
+			return
+		_:
+			Audio.play("pickup", -14.0, 0.2)
+	gather_target.take_blow(global_position)
+
+
 func _stop_gathering() -> void:
 	gather_target = null
+	break_record = {}
 	gather_progress = 0.0
+	if equipment.working_tool:
+		equipment.working_tool = null
+		_animator.update_equipment(equipment, show_helmet)
 	if state == State.GATHER:
 		state = State.MOVE
 

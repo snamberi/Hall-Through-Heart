@@ -4,7 +4,7 @@ extends Node
 ## Audio.play("hit") plays assets/audio/hit.wav on the SFX bus. The music
 ## loop starts by itself and keeps playing through pauses.
 
-const SOUNDS: Array[String] = ["swing", "hit", "pickup", "level_up"]
+const SOUNDS: Array[String] = ["swing", "hit", "pickup", "level_up", "ui_hover", "ui_click", "chop", "mine", "transform"]
 const VOICES := 8
 
 var _streams: Dictionary = {}

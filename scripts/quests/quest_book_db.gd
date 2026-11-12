@@ -65,7 +65,7 @@ static func icon_texture(spec: Dictionary) -> Texture2D:
 
 static func icon_tint(spec: Dictionary) -> Color:
 	if spec.has("item") and ItemDB.ITEMS.has(spec["item"]):
-		return Item.create(spec["item"]).tint()
+		return Item.create(spec["item"]).icon_tint()
 	return Color.WHITE
 
 

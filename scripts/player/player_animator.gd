@@ -21,13 +21,24 @@ const ROWS: Array[Dictionary] = [
 	{"name": "hurt", "frames": 3, "fps": 12.0, "loop": false},
 	{"name": "death", "frames": 8, "fps": 10.0, "loop": false},
 	{"name": "rebirth", "frames": 8, "fps": 8.0, "loop": false},
+	{"name": "ride", "frames": 4, "fps": 5.0, "loop": true},
 ]
 ## Below this speed the player walks rather than runs, in pixels/second.
 const RUN_SPEED := 150.0
 
-## Equipment layers, back to front. "behind" layers draw under the body.
+## Layers over the body, back to front: first the character's own features
+## (hair, ears, horns... see Appearance), then what they wear. "behind"
+## layers draw under the body.
 const LAYERS: Array[Dictionary] = [
+	{"name": "look_tail", "behind": true},
+	{"name": "look_wings", "behind": true},
 	{"name": "cape", "behind": true},
+	{"name": "look_ears", "behind": false},
+	{"name": "look_eyes", "behind": false},
+	{"name": "look_mark", "behind": false},
+	{"name": "look_beard", "behind": false},
+	{"name": "look_hair", "behind": false},
+	{"name": "look_horns", "behind": false},
 	{"name": "chest", "behind": false},
 	{"name": "shoulders", "behind": false},
 	{"name": "helmet", "behind": false},
@@ -49,8 +60,17 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform vec4 rarity_color : source_color = vec4(1.0);
 uniform float outline_mix = 0.0;
 uniform float glow = 0.0;
+uniform float water_line = 9999.0;
+varying float local_y;
+
+void vertex() {
+	local_y = VERTEX.y;
+}
 
 void fragment() {
+	if (local_y > water_line) {
+		discard;
+	}
 	vec4 pixel = texture(TEXTURE, UV);
 	float outline = step(pixel.r + pixel.g + pixel.b, 0.125) * pixel.a;
 	float pulse = 0.5 + 0.5 * sin(TIME * 5.0);
@@ -103,6 +123,11 @@ func _ready() -> void:
 		_layers[layer["name"]] = sprite
 
 
+## The sun shadow hides while the body is in water or in the saddle.
+func casts_shadow() -> bool:
+	return not (_player.swimming or _player.boating or _player.mount_id != "")
+
+
 func _process(delta: float) -> void:
 	_choose_animation(delta)
 	for sprite: AnimatedSprite2D in _layers.values():
@@ -117,16 +142,19 @@ func _process(delta: float) -> void:
 	if _player.swimming:
 		var sink := 19.0 if _player.deep_water else 13.0
 		var bob := sin(Time.get_ticks_msec() / 220.0) * 1.5
-		position.y = -23.0 + sink + bob
-		# The waterline sits a little below the shoulders whatever the depth.
+		position.y = _rest_y + sink + bob
+		# The waterline sits a little below the shoulders whatever the depth;
+		# the body below it is cut away so the real water shows through.
 		_water.position.y = 19.0 - sink
+		_set_water_line(19.0 - sink)
 		_water.queue_redraw()
 		_ripple_left -= delta
 		if _ripple_left <= 0.0 and _player.velocity.length() > 30.0:
 			_ripple_left = 0.22
 			_spawn_ripple()
-	elif position.y != -23.0:
-		position.y = -23.0
+	elif position.y != _rest_y:
+		position.y = _rest_y
+		_set_water_line(9999.0)
 		_water.position.y = 0.0
 
 
@@ -143,26 +171,35 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
+var _water_line := 9999.0
+
+
+## Cuts the body (and everything worn) off below `line`, in sprite pixels.
+func _set_water_line(line: float) -> void:
+	if is_equal_approx(line, _water_line):
+		return
+	_water_line = line
+	if material is ShaderMaterial:
+		(material as ShaderMaterial).set_shader_parameter("water_line", line)
+	for sprite: AnimatedSprite2D in _layers.values():
+		(sprite.material as ShaderMaterial).set_shader_parameter("water_line", line)
+
+
 func _draw_water() -> void:
 	var deep := _player.deep_water
-	var colour: Color = TerrainTiles.COLORS[TerrainTiles.Type.DEEP_WATER if deep else TerrainTiles.Type.SHALLOW_WATER]
 	var t := Time.get_ticks_msec() / 1000.0
 	var line := 0.0
-	# The water in front of the body, with a wavy top edge.
+	# A wavy glint of surface across the body; the water itself is the ground's.
 	var surface := PackedVector2Array()
-	for i in 11:
-		var x := -22.0 + i * 4.4
-		surface.append(Vector2(x, line + sin(t * 5.0 + i * 0.9) * 1.2))
-	surface.append(Vector2(22.0, line + 30.0))
-	surface.append(Vector2(-22.0, line + 30.0))
-	_water.draw_colored_polygon(surface, Color(colour, 0.94))
-	for i in 10:
-		_water.draw_line(surface[i], surface[i + 1], Color(0.75, 0.88, 0.95, 0.85), 1.5)
+	for i in 7:
+		var x := -13.0 + i * 4.33
+		surface.append(Vector2(x, line + sin(t * 5.0 + i * 0.9) * 1.0))
+	_water.draw_polyline(surface, Color(0.8, 0.92, 1.0, 0.8), 1.5)
 	# Rings spreading from the swimmer.
 	_water.draw_set_transform(Vector2(0.0, line), 0.0, Vector2(1.0, 0.32))
 	for k in 2:
 		var phase := fposmod(t * 0.9 + k * 0.5, 1.0)
-		_water.draw_arc(Vector2.ZERO, 14.0 + phase * 16.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.6 * (1.0 - phase)), 1.5)
+		_water.draw_arc(Vector2.ZERO, 11.0 + phase * 8.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.5 * (1.0 - phase)), 1.5)
 	_water.draw_set_transform(Vector2.ZERO)
 	# A few bubbles in deep water.
 	if deep:
@@ -217,9 +254,16 @@ func _on_splash(at: Vector2) -> void:
 func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 	if _layers.is_empty():
 		await ready
-	var weapon := equipment.get_item("main_hand")
-	_set_layer("weapon", weapon, "weapons/" + str(weapon.definition().get("visual", "")) if weapon else "", false)
-	_set_layer("shield", equipment.get_item("off_hand"), "layers/shield")
+	# The hand holds a weapon, a belt tool, or a tool taken up for a job.
+	var held := equipment.in_hand()
+	if held and held.is_tool():
+		var tool_kind: String = held.definition()["tool"]["kind"]
+		_set_layer("weapon", held, "weapons/" + tool_kind, false, held.definition().get("tint", Color.WHITE))
+	else:
+		_set_layer("weapon", held, "weapons/" + str(held.definition().get("visual", "")) if held else "", false)
+	# A shield stays on the back while both hands are busy.
+	var both_hands: bool = held != null and (held.is_tool() or held.definition().get("two_handed", false))
+	_set_layer("shield", null if both_hands else equipment.get_item("off_hand"), "layers/shield")
 	_set_layer("helmet", equipment.get_item("helmet") if show_helmet else null, "layers/helmet")
 	var chest := equipment.get_item("chest")
 	_set_layer("chest", chest, "layers/chest")
@@ -230,23 +274,64 @@ func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 		(_layers["cape"].material as ShaderMaterial).set_shader_parameter("tint", chest.color().darkened(0.15))
 
 	var best: Item = null
-	for item: Item in equipment.equipped.values():
+	for item: Item in equipment.counted():
 		if item.rarity >= AURA_FROM_RARITY and (best == null or item.rarity > best.rarity):
 			best = item
 	_aura_color = best.color() if best else Color.TRANSPARENT
 	_update_hood()
+	_show_features()
 	queue_redraw()
 
 
-## Recolours the body for the player's appearance.
+## Where the sprite's middle sits so the feet rest on the ground, whatever
+## the character's height.
+var _rest_y := -23.0
+## Features a helmet covers.
+const UNDER_HELMET: Array[String] = ["hair", "horns"]
+var _features: Dictionary = {}
+
+
+## Dresses the body for the player's appearance: colours, size, and the
+## feature layers (hair, beard, ears, horns, tail, wings, marks, eyes).
 func apply_appearance(appearance: Dictionary) -> void:
+	if _layers.is_empty():
+		await ready
 	if material is ShaderMaterial and (material as ShaderMaterial).shader.code == Appearance.SHADER:
 		Appearance.update_material(material, appearance)
 	else:
 		material = Appearance.make_material(appearance)
+		_water_line = 9999.0
+	scale = Appearance.body_scale(appearance)
+	_rest_y = -23.0 * scale.y
+	position.y = _rest_y
+	self_modulate.a = Appearance.alpha(appearance)
+	_features = Appearance.layers(appearance)
+	_show_features()
 	_hood_color = Appearance.hood(appearance)
-	if not _layers.is_empty():
-		_update_hood()
+	_update_hood()
+
+
+## Shows each feature layer the character has; a helmet hides hair and horns.
+func _show_features() -> void:
+	var helmeted := _layers["helmet"].visible or _layers["hood"].visible
+	for feature in Appearance.FEATURES:
+		var slot: String = feature[0]
+		var sprite := _layers["look_" + slot]
+		if not _features.has(slot) or (helmeted and slot in UNDER_HELMET):
+			sprite.visible = false
+			continue
+		var path: String = "looks/" + _features[slot]["sheet"]
+		if not _frames_cache.has(path):
+			_frames_cache[path] = SheetAnimations.build(load("res://assets/sprites/%s.png" % path), FRAME_SIZE, ROWS)
+		sprite.sprite_frames = _frames_cache[path]
+		sprite.animation = animation
+		sprite.frame = frame
+		sprite.visible = true
+		var look_material := sprite.material as ShaderMaterial
+		look_material.set_shader_parameter("tint", _features[slot]["tint"])
+		look_material.set_shader_parameter("rarity_color", Color.BLACK)
+		look_material.set_shader_parameter("outline_mix", 0.0)
+		look_material.set_shader_parameter("glow", 0.0)
 
 
 var _hood_color := Color.TRANSPARENT
@@ -318,6 +403,11 @@ func _choose_animation(delta: float) -> void:
 		return
 	var speed := _player.velocity.length()
 	speed_scale = 1.0
+	if _player.mount_id != "":
+		# Sitting astride, bobbing faster as the mount picks up pace.
+		speed_scale = 2.2 if speed > 20.0 else 1.0
+		_loop("ride")
+		return
 	if _player.swimming:
 		# A slow paddling stroke, still while treading water.
 		speed_scale = 0.55 if speed > 20.0 else 0.25
@@ -355,7 +445,7 @@ func _on_animation_finished() -> void:
 
 ## Shows `item` on a layer using the sheet at assets/sprites/<path>.png, or
 ## hides the layer when item is null. Metal layers are tinted by tier.
-func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true) -> void:
+func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true, tint: Color = Color.WHITE) -> void:
 	var sprite := _layers[layer]
 	if item == null or path == "" or path.ends_with("/"):
 		sprite.visible = false
@@ -368,11 +458,12 @@ func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true)
 	sprite.frame = frame
 	sprite.visible = true
 	var material := sprite.material as ShaderMaterial
-	var look: Array = RARITY_LOOK[item.rarity]
-	material.set_shader_parameter("tint", ItemDB.tier_color(item.level) if tier_tint else Color.WHITE)
+	# Worn gear is drawn as part of the body: its own metal, a plain dark
+	# outline, no coloured edge or glow. Rarity shows in the aura underfoot.
+	material.set_shader_parameter("tint", ItemDB.tier_color(item.level) if tier_tint else tint)
 	material.set_shader_parameter("rarity_color", item.color())
-	material.set_shader_parameter("outline_mix", look[0])
-	material.set_shader_parameter("glow", look[1])
+	material.set_shader_parameter("outline_mix", 0.0)
+	material.set_shader_parameter("glow", 0.0)
 
 
 func _spawn_ghost() -> void:

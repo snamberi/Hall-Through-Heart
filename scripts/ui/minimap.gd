@@ -16,6 +16,8 @@ var _drawn_cell := Vector2i.MAX
 var _refresh_left := 0.0
 var _day_night: DayNight
 var _exploration: Exploration
+## Places near enough to show: [world position, kind].
+var _places: Array = []
 
 
 func setup(player: Player, world: World) -> void:
@@ -42,6 +44,7 @@ func _process(delta: float) -> void:
 		_refresh_left = REFRESH_SECONDS
 		_drawn_cell = cell
 		_render(cell)
+		_find_places(cell)
 	queue_redraw()
 
 
@@ -74,11 +77,25 @@ func _draw() -> void:
 		_dot(inner, middle, node.global_position - origin, DOT[node.kind()], 1.5)
 	for pickup in get_tree().get_nodes_in_group("pickups"):
 		_dot(inner, middle, pickup.global_position - origin, UITheme.GOLD, 1.5)
-	for enemy in get_tree().get_nodes_in_group("enemies"):
-		_dot(inner, middle, enemy.global_position - origin, Color("ff5050"), 2.5)
-	_dot(inner, middle, -origin, UITheme.GOLD, 3.0)
-	draw_circle(middle, 3.0, Color.BLACK)
-	draw_circle(middle, 2.0, Color.WHITE)
+	# Places close by, as on the big map.
+	for place: Array in _places:
+		_icon(inner, middle, (place[0] as Vector2) - origin, place[1], 13.0)
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy == null or enemy.health.is_dead():
+			continue
+		if enemy.is_wild():
+			_icon(inner, middle, enemy.global_position - origin, "animal", 10.0)
+		elif enemy.rank >= Enemy.Rank.MINIBOSS:
+			_icon(inner, middle, enemy.global_position - origin, "lair", 12.0)
+		else:
+			_icon(inner, middle, enemy.global_position - origin, "monster", 8.0)
+	for node in get_tree().get_nodes_in_group("npcs"):
+		_icon(inner, middle, (node as Node2D).global_position - origin, "npc", 10.0)
+	if _player.pets and _player.pets.active >= 0:
+		_icon(inner, middle, _player.pets.global_position - origin, "pet", 9.0)
+	_icon(inner, middle, -origin, "temple", 12.0)
+	MapIcons.draw_player(self, middle, _player.facing, 14.0)
 	# The day count and time of day, just under the map.
 	if _day_night:
 		var font := UITheme.get_theme().default_font
@@ -93,6 +110,34 @@ func _draw() -> void:
 			var color := Color(1.0, 0.45, 0.4) if DayNight.blood_moon else Color(0.75, 0.88, 1.0)
 			draw_string_outline(font, Vector2(-40, -5.0), sky, HORIZONTAL_ALIGNMENT_RIGHT, size.x + 40.0, 13, 4, Color.BLACK)
 			draw_string(font, Vector2(-40, -5.0), sky, HORIZONTAL_ALIGNMENT_RIGHT, size.x + 40.0, 13, color)
+
+
+## Draws a map icon for something `offset` world pixels from the player.
+func _icon(inner: Rect2, middle: Vector2, offset: Vector2, kind: String, icon_size: float) -> void:
+	var point := middle + offset / TerrainTiles.TILE_SIZE * SCALE
+	if inner.grow(-icon_size * 0.4).has_point(point):
+		MapIcons.draw(self, point, kind, icon_size)
+
+
+## Villages and structures within the minimap's reach that the player has
+## seen: [world position, kind].
+func _find_places(center: Vector2i) -> void:
+	_places.clear()
+	var structures: Structures = _world.get_parent().get_node_or_null("Structures")
+	var chunk := _world.cell_to_chunk(center)
+	var reach := ceili(float(RADIUS) / World.CHUNK_SIZE) + 1
+	if structures:
+		for cy in range(chunk.y - reach, chunk.y + reach + 1):
+			for cx in range(chunk.x - reach, chunk.x + reach + 1):
+				var site := structures.site_for(Vector2i(cx, cy))
+				if not site.is_empty() and (_exploration == null or _exploration.is_tile_seen(site["cell"])):
+					_places.append([_world.cell_to_world(site["cell"]), site["kind"]])
+	var region := Vector2i((Vector2(center) / WorldGenerator.VILLAGE_REGION).floor())
+	for ry in range(region.y - 1, region.y + 2):
+		for rx in range(region.x - 1, region.x + 2):
+			var village: Variant = _world.generator.village_center(Vector2i(rx, ry))
+			if village != null and (_exploration == null or _exploration.is_tile_seen(village)):
+				_places.append([_world.cell_to_world(village), "village"])
 
 
 ## Draws a dot for something `offset` world pixels from the player.

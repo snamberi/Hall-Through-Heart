@@ -1,15 +1,21 @@
 class_name StorageMenu
 extends GameMenu
-## A storage chest: click an item to move its whole stack to the other side.
+## A chest: its slots on the left, the bag on the right, both laid out as
+## grids like the inventory. Click an item to move its whole stack across.
 
 ## The chest's saved record; its "items" array holds saved items.
 var chest: Dictionary = {}
 
 var _title: Label
 var _heading: Label
-var _chest_list: VBoxContainer
-var _bag_list: VBoxContainer
+var _chest_title: Label
+var _bag_title: Label
+var _chest_grid: ItemGrid
+var _bag_grid: ItemGrid
 var _message: Label
+var _tip: ItemTooltip
+## The saved dictionaries behind the chest grid, slot by slot.
+var _saved: Array = []
 
 
 func _build() -> void:
@@ -19,17 +25,36 @@ func _build() -> void:
 	_title = UITheme.label("", 14, UITheme.DIM)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(_title)
+	_tip = ItemTooltip.new()
+	add_child(_tip)
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 14)
 	content.add_child(columns)
-	_chest_list = _column(columns, "Inside")
-	_bag_list = _column(columns, "In your bag")
-	var take_all := UITheme.button("Take everything", _take_all, 240.0)
-	take_all.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	content.add_child(take_all)
+	var chest_side := _column(columns)
+	_chest_title = chest_side[0]
+	_chest_grid = chest_side[1]
+	_chest_grid.note_for = func(_item: Item) -> String: return "[color=#%s]Click to take it[/color]" % UITheme.GOOD.to_html(false)
+	_chest_grid.picked.connect(func(_item: Item, index: int) -> void: _take(_saved[index]))
+	var bag_side := _column(columns)
+	_bag_title = bag_side[0]
+	_bag_grid = bag_side[1]
+	_bag_grid.note_for = func(_item: Item) -> String:
+		return "" if chest.get("take_only", false) else "[color=#%s]Click to put it in the chest[/color]" % UITheme.GOOD.to_html(false)
+	_bag_grid.picked.connect(func(item: Item, _index: int) -> void: _store(item))
+	var bottom := HBoxContainer.new()
+	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
+	bottom.add_theme_constant_override("separation", 12)
+	content.add_child(bottom)
+	bottom.add_child(UITheme.button("Take everything", _take_all, 220.0))
+	bottom.add_child(UITheme.button("Store all materials", _store_materials, 220.0))
 	_message = UITheme.label("", 14, UITheme.BAD)
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(_message)
+	visibility_changed.connect(func() -> void:
+		if not is_visible_in_tree():
+			_tip.hide_tip()
+	)
+	player.inventory.changed.connect(refresh_if_open)
 
 
 func refresh() -> void:
@@ -38,18 +63,19 @@ func refresh() -> void:
 	var stored: Array = chest["items"]
 	var take_only: bool = chest.get("take_only", false)
 	_heading.text = str(chest.get("title", "Storage")).to_upper()
-	_title.text = "Click an item to take it." if take_only else "%d of %d slots used. Click an item to move it across." % [stored.size(), Buildings.CHEST_SLOTS]
-	for list: VBoxContainer in [_chest_list, _bag_list]:
-		for child in list.get_children():
-			child.queue_free()
+	_title.text = "Click an item to take it." if take_only else "Click an item to move its whole stack across."
+	_saved = []
+	var items: Array = []
 	for saved: Variant in stored:
 		var item := Item.from_dict(saved)
 		if item:
-			_chest_list.add_child(_row(item, func() -> void: _take(saved)))
-	for item in player.inventory.items:
-		var row := _row(item, func() -> void: _store(item))
-		row.disabled = take_only
-		_bag_list.add_child(row)
+			items.append(item)
+			_saved.append(saved)
+	_chest_title.text = "Inside   %d / %d" % [items.size(), Buildings.CHEST_SLOTS]
+	_chest_grid.set_items(items, maxi(Buildings.CHEST_SLOTS, items.size()) if not take_only else maxi(items.size(), 8))
+	_bag_title.text = "Your bag   %d / %d" % [player.inventory.items.size(), player.inventory.capacity()]
+	_bag_grid.set_items(player.inventory.items, player.inventory.capacity())
+	_bag_grid.modulate.a = 0.5 if take_only else 1.0
 
 
 func _store(item: Item) -> void:
@@ -84,41 +110,24 @@ func _take(saved: Dictionary) -> void:
 
 
 func _changed() -> void:
+	_tip.hide_tip()
 	SaveGame.request_save()
 	refresh()
 
 
-func _column(parent: Control, title: String) -> VBoxContainer:
+## One side of the screen: a heading over a grid. Returns [heading, grid].
+func _column(parent: Control) -> Array:
 	var panel := UITheme.inset_panel()
 	parent.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
 	panel.add_child(box)
-	box.add_child(UITheme.heading(title, 16))
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(340.0, 380.0)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	box.add_child(scroll)
-	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 3)
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
-	return list
-
-
-func _row(item: Item, action: Callable) -> Button:
-	var button := Button.new()
-	button.text = " %s%s" % [item.display_name(), "  x%d" % item.count if item.count > 1 else ""]
-	button.icon = item.icon()
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 14)
-	button.add_theme_constant_override("icon_max_width", 20)
-	button.add_theme_color_override("font_color", item.color())
-	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
-		button.add_theme_color_override(state, item.tint())
-	button.pressed.connect(action)
-	return button
+	var heading := UITheme.heading("", 16)
+	box.add_child(heading)
+	var grid := ItemGrid.new()
+	grid.setup(player, _tip, 8, 7)
+	box.add_child(grid)
+	return [heading, grid]
 
 
 func _take_all() -> void:
@@ -131,3 +140,14 @@ func _take_all() -> void:
 			break
 		(chest["items"] as Array).erase(saved)
 	_changed()
+
+
+## Puts every stack of plain materials into the chest at once.
+func _store_materials() -> void:
+	if chest.is_empty() or chest.get("take_only", false):
+		return
+	for item: Item in player.inventory.items.duplicate():
+		if item.is_stackable() and not item.is_consumable() and not item.is_placeable():
+			_store(item)
+			if _message.text != "":
+				break

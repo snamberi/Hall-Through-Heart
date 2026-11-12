@@ -4,7 +4,10 @@ extends Node
 
 signal changed
 
-const CAPACITY := 40
+## Slots in the bag itself; a backpack adds more.
+const BASE := 60
+## Extra slots from the backpack worn (kept up to date by Equipment).
+var bonus_slots := 0
 
 var items: Array[Item] = []
 var gold := 0
@@ -18,8 +21,12 @@ func _ready() -> void:
 	SaveGame.register("inventory", self)
 
 
+func capacity() -> int:
+	return BASE + bonus_slots
+
+
 func free_slots() -> int:
-	return CAPACITY - items.size()
+	return capacity() - items.size()
 
 
 func has_room_for(item: Item) -> bool:
@@ -130,7 +137,7 @@ func load_data(data: Dictionary) -> void:
 	if saved is Array:
 		for entry: Variant in saved:
 			var item := Item.from_dict(entry) if entry is Dictionary else null
-			if item and items.size() < CAPACITY:
+			if item and items.size() < BASE + 60:
 				items.append(item)
 
 

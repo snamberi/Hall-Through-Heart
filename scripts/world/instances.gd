@@ -65,6 +65,15 @@ func return_position() -> Vector2:
 	return _return_position
 
 
+## Settles where the next room is built. Call before making one.
+func _choose_origin() -> void:
+	Room.choose_origin(_return_position if room != null else _player.global_position)
+
+
+func prepare_room() -> void:
+	_choose_origin()
+
+
 ## Moves the player into a built room.
 func enter(new_room: Room) -> void:
 	if room == null:
@@ -75,7 +84,9 @@ func enter(new_room: Room) -> void:
 	add_child(room)
 	_world.target = null
 	_player.indoors = true
-	(get_parent().get_node("DayNight") as DayNight).indoors = true
+	var day_night := get_parent().get_node("DayNight") as DayNight
+	day_night.indoors = true
+	day_night.cave_dark = room.gloom
 	_player.global_position = room.cell_position(room.entry)
 	_player.velocity = Vector2.ZERO
 	_player.camera.reset_smoothing()
@@ -91,7 +102,9 @@ func leave(at: Variant = null) -> void:
 	_discard_room()
 	_waves_total = 0
 	_player.indoors = false
-	(get_parent().get_node("DayNight") as DayNight).indoors = false
+	var day_night := get_parent().get_node("DayNight") as DayNight
+	day_night.indoors = false
+	day_night.cave_dark = 0.0
 	_player.global_position = at if at != null else _return_position
 	_player.velocity = Vector2.ZERO
 	_world.target = _player
@@ -110,7 +123,9 @@ func enter_cave(cave_seed: int, level: int, lair: bool, on_chest: Callable) -> v
 	var theme_ids: Array = CAVE_THEMES.keys()
 	var theme_key: String = theme_ids[random.randi_range(0, theme_ids.size() - 1)]
 	var theme: Dictionary = CAVE_THEMES[theme_key]
+	_choose_origin()
 	var cave := Room.new()
+	cave.gloom = 0.92
 	cave.title = theme["title"] + (" (Lair)" if lair else "")
 	Events.codex_event.emit("caves", 1)
 	Events.codex_event.emit("cave_" + theme_key, 1)
@@ -251,7 +266,10 @@ const DUNGEON_SPACING := 24
 func enter_dungeon(dungeon_seed: int, level: int, boss_id: String, on_cleared: Callable) -> void:
 	var random := RandomNumberGenerator.new()
 	random.seed = dungeon_seed
+	_choose_origin()
 	var crypt := Room.new()
+	crypt.wall_style = "stone"
+	crypt.gloom = 0.85
 	crypt.title = "Crypt of %s" % (BossDB.BOSSES[boss_id]["name"] as String).trim_prefix("The ")
 	# A wandering line of rooms on a grid.
 	var count := random.randi_range(4, 6)
@@ -402,7 +420,10 @@ func _trap(kind: String, at: Vector2, damage: float, level: int) -> Trap:
 func enter_arena(arena_seed: int, level: int, on_cleared: Callable) -> void:
 	var random := RandomNumberGenerator.new()
 	random.seed = arena_seed
+	_choose_origin()
 	var arena := Room.new()
+	arena.wall_style = "void"
+	arena.gloom = 0.45
 	arena.title = "The Void"
 	for y in range(-ARENA_RADIUS - 1, ARENA_RADIUS + 2):
 		for x in range(-ARENA_RADIUS - 1, ARENA_RADIUS + 2):
@@ -454,6 +475,40 @@ func _start_wave() -> void:
 		var enemy := _spawner.spawn_at(Room.ORIGIN + spot + Vector2(22, 22), _arena_level, rank, options.pick_random())
 		RingBurst.spawn(room, enemy.global_position, Color(0.75, 0.55, 1.0), 50.0)
 		room.enemies.append(enemy)
+	if _wave == _waves_total:
+		_spawn_wave_boss()
+
+
+## The last wave of a void portal is led by one of the world's bosses,
+## pulled through the tear. Its treasure joins the arena's chest.
+func _spawn_wave_boss() -> void:
+	var ids: Array = BossDB.BOSSES.keys()
+	var boss_id: String = ids[randi() % ids.size()]
+	var data: Dictionary = BossDB.BOSSES[boss_id]
+	var boss: Enemy = _spawner.enemy_scene.instantiate()
+	boss.boss_id = boss_id
+	boss.position = Room.ORIGIN + Vector2(22, 22 - 3.0 * TerrainTiles.TILE_SIZE)
+	boss.target = _player
+	boss.configure(_arena_level + 2, Enemy.Rank.BOSS, data["monster"])
+	boss.wants_minion.connect(func(from: Enemy) -> void:
+		if room:
+			room.enemies.append(_spawner.spawn_at(from.global_position + Vector2.from_angle(randf() * TAU) * 70.0, from.level, Enemy.Rank.NORMAL, from.enemy_id))
+	)
+	_spawner.add_child(boss)
+	room.enemies.append(boss)
+	RingBurst.spawn(room, boss.global_position, data["color"], 120.0)
+	LightPillar.spawn(room, boss.global_position, data["color"])
+	Events.announcement.emit("%s COMES THROUGH" % (data["name"] as String).to_upper(), "The last wave")
+	var level := _arena_level
+	boss.died.connect(func(_enemy: Enemy) -> void:
+		if room == null:
+			return
+		Events.boss_defeated.emit(boss_id)
+		for saved: Dictionary in BossDB.drops(boss_id, level + 2):
+			var item := Item.from_dict(saved)
+			if item:
+				_loot.drop_item(item, _enemy.global_position + Vector2(randf_range(-40, 40), randf_range(-30, 30)))
+	)
 
 
 # --- shared

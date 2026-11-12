@@ -40,7 +40,9 @@ func _ready() -> void:
 		sprite.position.y = -42.0
 		sprite.flip_h = hash(cell) % 2 == 0
 		sprite.add_to_group("occluders")
+		sprite.material = Wind.material
 		add_child(sprite)
+		SunShadow.cast(sprite)
 		solid = 9.0 if _data["kind"] == "tree" else 0.0
 	elif _data.has("flora"):
 		var plant := Sprite2D.new()
@@ -63,6 +65,7 @@ func _ready() -> void:
 				var tween := create_tween().set_loops()
 				tween.tween_property(sprite, "scale", Vector2(1.15, 1.15), 0.9)
 				tween.tween_property(sprite, "scale", Vector2(0.9, 0.9), 0.9)
+				add_child(FishShoal.new())
 	if solid > 0.0:
 		var body := StaticBody2D.new()
 		var shape := CollisionShape2D.new()
@@ -75,6 +78,33 @@ func _ready() -> void:
 
 func kind() -> String:
 	return _data["kind"]
+
+
+## The tool this is gathered with: "pickaxe", "hatchet", "rod", or "".
+func tool_kind() -> String:
+	return _kind["tool"]
+
+
+## Trees and tall bushes, which the mouse may point at well above the root.
+func is_tall() -> bool:
+	return tall_look >= 0 or _data.has("tall")
+
+
+## Brightens while the mouse is on it, so it is clear what a click will hit.
+func set_lit(lit: bool) -> void:
+	modulate = Color(1.28, 1.26, 1.15) if lit else Color.WHITE
+
+
+## A tool has struck: shudder, and throw off chips of what it is made of.
+func take_blow(from: Vector2) -> void:
+	var away := from.direction_to(global_position)
+	var chips := "_wood" if kind() == "tree" else "_stone" if kind() == "ore" else "_leaf"
+	Gore.spray(get_parent(), global_position + Vector2(0, -14 if is_tall() else -6), chips, -away + Vector2(0, -0.6), 5, false)
+	var rest := position
+	var tween := create_tween()
+	tween.tween_property(self, "position", rest + away * 3.0, 0.05)
+	tween.tween_property(self, "position", rest - away * 1.5, 0.07)
+	tween.tween_property(self, "position", rest, 0.06)
 
 
 func profession() -> String:
@@ -91,7 +121,7 @@ func blocked_reason(player: Player) -> String:
 	if player.professions.level(profession()) < _data["level"]:
 		return "Requires %s %d" % [Professions.NAMES[profession()], _data["level"]]
 	if _kind["tool"] != "":
-		var tool := player.inventory.best_tool(_kind["tool"])
+		var tool := player.equipment.tool(_kind["tool"])
 		if tool == null:
 			return "Needs a %s" % ("fishing rod" if _kind["tool"] == "rod" else _kind["tool"])
 		if tool.definition()["tool"]["tier"] < _data["tier"]:
@@ -103,7 +133,7 @@ func blocked_reason(player: Player) -> String:
 func gather_seconds(player: Player) -> float:
 	var speed := player.professions.speed_multiplier(profession()) * player.stats.get_stat("gather_speed")
 	if _kind["tool"] != "":
-		speed *= player.inventory.best_tool(_kind["tool"]).definition()["tool"]["speed"]
+		speed *= player.equipment.tool(_kind["tool"]).definition()["tool"]["speed"]
 	if kind() == "ore":
 		speed *= player.stats.get_stat("mining_efficiency")
 	return (_kind["seconds"] + _data["level"] * 0.02) / speed

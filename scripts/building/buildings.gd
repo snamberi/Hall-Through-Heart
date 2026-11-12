@@ -293,18 +293,55 @@ func dismantle_nearest() -> String:
 			best = record
 	if best.is_empty():
 		return "Nothing of yours within reach."
-	if not (best["items"] as Array).is_empty():
+	return take_down(best)
+
+
+## The placed thing under a point (the mouse), if the player standing at
+## `from` can reach it. {} if there is none.
+func record_at(point: Vector2, from: Vector2) -> Dictionary:
+	var best: Dictionary = {}
+	var best_distance := 34.0
+	for record in records:
+		var prop: Variant = _props.get(record["id"])
+		if not is_instance_valid(prop):
+			continue
+		var here: Vector2 = prop.global_position
+		if here.distance_to(from) > maxf(prop.reach, 80.0):
+			continue
+		# Houses and other big things can be pointed at anywhere on them.
+		var size := 60.0 if record["kind"] == "house" else 30.0
+		var distance := minf(here.distance_to(point), (here + Vector2(0, -24)).distance_to(point))
+		if distance < maxf(best_distance, size) and (best.is_empty() or distance < best_distance):
+			best_distance = distance
+			best = record
+	return best
+
+
+## Why something placed cannot be taken down now, or "".
+func take_down_problem(record: Dictionary) -> String:
+	if not (record["items"] as Array).is_empty():
 		return "Empty the chest first."
-	if best["kind"] == "house" and not records.filter(func(r: Dictionary) -> bool: return r["where"] == "house:%d" % best["id"] and r["kind"] != "floor").is_empty():
+	if record["kind"] == "house" and not records.filter(func(r: Dictionary) -> bool: return r["where"] == "house:%d" % record["id"] and r["kind"] != "floor").is_empty():
 		return "Clear out the house first."
-	if best["kind"] == "house":
-		# Floors and upgrades are lost with the house.
-		records = records.filter(func(r: Dictionary) -> bool: return r["where"] != "house:%d" % best["id"])
-	if not _player.inventory.add(Item.create(KINDS[best["kind"]]["item"])):
+	if not _player.inventory.has_room_for(Item.create(KINDS[record["kind"]]["item"])):
 		return "Inventory is full."
-	_props[best["id"]].queue_free()
-	_props.erase(best["id"])
-	records.erase(best)
+	return ""
+
+
+## Packs up something placed and hands its item back. Returns "" or why not.
+func take_down(record: Dictionary) -> String:
+	var problem := take_down_problem(record)
+	if problem != "":
+		return problem
+	if record["kind"] == "house":
+		# Floors and upgrades are lost with the house.
+		records = records.filter(func(r: Dictionary) -> bool: return r["where"] != "house:%d" % record["id"])
+	_player.inventory.add(Item.create(KINDS[record["kind"]]["item"]))
+	if is_instance_valid(_props.get(record["id"])):
+		_props[record["id"]].queue_free()
+	_props.erase(record["id"])
+	records.erase(record)
+	Audio.play("pickup", -6.0, 0.1)
 	SaveGame.request_save()
 	return ""
 
@@ -361,7 +398,9 @@ func load_data(data: Dictionary) -> void:
 func enter_house(record: Dictionary) -> void:
 	var tier: int = clampi(int(record.get("tier", 1)), 1, MAX_TIER)
 	var size: Vector2i = HOUSE_SIZES[tier]
+	_instances.prepare_room()
 	var house := Room.new()
+	house.wall_style = "wood"
 	house.title = "Home  -  %s" % ["Cottage", "House", "Manor"][tier - 1]
 	house.set_meta("house", record["id"])
 	var place := "house:%d" % record["id"]

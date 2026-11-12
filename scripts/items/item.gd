@@ -86,6 +86,11 @@ func is_tool() -> bool:
 	return definition().has("tool")
 
 
+## A pack worn on the back for more room in the bag.
+func is_backpack() -> bool:
+	return definition().has("backpack")
+
+
 func is_consumable() -> bool:
 	return definition().has("use") or definition().has("boat") or definition().has("treasure_map") or definition().has("mount") or id == "taming_treat" or Crops.by_seed(id) != ""
 
@@ -96,12 +101,17 @@ func is_placeable() -> bool:
 
 
 func is_stackable() -> bool:
-	return not is_equipment() and not is_tool()
+	return not is_equipment() and not is_tool() and not is_backpack()
 
 
 ## Colour to tint the icon with (white for icons drawn in their own colours).
 func tint() -> Color:
 	return definition().get("tint", Color.WHITE)
+
+
+## The colour to draw the icon in: white for icons that carry their own.
+func icon_tint() -> Color:
+	return Color.WHITE if int(definition().get("icon", 0)) >= ItemDB.NATURAL_ICONS_FROM else tint()
 
 
 ## What a merchant charges for one of this item, in gold.
@@ -151,6 +161,8 @@ func icon() -> Texture2D:
 		return Flora.small_texture(definition()["flora"])
 	if definition().has("decor"):
 		return Prop.decor_icon(definition()["decor"])
+	if int(definition().get("icon", 0)) >= ItemDB.NATURAL_ICONS_FROM:
+		return ItemDB.tinted_icon(definition()["icon"], tint())
 	return ItemDB.icon(definition()["icon"])
 
 
@@ -174,6 +186,23 @@ func implicit_modifiers() -> Array[Dictionary]:
 	return result
 
 
+## The bonus Epic gear and better carries just for being what it is:
+## weapons strike harder, armour gives more life, trinkets a little of both.
+func rarity_gift() -> Array[Dictionary]:
+	var gift: float = ItemDB.RARITIES[rarity]["gift"]
+	var result: Array[Dictionary] = []
+	if gift <= 0.0 or not is_equipment():
+		return result
+	if definition().has("damage"):
+		result.append({"stat": "physical_damage", "kind": "percent", "value": gift})
+	elif definition().has("armor"):
+		result.append({"stat": "max_health", "kind": "percent", "value": gift * 0.6})
+	else:
+		result.append({"stat": "physical_damage", "kind": "percent", "value": gift * 0.4})
+		result.append({"stat": "max_health", "kind": "percent", "value": gift * 0.3})
+	return result
+
+
 ## Everything this item changes when equipped.
 func all_modifiers() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -182,6 +211,7 @@ func all_modifiers() -> Array[Dictionary]:
 	if definition().has("armor"):
 		result.append({"stat": "armor", "kind": "flat", "value": base_power("armor")})
 	result.append_array(implicit_modifiers())
+	result.append_array(rarity_gift())
 	result.append_array(mods)
 	if not enchant.is_empty():
 		result.append(enchant)

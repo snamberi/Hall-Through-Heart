@@ -59,7 +59,17 @@ static func button(text: String, action: Callable, minimum_width: float = 84.0) 
 	result.custom_minimum_size = Vector2(minimum_width, 32.0)
 	result.focus_mode = Control.FOCUS_NONE
 	result.pressed.connect(action)
+	sounds(result)
 	return result
+
+
+## Gives any button the soft tick on hover and click on press.
+static func sounds(target: BaseButton) -> void:
+	target.mouse_entered.connect(func() -> void:
+		if not target.disabled:
+			Audio.play("ui_hover", -16.0, 0.03)
+	)
+	target.pressed.connect(func() -> void: Audio.play("ui_click", -10.0, 0.05))
 
 
 static func icon(index: int, size: float = 22.0) -> TextureRect:

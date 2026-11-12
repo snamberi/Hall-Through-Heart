@@ -643,7 +643,7 @@ func _show_details() -> void:
 	_rewards.add_child(_xp_chip(rewards["xp"]))
 	_rewards.add_child(_reward_chip(ItemDB.icon(17), "+%d" % rewards["gold"], UITheme.GOLD))
 	for entry: Array in rewards.get("items", []):
-		_rewards.add_child(_reward_chip(Item.create(entry[0]).icon(), "x%d" % entry[1], UITheme.TEXT, Item.create(entry[0]).tint()))
+		_rewards.add_child(_reward_chip(Item.create(entry[0]).icon(), "x%d" % entry[1], UITheme.TEXT, Item.create(entry[0]).icon_tint()))
 	match state:
 		"done":
 			_status.text = "Complete. Rewards received."

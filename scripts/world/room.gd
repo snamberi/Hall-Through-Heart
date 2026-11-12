@@ -3,8 +3,22 @@ extends Node2D
 ## A place off the world map: a cave, a void arena, the inside of a house.
 ## It is built far from the playable world and surrounded by blackness.
 
-## Where rooms are built, well away from anything the world generates.
-const ORIGIN := Vector2(0, -900000)
+## Where rooms are built: well away from where the player was standing, but
+## near enough to the origin that positions stay exact. (Far out, positions
+## round to sixteenths of a pixel, and the physics wedges bodies into walls.)
+static var ORIGIN := Vector2(0, -90000)
+const FAR := 90000.0
+
+
+## Picks where the next room goes, given where the player is in the world.
+## Call before making a Room.
+static func choose_origin(from: Vector2) -> void:
+	ORIGIN = Vector2(0, -FAR) if from.y > 0.0 or from.distance_to(Vector2(0, -FAR)) >= FAR else Vector2(0, FAR)
+
+
+## Whether a position is inside the space set aside for the current room.
+static func holds(at: Vector2) -> bool:
+	return at.distance_to(ORIGIN) < 30000.0
 
 var title := ""
 ## Tile types by cell; anything not in here is solid black.
@@ -12,8 +26,13 @@ var cells: Dictionary[Vector2i, int] = {}
 var entry := Vector2i.ZERO
 ## Enemies that belong to this room, so they can be cleared with it.
 var enemies: Array = []
+## How the walls' faces look: "rock", "stone", "wood" or "void".
+var wall_style := "rock"
+## How dark it is inside: 0 for a lit house, near 1 for a cave.
+var gloom := 0.0
 
 var _layer: TileMapLayer
+var _faces: WallFaces
 
 
 func _init() -> void:
@@ -34,6 +53,10 @@ func build(tile_set: TileSet) -> void:
 	add_child(_layer)
 	for cell in cells:
 		_layer.set_cell(cell, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(cells[cell], posmod(hash(cell), 8)))
+	_faces = WallFaces.new()
+	_faces.room = self
+	_faces.style = wall_style
+	add_child(_faces)
 
 
 ## World position of the middle of a room cell.
@@ -46,6 +69,8 @@ func set_tile(cell: Vector2i, type: int) -> void:
 	cells[cell] = type
 	if _layer:
 		_layer.set_cell(cell, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(type, posmod(hash(cell), 8)))
+	if _faces:
+		_faces.queue_redraw()
 
 
 func is_floor(cell: Vector2i) -> bool:

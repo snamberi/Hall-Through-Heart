@@ -190,13 +190,13 @@ func _raw(objective: Dictionary) -> int:
 		"equip_slot":
 			return 1 if _player.equipment.get_item(objective["slot"]) != null else 0
 		"equip_rarity":
-			for item: Item in _player.equipment.equipped.values():
+			for item: Item in _player.equipment.counted():
 				if item.rarity >= objective["rarity"]:
 					return 1
 			return 0
 		"gear_level":
 			var best := 0
-			for item: Item in _player.equipment.equipped.values():
+			for item: Item in _player.equipment.counted():
 				best = maxi(best, item.level)
 			return best
 		"upgrade":
@@ -241,7 +241,7 @@ func _all_items() -> Array[Item]:
 	for item in _player.inventory.items:
 		if item:
 			items.append(item)
-	for item: Item in _player.equipment.equipped.values():
+	for item: Item in _player.equipment.counted():
 		items.append(item)
 	return items
 

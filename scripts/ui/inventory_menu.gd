@@ -1,30 +1,26 @@
 class_name InventoryMenu
 extends GameMenu
-## Inventory: the bag on the left, the character with their equipment slots
-## in the middle, and the selected item's details on the right.
+## Inventory: the bag on the left (it scrolls; a backpack adds pockets), the
+## character with what they wear in the middle and their belt of weapons
+## and tools beneath, and the selected item's details on the right.
 ##
 ## Left-click selects an item; right-click equips, unequips, or uses it.
+## Hover an item and press 1-9 to put it on the hotbar, or Q to make it
+## the quick-use item. A tooltip follows the mouse.
 
 const COLUMNS := 8
 const SLOT_SIZE := 50.0
 const DOLL_SLOT := 60.0
 ## Equipment slots down each side of the character.
-const LEFT_SLOTS: Array[String] = ["necklace", "main_hand", "ring_1", "ring_2", "artifact"]
+const LEFT_SLOTS: Array[String] = ["necklace", "ring_1", "ring_2", "artifact", "backpack"]
 const RIGHT_SLOTS: Array[String] = ["helmet", "chest", "legs", "boots", "off_hand"]
 ## Faint icon shown in an empty equipment slot.
-const SLOT_ICONS := {"necklace": 10, "main_hand": 0, "ring_1": 11, "ring_2": 11, "artifact": 12,
-	"helmet": 6, "chest": 7, "legs": 8, "boots": 9, "off_hand": 5}
-const FLAVOR := {
-	"main_hand": "A weapon is only as good as the hand that holds it.",
-	"off_hand": "Something solid between you and the rot.",
-	"helmet": "Keeps your head where it belongs.",
-	"chest": "Sturdy plate that balances protection and movement.",
-	"legs": "Guards the legs without slowing the stride much.",
-	"boots": "Good boots outlast most adventurers.",
-	"necklace": "It hangs warm against the skin.",
-	"ring": "A band with something of the old world in it.",
-	"artifact": "It was not made by any living hand.",
-}
+const SLOT_ICONS := {"necklace": 10, "ring_1": 11, "ring_2": 11, "artifact": 12, "backpack": 93,
+	"helmet": 6, "chest": 7, "legs": 8, "boots": 9, "off_hand": 5,
+	"weapon_1": 27, "weapon_2": 0, "weapon_3": 0, "tool_pickaxe": 49, "tool_hatchet": 50, "tool_rod": 51}
+const BELT_SLOT := 46.0
+## Rows of the bag shown at once; the rest scroll.
+const VISIBLE_ROWS := 6
 
 var _count: Label
 var _gold: Label
@@ -44,6 +40,9 @@ var _discard: Button
 var _message: Label
 var _hand_row: HBoxContainer
 var _hand_buttons: Dictionary[String, Button] = {}
+var _grid: GridContainer
+var _tip: ItemTooltip
+var _belt_marks: Dictionary[String, Label] = {}
 
 var _selected: Item
 var _hovered: Item
@@ -60,7 +59,7 @@ func _build() -> void:
 	# --- left: the bag
 	var bag_panel := UITheme.inset_panel()
 	columns.add_child(bag_panel)
-	bag_panel.custom_minimum_size.y = 520.0
+	bag_panel.custom_minimum_size.y = 540.0
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 12)
 	bag_panel.add_child(left)
@@ -74,26 +73,16 @@ func _build() -> void:
 	header.add_child(UITheme.icon(ItemDB.GOLD_ICON, 26.0))
 	_gold = UITheme.label("", 20, UITheme.GOLD)
 	header.add_child(_gold)
-	var grid := GridContainer.new()
-	grid.columns = COLUMNS
-	grid.add_theme_constant_override("h_separation", 3)
-	grid.add_theme_constant_override("v_separation", 3)
-	left.add_child(grid)
-	for index in Inventory.CAPACITY:
-		var button := _item_button(SLOT_SIZE)
-		_wire(button, func() -> Item: return _bag_item(index))
-		var count := UITheme.label("", 13)
-		count.add_theme_color_override("font_outline_color", Color.BLACK)
-		count.add_theme_constant_override("outline_size", 4)
-		count.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-		count.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		count.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		count.position -= Vector2(4, 1)
-		count.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		button.add_child(count)
-		grid.add_child(button)
-		_bag_buttons.append(button)
-		_bag_counts.append(count)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(COLUMNS * (SLOT_SIZE + 3.0) + 12.0, VISIBLE_ROWS * (SLOT_SIZE + 3.0))
+	left.add_child(scroll)
+	_grid = GridContainer.new()
+	_grid.columns = COLUMNS
+	_grid.add_theme_constant_override("h_separation", 3)
+	_grid.add_theme_constant_override("v_separation", 3)
+	scroll.add_child(_grid)
+	_ensure_slots(Inventory.BASE)
 	var bag_actions := HBoxContainer.new()
 	bag_actions.add_theme_constant_override("separation", 10)
 	left.add_child(bag_actions)
@@ -110,29 +99,67 @@ func _build() -> void:
 		var recipe := RecipeDB.find(recipe_id)
 		var button := Button.new()
 		button.focus_mode = Control.FOCUS_NONE
-		button.custom_minimum_size = Vector2(98.0, 44.0)
+		button.custom_minimum_size = Vector2(104.0, 50.0)
 		button.add_theme_font_size_override("font_size", 12)
 		button.text = RecipeDB.display_name(recipe)
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.expand_icon = true
+		button.add_theme_constant_override("icon_max_width", 30)
+		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var made := Item.create(recipe["item"]) if recipe.has("item") else LootGenerator.make_equipment(1, 0, recipe.get("equipment", "club"))
+		button.icon = made.icon()
+		_tint_icon(button, made.icon_tint())
 		button.pressed.connect(func() -> void: _report(Crafting.craft(player, recipe)))
-		button.mouse_entered.connect(func() -> void:
-			var needs: PackedStringArray = []
-			for item_id: String in recipe["inputs"]:
-				needs.append("%d %s" % [recipe["inputs"][item_id], ItemDB.ITEMS[item_id]["name"]])
-			_message.add_theme_color_override("font_color", UITheme.DIM)
-			_message.text = "%s needs %s" % [RecipeDB.display_name(recipe), ", ".join(needs)]
-		)
+		button.mouse_entered.connect(func() -> void: _tip.show_recipe(recipe, player))
+		button.mouse_exited.connect(func() -> void: _tip.hide_tip())
+		UITheme.sounds(button)
 		_hand_row.add_child(button)
 		_hand_buttons[recipe_id] = button
 
 	# --- middle: the character and what they wear
 	var doll_panel := UITheme.inset_panel()
 	columns.add_child(doll_panel)
-	doll_panel.custom_minimum_size.y = 520.0
+	doll_panel.custom_minimum_size.y = 540.0
+	var middle := VBoxContainer.new()
+	middle.add_theme_constant_override("separation", 8)
+	doll_panel.add_child(middle)
 	var doll := CharacterPreview.new()
 	doll.custom_minimum_size = Vector2(330.0, 400.0)
 	doll.setup(player)
-	doll_panel.add_child(doll)
+	middle.add_child(doll)
+	# The belt: the weapons and tools the hotbar's first six keys draw.
+	middle.add_child(UITheme.heading("Belt", 15))
+	var belt := HBoxContainer.new()
+	belt.add_theme_constant_override("separation", 5)
+	belt.alignment = BoxContainer.ALIGNMENT_CENTER
+	middle.add_child(belt)
+	for index in Equipment.BELT.size():
+		var slot: String = Equipment.BELT[index]
+		var button := _item_button(BELT_SLOT)
+		button.tooltip_text = ""
+		_wire(button, func() -> Item: return player.equipment.equipped.get(slot), "%s  (key %d)" % [Equipment.BELT_NAMES[slot], index + 1])
+		var key := UITheme.label(str(index + 1), 11, UITheme.HEADING)
+		key.position = Vector2(4, 1)
+		key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		key.add_theme_color_override("font_outline_color", Color.BLACK)
+		key.add_theme_constant_override("outline_size", 3)
+		button.add_child(key)
+		var mark := UITheme.label("in hand", 9, UITheme.GOLD)
+		mark.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		mark.offset_top = -13.0
+		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mark.add_theme_color_override("font_outline_color", Color.BLACK)
+		mark.add_theme_constant_override("outline_size", 3)
+		button.add_child(mark)
+		_belt_marks[slot] = mark
+		belt.add_child(button)
+		_slot_buttons[slot] = button
+		if index == 2:
+			var gap := Control.new()
+			gap.custom_minimum_size.x = 8.0
+			belt.add_child(gap)
 	for side: Array in [[LEFT_SLOTS, 4.0], [RIGHT_SLOTS, 330.0 - DOLL_SLOT - 4.0]]:
 		var slots: Array = side[0]
 		for row in slots.size():
@@ -140,8 +167,7 @@ func _build() -> void:
 			var button := _item_button(DOLL_SLOT)
 			button.position = Vector2(side[1], 6.0 + row * (DOLL_SLOT + 16.0))
 			button.size = Vector2(DOLL_SLOT, DOLL_SLOT)
-			button.tooltip_text = ItemDB.SLOT_NAMES[slot]
-			_wire(button, func() -> Item: return player.equipment.get_item(slot))
+			_wire(button, func() -> Item: return player.equipment.get_item(slot), Equipment.BELT_NAMES.get(slot, ItemDB.SLOT_NAMES.get(slot, slot)))
 			doll.add_child(button)
 			_slot_buttons[slot] = button
 	_set_label = UITheme.label("", 13, UITheme.GOOD)
@@ -154,7 +180,7 @@ func _build() -> void:
 	# --- right: details and actions
 	var detail_panel := UITheme.inset_panel()
 	columns.add_child(detail_panel)
-	detail_panel.custom_minimum_size.y = 520.0
+	detail_panel.custom_minimum_size.y = 540.0
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 8)
 	right.custom_minimum_size = Vector2(310.0, 0.0)
@@ -173,7 +199,7 @@ func _build() -> void:
 	# A fixed box so the screen keeps its size whatever is shown.
 	_details.fit_content = false
 	_details.scroll_active = true
-	_details.custom_minimum_size = Vector2(310.0, 270.0)
+	_details.custom_minimum_size = Vector2(310.0, 256.0)
 	_details.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_details.add_theme_font_size_override("normal_font_size", 14)
 	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -181,9 +207,9 @@ func _build() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(spacer)
-	var hint := UITheme.label("Hover an item and press %s to put it on the hotbar." % "/".join(range(1, Hotbar.SIZE + 1).map(func(i: int) -> String: return GameSettings.describe("hotbar_%d" % i).split(" / ")[0])), 12, UITheme.DIM)
+	var hint := UITheme.label("Hover an item and press 1-9 to put it on the hotbar (1 magic, 2-3 weapons, 4-6 tools, 7-9 potions and food), or %s to make it the quick-use item." % GameSettings.describe("quick_use").split(" / ")[0], 12, UITheme.DIM)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
-	hint.custom_minimum_size = Vector2(310.0, 18.0)
+	hint.custom_minimum_size = Vector2(310.0, 48.0)
 	right.add_child(hint)
 	_message = UITheme.label("", 13, UITheme.BAD)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -202,8 +228,36 @@ func _build() -> void:
 		button.custom_minimum_size.x = 74.0
 		smith.add_child(button)
 
+	_tip = ItemTooltip.new()
+	add_child(_tip)
+	visibility_changed.connect(func() -> void:
+		if not is_visible_in_tree():
+			_tip.hide_tip()
+	)
 	player.inventory.changed.connect(refresh_if_open)
 	player.equipment.changed.connect(refresh_if_open)
+
+
+## Makes sure the bag has a button for every slot (a backpack adds more).
+func _ensure_slots(count: int) -> void:
+	while _bag_buttons.size() < count:
+		var index := _bag_buttons.size()
+		var button := _item_button(SLOT_SIZE)
+		_wire(button, func() -> Item: return _bag_item(index))
+		var count_label := UITheme.label("", 13)
+		count_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		count_label.add_theme_constant_override("outline_size", 4)
+		count_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+		count_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		count_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		count_label.position -= Vector2(4, 1)
+		count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(count_label)
+		_grid.add_child(button)
+		_bag_buttons.append(button)
+		_bag_counts.append(count_label)
+	for index in _bag_buttons.size():
+		_bag_buttons[index].visible = index < count
 
 
 func refresh() -> void:
@@ -211,16 +265,19 @@ func refresh() -> void:
 	# Forget a selection that no longer exists (discarded, used up, salvaged).
 	if _selected and not _selected in inventory.items and _equipped_slot(_selected) == "":
 		_selected = null
-	_count.text = "%d / %d" % [inventory.items.size(), Inventory.CAPACITY]
+	_ensure_slots(maxi(inventory.capacity(), inventory.items.size()))
+	_count.text = "%d / %d" % [inventory.items.size(), inventory.capacity()]
 	for recipe_id in _hand_buttons:
 		_hand_buttons[recipe_id].disabled = Crafting.blocked_reason(player, RecipeDB.find(recipe_id)) != ""
 	_gold.text = "%d gold" % inventory.gold
-	for index in Inventory.CAPACITY:
+	for index in maxi(inventory.capacity(), inventory.items.size()):
 		var item := _bag_item(index)
 		_style_button(_bag_buttons[index], item)
 		_bag_counts[index].text = str(item.count) if item and item.count > 1 else ""
+	for slot in _belt_marks:
+		_belt_marks[slot].visible = player.equipment.active_slot == slot and player.equipment.equipped.has(slot)
 	for slot in _slot_buttons:
-		var item := player.equipment.get_item(slot)
+		var item: Item = player.equipment.equipped.get(slot)
 		var button := _slot_buttons[slot]
 		_style_button(button, item)
 		if item == null:
@@ -228,7 +285,13 @@ func refresh() -> void:
 			button.icon = ItemDB.icon(SLOT_ICONS[slot])
 			_tint_icon(button, Color(1, 1, 1, 0.16))
 	var progress := player.equipment.set_progress()
-	_set_label.text = "%s set  %d / %d" % [progress["tier"], progress["count"], ItemDB.SET_SLOTS.size()] if progress["count"] >= 2 else ""
+	var notes: PackedStringArray = []
+	if progress["count"] >= 2:
+		notes.append("%s set  %d / %d" % [progress["tier"], progress["count"], ItemDB.SET_SLOTS.size()])
+	var attuned := player.equipment.attunement()
+	if not attuned.is_empty():
+		notes.append(attuned["name"])
+	_set_label.text = "   -   ".join(notes)
 	_refresh_details()
 
 
@@ -239,98 +302,20 @@ func _refresh_details() -> void:
 		_details.text = "[color=#%s]Select an item to see what it does.\n\nRight-click an item to equip or use it at once.[/color]" % UITheme.DIM.to_html(false)
 	else:
 		_detail_icon.texture = shown.icon()
-		_detail_icon.modulate = shown.tint()
+		_detail_icon.modulate = shown.icon_tint()
 		_detail_frame.add_theme_stylebox_override("panel", _frame_style(shown, false))
-		_details.text = _describe(shown)
+		_details.text = ItemText.describe(shown, player)
 
 	var item := _selected
 	var worn := item != null and _equipped_slot(item) != ""
 	var in_bag := item != null and item in player.inventory.items
-	_primary.disabled = item == null or not (item.is_equipment() or item.is_consumable() or item.is_placeable())
+	_primary.disabled = item == null or not (item.is_equipment() or item.is_consumable() or item.is_placeable() or item.is_tool() or item.is_backpack())
 	_primary.text = "Place" if item and item.is_placeable() else "Use" if item and item.is_consumable() else "Equipped  -  click to unequip" if worn else "Equip"
 	_discard.disabled = not in_bag
 	_upgrade.disabled = item == null or not item.is_equipment() or not item.is_upgradable() or item.upgrade >= ItemDB.MAX_UPGRADE
 	_enchant.disabled = item == null or not item.is_equipment()
 	_salvage.disabled = not in_bag or not item.is_equipment()
 	_socket.disabled = item == null or not item.is_equipment() or item.sockets.is_empty()
-
-
-## BBCode description of an item.
-func _describe(item: Item) -> String:
-	var dim := UITheme.DIM.to_html(false)
-	var text := UITheme.TEXT.to_html(false)
-	var lines: PackedStringArray = []
-	var def := item.definition()
-	lines.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [item.color().to_html(false), item.display_name()])
-	var rarity: String = ItemDB.RARITIES[item.rarity]["name"]
-	if not item.is_equipment():
-		var kind := "Tool" if item.is_tool() else "Consumable" if item.is_consumable() else "Building" if item.is_placeable() else "Material"
-		lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s[/color]" % [item.color().to_html(false), rarity, dim, kind])
-		lines.append("")
-		lines.append("[i][color=#%s]%s[/color][/i]" % [dim, def["text"]])
-		if item.is_stackable():
-			lines.append("")
-			lines.append("[color=#%s]You have %d.[/color]" % [dim, player.inventory.count_of(item.id)])
-		return "\n".join(lines)
-
-	var kind_name: String = "Two-handed" if def.get("two_handed", false) else ItemDB.SLOT_NAMES[item.slot()]
-	lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s  -  item level %d[/color]" % [item.color().to_html(false), rarity, dim, kind_name, item.level])
-	lines.append("")
-	if def.has("damage"):
-		var weapon: Dictionary = def["weapon"]
-		lines.append("[color=#%s]Damage[/color]  [font_size=20]%d[/font_size]%s" % [text, roundi(item.base_power("damage")), "  [color=#%s](magic)[/color]" % dim if def.get("magic", false) else ""])
-		var action := "shots, range" if weapon.has("projectile") else "swings, reach"
-		lines.append("[color=#%s]%.2fs between %s %d[/color]" % [dim, weapon["cooldown"], action, roundi(weapon["range"])])
-	if def.has("armor"):
-		lines.append("[color=#%s]Armor[/color]  [font_size=20]%d[/font_size]" % [text, roundi(item.base_power("armor"))])
-	var level_ok := player.leveling.level >= item.level
-	lines.append("[i][color=#%s]Requires level %d[/color][/i]" % [UITheme.HEADING.to_html(false) if level_ok else UITheme.BAD.to_html(false), item.level])
-	var requirements := item.attribute_requirements()
-	for attribute: String in requirements:
-		var met: bool = player.attributes.points[attribute] >= requirements[attribute]
-		lines.append("[i][color=#%s]Requires %d %s[/color][/i]" % [dim if met else UITheme.BAD.to_html(false), requirements[attribute], Attributes.NAMES[attribute]])
-	lines.append("")
-	lines.append("[i][color=#%s]%s[/color][/i]" % [dim, FLAVOR.get(item.slot(), "")])
-	lines.append("")
-	if def.has("on_hit"):
-		var effect: Dictionary = def["on_hit"]
-		var status: Dictionary = ItemDB.STATUSES[effect["status"]]
-		var detail := "slows by %d%%" % roundi(effect["power"] * 100.0) if effect["status"] == "chill" else "%d%% of the hit per second" % roundi(effect["power"] * 100.0)
-		lines.append("[color=#%s]Inflicts %s: %s for %.1fs[/color]" % [status["color"].to_html(false), status["name"], detail, effect["duration"]])
-	if def.has("life_steal"):
-		lines.append("[color=#%s]Heals you for %d%% of damage dealt[/color]" % [UITheme.GOOD.to_html(false), roundi(def["life_steal"] * 100.0)])
-	if def.has("unique"):
-		lines.append("[color=#ff9a2e]Unique: %s[/color]" % Uniques.TEXT[def["unique"]])
-	for modifier in item.implicit_modifiers():
-		lines.append("[color=#%s]+[/color] %s" % [UITheme.HEADING.to_html(false), ItemDB.describe_modifier(modifier)])
-	for modifier in item.mods:
-		lines.append("[color=#%s]+[/color] [color=#%s]%s[/color]" % [UITheme.HEADING.to_html(false), UITheme.INFO.to_html(false), ItemDB.describe_modifier(modifier)])
-	if not item.enchant.is_empty():
-		lines.append("[color=#c08cff]+ %s  (enchanted)[/color]" % ItemDB.describe_modifier(item.enchant))
-	for gem in item.sockets:
-		if gem == "":
-			lines.append("[color=#%s]<> Empty socket[/color]" % dim)
-		else:
-			lines.append("[color=#%s]<> %s: %s[/color]" % [(ItemDB.ITEMS[gem]["tint"] as Color).to_html(false), ItemDB.ITEMS[gem]["name"], ItemDB.describe_modifier(Gems.modifier(gem, item.slot()))])
-	if item.set_id != "":
-		var set_data: Dictionary = ItemDB.ITEM_SETS[item.set_id]
-		var worn: int = player.equipment.named_set_counts().get(item.set_id, 0)
-		lines.append("")
-		lines.append("[color=#%s]%s set  (%d / %d worn)[/color]" % [ItemDB.SET_COLOR.to_html(false), set_data["name"], worn, set_data["pieces"].size()])
-		for needed: int in set_data["bonuses"]:
-			var parts: PackedStringArray = []
-			for stat: String in set_data["bonuses"][needed]:
-				for kind: String in set_data["bonuses"][needed][stat]:
-					var value: float = set_data["bonuses"][needed][stat][kind]
-					var text_part := ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": absf(value)})
-					parts.append(text_part if value >= 0.0 else "-" + text_part.substr(1))
-			lines.append("[color=#%s](%d) %s[/color]" % [ItemDB.SET_COLOR.to_html(false) if worn >= needed else dim, needed, ", ".join(parts)])
-	if _equipped_slot(item) == "":
-		var current := player.equipment.get_item(player.equipment.target_slot(item))
-		if current:
-			lines.append("")
-			lines.append("[color=#%s]Wearing: %s[/color]" % [dim, current.display_name()])
-	return "\n".join(lines)
 
 
 func _select(item: Item) -> void:
@@ -371,7 +356,7 @@ func _use_selected() -> void:
 			return
 	elif _selected.is_consumable():
 		result = player.use_item(_selected)
-	elif _selected.is_equipment():
+	elif _selected.is_equipment() or _selected.is_tool() or _selected.is_backpack():
 		var slot := _equipped_slot(_selected)
 		result = player.equipment.unequip(slot) if slot != "" else player.equipment.equip(_selected)
 	_report(result)
@@ -443,17 +428,26 @@ func _bag_item(index: int) -> Item:
 
 
 func _equipped_slot(item: Item) -> String:
-	for slot in player.equipment.equipped:
-		if player.equipment.equipped[slot] == item:
-			return slot
-	return ""
+	return player.equipment.slot_of(item)
 
 
 ## Connects a slot button to whatever item it currently shows.
-func _wire(button: Button, item_of: Callable) -> void:
+## `empty_text` names the slot in the tooltip when nothing is in it.
+func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 	button.pressed.connect(func() -> void: _select(item_of.call()))
-	button.mouse_entered.connect(func() -> void: _hover(item_of.call()))
-	button.mouse_exited.connect(func() -> void: _hover(null))
+	button.mouse_entered.connect(func() -> void:
+		var item: Item = item_of.call()
+		_hover(item)
+		if item:
+			_tip.show_item(item, player)
+			Audio.play("ui_hover", -18.0, 0.03)
+		elif empty_text != "":
+			_tip.show_text(empty_text, "Empty.")
+	)
+	button.mouse_exited.connect(func() -> void:
+		_hover(null)
+		_tip.hide_tip()
+	)
 	button.gui_input.connect(func(event: InputEvent) -> void:
 		var click := event as InputEventMouseButton
 		if click and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT and item_of.call():
@@ -501,20 +495,29 @@ func _style_button(button: Button, item: Item) -> void:
 	button.add_theme_stylebox_override("pressed", style)
 	button.add_theme_stylebox_override("hover", hover)
 	button.icon = item.icon() if item else null
-	_tint_icon(button, item.tint() if item else Color.WHITE)
+	_tint_icon(button, item.icon_tint() if item else Color.WHITE)
 
 
-## Hotbar keys put the hovered (or selected) item in that slot.
+## Hotbar keys put the hovered (or selected) item in that slot; the
+## quick-use key makes it the quick item.
 func _input(event: InputEvent) -> void:
 	if not is_visible_in_tree():
 		return
 	var item := _hovered if _hovered else _selected
 	if item == null:
 		return
+	if event.is_action_pressed("quick_use"):
+		var refused := player.hotbar.set_quick(item)
+		_message.add_theme_color_override("font_color", UITheme.GOOD if refused == "" else UITheme.BAD)
+		_message.text = "%s is now your quick-use item." % item.display_name() if refused == "" else refused
+		get_viewport().set_input_as_handled()
+		return
 	for index in Hotbar.SIZE:
 		if event.is_action_pressed("hotbar_%d" % (index + 1)):
-			player.hotbar.assign(index, item.id)
-			_message.add_theme_color_override("font_color", UITheme.GOOD)
-			_message.text = "%s is on hotbar slot %d." % [item.display_name(), index + 1]
+			var problem := player.hotbar.assign(index, item)
+			_tip.hide_tip()
+			refresh()
+			_message.add_theme_color_override("font_color", UITheme.GOOD if problem == "" else UITheme.BAD)
+			_message.text = "%s is on hotbar slot %d." % [item.display_name(), index + 1] if problem == "" else problem
 			get_viewport().set_input_as_handled()
 			return

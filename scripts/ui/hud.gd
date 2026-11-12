@@ -64,13 +64,48 @@ func setup(player: Player) -> void:
 	hotbar_ui.size = hotbar_ui.custom_minimum_size
 	hotbar_ui.position = Vector2(-hotbar_ui.size.x / 2.0, -hotbar_ui.size.y - 6.0)
 	add_child(hotbar_ui)
+	var meter := TransformMeter.new()
+	meter.setup(player)
+	meter.position = Vector2(14.0, 152.0)
+	add_child(meter)
+	# Buffs list to the right of the left-hand blocks, clear of them.
+	_buff_label.position = Vector2(158.0, 138.0)
+	var menu_button := HudMenuButton.new()
+	menu_button.setup(player)
+	menu_button.position = Vector2(14.0, 110.0)
+	add_child(menu_button)
 	_death_message.visible = false
 	_banner.visible = false
 	_refresh()
 
 
+## Words for the death screen, by what struck the last blow.
+const DEATH_LINES := {
+	"blow": ["You have fallen", "Struck down", "The Hall claims another", "Your strength fails you", "Darkness closes in", "Beaten, not broken", "The rot takes you", "Your tale pauses here"],
+	"fire": ["Burned to cinders", "The flames take you", "Ash to ash"],
+	"burn": ["Burned to cinders", "The flames take you", "Ash to ash"],
+	"frost": ["Frozen where you stand", "The cold claims you", "Winter keeps you"],
+	"poison": ["The venom wins", "Poison stills your heart", "Rot runs in your veins"],
+	"bleed": ["Bled dry", "Your wounds would not close", "The last drop falls"],
+	"shadow": ["Swallowed by shadow", "The dark drinks you in", "Your light gutters out"],
+	"holy": ["Judged and found wanting", "Burned by the light"],
+	"storm": ["Struck from the sky", "The storm takes its due", "Thunder has the last word"],
+}
+
+
 func show_death(xp_lost: int, respawn_name: String) -> void:
+	var lines: Array = DEATH_LINES.get(_player.last_harm, DEATH_LINES["blow"])
+	if DayNight.blood_moon and randf() < 0.5:
+		lines = ["The blood moon feeds", "Red night, red end"]
+	_death_message.text = lines.pick_random()
 	_death_summary.text = "Lost %d XP  -  waking at %s" % [xp_lost, respawn_name]
+	_death_message.visible = true
+
+
+## Death on a Hardcore world: there is no waking.
+func show_hardcore_death(day: int) -> void:
+	_death_message.text = "Your tale ends here"
+	_death_summary.text = "Hardcore  -  level %d, day %d. This world is lost with you." % [_player.leveling.level, day]
 	_death_message.visible = true
 
 
@@ -83,15 +118,17 @@ func _refresh() -> void:
 	var codex: Node = _player.get_parent().get_node_or_null("Codex")
 	if codex and codex.title != "":
 		_level_label.text += "   " + codex.title
+	# What waits in the menu is said beside the Menu button, which wears the count.
 	var notes: PackedStringArray = []
 	if _player.attributes.unspent > 0:
-		notes.append("%d attribute points - press C" % _player.attributes.unspent)
+		notes.append("%d attribute points" % _player.attributes.unspent)
 	if _player.leveling.talent_points > 0:
-		notes.append("%d talent points - press K" % _player.leveling.talent_points)
+		notes.append("%d talent points" % _player.leveling.talent_points)
 	if _player.class_id == "adventurer" and _player.leveling.level >= HeroClasses.CHOICE_LEVEL:
-		notes.append("Choose a class - press M")
+		notes.append("a class to choose")
 	_points_label.visible = not notes.is_empty()
-	_points_label.text = "      ".join(notes)
+	_points_label.text = "to spend: " + ", ".join(notes)
+	_points_label.position = Vector2(158.0, 114.0)
 	_xp_bar.queue_redraw()
 
 
@@ -145,25 +182,34 @@ func _draw_gather() -> void:
 		return
 	if _player.state != Player.State.MOVE:
 		return
+	var use_key := "[Right click]"
 	var npc := _player.nearest_npc()
 	if npc:
-		var talk := "[F]  %s" % npc.prompt()
+		var talk := "%s  %s" % [use_key, npc.prompt()]
 		_gather.draw_string_outline(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
 		_gather.draw_string(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.GOLD)
 		return
 	var prop := _player.nearest_prop()
 	if prop:
-		var action := "[F]  %s" % prop.prompt_text if prop.on_interact.is_valid() else prop.prompt_text
+		var action := "%s  %s" % [use_key, prop.prompt_text] if prop.on_interact.is_valid() else prop.prompt_text
 		_gather.draw_string_outline(font, Vector2(0, 16), action, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
 		_gather.draw_string(font, Vector2(0, 16), action, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.GOLD if prop.on_interact.is_valid() else UITheme.DIM)
 		return
-	var node := _player.nearest_resource()
-	if node == null:
+	# What a left click would work on: the thing under the mouse first.
+	var text := ""
+	var good := true
+	var node: ResourceNode = _player.hover_node if is_instance_valid(_player.hover_node) else _player.nearest_resource()
+	if node:
+		var reason := node.blocked_reason(_player)
+		good = reason == ""
+		var pointed := node == _player.hover_node
+		text = ("[Left click]  %s" if pointed else "Point and click:  %s") % node.prompt() if good else "%s  -  %s" % [GatherDB.display_name(node.resource_id), reason]
+	elif not _player.hover_record.is_empty():
+		text = "[Left click]  Take down the %s" % str(ItemDB.ITEMS[Buildings.KINDS[_player.hover_record["kind"]]["item"]]["name"]).to_lower()
+	if text == "":
 		return
-	var reason := node.blocked_reason(_player)
-	var text := "[F]  %s" % node.prompt() if reason == "" else "%s  -  %s" % [GatherDB.display_name(node.resource_id), reason]
 	_gather.draw_string_outline(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
-	_gather.draw_string(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.TEXT if reason == "" else UITheme.BAD)
+	_gather.draw_string(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.TEXT if good else UITheme.BAD)
 
 
 ## Draws `bar` as an ornate gauge: a dark trough, the fill with a sheen and

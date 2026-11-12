@@ -47,8 +47,9 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 	# Village and structure grounds stay clear of growth.
 	var villages: Villages = get_parent().get_node_or_null("Villages")
 	var structures: Structures = get_parent().get_node_or_null("Structures")
+	# Nothing grows on built-up ground, nor on the face of a cliff.
 	var keep_clear := func(c: Vector2i) -> bool:
-		return (villages != null and villages.is_built_up(c)) or (structures != null and structures.is_reserved(c))
+		return (villages != null and villages.is_built_up(c)) or (structures != null and structures.is_reserved(c)) or generator.is_cliff_base(c)
 
 	# Things to gather, a few per chunk.
 	for kind: String in GatherDB.PER_CHUNK:
@@ -91,6 +92,13 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 					_place_node(placed, "thornberry_bush", cell, bush, jitter)
 				else:
 					placed.append(_scenery(bush, _world.cell_to_world(cell) + jitter, 0.0))
+			# Ground detail uses its own hash, so it never moves anything else.
+			var detail := absi(hash(Vector3i(cell.x, cell.y, 77)))
+			if detail % 100 < 7 and biome.has("decals"):
+				var decals: Array = biome["decals"]
+				cover.decals.append([_world.cell_to_world(cell) + Vector2(detail % 23 - 11, detail / 23 % 19 - 9), decals[detail / 437 % decals.size()], detail % 2 == 0])
+			if used.has(cell):
+				continue
 			elif random.randf() < biome["cover"]:
 				var ground: Array = biome["ground"]
 				for k in (1 if random.randf() < 0.6 else 2):
@@ -132,7 +140,9 @@ func _scenery(look: int, at: Vector2, solid: float) -> Node2D:
 	sprite.region_rect = Flora.tall_region(look)
 	sprite.position.y = -42.0
 	sprite.flip_h = hash(at) % 2 == 0
+	sprite.material = Wind.material
 	holder.add_child(sprite)
+	SunShadow.cast(sprite)
 	if solid > 0.0:
 		var body := StaticBody2D.new()
 		var shape := CollisionShape2D.new()

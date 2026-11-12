@@ -18,6 +18,9 @@ const DATA := {
 }
 
 static var current := "normal"
+## Hardcore worlds: one life. Death deletes the world, and the difficulty
+## is always Insane.
+static var hardcore := false
 
 
 static func value(key: String) -> Variant:

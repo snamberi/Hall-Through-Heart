@@ -146,6 +146,105 @@ HUMAN = {
 }
 HUMAN_ORDER = ["leg_l", "leg_r", "torso", "arm_l", "sword", "arm_r", "head"]
 
+# The player's own body is drawn bald: hair, beards, ears, horns, tails and
+# the rest are separate layers (LOOKS below), so each can be chosen and
+# coloured. NPCs keep the plain HUMAN head.
+HUMAN_BALD = dict(HUMAN, head=dict(parent="torso", pivot=(22, 25), parts=[
+    ("skin", E(12.5, 5.5, 31.5, 26)),
+    ("void", R(17, 17, 18, 19)), ("void", R(25, 17, 26, 19)),
+    ("skin_shade", R(21.6, 20.6, 22.4, 21.4))]))
+
+
+def _arc(cx, cy, rx, ry, start, end, steps=12):
+    """Points along an ellipse from angle start to end (degrees, y down)."""
+    return [(cx + rx * math.cos(math.radians(start + (end - start) * i / steps)),
+             cy + ry * math.sin(math.radians(start + (end - start) * i / steps))) for i in range(steps + 1)]
+
+
+def _mirror(points):
+    return [(44 - x, y) for x, y in reversed(points)]
+
+
+def _cap(fringe, rx=12, ry=10, cy=13):
+    """Hair over the top of the head: an arc from ear to ear, then back
+    along the fringe line (given right to left)."""
+    return _arc(22, cy, rx, ry, 180, 360) + fringe
+
+
+_TOUSLED = [(31, 14), (29, 12), (25, 9), (21, 12.5), (17, 9), (13, 13)]
+_LOCK_L = [(10, 13), (13.4, 13), (13.2, 19), (12, 22), (10.4, 19)]
+_CROP = [(31, 11), (27, 9.5), (22, 9), (17, 9.5), (13, 11)]
+_M = "plate"
+_D = "plate_dark"
+# Every layer is drawn in pale greys and coloured in the game (hair colour,
+# skin tone, eye colour), except bone, teeth and paint, which keep theirs.
+LOOKS = {
+    "hair_0": {"head": [(_M, _cap(_TOUSLED)), (_M, _LOCK_L), (_M, _mirror(_LOCK_L)), (_D, [(15, 7), (19, 5), (19.5, 6), (16, 8)])]},
+    "hair_1": {"head": [(_M, _cap(_CROP, 10.6, 8.6)), (_D, [(15, 8), (22, 6.4), (29, 8), (22, 7.4)])]},
+    "hair_2": {"head": [(_M, _cap(_TOUSLED)), (_M, [(10, 13), (13.4, 13), (13.6, 29), (10.6, 30.5), (8.6, 22)]), (_M, _mirror([(10, 13), (13.4, 13), (13.6, 29), (10.6, 30.5), (8.6, 22)])),
+                        (_D, R(11, 20, 11.8, 28)), (_D, R(32.2, 20, 33, 28))]},
+    "hair_3": {"head": [(_M, _cap(_CROP, 10.8, 9)), (_M, [(30, 7), (35, 8), (38.5, 13), (38, 22), (35, 26), (35.5, 16), (32, 11.5)]), ("guard", R(32.6, 8.6, 34.6, 10.6)),
+                        (_D, [(36, 14), (37, 14), (36.6, 22), (35.8, 22)])]},
+    "hair_4": {"head": [(_M, [(19.2, 11), (18.6, 3), (20, -0.5), (22, -3), (24, -0.5), (25.4, 3), (24.8, 11)]), (_D, R(21.6, -1, 22.4, 10))]},
+    "hair_5": {"head": [(_M, _cap(_CROP, 10.6, 8.6)), (_M, E(18.4, -2.5, 25.6, 4.8)), ("guard", R(19.6, 4, 24.4, 5.2))]},
+    "hair_6": {"head": [(_M, [(10, 13), (8, 8), (11.5, 9), (11, 3), (15, 6), (16, 0), (20, 4), (22, -2.5), (24, 4), (28, 0), (29, 6), (33, 3), (32.5, 9), (36, 8), (34, 13)] + _TOUSLED),
+                        (_M, _LOCK_L), (_M, _mirror(_LOCK_L))]},
+    "hair_7": {"head": [(_M, _cap([(31, 13.2), (22, 12.2), (13, 13.2)])), (_M, [(9.6, 13), (13.4, 13), (13.6, 23), (12, 25.5), (9.4, 23)]), (_M, _mirror([(9.6, 13), (13.4, 13), (13.6, 23), (12, 25.5), (9.4, 23)])),
+                        (_D, [(13, 11), (22, 10), (31, 11), (22, 10.8)])]},
+    "hair_8": {"head": [(_M, _cap(_TOUSLED)), (_M, R(10.4, 13, 13.2, 31)), (_M, R(30.8, 13, 33.6, 31)), ("guard", R(10.2, 20, 13.4, 21)), ("guard", R(10.2, 26, 13.4, 27)),
+                        ("guard", R(30.6, 20, 33.8, 21)), ("guard", R(30.6, 26, 33.8, 27))]},
+    "hair_9": {"head": [(_M, _cap(_TOUSLED, 14.5, 12.5)), (_M, [(7.5, 13), (13.4, 13), (13.4, 22), (11, 27.5), (8.5, 26), (6.5, 20)]), (_M, _mirror([(7.5, 13), (13.4, 13), (13.4, 22), (11, 27.5), (8.5, 26), (6.5, 20)])),
+                        (_D, [(12, 5), (16, 2), (17, 3), (13.5, 6.5)]), (_D, [(27, 2.5), (31, 5), (30, 6), (26.5, 3.5)])]},
+    "hair_10": {"head": [(_M, _cap([(31, 13), (27, 10), (22, 13), (18, 18.5), (14, 19.5), (12, 16)])), (_M, _mirror(_LOCK_L)), (_D, [(15, 9), (24, 8), (19, 15), (16.5, 16.5)])]},
+    "hair_11": {"head": [(_M, _arc(22, 9.5, 14, 11.5, 150, 390, 16) + [(31, 13.5), (28, 10.5), (22, 9.5), (16, 10.5), (13, 13.5)]),
+                         (_D, E(13, 2, 15, 4)), (_D, E(20, -0.5, 22, 1.5)), (_D, E(28, 1.5, 30, 3.5)), (_D, E(9.5, 9, 11.5, 11)), (_D, E(32.5, 8, 34.5, 10))]},
+    "hair_12": {"head": [(_M, _cap([(31, 16.5), (28, 11.5), (22, 8.5), (16, 11.5), (13, 16.5)])), (_M, _LOCK_L), (_M, _mirror(_LOCK_L)), (_D, R(21.7, 3.5, 22.3, 8.5))]},
+    "beard_1": {"head": [(_M, [(17.4, 21.8), (22, 21.2), (26.6, 21.8), (27.6, 23.2), (22, 22.6), (16.4, 23.2)])]},
+    "beard_2": {"head": [(_M, [(17.4, 21.8), (22, 21.2), (26.6, 21.8), (27.6, 23.2), (22, 22.6), (16.4, 23.2)]), (_M, [(19.8, 23.6), (24.2, 23.6), (23.4, 28), (22, 29), (20.6, 28)])]},
+    "beard_3": {"head": [(_M, [(13.6, 19), (15.6, 21.6), (18.4, 22.4), (22, 21.6), (25.6, 22.4), (28.4, 21.6), (30.4, 19), (30.2, 23.6), (27.4, 26.8), (22, 28), (16.6, 26.8), (13.8, 23.6)]),
+                         (_D, R(19.6, 23, 24.4, 23.7))]},
+    "beard_4": {"head": [(_M, [(13.6, 19), (15.6, 21.6), (18.4, 22.4), (22, 21.6), (25.6, 22.4), (28.4, 21.6), (30.4, 19), (30.4, 25), (27.6, 30), (22, 35), (16.4, 30), (13.6, 25)]),
+                         (_D, R(19.6, 23, 24.4, 23.7)), (_D, R(21.7, 26, 22.3, 33))]},
+    "beard_5": {"head": [(_M, [(13.8, 19.4), (15.6, 21.6), (18.4, 22.4), (22, 21.6), (25.6, 22.4), (28.4, 21.6), (30.2, 19.4), (30, 24), (27, 27), (25.6, 33), (23.4, 27.6), (22, 28), (20.6, 27.6),
+                                   (18.4, 33), (17, 27), (14, 24)]), ("guard", R(17.4, 29.6, 19.6, 30.6)), ("guard", R(24.4, 29.6, 26.6, 30.6))]},
+    "ears_1": {"head": [(_M, [(13.4, 15), (9, 11), (8.4, 13), (12.8, 20.4)]), (_M, _mirror([(13.4, 15), (9, 11), (8.4, 13), (12.8, 20.4)]))]},
+    "ears_2": {"head": [(_M, [(13.4, 15.6), (5, 11.6), (3.6, 13.4), (12.8, 21)]), (_M, _mirror([(13.4, 15.6), (5, 11.6), (3.6, 13.4), (12.8, 21)])),
+                        (_D, [(11.6, 16.6), (7, 14), (11.4, 19)]), (_D, _mirror([(11.6, 16.6), (7, 14), (11.4, 19)]))]},
+    "ears_3": {"head": [(_M, [(12.4, 9.4), (11.6, 1), (18.4, 5.6)]), (_M, _mirror([(12.4, 9.4), (11.6, 1), (18.4, 5.6)])), ("gill", [(13.4, 7.6), (13, 3.6), (16, 5.8)]),
+                        ("gill", _mirror([(13.4, 7.6), (13, 3.6), (16, 5.8)]))]},
+    "ears_4": {"head": [(_M, [(13.2, 14), (8, 9.6), (7.4, 14), (9.4, 16.4), (7.8, 20), (12.8, 21)]), (_M, _mirror([(13.2, 14), (8, 9.6), (7.4, 14), (9.4, 16.4), (7.8, 20), (12.8, 21)])),
+                        (_D, [(12, 15), (9, 12.4), (11.6, 17)]), (_D, _mirror([(12, 15), (9, 12.4), (11.6, 17)]))]},
+    "horns_1": {"head": [("bone", [(14.6, 8), (12.6, 1), (17.6, 5.6)]), ("bone", _mirror([(14.6, 8), (12.6, 1), (17.6, 5.6)]))]},
+    "horns_2": {"head": [("bone", [(15, 8.6), (11, 4), (7.4, 5.6), (6, 10), (8, 14), (11.6, 13.6), (10, 11), (10.4, 8.6), (12.6, 9.4)]),
+                         ("bone", _mirror([(15, 8.6), (11, 4), (7.4, 5.6), (6, 10), (8, 14), (11.6, 13.6), (10, 11), (10.4, 8.6), (12.6, 9.4)])),
+                         ("rib", [(8.6, 7), (9.4, 7.4), (8, 11), (7.4, 10.4)]), ("rib", _mirror([(8.6, 7), (9.4, 7.4), (8, 11), (7.4, 10.4)]))]},
+    "horns_3": {"head": [("bone", [(15, 8.4), (10.6, 3), (11.4, -4.6), (14.8, 0.6), (18.4, 6)]), ("bone", _mirror([(15, 8.4), (10.6, 3), (11.4, -4.6), (14.8, 0.6), (18.4, 6)]))]},
+    "horns_4": {"head": [("bone", [(15.4, 8), (13, 2), (9, -1), (9.6, -2), (13, 0), (12.4, -4), (13.6, -4), (14.4, 0.6), (16.6, -2.6), (17.6, -2), (15.2, 2.4), (17.4, 7)]),
+                         ("bone", _mirror([(15.4, 8), (13, 2), (9, -1), (9.6, -2), (13, 0), (12.4, -4), (13.6, -4), (14.4, 0.6), (16.6, -2.6), (17.6, -2), (15.2, 2.4), (17.4, 7)]))]},
+    "horns_5": {"head": [("crystal", [(14, 8.6), (12, 1), (16, 5)]), ("crystal", [(20, 6.6), (22, -3.4), (24, 6.6)]), ("crystal", [(30, 8.6), (32, 1), (28, 5)]), ("frost", [(21.4, 2), (22, -1.4), (22.6, 2)])]},
+    "horns_6": {"head": [("bone", [(20.4, 7.6), (22, -4.6), (23.6, 7.6)]), ("rib", R(20.8, 3.4, 23.2, 4)), ("rib", R(21.2, 0, 22.8, 0.6))]},
+    "tail_1": {"torso": [(_M, [(19, 31), (11, 34.6), (6.4, 31), (5, 25.4), (6.6, 25), (8.2, 29.6), (11.4, 32.4), (19, 29.4)]), (_M, [(5.8, 26), (2.6, 22), (9, 22.8)])]},
+    "tail_2": {"torso": [(_M, [(18, 31), (9.4, 31), (3.6, 25), (4.4, 18), (9, 19.6), (11.4, 26), (18, 28)]), ("bone", [(4.4, 18), (9, 19.6), (7.6, 23), (4.2, 22)])]},
+    "tail_3": {"torso": [(_M, [(19, 29.6), (10, 33), (3, 38.4), (0.6, 41), (6.4, 40.6), (13.4, 37.4), (20, 34)]), (_D, [(9, 34.4), (10, 34), (11.4, 37.4), (10.4, 37.8)]),
+                         (_D, [(5, 37.6), (6, 37.2), (7, 39.6), (6, 40)])]},
+    "wings_1": {"torso": [(_M, [(15, 26), (5, 11), (0.4, 17), (4.6, 27), (14, 29.4)]), (_M, [(15, 29.4), (5.4, 31), (3.6, 38), (12.4, 36.4)]),
+                          (_M, _mirror([(15, 26), (5, 11), (0.4, 17), (4.6, 27), (14, 29.4)])), (_M, _mirror([(15, 29.4), (5.4, 31), (3.6, 38), (12.4, 36.4)])),
+                          (_D, [(13.6, 26.4), (6, 14.6), (6.8, 14), (14.4, 26)]), (_D, _mirror([(13.6, 26.4), (6, 14.6), (6.8, 14), (14.4, 26)]))]},
+    "wings_2": {"torso": [(_M, [(16, 25), (8, 13), (1, 10), (3.6, 17), (0.6, 21), (5.6, 23), (3.6, 29), (9.4, 28), (15, 31)]),
+                          (_M, _mirror([(16, 25), (8, 13), (1, 10), (3.6, 17), (0.6, 21), (5.6, 23), (3.6, 29), (9.4, 28), (15, 31)])),
+                          (_D, [(15.4, 25.6), (8, 13.6), (8.8, 13), (16, 25)]), (_D, _mirror([(15.4, 25.6), (8, 13.6), (8.8, 13), (16, 25)]))]},
+    "mark_1": {"head": [("wound", [(24.6, 13.6), (25.5, 13.6), (27.2, 21.4), (26.3, 21.4)])]},
+    "mark_2": {"head": [("blood", R(15.4, 20.2, 19.6, 21)), ("blood", R(24.4, 20.2, 28.6, 21)), ("blood", R(21.5, 12, 22.5, 16))]},
+    "mark_3": {"head": [("skin_shade", R(16, 20.6, 16.7, 21.3)), ("skin_shade", R(18.4, 21.4, 19.1, 22.1)), ("skin_shade", R(25, 21.4, 25.7, 22.1)), ("skin_shade", R(27.4, 20.6, 28.1, 21.3)),
+                        ("skin_shade", R(20.4, 19.6, 21.1, 20.3))]},
+    "mark_4": {"head": [("gill", E(14.6, 20, 17.6, 22)), ("gill", E(26.4, 20, 29.4, 22))]},
+    "mark_5": {"head": [("glow_cyan", [(20.8, 12.6), (22, 10.6), (23.2, 12.6), (22, 14.6)]), ("shine", R(21.6, 11.6, 22.2, 12.2))]},
+    "mark_6": {"head": [("void", R(14.6, 19.6, 18.6, 20.1)), ("void", R(15.2, 21, 18, 21.5)), ("void", R(15.8, 22.4, 17.4, 22.9)), ("void", R(26.6, 14, 27.1, 16.6))]},
+    "mark_7": {"head": [("tooth", [(17.8, 23), (19.6, 23), (18.7, 19.6)]), ("tooth", [(24.4, 23), (26.2, 23), (25.3, 19.6)])]},
+    "mark_8": {"head": [("tooth", [(19.8, 22.4), (21.2, 22.4), (20.5, 24.6)]), ("tooth", [(22.8, 22.4), (24.2, 22.4), (23.5, 24.6)])]},
+    "eyes": {"head": [(_M, R(17, 18, 18, 19)), (_M, R(25, 18, 26, 19))]},
+}
+
 HUSK = {
     "root": dict(parent=None, pivot=(22, 41), parts=[]),
     "back_arm": dict(parent="torso", pivot=(13, 22), parts=[("flesh", R(12, 22, 14, 38)), ("bone", [(11, 38), (15, 38), (13, 42)])]),
@@ -172,6 +271,13 @@ HUSK_ORDER = ["back_arm", "leg_l", "leg_r", "torso", "head", "front_arm"]
 # Keys are the "visual" names used in scripts/items/item_db.py; the order is
 # also the order of the generated weapon icons, so only ever append.
 WEAPONS = {
+    # Tools, held like weapons while at work.
+    "pickaxe": [("wood", R(35, 10, 36.2, 37)), ("blade", [(26, 14), (29, 10.5), (35.6, 8.5), (42, 10.5), (45, 14), (41, 12.4), (35.6, 11.6), (30, 12.4)]),
+                ("guard", R(34.4, 8.6, 36.8, 12.4)), ("wrap", R(34.8, 30, 36.4, 32))],
+    "hatchet": [("wood", R(35, 13, 36.2, 37)), ("blade", [(36, 13), (41.5, 11), (44.5, 16.5), (41.5, 22), (36, 20)]),
+                ("blade", [(35, 14.5), (33, 16.5), (35, 18.5)]), ("guard", R(34.6, 13.6, 36.6, 19.6)), ("wrap", R(34.8, 31, 36.4, 33))],
+    "rod": [("wood", [(35, 37), (36.2, 37), (37.6, -2), (36.8, -2)]), ("guard", E(33.2, 27, 35.4, 30)), ("wrap", R(34.8, 31, 36.4, 34)),
+            ("bone", R(37.2, -2, 37.7, 12)), ("blade", [(36.8, 12), (38.2, 12), (38.2, 14.4), (37.2, 14.4)])],
     "sword": [("blade", R(34, 12, 37, 29.5)), ("blade", [(34, 12), (37, 12), (35.5, 8)]),
               ("guard", R(32, 30, 39, 31.5)), ("belt", R(35, 32, 36, 34)), ("guard", R(34.8, 34.5, 36.2, 35.5))],
     "greatsword": [("blade", R(33, 5, 38, 29.5)), ("blade", [(33, 5), (38, 5), (35.5, 0)]),
@@ -248,10 +354,15 @@ LAYERS = {
         ("plate_dark", [(14.2, 32.6), (29.8, 32.6), (30, 35), (14, 35)])]},
     "shoulders": {"torso": [("plate", E(10.5, 23.5, 16.5, 28)), ("plate", E(27.5, 23.5, 33.5, 28))]},
     "cape": {"torso": [("cape", [(14.5, 25), (29.5, 25), (34, 40), (10, 40)])]},
-    # A deep cowl for the Reaper look: covers the hair, leaves the face in shadow.
+    # A cowl for the Reaper look: hugs the head, falls to the shoulders,
+    # and leaves the face in shadow. Pale parts take the look's colour.
     "hood": {"head": [
-        ("cape", _half_ellipse(22, 16, 13.5, 14)), ("cape", [(8.5, 15), (35.5, 15), (34, 27), (30, 27), (31, 17), (13, 17), (14, 27), (10, 27)]),
-        ("cape", [(20, 2.5), (24, 2.5), (22, -1)]), ("plate_dark", [(13, 16), (31, 16), (30.5, 19), (13.5, 19)])]},
+        ("cape", [(9, 26), (9.5, 13), (13, 5.5), (18, 2.5), (22, 1.5), (26.5, 2.5), (31.5, 5.5), (34.5, 13), (35, 26), (31.5, 27.5), (31, 16), (28, 11.5),
+                  (22, 10), (16, 11.5), (13, 16), (12.5, 27.5)]),
+        ("plate_dark", [(13, 16), (16, 11.5), (22, 10), (28, 11.5), (31, 16), (30.5, 18), (26, 15), (22, 14), (18, 15), (13.5, 18)]),
+        ("plate_dark", [(11, 13), (14.5, 7), (15.5, 7.5), (12.5, 14)]), ("plate_dark", [(33, 13), (29.5, 7), (28.5, 7.5), (31.5, 14)]),
+        ("plate_dark", R(10, 22, 11.2, 26)), ("plate_dark", R(32.8, 22, 34, 26)),
+        ("plate", [(19, 3), (25, 3), (23.5, 5), (20.5, 5)])]},
 }
 
 
@@ -307,7 +418,7 @@ def _finish(pixels, plain):
     return out
 
 
-def draw_frame(rig, order, pose, shadow=True, rich=False):
+def draw_frame(rig, order, pose, shadow=True, rich=False, outline=True):
     ox, oy = FRAME_OFFSET
     pixels = {}
     plain = set()
@@ -341,7 +452,7 @@ def draw_frame(rig, order, pose, shadow=True, rich=False):
         pixels = _finish(pixels, plain)
     for (x, y), colour in pixels.items():
         img.putpixel((x, y), rgba(colour))
-    for y in range(FRAME):
+    for y in range(FRAME if outline else 0):
         for x in range(FRAME):
             if (x, y) in pixels:
                 continue
@@ -391,6 +502,9 @@ HUMAN_IDLE = [{"torso": (0, bob, 0)} for bob in (0, 1, 1, 0)]
 HUMAN_WALK = cycle(8, lambda s: {
     "root": (0, -round(abs(s)), 0),
     "leg_l": (0, 0, 22 * s), "leg_r": (0, 0, -22 * s), "arm_l": (0, 0, -18 * s), "arm_r": (0, 0, 10 * s)})
+# Sitting astride a mount: thighs forward, a gentle bob.
+HUMAN_RIDE = [{"root": (0, 2 + bob, 0), "leg_l": (2, -2, -75), "leg_r": (2, -2, -70), "torso": (0, 0, 3), "arm_l": (0, 0, -20), "arm_r": (0, 0, -35)}
+              for bob in (0, 1, 1, 0)]
 HUMAN_RUN = cycle(8, lambda s: {
     "root": (0, -round(abs(s) * 2), 0), "torso": (1, 0, 7), "head": (0, 0, -4),
     "leg_l": (0, 0, 38 * s), "leg_r": (0, 0, -38 * s), "arm_l": (0, 0, -35 * s), "arm_r": (0, 0, 18 * s)})
@@ -457,7 +571,7 @@ HUSK_DEATH = keyframes([(0, HUSK_STAND), (1, HUSK_REEL), (5, HUSK_FALLEN), (7, H
 HUMAN_ANIMATIONS = [
     ("idle", HUMAN_IDLE), ("walk", HUMAN_WALK), ("run", HUMAN_RUN), ("attack", HUMAN_ATTACK),
     ("heavy", HUMAN_HEAVY), ("dodge", HUMAN_DODGE), ("hurt", HUMAN_HURT),
-    ("death", HUMAN_DEATH), ("rebirth", HUMAN_REBIRTH),
+    ("death", HUMAN_DEATH), ("rebirth", HUMAN_REBIRTH), ("ride", HUMAN_RIDE),
 ]
 HUSK_ANIMATIONS = [
     ("idle", HUSK_IDLE), ("walk", HUSK_WALK), ("windup", HUSK_WINDUP), ("lunge", HUSK_LUNGE),
@@ -875,21 +989,90 @@ SNOW_FOX = _quad(
     leg=lambda x: [("frost_fur", R(x + 0.5, 32, x + 3, 40)), ("troll", R(x + 0.3, 39.5, x + 3.2, 41.4))],
     head_pivot=(29, 27),
 )
-SHORE_CRAB = _quad(
-    body=[("blood", E(10, 27, 34, 38)), ("wound", E(14, 30, 30, 37)), ("shine", R(15, 29, 18, 30)), ("eye_white", R(18, 25, 19.5, 28)), ("eye_white", R(25, 25, 26.5, 28)),
-          ("void", R(18.2, 25.2, 19.3, 26.3)), ("void", R(25.2, 25.2, 26.3, 26.3))],
-    head=[("blood", [(30, 30), (36, 24), (41, 24), (42, 28), (38, 31)]), ("blood", [(36, 24), (39, 20), (41, 21), (39, 25)]), ("blood", [(12, 31), (6, 25), (2, 26), (5, 30)])],
-    tail=[],
-    leg=lambda x: [("blood", [(x, 35), (x - 3, 39), (x - 2, 41), (x + 1.5, 37)])],
-    head_pivot=(32, 32),
-)
+# A crab seen from the front: a broad shell, eyes on stalks, two raised
+# claws, and three walking legs a side that scuttle in turn.
+def _crab_leg(x, side):
+    return [("blood", [(x, 33), (x + side * 5, 30), (x + side * 6.5, 31.5), (x + side * 2, 35)]),
+            ("wound", [(x + side * 5, 30.5), (x + side * 8, 40), (x + side * 6.4, 41.4), (x + side * 4.6, 32)])]
+
+
+SHORE_CRAB = {
+    "root": dict(parent=None, pivot=(22, 41), parts=[]),
+    "leg_l1": dict(parent="root", pivot=(14, 33), parts=_crab_leg(14, -1)),
+    "leg_l2": dict(parent="root", pivot=(15, 35), parts=_crab_leg(15.5, -1)),
+    "leg_l3": dict(parent="root", pivot=(17, 36), parts=_crab_leg(17, -1)),
+    "leg_r1": dict(parent="root", pivot=(30, 33), parts=_crab_leg(30, 1)),
+    "leg_r2": dict(parent="root", pivot=(29, 35), parts=_crab_leg(28.5, 1)),
+    "leg_r3": dict(parent="root", pivot=(27, 36), parts=_crab_leg(27, 1)),
+    "body": dict(parent="root", pivot=(22, 34), parts=[
+        ("blood", E(10, 26, 34, 39)), ("wound", E(12, 33, 32, 39.5)), ("blood", [(11, 30), (16, 26), (28, 26), (33, 30), (30, 28), (14, 28)]),
+        ("shine", R(15, 28, 19, 29)), ("shine", R(14, 30, 15, 31)), ("wound", R(18, 31, 19, 32)), ("wound", R(24, 30, 25, 31)), ("wound", R(28, 32, 29, 33)),
+        ("blood", R(18, 22, 19.4, 27)), ("blood", R(24.6, 22, 26, 27)), ("eye_white", E(16.8, 20, 20.6, 23.8)), ("eye_white", E(23.4, 20, 27.2, 23.8)),
+        ("void", R(18.4, 21.2, 19.6, 22.6)), ("void", R(25, 21.2, 26.2, 22.6)), ("void", [(19, 36), (25, 36), (24, 37), (20, 37)])]),
+    "claw_l": dict(parent="body", pivot=(12, 31), parts=[
+        ("blood", [(12, 32), (7, 29), (5, 25), (7, 24), (10, 27), (14, 30)]), ("blood", E(1, 17, 10, 26)),
+        ("wound", [(3, 17), (1, 12), (4, 14), (6, 18)]), ("blood", [(6, 18), (9, 12), (10, 15), (9, 19)]), ("void", [(4, 17), (5.5, 14), (7, 17.5)]),
+        ("shine", R(3, 20, 5, 21))]),
+    "claw_r": dict(parent="body", pivot=(32, 31), parts=[
+        ("blood", [(32, 32), (37, 29), (39, 25), (37, 24), (34, 27), (30, 30)]), ("blood", E(34, 17, 43, 26)),
+        ("wound", [(41, 17), (43, 12), (40, 14), (38, 18)]), ("blood", [(38, 18), (35, 12), (34, 15), (35, 19)]), ("void", [(40, 17), (38.5, 14), (37, 17.5)]),
+        ("shine", R(36, 20, 38, 21))]),
+}
+CRAB_ORDER = ["leg_l1", "leg_r1", "leg_l2", "leg_r2", "leg_l3", "leg_r3", "claw_l", "claw_r", "body"]
+CRAB_STAND = {"shadow": (22, 15, 0)}
+
+
+def _crab(step=0.0, bob=0, dx=0, claws=0.0, lean=0.0, snap=0.0, shadow=15):
+    """Legs scuttle in two alternating sets; claws lift and snap."""
+    return {"root": (dx, bob, lean), "shadow": (22, shadow, 0),
+            "leg_l1": (0, 0, 16 * step), "leg_l2": (0, 0, -16 * step), "leg_l3": (0, 0, 16 * step),
+            "leg_r1": (0, 0, 16 * step), "leg_r2": (0, 0, -16 * step), "leg_r3": (0, 0, 16 * step),
+            "claw_l": (0, 0, -18 * claws - 10 * snap), "claw_r": (0, 0, 18 * claws - 10 * snap)}
+
+
+CRAB_IDLE = [_crab(claws=c, bob=b) for c, b in ((0, 0), (0.25, 0), (0.5, 1), (0.25, 0))]
+CRAB_WALK = cycle(8, lambda s: _crab(step=s, bob=-round(abs(s)), claws=0.2))
+CRAB_WINDUP = [_crab(claws=1.2 * t, bob=round(2 * t), dx=(i % 2 if i > 2 else 0)) for i, t in enumerate(k / 5 for k in range(6))]
+CRAB_LUNGE = [_crab(claws=1.2 - 1.6 * k, dx=round(7 * k), bob=-round(3 * k), snap=k, lean=6 * k) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+CRAB_HURT = [_crab(dx=-round(3 * t), lean=-10 * t, claws=-0.4 * t) for t in (0.7, 1.0, 0.4)]
+CRAB_FALLEN = dict(_crab(step=1.0, claws=1.4, shadow=16), root=(0, -8, 180), root_pivot=(22, 34))
+CRAB_DEATH = keyframes([(0, dict(_crab(), root_pivot=(22, 34))), (1, dict(_crab(lean=-12, claws=0.6), root_pivot=(22, 34))), (5, CRAB_FALLEN), (7, CRAB_FALLEN)])
+CRAB_ANIMATIONS = [("idle", CRAB_IDLE), ("walk", CRAB_WALK), ("windup", CRAB_WINDUP), ("lunge", CRAB_LUNGE), ("hurt", CRAB_HURT), ("death", CRAB_DEATH)]
+
+# A toad in profile: fat warty body, bulging eye, a folded hind leg that
+# kicks straight when it hops, and a short front leg.
 MARSH_TOAD = {
     "root": dict(parent=None, pivot=(22, 41), parts=[]),
+    "leg_b": dict(parent="root", pivot=(14, 35), parts=[
+        ("lurker", E(7, 29, 19, 40)), ("lurker", [(9, 37), (16, 37), (20, 40), (10, 40.6)]), ("lurker", [(10, 40), (23, 40), (24, 41.4), (10, 41.4)]),
+        ("poison", E(10, 32, 13, 35)), ("void", R(19, 40.6, 20, 41.4)), ("void", R(22, 40.6, 23, 41.4))]),
     "body": dict(parent="root", pivot=(22, 41), parts=[
-        ("lurker", E(9, 24, 35, 41)), ("lurker", R(9, 34, 35, 41)), ("eye_white", E(14, 33, 30, 41)), ("poison", E(13, 27, 17, 31)), ("poison", E(26, 29, 29, 32)),
-        ("lurker", E(13, 20, 20, 27)), ("lurker", E(24, 20, 31, 27)), ("glow_orange", E(14.5, 21.5, 18.5, 25.5)), ("glow_orange", E(25.5, 21.5, 29.5, 25.5)),
-        ("void", R(16, 22.5, 17, 24.5)), ("void", R(27, 22.5, 28, 24.5)), ("void", [(16, 30), (28, 30), (27, 31), (17, 31)])]),
+        ("lurker", E(10, 24, 34, 40)), ("lurker", [(24, 27), (33, 24), (38, 28), (38, 33), (33, 37), (24, 38)]),
+        ("eye_white", E(16, 33, 34, 40.6)), ("eye_white", [(30, 33), (38, 32), (37, 35), (31, 37)]),
+        ("poison", E(13, 27, 17, 31)), ("poison", E(20, 25, 23, 28)), ("poison", E(24, 30, 26.5, 32.5)), ("moss", E(15, 33, 17, 35)),
+        ("lurker", E(27, 19, 35, 27)), ("glow_orange", E(28.6, 20.6, 33.6, 25.6)), ("void", R(31, 21.6, 32.4, 24.6)), ("shine", R(29.4, 21.4, 30.4, 22.4)),
+        ("void", [(30, 31), (38, 30), (38, 30.9), (30, 31.9)]), ("void", R(37, 27.6, 37.8, 28.4))]),
+    "leg_f": dict(parent="root", pivot=(28, 35), parts=[
+        ("lurker", [(26, 33), (30, 33), (30.5, 40), (27, 40)]), ("lurker", [(27, 40), (34, 40), (35, 41.4), (27, 41.4)]),
+        ("void", R(31, 40.6, 32, 41.4)), ("void", R(33.5, 40.6, 34.5, 41.4))]),
 }
+TOAD_ORDER = ["leg_b", "body", "leg_f"]
+
+
+def _toad(sx=1.0, sy=1.0, dx=0, dy=0, turn=0.0, kick=0.0, reach=0.0, shadow=13):
+    return {"root": (dx, dy, turn), "body_scale": (sx, sy), "leg_b": (-round(2 * kick), round(2 * kick), 70 * kick),
+            "leg_f": (0, 0, -35 * reach), "shadow": (22, shadow * sx, 0)}
+
+
+TOAD_IDLE = [_toad(), _toad(1.04, 0.96), _toad(1.07, 0.93), _toad(1.03, 0.97)]
+TOAD_WALK = [_toad(1.1, 0.88, dy=1), _toad(0.96, 1.06, 1, -2, -10, 0.55, 0.5), _toad(0.92, 1.1, 2, -6, -14, 1.0, 1.0), _toad(0.94, 1.08, 3, -8, -6, 1.05, 0.9),
+             _toad(0.97, 1.04, 3, -6, 8, 0.7, 0.3), _toad(1.0, 1.0, 2, -3, 12, 0.35, -0.4), _toad(1.16, 0.82, 1), _toad(1.05, 0.95)]
+TOAD_WINDUP = [_toad(1.0 + 0.3 * t, 1.0 - 0.3 * t, (i % 2 if i > 2 else 0)) for i, t in enumerate(k / 5 for k in range(6))]
+TOAD_LUNGE = [_toad(1.0 - 0.06 * k, 1.0 + 0.08 * k, round(7 * k), -round(6 * k), -12 * k, k, k) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+TOAD_HURT = [_toad(1.12, 0.84, -1), _toad(1.2, 0.74, -2), _toad(1.08, 0.92, -1)]
+TOAD_FALLEN = dict(_toad(1.05, 0.9, kick=0.9, reach=0.8, shadow=14), root=(0, -9, 178), root_pivot=(22, 33))
+TOAD_DEATH = keyframes([(0, dict(_toad(), root_pivot=(22, 33))), (1, dict(_toad(1.1, 0.86, -2), root_pivot=(22, 33))), (5, TOAD_FALLEN), (7, TOAD_FALLEN)])
+TOAD_ANIMATIONS = [("idle", TOAD_IDLE), ("walk", TOAD_WALK), ("windup", TOAD_WINDUP), ("lunge", TOAD_LUNGE), ("hurt", TOAD_HURT), ("death", TOAD_DEATH)]
 WILDLIFE = {
     "deer": (DEER, QUAD_ORDER, QUAD_ANIMATIONS),
     "wild_hare": (WILD_HARE, QUAD_ORDER, QUAD_ANIMATIONS),
@@ -898,8 +1081,8 @@ WILDLIFE = {
     "pheasant": (PHEASANT, QUAD_ORDER, QUAD_ANIMATIONS),
     "desert_lizard": (DESERT_LIZARD, QUAD_ORDER, QUAD_ANIMATIONS),
     "snow_fox": (SNOW_FOX, QUAD_ORDER, QUAD_ANIMATIONS),
-    "shore_crab": (SHORE_CRAB, QUAD_ORDER, QUAD_ANIMATIONS),
-    "marsh_toad": (MARSH_TOAD, ["body"], SLIME_ANIMATIONS),
+    "shore_crab": (SHORE_CRAB, CRAB_ORDER, CRAB_ANIMATIONS),
+    "marsh_toad": (MARSH_TOAD, TOAD_ORDER, TOAD_ANIMATIONS),
 }
 
 # Mounts: drawn as quadrupeds, ridden by the player.
@@ -991,19 +1174,20 @@ def draw_npc(changes, extras):
         PALETTE.update(saved)
 
 
-def draw_sheet(rig, order, animations, shadow=True, rich=False):
+def draw_sheet(rig, order, animations, shadow=True, rich=False, outline=True):
     columns = max(len(poses) for _name, poses in animations)
     sheet = Image.new("RGBA", (columns * FRAME, len(animations) * FRAME), (0, 0, 0, 0))
     for row, (_name, poses) in enumerate(animations):
         for column, pose in enumerate(poses):
-            sheet.paste(draw_frame(rig, order, pose, shadow, rich), (column * FRAME, row * FRAME))
+            sheet.paste(draw_frame(rig, order, pose, shadow, rich, outline), (column * FRAME, row * FRAME))
     return sheet
 
 
-def draw_layer_sheet(parts_by_group):
-    """One piece of equipment alone, moving exactly as the body part it sits on."""
+def draw_layer_sheet(parts_by_group, outline=True):
+    """One piece of equipment alone, moving exactly as the body part it sits on.
+    Small marks on the skin (scars, paint, eye colour) are drawn without an outline."""
     rig = {name: dict(group, parts=parts_by_group.get(name, [])) for name, group in HUMAN.items()}
-    return draw_sheet(rig, [name for name in HUMAN_ORDER if name in parts_by_group], HUMAN_ANIMATIONS, shadow=False)
+    return draw_sheet(rig, [name for name in HUMAN_ORDER if name in parts_by_group], HUMAN_ANIMATIONS, shadow=False, outline=outline)
 
 
 def weapon_icon_parts(parts):
@@ -1087,20 +1271,19 @@ def draw_tile(row, variant, frame=0):
         d.line((x, y, x + 4, y + 3, x + 6, y + 2, x + 10, y + 6), fill=colour)
 
     if style == "rock":
-        img.paste(dark, (0, 0, N, N))
-        y = 1
-        while y < N - 2:
-            h = min(r.choice((9, 10, 11)), N - 1 - y)
-            x = 1
-            while x < N - 2:
-                w = min(r.choice((10, 13, 16)), N - 1 - x)
-                d.rectangle((x, y, x + w - 2, y + h - 2), fill=base)
-                d.line((x, y, x + w - 2, y), fill=light)
-                d.line((x, y, x, y + h - 3), fill=light)
-                if r.random() < 0.4:
-                    put(x + r.randrange(2, max(3, w - 3)), y + r.randrange(2, max(3, h - 3)), accent)
-                x += w
-            y += h
+        # The top of a wall seen from above: rough, dark rock, lit faintly
+        # from the top-left, with cracks. Its front face is drawn in game.
+        img.paste(base, (0, 0, N, N))
+        for _ in range(7):
+            x, y, w, h = r.randrange(-6, N), r.randrange(-6, N), r.randrange(8, 18), r.randrange(6, 14)
+            d.ellipse((x, y, x + w, y + h), fill=dark)
+            d.arc((x, y, x + w, y + h), 180, 270, fill=light)
+        for _ in range(140):
+            put(r.randrange(N), r.randrange(N), light if r.random() < 0.3 else dark)
+        for _ in range(3):
+            crack(dark)
+        for _ in range(6):
+            put(r.randrange(N), r.randrange(N), accent)
         return img
     if style in ("mountain", "peak"):
         # Broken rock in tilted strata, with scree and, up high, snow.
@@ -1285,6 +1468,13 @@ ICON_PALETTE = {
     "red": ["e0555a", "b3242e", "7a1620"],
     "purple": ["c9a0f0", "8e5cc8", "5c3690"],
     "dark": ["0b0a12"] * 3,
+    "meat_raw": ["f08a8a", "c8505a", "8a2a34"], "meat": ["d88a52", "a85e32", "6e3a1c"], "crust": ["f0c070", "c89048", "8a5e2a"],
+    "bowl": ["9a7a58", "74563c", "4c3626"], "carrot": ["ffa040", "e0701e", "a04a10"], "leaf": ["9ad870", "5aa04a", "3a7030"],
+    "potato": ["e0c090", "b89660", "806040"], "pumpkin": ["ffaa48", "e07818", "a04a08"], "wheat": ["f8e090", "d8b458", "a08038"],
+    "berry": ["f06a8a", "c0304a", "7a1a30"], "fur": ["d8b898", "a8845e", "6e5038"], "feather": ["f0e8d8", "c0b098", "887868"],
+    "shell": ["f8906a", "d05a40", "8a3a28"], "scale": ["c0d898", "8aa868", "5a6e44"], "wool": ["fcf8f2", "dcd6cc", "aca69c"],
+    "soup": ["f0c070", "d89040", "a06020"], "fish": ["d8b080", "b08050", "7a5430"], "seed": ["e8d090", "b89a58", "7a6438"],
+    "mush": ["e86a6a", "b83a40", "7a2028"], "stalk": ["f4ecd8", "d4c8a8", "a09478"], "plate": ["e8e8f0", "b8b8c8", "88889a"],
 }
 ICONS = [
     ("sword", [("metal", "line", (6, 15, 17, 4), 3), ("gold", "line", (4, 13, 9, 18), 2), ("wood", "line", (3, 19, 5, 17), 2)]),
@@ -1363,6 +1553,94 @@ ICONS += [("gem", [("plate", "poly", [(6, 5), (16, 5), (20, 10), (11, 20), (2, 1
                    ("plate", "poly", [(8, 5), (14, 5), (12, 10), (10, 10)]), ("bone", "rect", (7, 6, 8, 7))])]
 # Icons 60-65: unique weapons.
 ICONS += [(name, None) for name in ["stormcaller", "splitshot", "wispkeeper", "bloodthirst", "frostbite", "sunfang"]]
+# Icons 66-91: food, produce and animal materials, in their own colours.
+ICONS += [
+    ("raw_meat", [("meat_raw", "poly", [(3, 9), (8, 4), (15, 4), (19, 8), (18, 15), (12, 19), (5, 17)]), ("wool", "ellipse", (8, 8, 13, 12)), ("bone", "ellipse", (9, 9, 12, 11))]),
+    ("roast", [("bone", "line", (4, 18, 9, 13), 2), ("bone", "ellipse", (2, 16, 6, 20)), ("meat", "ellipse", (6, 3, 19, 15)), ("crust", "ellipse", (8, 5, 13, 9))]),
+    ("drumstick", [("bone", "line", (5, 17, 10, 12), 2), ("bone", "ellipse", (2, 15, 6, 19)), ("meat", "ellipse", (8, 3, 19, 14)), ("crust", "ellipse", (11, 5, 15, 8))]),
+    ("stew", [("bowl", "poly", [(2, 10), (20, 10), (17, 18), (5, 18)]), ("plate", "ellipse", (3, 7, 19, 13)), ("carrot", "rect", (7, 9, 8, 10)), ("leaf", "rect", (13, 9, 14, 10)), ("potato", "rect", (10, 10, 11, 11))]),
+    ("pie", [("crust", "ellipse", (2, 6, 20, 18)), ("plate", "ellipse", (5, 8, 17, 15)), ("crust", "line", (5, 11, 17, 11), 1), ("crust", "line", (11, 8, 11, 15), 1)]),
+    ("bread", [("crust", "ellipse", (2, 6, 20, 17)), ("wheat", "line", (6, 9, 9, 12), 1), ("wheat", "line", (10, 8, 13, 11), 1), ("wheat", "line", (14, 9, 17, 12), 1)]),
+    ("cooked_fish", [("fish", "ellipse", (3, 7, 16, 15)), ("fish", "poly", [(15, 11), (20, 7), (20, 15)]), ("dark", "rect", (6, 9, 7, 10)), ("crust", "line", (8, 9, 12, 13), 1)]),
+    ("skewer", [("wood", "line", (2, 19, 19, 2), 1), ("meat", "ellipse", (4, 12, 9, 17)), ("meat", "ellipse", (8, 8, 13, 13)), ("leaf", "ellipse", (12, 5, 16, 9))]),
+    ("jerky", [("meat", "poly", [(3, 6), (8, 4), (10, 17), (5, 18)]), ("meat", "poly", [(11, 5), (16, 4), (18, 16), (13, 17)]), ("crust", "line", (5, 8, 7, 15), 1)]),
+    ("cakes", [("crust", "ellipse", (2, 10, 12, 18)), ("crust", "ellipse", (9, 6, 19, 14)), ("shell", "rect", (13, 8, 15, 9))]),
+    ("carrot", [("carrot", "poly", [(5, 18), (13, 5), (17, 9)]), ("leaf", "poly", [(13, 5), (14, 1), (16, 4), (19, 2), (17, 7)])]),
+    ("potato", [("potato", "ellipse", (3, 6, 19, 17)), ("bowl", "rect", (7, 9, 8, 10)), ("bowl", "rect", (13, 12, 14, 13))]),
+    ("pumpkin", [("pumpkin", "ellipse", (2, 6, 20, 19)), ("crust", "line", (11, 7, 11, 18), 1), ("crust", "line", (6, 8, 6, 17), 1), ("leaf", "rect", (10, 2, 12, 6))]),
+    ("wheat", [("wheat", "line", (6, 19, 9, 4), 1), ("wheat", "line", (11, 19, 11, 3), 1), ("wheat", "line", (16, 19, 13, 4), 1), ("wheat", "ellipse", (7, 2, 11, 8)),
+               ("wheat", "ellipse", (9, 1, 13, 7)), ("wheat", "ellipse", (12, 2, 16, 8)), ("leaf", "rect", (8, 14, 14, 15))]),
+    ("berries", [("plate", "ellipse", (3, 9, 10, 16)), ("plate", "ellipse", (9, 11, 16, 18)), ("plate", "ellipse", (10, 4, 17, 11)), ("leaf", "poly", [(6, 5), (10, 2), (11, 6)])]),
+    ("platter", [("plate", "ellipse", (1, 9, 21, 19)), ("meat", "ellipse", (4, 7, 12, 14)), ("crust", "ellipse", (10, 8, 17, 14)), ("leaf", "ellipse", (13, 11, 18, 16))]),
+    ("pelt", [("plate", "poly", [(4, 4), (8, 6), (14, 6), (18, 4), (17, 10), (19, 18), (13, 16), (9, 16), (3, 18), (5, 10)]), ("fur", "line", (8, 9, 14, 13), 1)]),
+    ("leather", [("leather", "ellipse", (3, 6, 19, 17)), ("leather", "rect", (2, 10, 20, 14)), ("bowl", "line", (5, 12, 17, 12), 1)]),
+    ("feather", [("plate", "poly", [(4, 19), (8, 10), (15, 3), (17, 6), (11, 14)]), ("bone", "line", (4, 19, 15, 5), 1)]),
+    ("horn", [("plate", "poly", [(3, 18), (6, 10), (11, 5), (18, 3), (14, 7), (10, 12), (8, 19)]), ("bowl", "line", (6, 15, 8, 16), 1)]),
+    ("antler", [("plate", "line", (5, 19, 11, 6), 2), ("plate", "line", (9, 10, 4, 4), 1), ("plate", "line", (10, 8, 16, 3), 1), ("plate", "line", (8, 13, 15, 10), 1)]),
+    ("shell", [("plate", "ellipse", (2, 5, 20, 18)), ("bowl", "line", (11, 6, 11, 17), 1), ("bowl", "line", (5, 9, 9, 16), 1), ("bowl", "line", (17, 9, 13, 16), 1)]),
+    ("scales", [("plate", "ellipse", (3, 4, 10, 11)), ("plate", "ellipse", (9, 7, 16, 14)), ("plate", "ellipse", (5, 11, 12, 18)), ("plate", "ellipse", (12, 13, 19, 20))]),
+    ("wool", [("plate", "ellipse", (2, 5, 13, 16)), ("plate", "ellipse", (8, 7, 20, 18)), ("plate", "ellipse", (6, 3, 16, 12))]),
+    ("seeds", [("leather", "poly", [(5, 8), (17, 8), (19, 18), (3, 18)]), ("leather", "rect", (7, 5, 15, 8)), ("plate", "ellipse", (8, 12, 10, 14)), ("plate", "ellipse", (12, 13, 14, 15))]),
+    ("mushroom", [("stalk", "rect", (9, 10, 13, 19)), ("plate", "ellipse", (3, 4, 19, 13)), ("wool", "ellipse", (6, 6, 8, 8)), ("wool", "ellipse", (13, 7, 15, 9))]),
+]
+# 92 onward: a wolf's head (forms), a backpack (its flap takes the item's
+# colour), a burning torch, a paw print.
+ICON_PALETTE.update({"flame": ["fff2a8", "ffb03a", "e0541e"], "ember_glow": ["ffe27a", "ffd24a", "f0a020"], "night": ["3a3a4a", "26262f", "18181e"]})
+ICONS += [
+    ("wolf", [("fur", "poly", [(4, 8), (3, 1), (8, 5)]), ("fur", "poly", [(18, 8), (19, 1), (14, 5)]), ("fur", "poly", [(4, 7), (11, 3), (18, 7), (19, 13), (14, 17), (11, 20), (8, 17), (3, 13)]),
+              ("wool", "poly", [(8, 13), (14, 13), (13, 18), (11, 20), (9, 18)]), ("night", "rect", (10, 17, 12, 18)), ("ember_glow", "rect", (6, 9, 8, 10)), ("ember_glow", "rect", (14, 9, 16, 10)),
+              ("night", "rect", (7, 9, 7, 10)), ("night", "rect", (15, 9, 15, 10)), ("flesh", "poly", [(4, 6), (4, 3), (6, 5)]), ("flesh", "poly", [(18, 6), (18, 3), (16, 5)])]),
+    ("backpack", [("leather", "rect", (4, 6, 17, 19)), ("leather", "ellipse", (4, 3, 17, 10)), ("plate", "poly", [(4, 6), (17, 6), (17, 11), (11, 14), (4, 11)]), ("leather", "rect", (7, 14, 14, 18)),
+                  ("gold", "rect", (10, 10, 11, 12)), ("wood", "rect", (2, 7, 3, 16)), ("wood", "rect", (18, 7, 19, 16)), ("wood", "poly", [(8, 3), (13, 3), (12, 1), (9, 1)])]),
+    ("torch", [("wood", "poly", [(9, 20), (12, 20), (13, 10), (8, 10)]), ("leather", "rect", (8, 9, 13, 11)), ("flame", "poly", [(6, 9), (5, 5), (8, 6), (10, 0), (13, 5), (16, 3), (15, 9)]),
+               ("ember_glow", "poly", [(9, 9), (9, 6), (11, 4), (12, 7), (12, 9)])]),
+    ("paw", [("fur", "ellipse", (6, 10, 15, 19)), ("fur", "ellipse", (2, 7, 6, 12)), ("fur", "ellipse", (6, 2, 10, 8)), ("fur", "ellipse", (11, 2, 15, 8)), ("fur", "ellipse", (15, 7, 19, 12))]),
+]
+
+# Icons for the map and minimap: one row of 22px cells in assets/icons/map.png.
+# The order is MapIcons.KINDS in the game.
+ICON_PALETTE.update({"roof": ["d86a5a", "b04a40", "7c3030"], "wall_w": ["f0e4c8", "cdbf9e", "9a8d70"], "stone_m": ["b4b0bd", "8a8794", "5c5966"],
+                     "tent": ["d8b07a", "b08a54", "7c5e36"], "void_m": ["c8a0ff", "9a6cf0", "5e3aa8"], "coin": ["ffe27a", "f0b830", "b07c10"],
+                     "hide_m": ["c89a6a", "a07848", "70522e"], "skull": ["f4f0e4", "d2ccba", "9c9686"], "danger": ["ff7a6a", "e0443c", "9c2420"],
+                     "sky_m": ["9fe8ff", "5cc0f0", "2c80c0"], "grass_m": ["9ad86a", "6aae44", "447a2a"]})
+MAP_ICONS = [
+    ("village", [("wall_w", "rect", (2, 11, 10, 19)), ("roof", "poly", [(1, 11), (6, 5), (11, 11)]), ("wall_w", "rect", (11, 9, 19, 19)), ("roof", "poly", [(10, 9), (15, 2), (20, 9)]),
+                 ("night", "rect", (5, 14, 7, 19)), ("night", "rect", (14, 13, 16, 19)), ("coin", "rect", (17, 11, 18, 12))]),
+    ("ruin", [("stone_m", "rect", (2, 10, 6, 19)), ("stone_m", "rect", (8, 6, 12, 19)), ("stone_m", "rect", (14, 12, 19, 19)), ("stone_m", "poly", [(2, 10), (4, 7), (6, 10)]),
+              ("stone_m", "rect", (7, 4, 13, 6)), ("grass_m", "rect", (14, 11, 17, 12)), ("night", "rect", (9, 9, 10, 10))]),
+    ("shrine", [("stone_m", "poly", [(4, 19), (6, 12), (15, 12), (17, 19)]), ("stone_m", "rect", (8, 6, 13, 12)), ("void_m", "poly", [(8, 6), (10.5, 1), (13, 6)]),
+                ("void_m", "rect", (10, 8, 11, 10))]),
+    ("cave", [("stone_m", "poly", [(1, 19), (3, 9), (8, 4), (14, 4), (18, 9), (20, 19)]), ("night", "poly", [(6, 19), (7, 12), (10.5, 9), (14, 12), (15, 19)]),
+              ("stone_m", "rect", (3, 17, 6, 19))]),
+    ("lair", [("skull", "ellipse", (4, 3, 17, 15)), ("skull", "rect", (7, 13, 14, 18)), ("night", "ellipse", (6, 7, 10, 11)), ("night", "ellipse", (11, 7, 15, 11)),
+              ("night", "poly", [(10, 12), (11, 12), (10.5, 14)]), ("night", "rect", (9, 15, 9, 18)), ("night", "rect", (12, 15, 12, 18)), ("danger", "rect", (7, 8, 8, 9)), ("danger", "rect", (13, 8, 14, 9))]),
+    ("portal", [("void_m", "ring", (3, 1, 18, 20), 3), ("night", "ellipse", (6, 4, 15, 17)), ("void_m", "rect", (10, 9, 11, 12)), ("shell", "rect", (8, 6, 8, 6)), ("shell", "rect", (13, 14, 13, 14))]),
+    ("camp", [("tent", "poly", [(2, 18), (10.5, 3), (19, 18)]), ("night", "poly", [(8, 18), (10.5, 9), (13, 18)]), ("wood", "rect", (10, 1, 10, 4)), ("flame", "poly", [(16, 19), (17.5, 14), (19, 19)])]),
+    ("waystone", [("stone_m", "poly", [(7, 19), (7, 6), (10.5, 1), (14, 6), (14, 19)]), ("sky_m", "rect", (10, 6, 11, 8)), ("sky_m", "rect", (9, 10, 12, 11)), ("sky_m", "rect", (10, 13, 11, 16)),
+                  ("stone_m", "rect", (5, 18, 16, 20))]),
+    ("obelisk", [("stone_m", "poly", [(8, 19), (9, 4), (10.5, 0), (12, 4), (13, 19)]), ("void_m", "rect", (10, 6, 11, 7)), ("void_m", "rect", (10, 10, 11, 11)), ("void_m", "rect", (10, 14, 11, 15)),
+                 ("stone_m", "rect", (6, 18, 15, 20))]),
+    ("merchant", [("tent", "poly", [(4, 9), (17, 9), (19, 19), (2, 19)]), ("tent", "poly", [(6, 9), (8, 5), (13, 5), (15, 9)]), ("wood", "rect", (9, 3, 12, 5)), ("coin", "ellipse", (7, 11, 14, 18)),
+                  ("night", "rect", (10, 12, 11, 17))]),
+    ("shipwreck", [("wood", "poly", [(1, 13), (20, 11), (17, 19), (5, 19)]), ("wood", "rect", (9, 2, 10, 12)), ("shell", "poly", [(10, 3), (17, 7), (10, 10)]), ("sky_m", "rect", (1, 19, 20, 20))]),
+    ("treasure", [("wood", "rect", (3, 9, 18, 18)), ("wood", "ellipse", (3, 5, 18, 13)), ("coin", "rect", (3, 11, 18, 12)), ("coin", "rect", (9, 10, 12, 14)), ("danger", "poly", [(15, 1), (20, 6), (19, 7), (14, 2)]),
+                  ("danger", "poly", [(19, 1), (20, 2), (15, 7), (14, 6)])]),
+    ("boss", [("coin", "poly", [(2, 8), (6, 12), (10.5, 3), (15, 12), (19, 8), (17, 18), (4, 18)]), ("danger", "ellipse", (9, 12, 12, 15)), ("coin", "rect", (4, 18, 17, 20)), ("danger", "rect", (5, 14, 6, 15)),
+              ("danger", "rect", (15, 14, 16, 15))]),
+    ("dungeon", [("stone_m", "rect", (3, 6, 18, 19)), ("stone_m", "poly", [(2, 6), (10.5, 0), (19, 6)]), ("night", "poly", [(7, 19), (7, 11), (10.5, 8), (14, 11), (14, 19)]), ("skull", "ellipse", (9, 2, 12, 5))]),
+    ("bounty", [("shell", "rect", (4, 2, 17, 19)), ("danger", "ellipse", (7, 5, 14, 12)), ("night", "rect", (9, 8, 9, 8)), ("night", "rect", (12, 8, 12, 8)), ("night", "rect", (6, 14, 15, 14)), ("night", "rect", (6, 16, 13, 16))]),
+    ("temple", [("wall_w", "rect", (3, 9, 5, 18)), ("wall_w", "rect", (8, 9, 10, 18)), ("wall_w", "rect", (12, 9, 14, 18)), ("wall_w", "rect", (16, 9, 18, 18)), ("coin", "poly", [(1, 9), (10.5, 2), (20, 9)]),
+                ("wall_w", "rect", (1, 18, 20, 20)), ("flame", "rect", (10, 5, 11, 7))]),
+    ("home", [("wall_w", "rect", (4, 10, 17, 19)), ("grass_m", "poly", [(2, 10), (10.5, 2), (19, 10)]), ("night", "rect", (9, 13, 12, 19)), ("coin", "rect", (5, 12, 7, 14)), ("wood", "rect", (14, 3, 15, 7))]),
+    ("checkpoint", [("wood", "rect", (5, 17, 16, 18)), ("wood", "rect", (7, 15, 14, 16)), ("flame", "poly", [(6, 16), (8, 9), (10, 12), (11, 4), (13, 11), (15, 8), (15, 16)]), ("ember_glow", "poly", [(9, 16), (10.5, 10), (12, 16)])]),
+    ("player", [("coin", "poly", [(10.5, 1), (19, 19), (10.5, 14), (2, 19)]), ("shell", "poly", [(10.5, 5), (14.5, 14.5), (10.5, 12), (6.5, 14.5)])]),
+    ("animal", [("hide_m", "ellipse", (3, 9, 16, 17)), ("hide_m", "ellipse", (13, 5, 19, 12)), ("hide_m", "rect", (5, 16, 6, 20)), ("hide_m", "rect", (13, 16, 14, 20)), ("skull", "poly", [(15, 5), (14, 1), (16, 3), (18, 0), (18, 5)]),
+                ("night", "rect", (17, 8, 17, 8)), ("skull", "ellipse", (1, 9, 4, 12))]),
+    ("monster", [("danger", "poly", [(10.5, 2), (19, 10.5), (10.5, 19), (2, 10.5)]), ("night", "rect", (7, 9, 9, 11)), ("night", "rect", (12, 9, 14, 11)), ("night", "rect", (8, 14, 13, 14))]),
+    ("pet", [("grass_m", "ellipse", (6, 10, 15, 19)), ("grass_m", "ellipse", (2, 7, 6, 12)), ("grass_m", "ellipse", (6, 2, 10, 8)), ("grass_m", "ellipse", (11, 2, 15, 8)), ("grass_m", "ellipse", (15, 7, 19, 12))]),
+    ("npc", [("sky_m", "ellipse", (6, 2, 15, 11)), ("sky_m", "poly", [(3, 20), (5, 12), (16, 12), (18, 20)]), ("night", "rect", (8, 6, 9, 7)), ("night", "rect", (12, 6, 13, 7))]),
+    ("chest", [("wood", "rect", (3, 8, 18, 18)), ("wood", "ellipse", (3, 4, 18, 12)), ("coin", "rect", (3, 10, 18, 11)), ("coin", "rect", (9, 9, 12, 13))]),
+]
 
 # Things to gather in the world: 64px frames in one row. Pale parts are
 # tinted in game. Order: rock, ore flecks, tree, herb, fishing ripple.
@@ -1391,55 +1669,113 @@ NODES = [
 # The order is the frame number used in scripts/world/prop.gd - only append.
 PROP_PALETTE = {
     "pstone": ["a6a2b0", "7c7888", "56525e"],
+    "pstone_l": ["c8c4d2", "b0acba", "8e8a98"],
     "pdark": ["3a3642", "26232c", "14121a"],
     "pwood": ["8a6a48", "6b4f36", "4a3626"],
+    "pwood_l": ["b08a5c", "96744a", "74583a"],
+    "pwood_d": ["5a4230", "443224", "2e2018"],
     "pgold": ["f0cf6a", "c09a3c", "866a26"],
+    "pmetal": ["8a8e98", "646872", "42464e"],
     "pfire": ["ffd86b", "f08a2e", "b8401e"],
+    "pember": ["ff9a3c", "d8521e", "8a2a12"],
     "pvoid": ["c9a0f0", "8e5cc8", "5c3690"],
     "pcloth": ["b3434a", "8a2c37", "5c1c28"],
+    "pcloth_l": ["d8686c", "b3434a", "8a2c37"],
     "pbone": ["f2efe2", "cfcbb8", "9b9889"],
+    "pmoss": ["7fa055", "5d7a3f", "3f5a2c"],
+    "pplaster": ["e6d8bc", "c8b898", "a09070"],
+    "proof": ["b8584a", "8e3c34", "602624"],
+    "pglass": ["ffe9a0", "f0c050", "c08a28"],
+    "prope": ["d0b888", "a89060", "786440"],
+    "pruby": ["ff6a7a", "d02c44", "8a1428"],
+    "pwhite": ["ffffff"] * 3,
     "pblack": ["0b0a12"] * 3,
 }
 PROPS = [
-    # 0 pillar
-    [("pstone", "rect", (24, 14, 40, 54)), ("pstone", "rect", (20, 8, 44, 15)), ("pstone", "rect", (20, 52, 44, 59)), ("pdark", "rect", (30, 16, 31, 51))],
-    # 1 broken wall
-    [("pstone", "poly", [(10, 58), (10, 34), (18, 30), (22, 38), (30, 26), (38, 32), (44, 24), (54, 36), (54, 58)]),
-     ("pdark", "rect", (12, 44, 52, 45)), ("pdark", "rect", (30, 34, 31, 57))],
-    # 2 chest, closed
-    [("pwood", "rect", (14, 30, 50, 54)), ("pwood", "poly", [(14, 30), (18, 22), (46, 22), (50, 30)]), ("pgold", "rect", (14, 36, 50, 38)),
-     ("pgold", "rect", (29, 33, 35, 42)), ("pdark", "rect", (31, 36, 33, 39))],
-    # 3 chest, open
-    [("pdark", "rect", (16, 26, 48, 36)), ("pwood", "poly", [(14, 26), (18, 12), (46, 12), (50, 26)]), ("pwood", "rect", (14, 34, 50, 54)),
-     ("pgold", "rect", (14, 34, 50, 36)), ("pgold", "ellipse", (22, 28, 30, 34)), ("pgold", "ellipse", (33, 27, 42, 34))],
-    # 4 altar with a flame: a place to rest
-    [("pstone", "poly", [(16, 58), (20, 44), (44, 44), (48, 58)]), ("pstone", "rect", (22, 36, 42, 45)), ("pdark", "rect", (24, 34, 40, 37)),
-     ("pfire", "poly", [(26, 35), (28, 24), (31, 30), (33, 16), (36, 28), (38, 22), (39, 35)])],
-    # 5 cave mouth
-    [("pstone", "poly", [(6, 58), (8, 34), (18, 20), (34, 14), (48, 20), (58, 36), (58, 58)]),
-     ("pblack", "poly", [(18, 58), (19, 40), (26, 30), (36, 28), (44, 34), (46, 58)])],
-    # 6 void portal
-    [("pvoid", "ring", (14, 8, 50, 58), 5), ("pblack", "ellipse", (19, 13, 45, 53)), ("pvoid", "ellipse", (29, 28, 35, 38)),
-     ("pvoid", "rect", (24, 20, 25, 21)), ("pvoid", "rect", (38, 42, 39, 43)), ("pvoid", "rect", (39, 24, 40, 25))],
-    # 7 ladder up and out
-    [("pwood", "rect", (22, 8, 25, 58)), ("pwood", "rect", (39, 8, 42, 58)), ("pwood", "rect", (22, 16, 42, 18)), ("pwood", "rect", (22, 28, 42, 30)),
-     ("pwood", "rect", (22, 40, 42, 42)), ("pwood", "rect", (22, 52, 42, 54))],
-    # 8 crafting table
-    [("pwood", "rect", (12, 30, 52, 38)), ("pwood", "rect", (14, 38, 18, 56)), ("pwood", "rect", (46, 38, 50, 56)), ("pstone", "rect", (18, 24, 28, 30)),
-     ("pstone", "line", (34, 28, 46, 20), 2), ("pwood", "line", (40, 30, 48, 24), 2)],
-    # 9 bed
-    [("pwood", "rect", (12, 26, 52, 54)), ("pcloth", "rect", (14, 34, 50, 52)), ("pbone", "rect", (16, 28, 34, 35)), ("pwood", "rect", (12, 22, 52, 27))],
-    # 10 doorway (the way out of a house)
-    [("pwood", "rect", (18, 12, 46, 58)), ("pdark", "rect", (22, 16, 42, 58)), ("pgold", "rect", (38, 36, 40, 38))],
-    # 11 campfire
-    [("pwood", "line", (16, 52, 46, 44), 4), ("pwood", "line", (18, 44, 48, 52), 4),
-     ("pfire", "poly", [(22, 46), (25, 32), (29, 40), (32, 22), (36, 38), (40, 30), (43, 46)])],
-    # 12 skull totem marking a lair
-    [("pwood", "rect", (30, 26, 34, 58)), ("pbone", "ellipse", (22, 8, 42, 28)), ("pblack", "ellipse", (25, 14, 30, 20)), ("pblack", "ellipse", (34, 14, 39, 20)),
-     ("pbone", "rect", (27, 26, 37, 30))],
-    # 13 house, seen from outside (uses most of the frame)
-    [("pwood", "rect", (6, 30, 58, 60)), ("pcloth", "poly", [(2, 32), (32, 6), (62, 32)]), ("pdark", "rect", (27, 42, 37, 60)),
-     ("pgold", "rect", (34, 50, 35, 51)), ("pdark", "rect", (11, 38, 20, 46)), ("pdark", "rect", (44, 38, 53, 46)), ("pwood", "rect", (6, 30, 58, 32))],
+    # 0 pillar: a fluted column on a stepped base, cracked and mossy
+    [("pstone", "rect", (17, 53, 47, 59)), ("pstone_l", "rect", (17, 53, 47, 54)), ("pstone", "rect", (20, 49, 44, 53)), ("pstone", "rect", (23, 15, 41, 49)),
+     ("pstone_l", "rect", (24, 15, 26, 49)), ("pdark", "rect", (28, 17, 28, 47)), ("pdark", "rect", (32, 17, 32, 47)), ("pdark", "rect", (36, 17, 36, 47)),
+     ("pstone_l", "rect", (29, 17, 29, 47)), ("pstone_l", "rect", (33, 17, 33, 47)), ("pstone", "rect", (20, 10, 44, 15)), ("pstone", "rect", (18, 6, 46, 10)),
+     ("pstone_l", "rect", (18, 6, 46, 7)), ("pdark", "rect", (20, 14, 44, 14)), ("pdark", "line", (38, 21, 40, 28), 1), ("pdark", "line", (40, 28, 38, 34), 1),
+     ("pmoss", "ellipse", (18, 48, 26, 54)), ("pmoss", "rect", (39, 10, 44, 12)), ("pmoss", "rect", (22, 44, 24, 49))],
+    # 1 a lone stretch of broken wall (walls are drawn by StoneWall now)
+    [("pstone", "poly", [(8, 58), (8, 36), (16, 36), (16, 30), (26, 30), (26, 24), (38, 24), (38, 32), (48, 32), (48, 40), (56, 40), (56, 58)]),
+     ("pdark", "rect", (8, 44, 56, 44)), ("pdark", "rect", (8, 51, 56, 51)), ("pdark", "rect", (16, 37, 48, 37)), ("pdark", "rect", (20, 38, 20, 43)), ("pdark", "rect", (34, 38, 34, 43)),
+     ("pdark", "rect", (14, 45, 14, 50)), ("pdark", "rect", (28, 45, 28, 50)), ("pdark", "rect", (44, 45, 44, 50)), ("pdark", "rect", (22, 52, 22, 57)), ("pdark", "rect", (38, 52, 38, 57)),
+     ("pstone_l", "rect", (26, 24, 38, 25)), ("pmoss", "rect", (9, 54, 15, 58)), ("pmoss", "rect", (40, 32, 46, 33))],
+    # 2 chest, closed: planks, iron bands, a brass lock
+    [("pwood", "rect", (12, 32, 52, 56)), ("pwood", "poly", [(12, 32), (13, 25), (18, 19), (46, 19), (51, 25), (52, 32)]), ("pwood_l", "rect", (18, 20, 46, 21)),
+     ("pwood_d", "rect", (24, 22, 24, 54)), ("pwood_d", "rect", (40, 22, 40, 54)), ("pwood_d", "rect", (12, 54, 52, 56)), ("pmetal", "rect", (12, 30, 52, 33)),
+     ("pmetal", "rect", (16, 19, 19, 56)), ("pmetal", "rect", (45, 19, 48, 56)), ("pgold", "rect", (17, 24, 18, 25)), ("pgold", "rect", (46, 24, 47, 25)), ("pgold", "rect", (17, 44, 18, 45)),
+     ("pgold", "rect", (46, 44, 47, 45)), ("pgold", "rect", (28, 29, 36, 41)), ("pdark", "rect", (31, 33, 33, 35)), ("pdark", "rect", (32, 35, 32, 38)), ("pgold", "rect", (30, 26, 34, 29))],
+    # 3 chest, open: the lid thrown back, gold and gems heaped inside
+    [("pwood", "poly", [(12, 30), (14, 9), (50, 9), (52, 30)]), ("pwood_d", "rect", (17, 13, 47, 28)), ("pmetal", "rect", (14, 9, 50, 11)), ("pmetal", "rect", (20, 11, 22, 30)),
+     ("pmetal", "rect", (42, 11, 44, 30)), ("pdark", "rect", (14, 28, 50, 36)), ("pgold", "ellipse", (15, 26, 30, 36)), ("pgold", "ellipse", (26, 23, 42, 35)), ("pgold", "ellipse", (37, 27, 50, 36)),
+     ("pruby", "poly", [(21, 27), (24, 24), (27, 27), (24, 30)]), ("pvoid", "rect", (40, 28, 43, 31)), ("pwhite", "rect", (30, 25, 30, 25)), ("pwhite", "rect", (36, 28, 36, 28)),
+     ("pwhite", "rect", (19, 30, 19, 30)), ("pwood", "rect", (12, 35, 52, 56)), ("pwood_d", "rect", (24, 37, 24, 54)), ("pwood_d", "rect", (40, 37, 40, 54)), ("pwood_d", "rect", (12, 54, 52, 56)),
+     ("pmetal", "rect", (12, 34, 52, 37)), ("pmetal", "rect", (16, 34, 19, 56)), ("pmetal", "rect", (45, 34, 48, 56)), ("pgold", "rect", (28, 36, 36, 44)), ("pdark", "rect", (31, 38, 33, 41))],
+    # 4 altar: stepped stone, a carved block, a bowl of fire, candles at its feet
+    [("pstone", "rect", (9, 53, 55, 59)), ("pstone_l", "rect", (9, 53, 55, 54)), ("pstone", "rect", (13, 47, 51, 53)), ("pstone_l", "rect", (13, 47, 51, 48)), ("pstone", "rect", (18, 34, 46, 47)),
+     ("pstone_l", "rect", (18, 34, 46, 35)), ("pdark", "rect", (18, 40, 46, 40)), ("pvoid", "rect", (30, 37, 34, 38)), ("pvoid", "rect", (31, 42, 33, 45)), ("pvoid", "rect", (28, 43, 36, 43)),
+     ("pvoid", "rect", (22, 37, 23, 38)), ("pvoid", "rect", (41, 37, 42, 38)), ("pmetal", "poly", [(22, 34), (24, 28), (40, 28), (42, 34)]), ("pember", "ellipse", (26, 26, 38, 30)),
+     ("pfire", "poly", [(27, 28), (29, 21), (32, 25), (34, 16), (36, 24), (38, 20), (38, 28)]), ("pbone", "rect", (10, 46, 12, 53)), ("pfire", "rect", (10, 43, 12, 45)),
+     ("pbone", "rect", (52, 46, 54, 53)), ("pfire", "rect", (52, 43, 54, 45)), ("pmoss", "rect", (14, 51, 19, 53)), ("pdark", "line", (40, 36, 43, 44), 1)],
+    # 5 cave mouth: a mound of piled rock around a black opening with teeth of stone
+    [("pstone", "poly", [(3, 58), (5, 40), (11, 27), (20, 18), (33, 13), (46, 17), (55, 28), (60, 42), (61, 58)]), ("pstone_l", "poly", [(12, 28), (20, 19), (33, 14), (44, 17), (38, 19), (24, 22)]),
+     ("pdark", "line", (11, 36, 17, 30), 1), ("pdark", "line", (50, 30, 56, 40), 1), ("pdark", "line", (8, 46, 13, 44), 1), ("pdark", "line", (53, 46, 58, 49), 1),
+     ("pdark", "poly", [(14, 58), (15, 42), (21, 31), (30, 26), (39, 27), (46, 33), (50, 44), (50, 58)]), ("pblack", "poly", [(17, 58), (18, 43), (23, 34), (31, 30), (38, 31), (44, 36), (47, 45), (47, 58)]),
+     ("pstone", "poly", [(22, 34), (24, 40), (26, 33)]), ("pstone", "poly", [(30, 30), (32, 37), (34, 30)]), ("pstone", "poly", [(38, 31), (40, 38), (42, 34)]),
+     ("pstone", "ellipse", (4, 51, 13, 59)), ("pstone", "ellipse", (51, 52, 60, 59)), ("pstone_l", "rect", (6, 52, 10, 53)), ("pmoss", "ellipse", (22, 12, 34, 17)), ("pmoss", "rect", (40, 16, 46, 18)),
+     ("pmoss", "rect", (5, 56, 12, 58))],
+    # 6 void portal: an arch of rune-cut stones round a turning dark
+    [("pstone", "ring", (11, 5, 53, 61), 6), ("pstone", "rect", (9, 53, 21, 60)), ("pstone", "rect", (43, 53, 55, 60)), ("pstone_l", "rect", (9, 53, 21, 54)), ("pstone_l", "rect", (43, 53, 55, 54)),
+     ("pblack", "ellipse", (17, 11, 47, 56)), ("pvoid", "ring", (20, 15, 44, 51), 2), ("pvoid", "ring", (25, 22, 39, 44), 1), ("pvoid", "ellipse", (29, 29, 35, 37)), ("pwhite", "rect", (31, 32, 32, 33)),
+     ("pvoid", "rect", (23, 19, 24, 20)), ("pvoid", "rect", (40, 43, 41, 44)), ("pvoid", "rect", (41, 22, 42, 23)), ("pvoid", "rect", (21, 40, 22, 41)), ("pvoid", "rect", (30, 6, 34, 7)),
+     ("pvoid", "rect", (12, 28, 13, 32)), ("pvoid", "rect", (51, 28, 52, 32)), ("pvoid", "rect", (15, 14, 16, 16)), ("pvoid", "rect", (48, 14, 49, 16)), ("pdark", "line", (14, 44, 16, 50), 1),
+     ("pdark", "line", (49, 42, 50, 49), 1)],
+    # 7 ladder up and out: rails, worn rungs, rope lashings
+    [("pwood", "rect", (21, 6, 25, 59)), ("pwood", "rect", (39, 6, 43, 59)), ("pwood_l", "rect", (21, 6, 22, 59)), ("pwood_l", "rect", (39, 6, 40, 59)), ("pwood_l", "rect", (24, 14, 40, 17)),
+     ("pwood_l", "rect", (24, 25, 40, 28)), ("pwood_l", "rect", (24, 36, 40, 39)), ("pwood_l", "rect", (24, 47, 40, 50)), ("pwood_d", "rect", (24, 17, 40, 17)), ("pwood_d", "rect", (24, 28, 40, 28)),
+     ("pwood_d", "rect", (24, 39, 40, 39)), ("pwood_d", "rect", (24, 50, 40, 50)), ("prope", "rect", (20, 13, 26, 18)), ("prope", "rect", (38, 13, 44, 18)), ("prope", "rect", (20, 46, 26, 51)),
+     ("prope", "rect", (38, 46, 44, 51)), ("pwood_d", "rect", (22, 30, 22, 34)), ("pwood_d", "rect", (41, 20, 41, 23))],
+    # 8 crafting table: a thick bench with a vise, a hammer, a saw and a plank
+    [("pwood_d", "rect", (14, 40, 18, 58)), ("pwood_d", "rect", (46, 40, 50, 58)), ("pwood_d", "line", (17, 54, 47, 44), 2), ("pwood", "rect", (9, 28, 55, 34)), ("pwood_l", "rect", (9, 28, 55, 29)),
+     ("pwood", "rect", (11, 34, 53, 40)), ("pwood_d", "rect", (11, 39, 53, 40)), ("pwood_d", "rect", (22, 29, 22, 33)), ("pwood_d", "rect", (38, 29, 38, 33)), ("pmetal", "rect", (12, 20, 20, 28)),
+     ("pmetal", "rect", (10, 18, 22, 21)), ("pdark", "rect", (15, 22, 17, 27)), ("pwood_l", "line", (27, 26, 36, 19), 2), ("pmetal", "rect", (33, 14, 40, 20)), ("pmetal", "poly", [(40, 27), (53, 22), (54, 24), (41, 28)]),
+     ("pwood_l", "rect", (38, 25, 42, 28)), ("pwood_l", "rect", (24, 25, 31, 27)), ("pgold", "rect", (45, 26, 45, 27)), ("pgold", "rect", (48, 26, 48, 27))],
+    # 9 bed: a wooden frame, a headboard, a pillow and a folded blanket
+    [("pwood_d", "rect", (11, 52, 15, 59)), ("pwood_d", "rect", (49, 52, 53, 59)), ("pwood", "rect", (10, 28, 54, 55)), ("pwood", "rect", (9, 16, 55, 29)), ("pwood_l", "rect", (9, 16, 55, 17)),
+     ("pwood_d", "rect", (20, 18, 20, 27)), ("pwood_d", "rect", (32, 18, 32, 27)), ("pwood_d", "rect", (44, 18, 44, 27)), ("pbone", "rect", (13, 29, 51, 53)), ("pbone", "ellipse", (16, 30, 36, 39)),
+     ("pcloth", "rect", (13, 40, 51, 53)), ("pcloth_l", "rect", (13, 40, 51, 43)), ("pcloth_l", "rect", (22, 44, 23, 53)), ("pcloth_l", "rect", (40, 44, 41, 53)), ("pwood", "rect", (10, 52, 54, 55)),
+     ("pwood_l", "rect", (10, 52, 54, 52))],
+    # 10 doorway: a stone frame, a plank door banded with iron, a ring to pull
+    [("pstone", "rect", (14, 8, 50, 59)), ("pstone_l", "rect", (14, 8, 50, 9)), ("pstone", "rect", (12, 6, 52, 10)), ("pdark", "rect", (14, 24, 18, 24)), ("pdark", "rect", (14, 40, 18, 40)),
+     ("pdark", "rect", (46, 24, 50, 24)), ("pdark", "rect", (46, 40, 50, 40)), ("pwood", "rect", (19, 13, 45, 59)), ("pwood_d", "rect", (25, 13, 25, 59)), ("pwood_d", "rect", (32, 13, 32, 59)),
+     ("pwood_d", "rect", (39, 13, 39, 59)), ("pmetal", "rect", (19, 20, 45, 23)), ("pmetal", "rect", (19, 46, 45, 49)), ("pgold", "ring", (36, 33, 42, 39), 1), ("pgold", "rect", (38, 31, 40, 33)),
+     ("pgold", "rect", (21, 21, 22, 22)), ("pgold", "rect", (42, 21, 43, 22)), ("pgold", "rect", (21, 47, 22, 48)), ("pgold", "rect", (42, 47, 43, 48))],
+    # 11 campfire: a ring of stones, crossed logs, a bed of embers
+    [("pstone", "ellipse", (10, 46, 20, 55)), ("pstone", "ellipse", (44, 46, 54, 55)), ("pstone", "ellipse", (16, 40, 25, 47)), ("pstone", "ellipse", (39, 40, 48, 47)), ("pstone", "ellipse", (27, 38, 37, 44)),
+     ("pwood", "line", (16, 53, 46, 45), 5), ("pwood", "line", (18, 45, 48, 53), 5), ("pwood_d", "line", (26, 54, 38, 42), 4), ("pwood_l", "ellipse", (13, 50, 19, 56)), ("pwood_l", "ellipse", (45, 50, 51, 56)),
+     ("pember", "ellipse", (25, 45, 39, 52)), ("pfire", "poly", [(24, 48), (26, 36), (29, 42), (32, 28), (35, 40), (38, 34), (40, 48)]), ("pstone", "ellipse", (18, 52, 29, 60)),
+     ("pstone", "ellipse", (35, 52, 46, 60)), ("pstone_l", "rect", (21, 53, 25, 54)), ("pstone_l", "rect", (38, 53, 42, 54)), ("pstone", "ellipse", (27, 54, 37, 61))],
+    # 12 skull totem marking a lair: a horned skull on a bound pole, bones hanging
+    [("pwood", "rect", (30, 26, 34, 59)), ("pwood_d", "rect", (33, 26, 34, 59)), ("prope", "rect", (29, 36, 35, 39)), ("prope", "rect", (29, 48, 35, 50)), ("pwood", "rect", (18, 30, 46, 33)),
+     ("pbone", "rect", (20, 33, 21, 42)), ("pbone", "ellipse", (19, 41, 22, 44)), ("pbone", "rect", (43, 33, 44, 40)), ("pbone", "ellipse", (42, 39, 45, 42)), ("pcloth", "poly", [(24, 33), (27, 33), (25, 41)]),
+     ("pcloth", "poly", [(37, 33), (40, 33), (39, 40)]), ("pbone", "poly", [(23, 12), (15, 4), (17, 13), (22, 18)]), ("pbone", "poly", [(41, 12), (49, 4), (47, 13), (42, 18)]),
+     ("pbone", "ellipse", (21, 7, 43, 27)), ("pbone", "rect", (26, 24, 38, 30)), ("pblack", "ellipse", (24, 13, 31, 20)), ("pblack", "ellipse", (33, 13, 40, 20)), ("pember", "rect", (27, 16, 28, 17)),
+     ("pember", "rect", (36, 16, 37, 17)), ("pblack", "poly", [(31, 21), (33, 21), (32, 24)]), ("pblack", "rect", (28, 26, 28, 29)), ("pblack", "rect", (31, 26, 31, 29)), ("pblack", "rect", (34, 26, 34, 29)),
+     ("pdark", "line", (36, 8, 39, 12), 1)],
+    # 13 house, seen from outside: a timber-framed cottage with a shingled roof
+    [("pstone", "rect", (6, 54, 58, 61)), ("pstone_l", "rect", (6, 54, 58, 55)), ("pplaster", "rect", (7, 30, 57, 55)), ("pwood", "rect", (7, 30, 9, 55)), ("pwood", "rect", (55, 30, 57, 55)),
+     ("pwood", "rect", (7, 30, 57, 32)), ("pwood", "rect", (7, 44, 57, 45)), ("pwood", "line", (9, 44, 22, 32), 1), ("pwood", "line", (55, 44, 42, 32), 1), ("pwood", "rect", (23, 32, 24, 55)),
+     ("pwood", "rect", (40, 32, 41, 55)), ("pwood_d", "rect", (26, 40, 38, 55)), ("pwood", "rect", (27, 41, 37, 55)), ("pwood_d", "rect", (32, 41, 32, 55)), ("pgold", "rect", (35, 48, 36, 49)),
+     ("pstone", "rect", (25, 55, 39, 58)), ("pwood_d", "rect", (11, 35, 20, 43)), ("pglass", "rect", (12, 36, 19, 42)), ("pwood_d", "rect", (15, 36, 15, 42)), ("pwood_d", "rect", (12, 39, 19, 39)),
+     ("pwood_d", "rect", (44, 35, 53, 43)), ("pglass", "rect", (45, 36, 52, 42)), ("pwood_d", "rect", (48, 36, 48, 42)), ("pwood_d", "rect", (45, 39, 52, 39)), ("pmoss", "rect", (11, 44, 20, 46)),
+     ("pruby", "rect", (13, 43, 14, 44)), ("pgold", "rect", (17, 43, 18, 44)), ("pstone", "rect", (44, 6, 51, 20)), ("pstone_l", "rect", (43, 5, 52, 7)), ("pdark", "rect", (44, 12, 51, 12)),
+     ("proof", "poly", [(1, 33), (32, 5), (63, 33), (58, 33), (32, 10), (6, 33)]), ("proof", "poly", [(4, 32), (32, 7), (60, 32)]), ("pdark", "line", (11, 26, 53, 26), 1), ("pdark", "line", (17, 20, 47, 20), 1),
+     ("pdark", "line", (24, 14, 40, 14), 1), ("pdark", "rect", (15, 27, 15, 31)), ("pdark", "rect", (27, 27, 27, 31)), ("pdark", "rect", (39, 27, 39, 31)), ("pdark", "rect", (51, 27, 51, 31)),
+     ("pdark", "rect", (21, 21, 21, 25)), ("pdark", "rect", (33, 21, 33, 25)), ("pdark", "rect", (45, 21, 45, 25)), ("pdark", "rect", (28, 15, 28, 19)), ("pdark", "rect", (37, 15, 37, 19)),
+     ("pwood_l", "poly", [(1, 33), (32, 5), (63, 33), (61, 34), (32, 8), (3, 34)])],
 ]
 
 
@@ -1494,7 +1830,10 @@ def _draw_icon(parts):
 def main():
     os.makedirs(os.path.join(ROOT, "sprites"), exist_ok=True)
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
-    draw_sheet(HUMAN, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
+    draw_sheet(HUMAN_BALD, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
+    os.makedirs(os.path.join(ROOT, "sprites", "looks"), exist_ok=True)
+    for name, parts_by_group in LOOKS.items():
+        draw_layer_sheet(parts_by_group, outline=not name.startswith(("mark_", "eyes"))).save(os.path.join(ROOT, "sprites", "looks", name + ".png"))
     draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS, rich=True).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
     for name, (changes, extras) in NPCS.items():
         draw_npc(changes, extras).save(os.path.join(ROOT, "sprites", "npc_%s.png" % name))
