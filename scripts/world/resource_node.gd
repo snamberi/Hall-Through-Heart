@@ -52,6 +52,7 @@ func _ready() -> void:
 		plant.position.y = -14.0
 		plant.scale = Vector2(1.25, 1.25)
 		add_child(plant)
+		ContactShadow.under(plant)
 	else:
 		var sprite := _sprite(_kind["frame"], Color.WHITE)
 		match _data["kind"]:
@@ -59,6 +60,7 @@ func _ready() -> void:
 				# A plain boulder with flecks in the ore's colour.
 				_sprite(1, tint)
 				solid = 14.0
+				ContactShadow.under(sprite)
 			"fish":
 				sprite.modulate = Color(0.75, 0.9, 1.0, 0.8)
 				sprite.position.y = 0.0

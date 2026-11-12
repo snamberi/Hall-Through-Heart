@@ -4,7 +4,10 @@ extends Node2D
 ## into runs: a wall running east-west shows its face of stone courses with
 ## a lit top; one running north-south is seen from above, a narrow band of
 ## capstones with a short face at its south end. Ruined walls are chipped
-## and uneven along the top, with moss and the odd fallen block.
+## and uneven along the top, with moss and the odd fallen block; some have
+## fallen in to a jagged gap with a heap below, some have lost bricks from
+## their face, cracks run through them and rain has streaked them. Where a
+## wall turns, a stouter corner pier of long and short stones stands up.
 ##
 ## The part that blocks movement is only as thick as the wall, not the
 ## whole tile, so the player can pass close by on either side.
@@ -122,10 +125,15 @@ func _draw() -> void:
 		if broken and not east:
 			right_height *= 0.55
 		var face := PackedVector2Array([Vector2(from, 0), Vector2(from, -left_height)])
-		var steps := 4
+		var steps := random.randi_range(3, 6) if broken else 4
+		# Now and then a run has fallen in: a deep, jagged gap mid-span.
+		var collapse := broken and east and west and random.randf() < 0.3
+		var gap_step := random.randi_range(1, steps - 1)
 		for step in range(1, steps):
 			var x := lerpf(from, to, step / float(steps))
 			var h := lerpf(left_height, right_height, step / float(steps)) - (random.randf_range(0.0, 6.0) if broken else 0.0)
+			if collapse and step == gap_step:
+				h = height * random.randf_range(0.3, 0.45)
 			# Stepped, like missing blocks, not a slope.
 			face.append(Vector2(x, face[face.size() - 1].y))
 			face.append(Vector2(x, -h))
@@ -141,6 +149,32 @@ func _draw() -> void:
 			draw_line(Vector2(a.x, a.y), Vector2(b.x, a.y), look["seam"], 1.0)
 			draw_line(Vector2(a.x, a.y - 4.0), Vector2(b.x, a.y - 4.0), Color(1, 1, 1, 0.35), 1.0)
 		draw_polyline(face, look["seam"], 1.0)
+		if broken or style == "keep":
+			# Rain streaks down from the top.
+			for k in random.randi_range(1, 3):
+				var sx := random.randf_range(from + 3.0, to - 3.0)
+				var top_y := _top_at(face, sx)
+				draw_rect(Rect2(sx, top_y + 1.0, 2.0, random.randf_range(6.0, 16.0)), Color(look["dark"], 0.28))
+		if broken:
+			# Bricks gone from the face: dark holes with a lit sill.
+			for k in random.randi_range(0, 2):
+				var hx := snappedf(random.randf_range(from + 4.0, to - 14.0), 2.0)
+				var hy := -snappedf(random.randf_range(8.0, height - 10.0), 7.0)
+				if _inside(Vector2(hx + 5.0, hy - 6.0), face) and _inside(Vector2(hx + 5.0, hy + 2.0), face):
+					var hole := Rect2(hx, hy - 6.0, random.randf_range(8.0, 12.0), 6.0)
+					draw_rect(hole, Color(0.07, 0.06, 0.09))
+					draw_rect(Rect2(hole.position, Vector2(hole.size.x, 2.0)), Color(0, 0, 0, 0.5))
+					draw_line(Vector2(hole.position.x, hole.end.y), hole.end, look["light"], 1.0)
+			if collapse:
+				# The heap the gap left behind.
+				var gx := lerpf(from, to, gap_step / float(steps))
+				for k in 4:
+					var bx := gx + random.randf_range(-12.0, 6.0)
+					var by := random.randf_range(-2.0, 5.0)
+					var bw := random.randf_range(5.0, 9.0)
+					draw_rect(Rect2(bx, by, bw, 5.0), look["face"])
+					draw_rect(Rect2(bx, by, bw, 1.5), look["top"])
+					draw_rect(Rect2(bx, by, bw, 5.0), look["seam"], false, 1.0)
 		# Shade under the cap and along the foot.
 		draw_rect(Rect2(from, -2.0, to - from, 2.0), Color(look["dark"], 0.8))
 		if style == "wood":
@@ -162,6 +196,48 @@ func _draw() -> void:
 			draw_rect(Rect2(bx, 2.0, 9.0, 6.0), look["face"])
 			draw_rect(Rect2(bx, 2.0, 9.0, 2.0), look["top"])
 			draw_rect(Rect2(bx, 2.0, 9.0, 6.0), look["seam"], false, 1.0)
+
+	if style != "wood" and (north or south) and (east or west):
+		_pier(look, random, height)
+
+
+## A corner pier where the wall turns: a little wider and taller than the
+## wall, its stones laid long and short in turn, its top worn on a ruin.
+func _pier(look: Dictionary, random: RandomNumberGenerator, height: float) -> void:
+	var tall := height + (random.randf_range(-6.0, 4.0) if look["broken"] else 6.0)
+	var rect := Rect2(-THICK / 2.0 - 3.0, -tall, THICK + 6.0, tall)
+	draw_rect(rect, look["face"])
+	var y := rect.end.y
+	var row := 0
+	while y > rect.position.y + 1.0:
+		var course := 7.0
+		var long := row % 2 == 0
+		var split := rect.position.x + (rect.size.x * (0.65 if long else 0.35))
+		draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), look["seam"], 1.0)
+		draw_line(Vector2(split, y - course), Vector2(split, y), look["seam"], 1.0)
+		draw_line(Vector2(rect.position.x, y - course + 1.0), Vector2(rect.end.x, y - course + 1.0), Color(look["light"], 0.45), 1.0)
+		y -= course
+		row += 1
+	draw_rect(Rect2(rect.position, Vector2(2.0, rect.size.y)), Color(look["light"], 0.7))
+	draw_rect(Rect2(rect.end.x - 2.0, rect.position.y, 2.0, rect.size.y), Color(look["dark"], 0.85))
+	var cap := Rect2(rect.position.x - 1.0, rect.position.y - 4.0, rect.size.x + 2.0, 5.0)
+	draw_rect(cap, look["top"])
+	if look["broken"]:
+		# A chipped corner off the cap.
+		draw_colored_polygon(PackedVector2Array([Vector2(cap.end.x - 6.0, cap.position.y), cap.position + Vector2(cap.size.x, 0), Vector2(cap.end.x, cap.position.y + 4.0)]), look["face"])
+	draw_rect(cap, look["seam"], false, 1.0)
+	draw_rect(rect, look["seam"], false, 1.0)
+
+
+## The height of a wall's broken top line at x, as a y (negative is up).
+func _top_at(face: PackedVector2Array, x: float) -> float:
+	var top := 0.0
+	for index in range(1, face.size() - 1):
+		var a := face[index]
+		var b := face[index + 1]
+		if is_equal_approx(a.y, b.y) and x >= minf(a.x, b.x) and x <= maxf(a.x, b.x):
+			top = minf(top, a.y)
+	return top
 
 
 ## Courses of blocks across a face: seams, a lit edge, the odd dark or
@@ -187,9 +263,18 @@ func _courses(rect: Rect2, look: Dictionary, random: RandomNumberGenerator, cour
 			x += width
 		y -= course
 		row += 1
-	if random.randf() < 0.4 and rect.size.x > 20.0:
+	var cracks := (random.randi_range(0, 2) if look["broken"] else (1 if random.randf() < 0.3 else 0)) if rect.size.x > 20.0 else 0
+	for k in cracks:
+		# A crack climbing the face, forking once.
 		var cx := rect.position.x + random.randf_range(8.0, rect.size.x - 8.0)
-		draw_polyline(PackedVector2Array([Vector2(cx, rect.end.y - 2.0), Vector2(cx + 3.0, rect.end.y - 9.0), Vector2(cx + 1.0, rect.end.y - 15.0)]), look["seam"], 1.0)
+		var line := PackedVector2Array([Vector2(cx, rect.end.y - 1.0)])
+		for step in random.randi_range(3, 5):
+			var last := line[line.size() - 1]
+			line.append(last + Vector2(random.randf_range(-3.0, 3.0), -random.randf_range(3.0, 5.0)))
+		if _inside(line[line.size() - 1], outline):
+			draw_polyline(line, look["seam"], 1.0)
+			var fork := line[line.size() / 2]
+			draw_line(fork, fork + Vector2((4.0 if random.randf() < 0.5 else -4.0), -3.0), look["seam"], 1.0)
 
 
 ## Whether a point lies under the wall's top line (the broken silhouette).

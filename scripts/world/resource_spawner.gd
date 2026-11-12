@@ -15,6 +15,8 @@ const CRITTERS_PER_CHUNK := 2
 
 var _world: World
 var _forest := FastNoiseLite.new()
+## Where flowers grow in colonies.
+var _patches := FastNoiseLite.new()
 ## chunk -> nodes placed for it
 var _by_chunk: Dictionary = {}
 ## cell -> time it was gathered (seconds since start)
@@ -26,8 +28,67 @@ func setup(world: World) -> void:
 	_forest.seed = world.generator.world_seed + 3131
 	_forest.frequency = 0.03
 	_forest.fractal_octaves = 2
+	_patches.seed = world.generator.world_seed + 5151
+	_patches.frequency = 0.11
+	_patches.fractal_octaves = 1
 	world.chunk_built.connect(_on_chunk_built)
 	world.chunk_freed.connect(_on_chunk_freed)
+
+
+## The flowers, grass, stones and bones on one tile, in patterns rather
+## than evenly: flowers grow in colonies of one kind, stones gather at the
+## foot of cliffs, bones lie about old sites, mushrooms crowd round trees.
+func _cover_tile(cover: GroundCover, cell: Vector2i, local: Vector2i, tile: int, biome: Dictionary, type_at: Callable,
+		sites: Array[Vector2i], trees_at: Dictionary, random: RandomNumberGenerator) -> void:
+	var center := _world.cell_to_world(cell)
+	var spot := func() -> Vector2:
+		return center + Vector2(random.randf_range(-18, 18), random.randf_range(-14, 18))
+	var ground: Array = biome["ground"]
+	# Under a cliff: rock fallen from above.
+	var under_cliff := false
+	for offset: Vector2i in [Vector2i(0, -1), Vector2i(0, -2), Vector2i(-1, -1), Vector2i(1, -1)]:
+		if (type_at.call(local + offset) as int) in TerrainTiles.HIGH:
+			under_cliff = not tile in TerrainTiles.HIGH
+			break
+	if under_cliff and random.randf() < 0.55:
+		for k in random.randi_range(1, 3):
+			cover.plants.append([spot.call(), Flora.STONES[0] if random.randf() < 0.8 else Flora.STONES[1], random.randf() < 0.5])
+		if random.randf() < 0.4:
+			cover.decals.append([spot.call(), Flora.PEBBLE_DECAL, random.randf() < 0.5])
+		return
+	# About an old site: bones, thicker the closer.
+	for site: Vector2i in sites:
+		var away := Vector2(cell - site).length()
+		if away > Structures.GROUNDS and away < Structures.GROUNDS + 5.0 and random.randf() < 0.32 * (1.0 - (away - Structures.GROUNDS) / 5.0):
+			cover.plants.append([spot.call(), Flora.BONES, random.randf() < 0.5])
+			if random.randf() < 0.3:
+				cover.decals.append([spot.call(), Flora.DUST_DECAL, random.randf() < 0.5])
+			return
+	var flowers: Array = ground.filter(func(index: int) -> bool: return index in Flora.FLOWERS)
+	var mushrooms: Array = ground.filter(func(index: int) -> bool: return index in Flora.MUSHROOMS)
+	var plain: Array = ground.filter(func(index: int) -> bool: return not index in Flora.FLOWERS and not index in Flora.MUSHROOMS)
+	# Beside a tree: mushrooms in its shade.
+	if not mushrooms.is_empty() and random.randf() < 0.45:
+		for offset: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			if trees_at.has(cell + offset):
+				for k in random.randi_range(1, 2):
+					cover.plants.append([spot.call(), mushrooms[random.randi_range(0, mushrooms.size() - 1)], random.randf() < 0.5])
+				return
+	var patch := _patches.get_noise_2d(cell.x, cell.y)
+	if patch > 0.22 and not flowers.is_empty():
+		# A colony: one kind of flower across the patch, thick in its middle.
+		if random.randf() < biome["cover"] * 1.5:
+			var region := Vector2i((Vector2(cell) / 7.0).floor())
+			var kind: int = flowers[posmod(hash(region), flowers.size())]
+			for k in (2 if patch > 0.4 else 1) + random.randi_range(0, 1):
+				var pick: int = kind if random.randf() < 0.8 else ground[random.randi_range(0, ground.size() - 1)]
+				cover.plants.append([spot.call(), pick, random.randf() < 0.5])
+		return
+	# Between patches: grass, stones and the like, and only a stray flower.
+	if random.randf() < biome["cover"] * 0.8:
+		var choices: Array = plain if not plain.is_empty() and random.randf() < 0.88 else ground
+		for k in (1 if random.randf() < 0.6 else 2):
+			cover.plants.append([spot.call(), choices[random.randi_range(0, choices.size() - 1)], random.randf() < 0.5])
 
 
 ## How wooded a tile is, 0 to 1.
@@ -61,13 +122,33 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 			used[cell] = true
 			_place_node(placed, id, cell, -1)
 
+	# The chunk's terrain with a two-tile border, looked up once, so the
+	# ground cover can see what is around each tile.
+	var span := World.CHUNK_SIZE + 4
+	var types: PackedInt32Array = []
+	types.resize(span * span)
+	for y in span:
+		for x in span:
+			types[y * span + x] = generator.tile_type_at(origin + Vector2i(x - 2, y - 2))
+	var type_at := func(local: Vector2i) -> int:
+		return types[(local.y + 2) * span + local.x + 2]
+	# Old sites nearby, where bones lie scattered.
+	var sites: Array[Vector2i] = []
+	if structures:
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				var site := structures.site_for(chunk + Vector2i(dx, dy))
+				if not site.is_empty() and site["kind"] in ["ruin", "lair", "boss", "shipwreck", "camp"]:
+					sites.append(site["cell"])
+	var trees_at := {}
+
 	# Woods, bushes, scenery, and ground cover, tile by tile.
 	for y in World.CHUNK_SIZE:
 		for x in World.CHUNK_SIZE:
 			var cell := origin + Vector2i(x, y)
 			if used.has(cell) or Vector2(cell).length() < CLEAR_RADIUS or keep_clear.call(cell):
 				continue
-			var tile := generator.tile_type_at(cell)
+			var tile: int = type_at.call(Vector2i(x, y))
 			var biome: Dictionary = Flora.BIOMES.get(tile, {})
 			if biome.is_empty():
 				continue
@@ -76,6 +157,7 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 			var jitter := Vector2(random.randf_range(-14, 14), random.randf_range(-12, 12))
 			if roll < tree_chance and not biome["trees"].is_empty():
 				used[cell] = true
+				trees_at[cell] = true
 				var look: int = biome["trees"][random.randi_range(0, biome["trees"].size() - 1)]
 				if look in Flora.WOODEN:
 					var id := GatherDB.pick("tree", tile, generator.enemy_level_at(cell), random)
@@ -99,11 +181,7 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 				cover.decals.append([_world.cell_to_world(cell) + Vector2(detail % 23 - 11, detail / 23 % 19 - 9), decals[detail / 437 % decals.size()], detail % 2 == 0])
 			if used.has(cell):
 				continue
-			elif random.randf() < biome["cover"]:
-				var ground: Array = biome["ground"]
-				for k in (1 if random.randf() < 0.6 else 2):
-					var spot := _world.cell_to_world(cell) + Vector2(random.randf_range(-18, 18), random.randf_range(-14, 18))
-					cover.plants.append([spot, ground[random.randi_range(0, ground.size() - 1)], random.randf() < 0.5])
+			_cover_tile(cover, cell, Vector2i(x, y), tile, biome, type_at, sites, trees_at, random)
 	add_child(cover)
 	placed.append(cover)
 

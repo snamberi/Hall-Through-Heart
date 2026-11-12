@@ -238,18 +238,27 @@ func _build_ruin(cell: Vector2i, key: String, level: int, random: RandomNumberGe
 	_floor(placed, cell, 3)
 	# Walls in runs with gaps where they have fallen, and a doorway to the south.
 	var wall_cells: Array = []
+	var fallen: Array[Vector2i] = []
 	for dx in range(-4, 5):
 		for dy: int in [-4, 4]:
 			if absi(dx) <= 1 and dy == 4:
 				continue
 			if random.randf() < 0.8:
 				wall_cells.append(cell + Vector2i(dx, dy))
+			else:
+				fallen.append(cell + Vector2i(dx, dy))
 	for dy in range(-3, 4):
 		for dx: int in [-4, 4]:
 			if random.randf() < 0.75:
 				wall_cells.append(cell + Vector2i(dx, dy))
+			else:
+				fallen.append(cell + Vector2i(dx, dy))
 	for piece in StoneWall.build(wall_cells, func(c: Vector2i) -> Vector2: return _at(c)):
 		placed.append(piece)
+	# Where the wall came down, its blocks still lie in a heap.
+	for gap: Vector2i in fallen:
+		if random.randf() < 0.7:
+			_decor(placed, Prop.Decor.RUBBLE, gap, 0.0, false, Vector2(random.randf_range(-6.0, 6.0), random.randf_range(-4.0, 6.0)))
 	for corner: Vector2i in [Vector2i(-4, -4), Vector2i(4, -4), Vector2i(-4, 4), Vector2i(4, 4)]:
 		placed.append(Prop.create(Prop.Art.PILLAR, _at(cell + corner + Vector2i(0, 1)), 9.0))
 	for i in 3:

@@ -127,6 +127,7 @@ func _build_chunk(chunk: Vector2i) -> void:
 	layer.name = "Chunk_%d_%d" % [chunk.x, chunk.y]
 	layer.tile_set = _tile_set
 	layer.position = Vector2(chunk * CHUNK_SIZE * TerrainTiles.TILE_SIZE)
+	layer.material = TerrainTiles.ground_material()
 	# Four more layers hold the ragged strips that blend each terrain over
 	# its neighbours, one layer per side.
 	var fringes: Array[TileMapLayer] = []
@@ -134,6 +135,7 @@ func _build_chunk(chunk: Vector2i) -> void:
 		var fringe := TileMapLayer.new()
 		fringe.tile_set = _tile_set
 		fringe.collision_enabled = false
+		fringe.use_parent_material = true
 		layer.add_child(fringe)
 		fringes.append(fringe)
 
@@ -152,6 +154,7 @@ func _build_chunk(chunk: Vector2i) -> void:
 	skirt.tile_set = _tile_set
 	skirt.collision_enabled = false
 	skirt.z_index = -1
+	skirt.use_parent_material = true
 	layer.add_child(skirt)
 	for y in span:
 		for x in span:

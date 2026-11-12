@@ -49,14 +49,38 @@ func build(tile_set: TileSet) -> void:
 	add_child(dark)
 	_layer = TileMapLayer.new()
 	_layer.tile_set = tile_set
+	_layer.material = TerrainTiles.ground_material()
 	_layer.z_index = -10
 	add_child(_layer)
 	for cell in cells:
-		_layer.set_cell(cell, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(cells[cell], posmod(hash(cell), 8)))
+		_layer.set_cell(cell, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(cells[cell], TerrainTiles.pick_variant(hash(cell))))
 	_faces = WallFaces.new()
 	_faces.room = self
 	_faces.style = wall_style
 	add_child(_faces)
+	_add_void_glows()
+
+
+## Voidscar floors hold glowing deposits; the brightest few of them light
+## the dark around them faintly, so the hollow glimmers.
+func _add_void_glows() -> void:
+	var spots: Array[Vector2i] = []
+	for cell in cells:
+		if cells[cell] != TerrainTiles.Type.VOIDSCAR:
+			continue
+		var variant := TerrainTiles.pick_variant(hash(cell))
+		# Deposits, lit cracks and rifts (see tools/generate_art.py).
+		if variant in [TerrainTiles.PLAIN_VARIANTS + 1, TerrainTiles.PLAIN_VARIANTS + 2, TerrainTiles.PLAIN_VARIANTS + 5]:
+			spots.append(cell)
+	spots.shuffle()
+	for cell in spots.slice(0, 12):
+		var glow := PointLight2D.new()
+		glow.texture = Prop.LIGHT
+		glow.color = Color(0.62, 0.42, 1.0)
+		glow.energy = 0.55
+		glow.texture_scale = 0.9
+		glow.position = cell_position(cell) - ORIGIN + Vector2(0, 4)
+		add_child(glow)
 
 
 ## World position of the middle of a room cell.
@@ -68,7 +92,7 @@ func cell_position(cell: Vector2i) -> Vector2:
 func set_tile(cell: Vector2i, type: int) -> void:
 	cells[cell] = type
 	if _layer:
-		_layer.set_cell(cell, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(type, posmod(hash(cell), 8)))
+		_layer.set_cell(cell, TerrainTiles.TERRAIN_SOURCE, TerrainTiles.atlas_coords(type, TerrainTiles.pick_variant(hash(cell))))
 	if _faces:
 		_faces.queue_redraw()
 

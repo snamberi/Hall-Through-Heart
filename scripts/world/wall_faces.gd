@@ -57,11 +57,22 @@ func _draw() -> void:
 			# The shadow the wall casts onto the floor in front of it.
 			for k in 6:
 				draw_rect(Rect2(origin.x, origin.y + size + k * 2.0, size, 2.0), Color(0, 0, 0, 0.32 * (1.0 - k / 6.0)))
+			if style == "void":
+				# Where solid ground ends at the void wall, a seam of violet
+				# light, so the edge of the walkable floor is plain to see.
+				var lip := Color(colors["rim"], 0.9)
+				draw_line(Vector2(face.position.x, face.end.y + 1.0), Vector2(face.end.x, face.end.y + 1.0), lip, 2.0)
+				for k in 3:
+					draw_rect(Rect2(origin.x, face.end.y + 2.0 + k * 2.0, size, 2.0), Color(colors["rim"], 0.22 * (1.0 - k / 3.0)))
 		# Edges against open floor at the sides and above.
 		if _is_open(cell + Vector2i.LEFT):
 			draw_line(origin + Vector2(1, 0), origin + Vector2(1, size), Color(colors["rim"], 0.7), 2.0)
+			if style == "void":
+				draw_rect(Rect2(origin.x - 4.0, origin.y, 4.0, size), Color(colors["rim"], 0.14))
 		if _is_open(cell + Vector2i.RIGHT):
 			draw_line(origin + Vector2(size - 1, 0), origin + Vector2(size - 1, size), Color(colors["dark"], 0.9), 2.0)
+			if style == "void":
+				draw_rect(Rect2(origin.x + size, origin.y, 3.0, size), Color(colors["rim"], 0.16))
 			for k in 4:
 				draw_rect(Rect2(origin.x + size + k * 2.0, origin.y, 2.0, size), Color(0, 0, 0, 0.18 * (1.0 - k / 4.0)))
 		if _is_open(cell + Vector2i.UP):

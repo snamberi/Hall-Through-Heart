@@ -2,8 +2,10 @@ class_name TerrainTiles
 extends RefCounted
 ## Terrain tile definitions and the tileset built from the terrain atlas.
 ##
-## The atlas has one row per Type, in enum order. Land rows hold eight
-## look-alike variants; water rows hold two variants of four animation frames.
+## The atlas has one row per Type, in enum order. Land rows hold twelve
+## variants: six of plain ground and six that each carry one feature (a
+## root, a puddle, a vein...), shown rarely; water rows hold two variants of
+## four animation frames.
 ## A second image, fringes.png, holds each terrain cut to a ragged strip and
 ## corner, which the world lays over neighbouring tiles so borders blend.
 ## Saves store Type numbers, so only ever append to the enum.
@@ -55,8 +57,52 @@ const OVERLAP_ORDER: Array[int] = [
 ]
 const WATER_FRAMES := 4
 const WATER_FRAME_SECONDS := 0.4
+const VARIANTS := 12
+const PLAIN_VARIANTS := 6
+## Out of 100: how often a tile is one of the featured variants.
+const FEATURE_CHANCE := 22
 
 static var _priority: Array[int] = []
+static var _ground_material: ShaderMaterial
+
+
+## Broad, slow changes of tone across the ground, in world space, so a
+## plain stretch of one terrain never looks like the same tile repeated:
+## soft lighter and darker reaches with a faint warm or cool cast.
+static func ground_material() -> ShaderMaterial:
+	if _ground_material == null:
+		var shader := Shader.new()
+		shader.code = """
+shader_type canvas_item;
+varying vec2 world_pos;
+
+void vertex() {
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+}
+
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+void fragment() {
+	vec4 c = COLOR;
+	float n = noise(world_pos / 560.0) * 0.6 + noise(world_pos / 180.0 + vec2(7.3, 2.1)) * 0.4;
+	float v = n - 0.5;
+	c.rgb *= 1.0 + v * 0.24;
+	c.rgb += vec3(0.014, 0.008, -0.012) * v * 2.0;
+	COLOR = c;
+}
+"""
+		_ground_material = ShaderMaterial.new()
+		_ground_material.shader = shader
+	return _ground_material
 
 
 static func display_name(type: int) -> String:
@@ -84,11 +130,21 @@ static func priority(type: int) -> int:
 	return _priority[type]
 
 
+## A variant from a cell's hash: mostly plain ground, now and then one with
+## a feature, so features stay a surprise rather than a pattern.
+static func pick_variant(cell_hash: int) -> int:
+	var roll := posmod(cell_hash, 100)
+	var other := posmod(cell_hash / 100, 1000)
+	if roll < FEATURE_CHANCE:
+		return PLAIN_VARIANTS + other % (VARIANTS - PLAIN_VARIANTS)
+	return other % PLAIN_VARIANTS
+
+
 ## Atlas cell for a type and a variant number (any non-negative integer).
 static func atlas_coords(type: int, variant: int) -> Vector2i:
 	if is_water(type):
 		return Vector2i((variant % 2) * WATER_FRAMES, type)
-	return Vector2i(variant % 8, type)
+	return Vector2i(variant % VARIANTS, type)
 
 
 static func build_tileset() -> TileSet:
@@ -109,7 +165,7 @@ static func build_tileset() -> TileSet:
 	source.texture_region_size = Vector2i(TILE_SIZE, TILE_SIZE)
 	tile_set.add_source(source, TERRAIN_SOURCE)
 	for type in Type.size():
-		for variant in (2 if is_water(type) else 8):
+		for variant in (2 if is_water(type) else VARIANTS):
 			var coords := atlas_coords(type, variant)
 			source.create_tile(coords)
 			if is_water(type):

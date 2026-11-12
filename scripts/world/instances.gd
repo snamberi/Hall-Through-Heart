@@ -126,6 +126,8 @@ func enter_cave(cave_seed: int, level: int, lair: bool, on_chest: Callable) -> v
 	_choose_origin()
 	var cave := Room.new()
 	cave.gloom = 0.92
+	if theme_key == "void":
+		cave.wall_style = "void"
 	cave.title = theme["title"] + (" (Lair)" if lair else "")
 	Events.codex_event.emit("caves", 1)
 	Events.codex_event.emit("cave_" + theme_key, 1)

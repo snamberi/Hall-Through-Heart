@@ -1209,7 +1209,7 @@ def weapon_icon_parts(parts):
 # Row order must match the Type enum in scripts/world/terrain_tiles.gd, so
 # only ever append. Each row: name, style, base, light, dark, accent.
 # Water rows are animated: columns 0-3 and 4-7 are the four frames of two
-# variants. Every other row has eight look-alike variants.
+# variants. Every other row has twelve variants: six plain, six featured.
 TILES = [
     ("deep_water", "water", "141b2b", "1f2a40", "0e1320", "33466a"),
     ("shallow_water", "water", "23364a", "35506a", "1a2838", "5a7f9a"),
@@ -1235,7 +1235,9 @@ TILES = [
     ("peak", "peak", "7c7986", "a4a2ae", "55525e", "eef2f6"),
     ("path", "path", "7a6448", "8e7656", "5c4a34", "a6a2b0"),
 ]
-VARIANTS = 8
+VARIANTS = 12
+# Variants below this are plain ground; the rest each carry one feature.
+PLAIN_VARIANTS = 6
 WATER_FRAMES = 4
 
 
@@ -1270,6 +1272,8 @@ def draw_tile(row, variant, frame=0):
         x, y = r.randrange(4, N - 14), r.randrange(4, N - 10)
         d.line((x, y, x + 4, y + 3, x + 6, y + 2, x + 10, y + 6), fill=colour)
 
+    if name in SPECIAL_TILES:
+        return SPECIAL_TILES[name](img, d, r, variant, base, light, dark, accent)
     if style == "rock":
         # The top of a wall seen from above: rough, dark rock, lit faintly
         # from the top-left, with cracks. Its front face is drawn in game.
@@ -1409,33 +1413,429 @@ def draw_tile(row, variant, frame=0):
         d.line((x, y - 2, x, y + 2), fill=accent)
     return img
 
+# --- Hand-designed variants. The game shows variants 0-2 most of the time
+# (TerrainTiles.pick_variant), so those are plain ground with only their
+# grain changed, and 3-7 each carry one distinct feature kept inside the
+# tile, so a feature never breaks at a tile edge.
+BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+
+
+def _shift_rgb(c, amount):
+    return tuple(max(0, min(255, int(v + amount))) for v in c[:3]) + (255,)
+
+
+def _grain(img, r, light, dark, clumps=26, specks=60, wrap=True):
+    """Organic mottling: soft 2-3px clumps of light and dark, then specks."""
+    n = img.size[0]
+    for _ in range(clumps):
+        x, y = r.randrange(n), r.randrange(n)
+        c = light if r.random() < 0.45 else dark
+        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1), (2, 0), (0, 2))[: r.randrange(3, 7)]:
+            img.putpixel(((x + dx) % n, (y + dy) % n), c)
+    for _ in range(specks):
+        img.putpixel((r.randrange(n), r.randrange(n)), light if r.random() < 0.35 else dark)
+
+
+def _stone(d, img, x, y, w, h, light, mid, dark, outline=None):
+    """A small shaded stone: lit top-left, dark underside, a cast shadow."""
+    d.ellipse((x - 1, y + 1, x + w, y + h + 1), fill=_shift_rgb(dark, -14))
+    d.ellipse((x, y, x + w - 1, y + h - 1), fill=mid)
+    d.line((x + 1, y, x + w - 3, y), fill=light)
+    d.point((x, y + 1), fill=light)
+    d.line((x + 1, y + h - 1, x + w - 2, y + h - 1), fill=dark)
+    if outline:
+        d.point((x + w - 1, y + h - 2), fill=outline)
+
+
+def tile_ash(img, d, r, variant, base, light, dark, accent):
+    # Ashen Waste: soft grey dust in wind-laid ripples, char and old fire.
+    feature = variant - PLAIN_VARIANTS
+    n = img.size[0]
+    _grain(img, r, light, dark, clumps=22, specks=70)
+    soot = (34, 32, 36, 255)
+    for _ in range(3 if feature < 0 else 2):
+        x, y, w = r.randrange(2, n - 16), r.randrange(4, n - 4), r.randrange(8, 14)
+        d.line((x, y, x + w // 2, y - 1, x + w, y), fill=light)
+        d.line((x + 1, y + 1, x + w - 1, y + 1), fill=dark)
+    for _ in range(4):
+        img.putpixel((r.randrange(n), r.randrange(n)), soot)
+    if feature == 0:
+        # A crust of baked ash split into a few plates, edges curling up.
+        x, y = r.randrange(6, n - 26), r.randrange(8, n - 18)
+        plates = [[(x, y + 4), (x + 7, y), (x + 13, y + 3), (x + 11, y + 9), (x + 3, y + 10)],
+                  [(x + 13, y + 3), (x + 20, y + 2), (x + 22, y + 8), (x + 11, y + 9)],
+                  [(x + 3, y + 10), (x + 11, y + 9), (x + 14, y + 14), (x + 5, y + 15)]]
+        for plate in plates:
+            d.polygon(plate, fill=_shift_rgb(base, 6))
+            d.line(plate + [plate[0]], fill=soot)
+            d.line(plate[:2], fill=light)
+    elif feature == 1:
+        # A seam still smouldering under the dust.
+        x, y = r.randrange(8, n - 22), r.randrange(10, n - 12)
+        pts = [(x, y), (x + 4, y + 2), (x + 8, y + 1), (x + 12, y + 4), (x + 15, y + 3)]
+        d.line(pts, fill=soot, width=2)
+        for k, (px, py) in enumerate(pts[1:-1]):
+            img.putpixel((px, py), (240, 138, 46, 255) if k % 2 == 0 else (150, 60, 30, 255))
+        img.putpixel((pts[2][0], pts[2][1] - 1), (255, 216, 107, 255))
+    elif feature == 2:
+        # A scatter of charcoal from something that burned here.
+        cx, cy = r.randrange(10, n - 12), r.randrange(10, n - 12)
+        for _ in range(6):
+            x, y = cx + r.randint(-7, 7), cy + r.randint(-5, 5)
+            w = r.randrange(2, 5)
+            d.rectangle((x, y, x + w, y + 1), fill=soot)
+            d.point((x, y), fill=(74, 68, 72, 255))
+    elif feature == 3:
+        # A half-buried bone.
+        x, y = r.randrange(8, n - 18), r.randrange(10, n - 10)
+        d.line((x, y + 2, x + 10, y), fill=(0x6a, 0x66, 0x5e, 255), width=1)
+        d.line((x, y + 1, x + 10, y - 1), fill=accent, width=1)
+        for ex, ey in ((x - 1, y + 1), (x + 11, y - 1)):
+            d.ellipse((ex - 1, ey - 1, ex + 1, ey + 1), fill=accent)
+            d.point((ex, ey + 1), fill=(0x8a, 0x86, 0x7c, 255))
+        d.line((x + 2, y + 3, x + 9, y + 1), fill=dark)
+    elif feature == 4:
+        # A soft drift of pale ash with a scorched ring beside it.
+        x, y = r.randrange(6, n - 22), r.randrange(8, n - 14)
+        d.ellipse((x, y, x + 16, y + 7), fill=light)
+        d.ellipse((x + 3, y + 1, x + 12, y + 4), fill=_shift_rgb(light, 10))
+        d.arc((x, y + 1, x + 16, y + 8), 20, 160, fill=dark)
+        cx, cy = r.randrange(8, n - 10), r.randrange(8, n - 10)
+        d.ellipse((cx - 3, cy - 2, cx + 3, cy + 2), outline=soot)
+    elif feature == 5:
+        # Tracks of something that crossed the waste.
+        x, y = r.randrange(4, 12), r.randrange(10, n - 14)
+        for k in range(4):
+            px, py = x + k * 8, y + (3 if k % 2 else 0)
+            d.ellipse((px, py, px + 2, py + 2), fill=dark)
+            for tx in (-1, 1, 3):
+                d.point((px + tx, py - 1), fill=dark)
+    return img
+
+
+def tile_dark_grass(img, d, r, variant, base, light, dark, accent):
+    # Gloomwood: deep, dense grass in many small blades, dark between.
+    feature = variant - PLAIN_VARIANTS
+    n = img.size[0]
+    _grain(img, r, light, dark, clumps=30, specks=40)
+    deep = _shift_rgb(dark, -8)
+    mid = _shift_rgb(base, 8)
+    for _ in range(46):
+        x, y = r.randrange(n), r.randrange(n)
+        h = r.randrange(2, 4)
+        for k in range(h):
+            img.putpixel((x % n, (y - k) % n), light if k == h - 1 else mid)
+        img.putpixel((x % n, (y + 1) % n), deep)
+    if feature == 0:
+        # A cushion of moss, darker and soft.
+        x, y = r.randrange(6, n - 20), r.randrange(6, n - 16)
+        moss = (0x2c, 0x46, 0x2a, 255)
+        d.ellipse((x, y, x + 14, y + 9), fill=moss)
+        for _ in range(12):
+            d.point((x + r.randrange(2, 13), y + r.randrange(1, 8)), fill=(0x4a, 0x6e, 0x3e, 255))
+        d.arc((x, y, x + 14, y + 9), 200, 340, fill=(0x5a, 0x80, 0x48, 255))
+    elif feature == 1:
+        # Fallen leaves.
+        for _ in range(7):
+            x, y = r.randrange(4, n - 6), r.randrange(4, n - 6)
+            c = r.choice([(0x7a, 0x5a, 0x32, 255), (0x6a, 0x44, 0x2a, 255), (0x8a, 0x6a, 0x3a, 255)])
+            d.line((x, y, x + 2, y + 1), fill=c)
+            d.point((x + 1, y + 1), fill=_shift_rgb(c, -30))
+    elif feature == 2:
+        # A root breaking the surface, kept inside the tile.
+        x, y = r.randrange(4, 10), r.randrange(12, n - 12)
+        pts = [(x, y), (x + 8, y - 2), (x + 16, y + 1), (x + 24, y - 1), (x + 30, y + 2)]
+        d.line(pts, fill=(0x3a, 0x2a, 0x20, 255), width=2)
+        d.line([(px, py - 1) for px, py in pts[:-1]], fill=(0x6a, 0x50, 0x3a, 255))
+        d.line([(px, py + 2) for px, py in pts], fill=deep)
+    elif feature == 3:
+        # A few blood-red blooms low in the grass.
+        cx, cy = r.randrange(10, n - 10), r.randrange(10, n - 10)
+        for _ in range(4):
+            x, y = cx + r.randint(-6, 6), cy + r.randint(-4, 4)
+            d.rectangle((x, y, x + 1, y + 1), fill=accent)
+            d.point((x, y), fill=_shift_rgb(accent, 50))
+            d.point((x, y + 2), fill=light)
+    elif feature == 4:
+        # A bare patch where the earth shows through.
+        x, y = r.randrange(6, n - 20), r.randrange(6, n - 16)
+        earth = (0x3a, 0x2e, 0x24, 255)
+        d.ellipse((x, y, x + 13, y + 8), fill=earth)
+        d.point((x + 4, y + 3), fill=(0x55, 0x46, 0x38, 255))
+        d.point((x + 9, y + 5), fill=(0x55, 0x46, 0x38, 255))
+        d.arc((x, y, x + 13, y + 8), 180, 360, fill=deep)
+        for k in range(0, 14, 3):
+            d.point((x + k, y + 8 - (k % 2)), fill=light)
+    elif feature == 5:
+        # A ring of tiny pale toadstools.
+        cx, cy = r.randrange(10, n - 10), r.randrange(10, n - 10)
+        for k in range(5):
+            a = k * 1.25 + r.random() * 0.4
+            px, py = int(cx + math.cos(a) * 5), int(cy + math.sin(a) * 3)
+            d.point((px, py + 1), fill=(0xa8, 0xa0, 0x8a, 255))
+            d.line((px - 1, py, px + 1, py), fill=(0xd8, 0xd0, 0xb8, 255))
+    return img
+
+
+def tile_cave_floor(img, d, r, variant, base, light, dark, accent):
+    # Cavern: packed grit and gravel, cut by old cracks.
+    feature = variant - PLAIN_VARIANTS
+    n = img.size[0]
+    _grain(img, r, light, dark, clumps=24, specks=50)
+    for _ in range(14):
+        x, y = r.randrange(n), r.randrange(n)
+        img.putpixel((x, y), light)
+        img.putpixel(((x + 1) % n, y), accent)
+        img.putpixel((x, (y + 1) % n), dark)
+    if feature == 0:
+        # A long crack with a lit lip.
+        x, y = r.randrange(4, 10), r.randrange(8, n - 10)
+        pts = [(x, y)]
+        while pts[-1][0] < n - 8:
+            px, py = pts[-1]
+            pts.append((px + r.randrange(4, 7), max(4, min(n - 5, py + r.randint(-3, 3)))))
+        d.line(pts, fill=_shift_rgb(dark, -12))
+        d.line([(px, py - 1) for px, py in pts], fill=accent)
+    elif feature == 1:
+        # Seep water pooled in a hollow, with a drip ring.
+        x, y = r.randrange(6, n - 20), r.randrange(8, n - 14)
+        d.ellipse((x, y, x + 15, y + 7), fill=(0x26, 0x29, 0x34, 255))
+        d.ellipse((x + 2, y + 1, x + 13, y + 6), fill=(0x2c, 0x30, 0x3e, 255))
+        d.line((x + 3, y + 2, x + 7, y + 2), fill=(0x5a, 0x66, 0x7a, 255))
+        d.point((x + 10, y + 4), fill=(0x4a, 0x54, 0x66, 255))
+    elif feature == 2:
+        # A vein of glinting mineral.
+        x, y = r.randrange(6, n - 18), r.randrange(8, n - 10)
+        d.line((x, y, x + 5, y + 2, x + 11, y + 1, x + 14, y + 4), fill=(0x5a, 0x5e, 0x70, 255))
+        for k in (1, 6, 12):
+            d.point((x + k, y + (1 if k > 5 else 0)), fill=(0x9f, 0xb4, 0xc8, 255))
+        d.point((x + 6, y), fill=(0xdf, 0xe8, 0xf0, 255))
+    elif feature == 3:
+        # Rubble fallen from the roof.
+        for _ in range(4):
+            x, y = r.randrange(6, n - 10), r.randrange(6, n - 9)
+            _stone(d, img, x, y, r.randrange(4, 7), r.randrange(3, 5), _shift_rgb(light, 40), _shift_rgb(light, 14), dark)
+    elif feature == 4:
+        # A stub of stalagmite where the roof drips, with a lime-pale stain.
+        cx, cy = r.randrange(10, n - 10), r.randrange(12, n - 8)
+        d.ellipse((cx - 6, cy - 1, cx + 6, cy + 3), fill=_shift_rgb(dark, -8))
+        d.ellipse((cx - 5, cy - 1, cx + 3, cy + 2), fill=(0x4c, 0x4a, 0x52, 255))
+        d.polygon([(cx - 3, cy + 1), (cx, cy - 6), (cx + 3, cy + 1)], fill=(0x5a, 0x58, 0x62, 255))
+        d.line((cx - 1, cy - 4, cx - 2, cy), fill=(0x8a, 0x88, 0x94, 255))
+        d.line((cx + 1, cy - 3, cx + 2, cy + 1), fill=_shift_rgb(dark, -6))
+    elif feature == 5:
+        # Pale cave fungus, faintly glowing.
+        cx, cy = r.randrange(8, n - 10), r.randrange(8, n - 10)
+        for _ in range(6):
+            px, py = cx + r.randint(-5, 5), cy + r.randint(-3, 3)
+            d.point((px, py), fill=(0x6a, 0xc8, 0xb0, 255))
+            d.point((px, py + 1), fill=(0x2a, 0x5a, 0x50, 255))
+    return img
+
+
+def tile_voidscar(img, d, r, variant, base, light, dark, accent):
+    # Void Hollow: purple-black stone, laced with veins and deposits that
+    # glow; the bright violet is kept for these, so it reads as mineral.
+    feature = variant - PLAIN_VARIANTS
+    n = img.size[0]
+    _grain(img, r, light, dark, clumps=26, specks=46)
+    dim = (0x3e, 0x2c, 0x66, 255)
+    vein = (0x6a, 0x4a, 0xb0, 255)
+    glow = (0xc8, 0xa8, 0xff, 255)
+    # Faint strata.
+    for _ in range(2):
+        y = r.randrange(4, n - 4)
+        x = r.randrange(0, n - 14)
+        d.line((x, y, x + r.randrange(8, 14), y - 1), fill=light)
+    for _ in range(3):
+        img.putpixel((r.randrange(n), r.randrange(n)), dim)
+    if feature == 0:
+        # A meandering vein with bright beads along it.
+        x, y = r.randrange(4, 8), r.randrange(10, n - 10)
+        pts = [(x, y)]
+        while pts[-1][0] < n - 6:
+            px, py = pts[-1]
+            pts.append((px + r.randrange(3, 6), max(4, min(n - 5, py + r.randint(-3, 3)))))
+        d.line([(px, py + 1) for px, py in pts], fill=dark)
+        d.line(pts, fill=vein)
+        for px, py in pts[1::2]:
+            img.putpixel((px, py), glow)
+    elif feature == 1:
+        # A glowing deposit: a cluster of crystal points in a dim halo.
+        cx, cy = r.randrange(12, n - 12), r.randrange(14, n - 10)
+        d.ellipse((cx - 8, cy - 4, cx + 8, cy + 5), fill=_shift_rgb(base, 10))
+        for k in range(10):
+            img.putpixel((cx + r.randint(-8, 8), cy + r.randint(-4, 5)), dim)
+        for ox, h in ((-4, 4), (0, 7), (4, 5), (2, 3)):
+            d.polygon([(cx + ox - 2, cy + 2), (cx + ox, cy + 2 - h), (cx + ox + 2, cy + 2)], fill=vein)
+            d.line((cx + ox, cy + 2 - h, cx + ox - 1, cy + 1), fill=glow)
+        d.point((cx, cy - 5), fill=(255, 255, 255, 255))
+        d.line((cx - 5, cy + 3, cx + 5, cy + 3), fill=dark)
+    elif feature == 2:
+        # A crack with void-light down in it.
+        x, y = r.randrange(6, n - 26), r.randrange(10, n - 10)
+        pts = [(x, y), (x + 5, y + 3), (x + 9, y + 1), (x + 14, y + 4), (x + 19, y + 2)]
+        d.line(pts, fill=(6, 4, 12, 255), width=2)
+        for px, py in pts[1:-1]:
+            img.putpixel((px, py), accent)
+        img.putpixel((pts[2][0], pts[2][1] + 1), glow)
+    elif feature == 3:
+        # Two thin, dim veins running together.
+        x, y = r.randrange(4, 10), r.randrange(10, n - 14)
+        for off in (0, 4):
+            d.line((x, y + off, x + 10, y + off - 2, x + 22, y + off + 1, x + 30, y + off - 1), fill=dim)
+        img.putpixel((x + 10, y - 2), vein)
+        img.putpixel((x + 22, y + 5), vein)
+    elif feature == 4:
+        # A loose shard and a little glowing grit.
+        x, y = r.randrange(8, n - 12), r.randrange(10, n - 10)
+        d.polygon([(x, y + 3), (x + 3, y - 2), (x + 6, y + 3)], fill=vein)
+        d.line((x + 3, y - 2, x + 2, y + 2), fill=glow)
+        d.line((x, y + 4, x + 6, y + 4), fill=dark)
+        for _ in range(5):
+            img.putpixel((x + r.randint(-6, 10), y + r.randint(-5, 7)), dim)
+    elif feature == 5:
+        # A small rift: a hole into nothing with a violet lip.
+        cx, cy = r.randrange(10, n - 12), r.randrange(10, n - 10)
+        d.ellipse((cx - 6, cy - 3, cx + 6, cy + 3), fill=(4, 2, 10, 255))
+        d.arc((cx - 6, cy - 3, cx + 6, cy + 3), 180, 360, fill=vein)
+        d.arc((cx - 6, cy - 3, cx + 6, cy + 3), 0, 180, fill=dim)
+        d.point((cx - 2, cy - 3), fill=glow)
+    return img
+
+
+SPECIAL_TILES = {"ash": tile_ash, "dark_grass": tile_dark_grass, "cave_floor": tile_cave_floor, "voidscar": tile_voidscar}
+
+
+def _fringe_family(row):
+    name, style = TILES[row][0], TILES[row][1]
+    if style == "grass":
+        return "grass"
+    if style in ("ash", "sand", "snow", "cracked", "cinder"):
+        return "powder"
+    if style in ("rock", "mountain", "peak") or name in ("cave_floor", "path"):
+        return "stone"
+    if style in ("mud", "bog", "tar", "water"):
+        return "wet"
+    if style == "void":
+        return "void"
+    return "plain"
+
+
+def _edge_pixel(family, s, t, x, y, tile, colours, pebbles, blades):
+    """The colour of a pixel `s` pixels beyond a fringe's edge (s >= 0), at
+    `t` along it, or None to leave the terrain below showing. Each family
+    ends differently: grass in blades with a shadow under them, dust in a
+    dithered fade, stony ground in a line of pebbles, wet ground in a dark
+    rim, void ground in a violet glow."""
+    base, light, dark, accent = colours
+    if family == "grass":
+        for t0, h, lit in blades:
+            if s < h and abs(t - t0) <= (1.0 - s / h) * 1.3:
+                return light if s >= h - 1.2 and lit else base if s < 1 else _shift_rgb(base, 10)
+        if s < 1.4:
+            return (0, 0, 0, 70)
+        return None
+    if family == "powder":
+        if s < 4.5 and BAYER[y % 4][x % 4] / 16.0 < 1.0 - s / 4.5:
+            return tile.getpixel((x % N, y % N))
+        return None
+    if family == "stone":
+        for t0, s0, rw, rh in pebbles:
+            u, v = (t - t0) / rw, (s - s0) / rh
+            if u * u + v * v <= 1.0:
+                return light if v < -0.3 and u < 0.4 else dark if v > 0.35 else base
+            if (t - t0) ** 2 / (rw * rw) + (s - s0 - 1.2) ** 2 / (rh * rh) <= 1.0:
+                return (0, 0, 0, 80)
+        if s < 1.0:
+            return (0, 0, 0, 60)
+        return None
+    if family == "wet":
+        if s < 1.0:
+            return _shift_rgb(dark, -16)
+        if s < 2.0:
+            return (0, 0, 0, 50)
+        return None
+    if family == "void":
+        if s < 1.0:
+            return accent if int(t) % 5 != 0 else _shift_rgb(accent, -40)
+        if s < 3.0:
+            return accent[:3] + (int(90 / s),)
+        return None
+    if s < 1.0:
+        return _shift_rgb(base, -40)
+    return None
+
 
 def draw_fringes():
     """Ragged borders: each terrain's texture cut to a rough strip along the
     top edge (column 0) and a rough corner at the top right (column 1). The
-    game rotates these to blend one terrain over its neighbour."""
+    game rotates these to blend one terrain over its neighbour. How the
+    border ends depends on the terrain: grass overhangs in blades, dust
+    thins out, stony ground leaves pebbles, and so on."""
     sheet = Image.new("RGBA", (3 * N, len(TILES) * N), (0, 0, 0, 0))
     for row in range(len(TILES)):
         tile = draw_tile(row, 0)
-        edge_colour = tuple(int(c * 0.62) for c in rgba(TILES[row][2])[:3]) + (255,)
+        family = _fringe_family(row)
+        _, _, base, light, dark, accent = TILES[row]
+        colours = (rgba(base), rgba(light), rgba(dark), rgba(accent))
+        if family == "grass":
+            colours = (rgba(base), _shift_rgb(rgba(light), 12), rgba(dark), rgba(accent))
         r = random.Random(row * 7 + 3)
+        # A wandering edge with a broad swell, so borders read as shapes
+        # rather than a row of squares.
         depth, depths = 9, []
+        swell = r.uniform(0.0, math.tau)
         for x in range(N):
             depth = max(4, min(14, depth + r.choice((-2, -1, -1, 0, 0, 1, 1, 2))))
-            depths.append(depth)
+            depths.append(max(3, min(16, depth + int(round(3.0 * math.sin(swell + x * 0.16))))))
         # Ease the ends so strips meet neighbours of any depth without a step.
         for x in range(6):
             depths[x] = min(depths[x], 5 + x)
             depths[N - 1 - x] = min(depths[N - 1 - x], 5 + x)
+        # Blades and pebbles along the edge (t runs along it).
+        blades = []
+        t = r.uniform(0.0, 2.0)
+        while t < N + 14:
+            blades.append((t, r.uniform(2.5, 5.0), r.random() < 0.7))
+            t += r.uniform(1.8, 3.2)
+        pebbles = []
+        t = r.uniform(0.0, 3.0)
+        while t < N + 14:
+            if r.random() < 0.7:
+                pebbles.append((t, r.uniform(-0.5, 0.8), r.uniform(1.4, 2.6), r.uniform(1.1, 1.8)))
+            t += r.uniform(3.0, 5.5)
+
+        def paint(px, py, s, t):
+            if s < 0.0:
+                sheet.putpixel((px, row * N + py), tile.getpixel((px % N, py % N)))
+                return
+            colour = _edge_pixel(family, s, t, px, py, tile, colours, pebbles, blades)
+            if colour is not None:
+                sheet.putpixel((px, row * N + py), colour)
+
+        # Column 0: the strip. Pixels within 1 of the edge are kept short of
+        # the tile's sides, so rotated strips never overlap their own ends.
         for x in range(N):
-            for y in range(depths[x]):
-                sheet.putpixel((x, row * N + y), tile.getpixel((x, y)) if y < depths[x] - 1 else edge_colour)
-        for y in range(N):
-            for x in range(N):
-                reach = 9 + r.choice((-1, 0, 0, 1))
+            for y in range(N // 2):
+                s = y - depths[x]
+                if s >= 0 and min(x, N - 1 - x) < 3:
+                    continue
+                paint(x, y, s, x)
+        # Column 1: the corner, around the top-right point.
+        # Rounder in the middle, back to the usual reach where it meets
+        # the strips of the tiles beside it.
+        bulge = r.uniform(1.0, 3.5)
+        reach_by_angle = [max(6, min(13, 9 + int(round(bulge * math.sin(math.pi * k / 23))) + r.choice((-1, 0, 0, 1)))) for k in range(24)]
+        for y in range(N // 2):
+            for x in range(N // 2, N):
                 dist = math.hypot(N - 1 - x, y)
-                if dist < reach:
-                    sheet.putpixel((N + x, row * N + y), tile.getpixel((x, y)) if dist < reach - 1.2 else edge_colour)
+                angle = math.atan2(y, N - 1 - x)
+                reach = reach_by_angle[min(23, int(angle / (math.pi / 2) * 23))]
+                s = dist - reach
+                if s > 6:
+                    continue
+                paint(N + x, y, s, angle * reach)
         # Column 2: the cliff face a high terrain shows on the tile below it.
         if TILES[row][1] in ("mountain", "peak"):
             face = [rgba(c) for c in ("4a4650", "3a3640", "2c2932", "201e25")]
@@ -1827,6 +2227,21 @@ def _draw_icon(parts):
     return img
 
 
+def draw_terrain():
+    atlas = Image.new("RGBA", (VARIANTS * N, len(TILES) * N))
+    for row in range(len(TILES)):
+        for column in range(VARIANTS):
+            if TILES[row][1] == "water":
+                if column >= 2 * WATER_FRAMES:
+                    continue
+                tile = draw_tile(row, column // WATER_FRAMES, column % WATER_FRAMES)
+            else:
+                tile = draw_tile(row, column)
+            atlas.paste(tile, (column * N, row * N))
+    atlas.save(os.path.join(ROOT, "tiles", "terrain.png"))
+    draw_fringes().save(os.path.join(ROOT, "tiles", "fringes.png"))
+
+
 def main():
     os.makedirs(os.path.join(ROOT, "sprites"), exist_ok=True)
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
@@ -1851,16 +2266,7 @@ def main():
     os.makedirs(os.path.join(ROOT, "sprites", "layers"), exist_ok=True)
     for name, parts_by_group in LAYERS.items():
         draw_layer_sheet(parts_by_group).save(os.path.join(ROOT, "sprites", "layers", name + ".png"))
-    atlas = Image.new("RGBA", (VARIANTS * N, len(TILES) * N))
-    for row in range(len(TILES)):
-        for column in range(VARIANTS):
-            if TILES[row][1] == "water":
-                tile = draw_tile(row, column // WATER_FRAMES, column % WATER_FRAMES)
-            else:
-                tile = draw_tile(row, column)
-            atlas.paste(tile, (column * N, row * N))
-    atlas.save(os.path.join(ROOT, "tiles", "terrain.png"))
-    draw_fringes().save(os.path.join(ROOT, "tiles", "fringes.png"))
+    draw_terrain()
 
     os.makedirs(os.path.join(ROOT, "icons"), exist_ok=True)
     rows = (len(ICONS) + ICON_COLUMNS - 1) // ICON_COLUMNS
@@ -1885,4 +2291,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if sys.argv[1:] == ["tiles"]:
+        draw_terrain()  # python3 tools/generate_art.py tiles: just the ground
+    else:
+        main()

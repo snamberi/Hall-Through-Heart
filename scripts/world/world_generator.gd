@@ -89,7 +89,7 @@ func tile_type_at(cell: Vector2i) -> int:
 
 ## Which of the look-alike tile variants to draw at this tile.
 func variant_at(cell: Vector2i) -> int:
-	return posmod(hash(Vector3i(cell.x, cell.y, world_seed)), 8)
+	return TerrainTiles.pick_variant(hash(Vector3i(cell.x, cell.y, world_seed)))
 
 
 func is_walkable(cell: Vector2i) -> bool:

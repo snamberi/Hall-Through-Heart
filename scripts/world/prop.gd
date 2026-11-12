@@ -63,6 +63,7 @@ func _ready() -> void:
 	var flat: Array[int] = FLAT_DECOR if _sprite.texture == DECOR else FLAT_ART
 	if not _sprite.frame in flat:
 		SunShadow.cast(_sprite)
+		ContactShadow.under(_sprite)
 	if _sprite.texture == DECOR and _sprite.frame == Decor.BANNER:
 		_sprite.material = Wind.material
 	elif _sprite.texture == SHEET and _sprite.frame == Art.PORTAL:
