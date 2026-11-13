@@ -25,7 +25,7 @@ const TOOL_TIERS: Array[Array] = [
 	["mithril", 40, "mithril_ingot", "ancient_wood"], ["adamantite", 65, "adamantite_ingot", "ancient_wood"],
 ]
 ## Recipes that can be made with bare hands, away from a crafting table.
-const NO_TABLE: Array[String] = ["crafting_table", "bandage", "torch", "wooden_club", "bindle"]
+const NO_TABLE: Array[String] = ["crafting_table", "bandage", "torch", "wooden_club", "bindle", "rope_belt"]
 const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "crafting_table", "profession": "building", "level": 1, "inputs": {"oak_wood": 6, "stone": 4}, "item": "crafting_table", "count": 1, "xp": 20.0},
 	{"id": "bandage", "profession": "alchemy", "level": 1, "inputs": {"healing_herb": 1, "husk_fragment": 1}, "item": "bandage", "count": 2, "xp": 6.0},
@@ -124,6 +124,9 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "leather_from_hare", "profession": "salvaging", "level": 1, "inputs": {"hare_pelt": 3}, "item": "leather", "count": 1, "xp": 6.0},
 	{"id": "leather_from_cow", "profession": "salvaging", "level": 1, "inputs": {"cow_hide": 1}, "item": "leather", "count": 2, "xp": 8.0},
 	{"id": "leather_from_bear", "profession": "salvaging", "level": 3, "inputs": {"bear_pelt": 1}, "item": "leather", "count": 3, "xp": 14.0},
+	{"id": "rope_belt", "profession": "building", "level": 1, "inputs": {"healing_herb": 4, "oak_wood": 1}, "item": "rope_belt", "count": 1, "xp": 8.0},
+	{"id": "leather_belt", "profession": "blacksmithing", "level": 6, "inputs": {"leather": 4, "iron_ingot": 1}, "item": "leather_belt", "count": 1, "xp": 30.0},
+	{"id": "reliquary_belt", "profession": "blacksmithing", "level": 20, "inputs": {"leather": 8, "gold_ingot": 3, "boss_trophy": 1}, "item": "reliquary_belt", "count": 1, "xp": 120.0},
 	{"id": "satchel", "profession": "blacksmithing", "level": 2, "inputs": {"leather": 5}, "item": "satchel", "count": 1, "xp": 18.0},
 	{"id": "backpack", "profession": "blacksmithing", "level": 8, "inputs": {"leather": 12, "iron_ingot": 2}, "item": "backpack", "count": 1, "xp": 40.0},
 	{"id": "explorers_pack", "profession": "blacksmithing", "level": 16, "inputs": {"leather": 20, "silver_ingot": 4}, "item": "explorers_pack", "count": 1, "xp": 80.0},

@@ -5,7 +5,7 @@ extends RefCounted
 
 const SHEET: Texture2D = preload("res://assets/icons/menus.png")
 const IDS: Array[String] = ["inventory", "abilities", "class", "magic", "build", "professions", "journal", "map",
-	"attributes", "talents", "mastery", "evolution", "codex", "pets", "wardrobe", "pause"]
+	"attributes", "talents", "mastery", "evolution", "codex", "pets", "wardrobe", "pause", "relics"]
 static var _icons: Dictionary = {}
 
 

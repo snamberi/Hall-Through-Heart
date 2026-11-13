@@ -28,6 +28,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "evolution", "title": "Evolution", "icon": 39, "text": "Your race's paths", "side": true},
 	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary and feats", "side": true},
 	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions, mounts", "side": true},
+	{"id": "relics", "title": "Relics", "icon": 102, "text": "Boss relics and powers", "side": true},
 	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours", "side": true},
 	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options and saving", "side": true},
 ]
@@ -111,6 +112,7 @@ func setup(player: Player) -> void:
 	_add("recruit", RecruitMenu.new())
 	_add("codex", CodexMenu.new())
 	_add("pets", PetsMenu.new())
+	_add("relics", RelicsMenu.new())
 	_add("magic", MagicMenu.new())
 	_add("evolution", EvolutionMenu.new())
 	_add("build", BuildMenu.new())

@@ -282,7 +282,7 @@ func _physics_process(delta: float) -> void:
 	match state:
 		State.WANDER:
 			velocity = _direction * _speed * 0.4 * _ground_speed
-			if has_target and distance < AGGRO_RADIUS and (not Difficulty.monsters_passive() or _since_hurt < 30.0):
+			if has_target and distance < AGGRO_RADIUS and (not Difficulty.monsters_passive() or _since_hurt < 30.0) and not target.buffs.has("night_veil"):
 				state = State.CHASE
 			elif _state_time_left == 0.0:
 				_pick_wander()
@@ -538,6 +538,13 @@ func _wild_turn(delta: float, has_target: bool, to_target: Vector2, distance: fl
 	if _state_time_left == 0.0:
 		_pick_wander()
 	return true
+
+
+## Stops hunting the player and wanders off (the Night Veil relic).
+func lose_track() -> void:
+	if state in [State.CHASE, State.WINDUP, State.LUNGE, State.RECOVER]:
+		_visual.modulate = _tint
+		_pick_wander()
 
 
 ## Parried: reeling and open to a finisher for a moment.

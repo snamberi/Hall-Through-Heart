@@ -62,6 +62,8 @@ var _state_time_left := 0.0
 var _attack_cooldown_left := 0.0
 var _dodge_cooldown_left := 0.0
 var _invulnerable_left := 0.0
+## Speed of a relic surge while it lasts (0 for an ordinary dodge).
+var _surge_speed := 0.0
 var _dodge_direction := Vector2.ZERO
 ## The level the class was chosen at, and ranks learned in its tree.
 var class_chosen_at := 10
@@ -120,6 +122,8 @@ var _parry_cooldown := 0.0
 @onready var buffs: Buffs = $Buffs
 ## Pride from beating stronger foes; it saps damage and speed (see Ego).
 var ego: Ego
+## The relic bag and the relics worn (see Relics).
+var relics: Relics
 var hotbar: Hotbar
 ## Skin tone, hair, clothes, trousers and look (see Appearance).
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()
@@ -172,6 +176,9 @@ func _ready() -> void:
 	ego = Ego.new()
 	ego.name = "Ego"
 	add_child(ego)
+	relics = Relics.new()
+	relics.name = "Relics"
+	add_child(relics)
 	_mount = Mount.new()
 	_mount.name = "Mount"
 	add_child(_mount)
@@ -250,9 +257,10 @@ func _physics_process(delta: float) -> void:
 			if _state_time_left == 0.0:
 				state = State.MOVE
 		State.DODGE:
-			velocity = _dodge_direction * dodge_speed * stats.get_stat("dodge_distance")
+			velocity = _dodge_direction * (_surge_speed if _surge_speed > 0.0 else dodge_speed * stats.get_stat("dodge_distance"))
 			if _state_time_left == 0.0:
 				state = State.MOVE
+				_surge_speed = 0.0
 		State.ABILITY:
 			# AbilityUser steers the player and ends this state.
 			pass
@@ -633,6 +641,9 @@ func _read_ground() -> void:
 	var was_swimming := swimming
 	swimming = TerrainTiles.is_water(tile)
 	deep_water = tile == TerrainTiles.Type.DEEP_WATER
+	if swimming and buffs.has("tidestride"):
+		# The Tidewalker's relic: water is no slower than land.
+		_ground_speed = maxf(_ground_speed, 1.0)
 	if swimming != was_swimming:
 		Events.splash.emit(global_position)
 	# Climbing gives a wider view.
@@ -1057,7 +1068,7 @@ func _process_move(delta: float) -> void:
 			if problem != "":
 				DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
 	_update_hover()
-	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0 and not swimming:
+	if Input.is_action_just_pressed("dodge") and _dodge_cooldown_left == 0.0 and (not swimming or buffs.has("tidestride")):
 		_try_dodge()
 	elif abilities.try_use_pressed():
 		pass
@@ -1146,6 +1157,18 @@ func _try_dodge() -> void:
 	_state_time_left = dodge_duration
 	_dodge_cooldown_left = dodge_cooldown / stats.get_stat("dodge_efficiency")
 	_invulnerable_left = maxf(_invulnerable_left, dodge_duration)
+
+
+## A rush in a direction that cannot be hit, for relic powers.
+func surge(direction: Vector2, speed: float, seconds: float) -> void:
+	if is_dead():
+		return
+	_dodge_direction = direction.normalized() if direction != Vector2.ZERO else Vector2.RIGHT
+	state = State.DODGE
+	_state_time_left = seconds
+	_invulnerable_left = maxf(_invulnerable_left, seconds)
+	velocity = _dodge_direction * speed
+	_surge_speed = speed
 
 
 func _apply_stats() -> void:

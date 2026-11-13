@@ -68,6 +68,9 @@ func setup(player: Player) -> void:
 	_item_bar.show_abilities = false
 	_item_bar.setup(player, tip)
 	add_child(_item_bar)
+	_relic_slot = RelicSlot.new()
+	_relic_slot.setup(player)
+	add_child(_relic_slot)
 	add_child(tip)
 	_palette = BuildPalette.new()
 	_palette.setup(player, player.get_parent().get_node("Builder"))
@@ -101,6 +104,7 @@ var _palette: BuildPalette
 var _hidden_for_build: Dictionary = {}
 var _ability_bar: ActionBar
 var _item_bar: ActionBar
+var _relic_slot: RelicSlot
 
 
 ## The ability column keeps to the middle of the left side; the hotbar
@@ -111,6 +115,7 @@ func _place_bars() -> void:
 	var room := get_viewport().get_visible_rect().size
 	_ability_bar.position = Vector2(14.0, (room.y - _ability_bar.size.y) / 2.0 + 20.0)
 	_item_bar.position = Vector2((room.x - _item_bar.size.x) / 2.0, room.y - _item_bar.size.y - 8.0)
+	_relic_slot.position = _ability_bar.position + Vector2(4.0, _ability_bar.size.y + 4.0)
 
 
 ## Build mode: everything but the health bar and a boss's bar steps aside,

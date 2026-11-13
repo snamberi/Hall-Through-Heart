@@ -175,6 +175,11 @@ func _place_player_at_start() -> void:
 	_world.load_around_now(_player.global_position)
 
 
+## Sends the player back to where they last rested (the Homeward relic).
+func send_home() -> void:
+	_place_player_at_start()
+
+
 func _on_player_died(xp_lost: int) -> void:
 	if Difficulty.hardcore:
 		# One life: the world ends with it.

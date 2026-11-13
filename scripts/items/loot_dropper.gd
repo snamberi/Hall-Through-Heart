@@ -23,6 +23,11 @@ func _on_enemy_killed(info: Dictionary) -> void:
 		drop_gold(roundi(drops["gold"] * _player.stats.get_stat("gold_find")), info["position"])
 	for item: Item in drops["items"]:
 		drop_item(item, info["position"])
+	# Relics: always from a boss, now and then from an Ancient or Champion.
+	var rank := str(info.get("rank", "normal"))
+	var relic_chance: float = {"boss": 1.0, "miniboss": 0.2, "champion": 0.03}.get(rank, 0.0)
+	if relic_chance > 0.0 and randf() < relic_chance and not info.get("fragment", false):
+		drop_item(RelicDB.make("", RelicDB.roll_rarity(rank, _player.stats.get_stat("magic_find"))), info["position"] + Vector2(0, 10))
 	if str(info.get("named", "")) != "":
 		for item: Item in MinibossDB.drops(info["level"]):
 			drop_item(item, info["position"])

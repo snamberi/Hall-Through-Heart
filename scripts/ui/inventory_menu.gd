@@ -12,10 +12,10 @@ const COLUMNS := 8
 const SLOT_SIZE := 50.0
 const DOLL_SLOT := 60.0
 ## Equipment slots down each side of the character.
-const LEFT_SLOTS: Array[String] = ["necklace", "ring_1", "ring_2", "artifact", "backpack"]
+const LEFT_SLOTS: Array[String] = ["necklace", "ring_1", "ring_2", "artifact", "backpack", "belt"]
 const RIGHT_SLOTS: Array[String] = ["helmet", "chest", "legs", "boots", "off_hand"]
 ## Faint icon shown in an empty equipment slot.
-const SLOT_ICONS := {"necklace": 10, "ring_1": 11, "ring_2": 11, "artifact": 12, "backpack": 93,
+const SLOT_ICONS := {"necklace": 10, "ring_1": 11, "ring_2": 11, "artifact": 12, "backpack": 93, "belt": 115,
 	"helmet": 6, "chest": 7, "legs": 8, "boots": 9, "off_hand": 5,
 	"weapon_1": 27, "weapon_2": 0, "weapon_3": 0, "tool_pickaxe": 49, "tool_hatchet": 50, "tool_rod": 51}
 const BELT_SLOT := 46.0
@@ -334,8 +334,8 @@ func _refresh_details() -> void:
 	var item := _selected
 	var worn := item != null and _equipped_slot(item) != ""
 	var in_bag := item != null and item in player.inventory.items
-	_primary.disabled = item == null or not (item.is_equipment() or item.is_consumable() or item.is_placeable() or item.is_tool() or item.is_backpack())
-	_primary.text = "Place" if item and item.is_placeable() else "Use" if item and item.is_consumable() else "Equipped  -  click to unequip" if worn else "Equip"
+	_primary.disabled = item == null or not (item.is_equipment() or item.is_consumable() or item.is_placeable() or item.is_tool() or item.is_backpack() or item.is_belt() or item.is_relic())
+	_primary.text = "Put in relic bag" if item and item.is_relic() else "Place" if item and item.is_placeable() else "Use" if item and item.is_consumable() else "Equipped  -  click to unequip" if worn else "Equip"
 	_discard.disabled = not in_bag and _marked.is_empty()
 	_discard.text = ("Really? (%d)" % _marked.size() if _confirming else "Discard %d" % _marked.size()) if not _marked.is_empty() else ("Really?" if _confirming else "Discard")
 	_pick_toggle.text = "Done" if _picking else "Select many"
@@ -397,7 +397,9 @@ func _use_selected() -> void:
 			return
 	elif _selected.is_consumable():
 		result = player.use_item(_selected)
-	elif _selected.is_equipment() or _selected.is_tool() or _selected.is_backpack():
+	elif _selected.is_relic():
+		result = player.relics.store(_selected)
+	elif _selected.is_equipment() or _selected.is_tool() or _selected.is_backpack() or _selected.is_belt():
 		var slot := _equipped_slot(_selected)
 		result = player.equipment.unequip(slot) if slot != "" else player.equipment.equip(_selected)
 	_report(result)

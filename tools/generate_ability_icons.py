@@ -593,7 +593,8 @@ def ICONS():
 # --- effects (buffs and statuses), on a round badge ---------------------------
 # Order matters: scripts/combat/buffs.gd lists the same ids in EFFECT_ICONS.
 EFFECT_IDS = ["buff", "torchlight", "heart_racing", "heart_steady", "bloodthirst", "blessing", "henge",
-              "perfect_dodge", "chill", "burn", "poison", "bleed", "well_fed", "debuff"]
+              "perfect_dodge", "chill", "burn", "poison", "bleed", "well_fed", "debuff",
+              "tidestride", "bulwark", "fortune", "night_veil"]
 
 THEMES.update({
     "e_warm": ("3a2410", "f0a040"), "e_red": ("3a1018", "e04050"), "e_green": ("12301a", "60c070"),
@@ -659,13 +660,20 @@ def EFFECTS():
         "bleed": ("e_red", lambda L: (L.poly([(8, 5), (11, 11), (11, 13), (8, 15), (5, 13), (5, 11)], BLOOD), L.poly([(16, 9), (19, 15), (19, 17), (16, 19), (13, 17), (13, 15)], BLOOD)), None, None),
         "well_fed": ("e_warm", lambda L: (L.ellipse((5, 11, 19, 19), C("c8a060")), L.rect((5, 14, 19, 15), C("8a6030"))), None, lambda F: [F.line([(x, 9), (x + 1, 6), (x, 3)], C("e0e0e0", 160)) for x in (8, 12, 16)] and None),
         "debuff": ("e_grey", lambda L: L.poly([(12, 19), (19, 11), (15, 11), (15, 4), (9, 4), (9, 11), (5, 11)], C("e05050")), None, None),
+        "tidestride": ("e_cyan", lambda L: L.poly([(3, 17), (6, 12), (10, 9), (15, 9), (18, 12), (15, 12), (12, 14), (15, 17), (20, 16), (20, 20), (3, 20)], C("3aa0d8")),
+                       None, lambda F: (F.line([(6, 12), (10, 9), (15, 9), (18, 12)], C("e8fcff"), 1), sparkle(F, 7, 5, C("dffcff")))),
+        "bulwark": ("e_grey", lambda L: shield(L, 12, 12, face=C("6a7a9a"), rim=C("d8e0f0"), w=7, h=8, boss=None), None, lambda F: sparkle(F, 18, 5, C("ffffff"))),
+        "fortune": ("e_gold", lambda L: (L.ellipse((6, 7, 18, 19), C("f0c040")), L.ellipse((8, 9, 16, 17), C("c89020")), L.rect((11, 10, 13, 16), C("f8e070"))),
+                    None, lambda F: (sparkle(F, 18, 5, C("fff0a0")), sparkle(F, 5, 6, C("fff0a0")))),
+        "night_veil": ("e_violet", lambda L: L.poly([(14, 4), (9, 6), (7, 11), (9, 16), (14, 19), (10, 19), (5, 16), (3, 11), (5, 6), (10, 3)], C("e8e4ff")),
+                       None, lambda F: (sparkle(F, 16, 9, C("d0c8ff")), sparkle(F, 18, 16, C("d0c8ff")))),
     }
 
 
 # --- menu icons: no badge, just the thing, outlined --------------------------
 # Order matters: scripts/ui/menu_icons.gd lists the same ids.
 MENU_IDS = ["inventory", "abilities", "class", "magic", "build", "professions", "journal", "map",
-            "attributes", "talents", "mastery", "evolution", "codex", "pets", "wardrobe", "pause"]
+            "attributes", "talents", "mastery", "evolution", "codex", "pets", "wardrobe", "pause", "relics"]
 PARCHMENT = C("e8d8b0")
 INK = C("5a4630")
 
@@ -797,10 +805,18 @@ def cog(L):
     L.ellipse((9, 9, 15, 15), C("1a1a24"))
 
 
+def relic_locket(L):
+    L.line([(7, 2), (12, 6), (17, 2)], C("c8a050"), 1)
+    L.ellipse((5, 5, 19, 21), C("e0b850"))
+    L.ellipse((7, 7, 17, 19), C("b02a3a"))
+    L.poly([(12, 9), (15, 13), (12, 17), (9, 13)], C("ff7a8a"))
+    L.rect((9, 9, 10, 10), C("ffe0e8"))
+
+
 MENU_ICONS = {
     "inventory": backpack, "abilities": crossed_swords, "class": crest, "magic": spellbook, "build": hammer_brick,
     "professions": anvil, "journal": scroll_quill, "map": folded_map, "attributes": bust, "talents": talent_tree,
-    "mastery": mastery_sword, "evolution": evolution_crystal, "codex": tome, "pets": paw, "wardrobe": tunic_hanger, "pause": cog,
+    "mastery": mastery_sword, "evolution": evolution_crystal, "codex": tome, "pets": paw, "wardrobe": tunic_hanger, "pause": cog, "relics": relic_locket,
 }
 
 

@@ -15,10 +15,10 @@ const TOOL_SLOTS := {"pickaxe": "tool_pickaxe", "hatchet": "tool_hatchet", "rod"
 ## Belt slots in hotbar order.
 const BELT: Array[String] = ["weapon_1", "weapon_2", "weapon_3", "tool_pickaxe", "tool_hatchet", "tool_rod"]
 const BELT_NAMES := {"weapon_1": "Magic", "weapon_2": "Weapon", "weapon_3": "Weapon", "tool_pickaxe": "Pickaxe",
-	"tool_hatchet": "Hatchet", "tool_rod": "Fishing rod", "backpack": "Backpack"}
+	"tool_hatchet": "Hatchet", "tool_rod": "Fishing rod", "backpack": "Backpack", "belt": "Belt"}
 ## Worn slots, the belt, and the backpack: everything that can hold an item.
 const ALL_SLOTS: Array[String] = ["off_hand", "helmet", "chest", "legs", "boots", "necklace", "ring_1", "ring_2", "artifact",
-	"weapon_1", "weapon_2", "weapon_3", "tool_pickaxe", "tool_hatchet", "tool_rod", "backpack"]
+	"weapon_1", "weapon_2", "weapon_3", "tool_pickaxe", "tool_hatchet", "tool_rod", "backpack", "belt"]
 
 ## slot id -> Item, only for filled slots.
 var equipped: Dictionary[String, Item] = {}
@@ -88,7 +88,14 @@ func tool(kind: String) -> Item:
 ## Extra bag slots from the backpack worn.
 func bag_slots() -> int:
 	var pack: Item = equipped.get("backpack")
-	return int(pack.definition()["backpack"]) if pack else 0
+	var belt: Item = equipped.get("belt")
+	return (int(pack.definition()["backpack"]) if pack else 0) + (int(belt.definition()["belt"]["bag"]) if belt else 0)
+
+
+## Relics that can be worn at once: one, more with a good belt.
+func relic_slots() -> int:
+	var belt: Item = equipped.get("belt")
+	return 1 + (int(belt.definition()["belt"]["relics"]) if belt else 0)
 
 
 ## Takes a belt slot's item in hand. False if the slot is empty.
@@ -104,7 +111,7 @@ func select(slot: String) -> bool:
 
 ## Why an item cannot be equipped, or "" if it can.
 func cannot_equip_reason(item: Item) -> String:
-	if item.is_tool() or item.is_backpack():
+	if item.is_tool() or item.is_backpack() or item.is_belt():
 		return ""
 	if not item.is_equipment():
 		return "This cannot be equipped."
@@ -123,6 +130,8 @@ func fits(item: Item, slot: String) -> bool:
 		return slot == TOOL_SLOTS.get(item.definition()["tool"]["kind"], "")
 	if item.is_backpack():
 		return slot == "backpack"
+	if item.is_belt():
+		return slot == "belt"
 	if item.slot() == "main_hand":
 		return slot in WEAPON_SLOTS and (slot == "weapon_1") == bool(item.definition().get("magic", false))
 	if item.slot() == "ring":
@@ -137,6 +146,8 @@ func target_slot(item: Item) -> String:
 		return TOOL_SLOTS.get(item.definition()["tool"]["kind"], "tool_pickaxe")
 	if item.is_backpack():
 		return "backpack"
+	if item.is_belt():
+		return "belt"
 	if item.slot() == "main_hand":
 		if item.definition().get("magic", false):
 			return "weapon_1"
@@ -167,8 +178,8 @@ func equip(item: Item, into: String = "") -> String:
 	var slot := into if into != "" else target_slot(item)
 	if not fits(item, slot):
 		return "Slot 1 is for staves and other magic." if slot == "weapon_1" else "That does not go there."
-	if slot == "backpack" and equipped.has(slot) and _inventory.items.size() > Inventory.BASE + int(item.definition()["backpack"]):
-		return "Too much in the bag for a smaller pack."
+	if slot in ["backpack", "belt"] and equipped.has(slot) and _inventory.items.size() > Inventory.BASE + bag_slots() - _room_from(equipped[slot]) + _room_from(item):
+		return "Too much in the bag for a smaller %s." % ("pack" if slot == "backpack" else "belt")
 	# One out of the bag, at most one back in: there is always room.
 	_inventory.items.erase(item)
 	if equipped.has(slot):
@@ -189,9 +200,9 @@ func unequip(slot: String) -> String:
 		slot = active_slot
 	if not equipped.has(slot):
 		return ""
-	if slot == "backpack":
-		if _inventory.items.size() + 1 > Inventory.BASE:
-			return "Empty the pack's pockets first."
+	if slot in ["backpack", "belt"]:
+		if _inventory.items.size() + 1 > Inventory.BASE + bag_slots() - _room_from(equipped[slot]):
+			return "Empty the pack's pockets first." if slot == "backpack" else "Too much in the bag to take the belt off."
 	elif _inventory.free_slots() <= 0:
 		return "Inventory is full."
 	var item := equipped[slot]
@@ -200,6 +211,17 @@ func unequip(slot: String) -> String:
 	_inventory.add(item)
 	_emit_changed()
 	return ""
+
+
+## Bag slots a backpack or belt adds.
+func _room_from(item: Item) -> int:
+	if item == null:
+		return 0
+	if item.is_backpack():
+		return int(item.definition()["backpack"])
+	if item.is_belt():
+		return int(item.definition()["belt"]["bag"])
+	return 0
 
 
 ## Puts an item straight into its slot without touching the bag.
@@ -226,7 +248,7 @@ func counted() -> Array[Item]:
 	var held := weapon()
 	var two_handed: bool = held != null and held.definition().get("two_handed", false)
 	for slot in equipped:
-		if slot == "backpack" or (slot in BELT and (slot != active_slot or not slot in WEAPON_SLOTS)):
+		if slot in ["backpack", "belt"] or (slot in BELT and (slot != active_slot or not slot in WEAPON_SLOTS)):
 			continue
 		if slot == "off_hand" and two_handed:
 			continue
@@ -332,7 +354,7 @@ func load_data(data: Dictionary) -> void:
 		var saved: Variant = data.get(slot)
 		if saved is Dictionary:
 			var item := Item.from_dict(saved)
-			if item and (item.is_equipment() or item.is_tool() or item.is_backpack()):
+			if item and (item.is_equipment() or item.is_tool() or item.is_backpack() or item.is_belt()):
 				equipped[slot] = item
 	# Saves from before the belt kept one weapon in "main_hand".
 	var old: Variant = data.get("main_hand")

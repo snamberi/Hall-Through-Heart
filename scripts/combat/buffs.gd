@@ -19,7 +19,8 @@ func setup(stats: CharacterStats) -> void:
 ## Round effect icons (tools/generate_ability_icons.py), in sheet order.
 const EFFECT_SHEET: Texture2D = preload("res://assets/icons/effects.png")
 const EFFECT_ICONS: Array[String] = ["buff", "torchlight", "heart_racing", "heart_steady", "bloodthirst", "blessing", "henge",
-	"perfect_dodge", "chill", "burn", "poison", "bleed", "well_fed", "debuff"]
+	"perfect_dodge", "chill", "burn", "poison", "bleed", "well_fed", "debuff",
+	"tidestride", "bulwark", "fortune", "night_veil"]
 static var _effect_textures: Dictionary = {}
 
 

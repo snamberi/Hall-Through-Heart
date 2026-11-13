@@ -26,6 +26,10 @@ const TOOL_TYPES := {"pickaxe": "Pickaxe", "hatchet": "Hatchet", "rod": "Fishing
 static func type_name(item: Item) -> String:
 	var def := item.definition()
 	var id := item.id
+	if item.is_relic():
+		return "Relic"
+	if item.is_belt():
+		return "Belt"
 	if def.has("weapon"):
 		if id in ["club", "halberd", "katana"]:
 			return id.capitalize()
@@ -37,7 +41,7 @@ static func type_name(item: Item) -> String:
 		if ARMOUR_PIECES.has(slot):
 			var material := "Leather" if id.contains("leather") else "Fur" if id.contains("fur") else "Cloth" if id.contains("robe") or id.contains("cloth") else "Plate"
 			return "%s %s" % [material, ARMOUR_PIECES[slot]]
-		return {"necklace": "Necklace", "ring": "Ring", "artifact": "Relic"}.get(slot, "Gear")
+		return {"necklace": "Necklace", "ring": "Ring", "artifact": "Artifact"}.get(slot, "Gear")
 	if item.is_tool():
 		return TOOL_TYPES.get(def["tool"]["kind"], "Tool")
 	if item.is_backpack():
@@ -119,6 +123,13 @@ static func describe(item: Item, player: Player) -> String:
 		if item.is_backpack():
 			lines.append("")
 			lines.append("[color=#%s]+%d bag slots while worn[/color]" % [UITheme.GOOD.to_html(false), int(def["backpack"])])
+		if item.is_belt():
+			lines.append("")
+			lines.append("[color=#%s]+%d bag slots while worn[/color]" % [UITheme.GOOD.to_html(false), int(def["belt"]["bag"])])
+			lines.append("[color=#%s]Wear %d relic%s at once[/color]" % [UITheme.GOOD.to_html(false), 1 + int(def["belt"]["relics"]), "s" if int(def["belt"]["relics"]) > 0 else ""])
+		if item.is_relic():
+			lines.append("")
+			lines.append(relic_text(item))
 		if item.is_tool():
 			lines.append("")
 			lines.append("[color=#%s]Kept on the belt. Works %d%% as fast as a worn tool.[/color]" % [dim, roundi(def["tool"]["speed"] * 100.0)])
@@ -188,6 +199,25 @@ static func describe(item: Item, player: Player) -> String:
 	if comparison != "":
 		lines.append("")
 		lines.append(comparison)
+	return "\n".join(lines)
+
+
+## A relic's boons at its rarity and its power (BBCode).
+static func relic_text(item: Item) -> String:
+	var relic_id: String = item.definition()["relic"]
+	var data: Dictionary = RelicDB.RELICS[relic_id]
+	var good := UITheme.GOOD.to_html(false)
+	var lines: PackedStringArray = []
+	var mods := RelicDB.mods_at(relic_id, item.rarity)
+	for stat: String in mods:
+		for kind: String in mods[stat]:
+			lines.append("[color=#%s]%s[/color]" % [good, ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": mods[stat][kind]})])
+	var ability: Dictionary = data["ability"]
+	lines.append("")
+	lines.append("[color=#%s]Power: %s[/color]  [color=#%s](G, every %ds)[/color]" % [UITheme.GOLD.to_html(false), ability["name"], UITheme.DIM.to_html(false), roundi(ability["cooldown"])])
+	lines.append(ability["text"])
+	lines.append("")
+	lines.append("[i][color=#%s]Relics have no level: rarer ones are stronger.[/color][/i]" % UITheme.DIM.to_html(false))
 	return "\n".join(lines)
 
 

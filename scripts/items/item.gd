@@ -36,7 +36,7 @@ static func from_dict(data: Dictionary) -> Item:
 	var item := Item.new()
 	item.id = item_id
 	item.count = maxi(int(data.get("count", 1)), 1)
-	item.rarity = clampi(int(data.get("rarity", 0)), 0, ItemDB.RARITIES.size() - 1)
+	item.rarity = clampi(int(data.get("rarity", ItemDB.ITEMS[item_id].get("material_rarity", 0))), 0, ItemDB.RARITIES.size() - 1)
 	item.level = maxi(int(data.get("level", 1)), 1)
 	item.upgrade = maxi(int(data.get("upgrade", 0)), 0)
 	var saved_enchant: Variant = data.get("enchant", {})
@@ -65,7 +65,11 @@ static func from_dict(data: Dictionary) -> Item:
 
 func to_dict() -> Dictionary:
 	if not is_equipment():
-		return {"id": id, "count": count}
+		var plain := {"id": id, "count": count}
+		# Relics keep the rarity they dropped at; materials have a fixed one.
+		if rarity != int(definition().get("material_rarity", 0)):
+			plain["rarity"] = rarity
+		return plain
 	var data := {"id": id, "rarity": rarity, "level": level, "upgrade": upgrade, "mods": mods.duplicate(true), "enchant": enchant.duplicate()}
 	if not sockets.is_empty():
 		data["sockets"] = sockets.duplicate()
@@ -91,6 +95,16 @@ func is_backpack() -> bool:
 	return definition().has("backpack")
 
 
+## A relic from a boss (kept in the relic bag, see Relics).
+func is_relic() -> bool:
+	return definition().has("relic")
+
+
+## A belt: bag space, and room for more relics.
+func is_belt() -> bool:
+	return definition().has("belt")
+
+
 func is_consumable() -> bool:
 	return definition().has("use") or definition().has("boat") or definition().has("treasure_map") or definition().has("mount") or id == "taming_treat" or Crops.by_seed(id) != ""
 
@@ -101,7 +115,7 @@ func is_placeable() -> bool:
 
 
 func is_stackable() -> bool:
-	return not is_equipment() and not is_tool() and not is_backpack()
+	return not is_equipment() and not is_tool() and not is_backpack() and not is_relic() and not is_belt()
 
 
 ## Colour to tint the icon with (white for icons drawn in their own colours).

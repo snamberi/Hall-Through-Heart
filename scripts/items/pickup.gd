@@ -126,6 +126,11 @@ func _collect() -> void:
 		queue_free()
 		return
 	var label := item.display_name() if item.count == 1 else "%s x%d" % [item.display_name(), item.count]
+	if item.is_relic() and _player.relics.store(item) == "":
+		DamageNumber.spawn_text(get_parent(), text_position, "%s  (relic bag)" % label, item.color(), 13)
+		Events.announcement.emit("RELIC FOUND", "%s  -  open the relic bag to wear it" % item.display_name())
+		queue_free()
+		return
 	if _player.inventory.add(item):
 		DamageNumber.spawn_text(get_parent(), text_position, label, item.color(), 12)
 		Events.item_acquired.emit(item.to_dict())

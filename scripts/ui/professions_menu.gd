@@ -67,7 +67,7 @@ static func section(recipe: Dictionary) -> String:
 		return "Meals"
 	if item.is_consumable():
 		return "Potions & remedies"
-	if item.is_tool() or item.is_backpack():
+	if item.is_tool() or item.is_backpack() or item.is_belt():
 		return "Tools & packs"
 	return "Materials"
 
