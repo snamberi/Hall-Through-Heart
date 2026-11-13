@@ -225,8 +225,13 @@ func all_modifiers() -> Array[Dictionary]:
 
 ## Attribute points needed to equip: {"strength": 14, ...}.
 func attribute_requirements() -> Dictionary:
+	return attribute_requirements_at(level)
+
+
+## The same at another item level.
+func attribute_requirements_at(at_level: int) -> Dictionary:
 	var result := {}
 	var requires: Dictionary = definition().get("requires", {})
 	for attribute: String in requires:
-		result[attribute] = roundi(requires[attribute][0] + requires[attribute][1] * level)
+		result[attribute] = roundi(requires[attribute][0] + requires[attribute][1] * at_level)
 	return result

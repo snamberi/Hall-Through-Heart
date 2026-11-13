@@ -12,6 +12,7 @@ already doubled) are listed in scripts/ui/ui_theme.gd.
 import math
 import os
 import random
+import zlib
 from PIL import Image
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "ui")
@@ -147,7 +148,7 @@ def card(name, metal, base, light, dark, gem=None):
     w = h = 24
     t = 4
     img = Image.new("RGBA", (w, h))
-    fill(img, 0, 0, w, h, base, hash(name) & 0xff, 0.08, light, dark)
+    fill(img, 0, 0, w, h, base, zlib.crc32(name.encode()) & 0xff, 0.08, light, dark)
     frame(img, t, metal, C("06080c"))
     if gem:
         corner_piece(img, t - 1, metal, gem)
@@ -165,6 +166,67 @@ def slot(name, metal, base):
     for y in range(3, h - 3):
         img.putpixel((3, y), C("05070b"))
     save(img, name)
+
+
+# One slot per rarity (common .. mythic): the lip is worked in that
+# rarity's metal, the well glows its colour from the middle out in hard
+# pixel bands, and finer things get gems and filigree in the corners.
+RARITY_SLOTS = [
+    # (glow colour, metal, glow strength, corner style)
+    ("c8c4b8", IRON, 0.0, None),
+    ("5fd068", {"out": C("0c120c"), "dark": C("24402a"), "mid": C("3a6a40"), "light": C("5a9a5e"), "hi": C("9ad89a")}, 0.22, None),
+    ("4f9dff", {"out": C("0a0e18"), "dark": C("223a64"), "mid": C("33589a"), "light": C("5a86d0"), "hi": C("a8c8ff")}, 0.3, "pips"),
+    ("b565f0", {"out": C("120a18"), "dark": C("3e2460"), "mid": C("5e3a8e"), "light": C("8e62c8"), "hi": C("d4b0ff")}, 0.36, "gems"),
+    ("ff9a2e", GOLD, 0.42, "filigree"),
+    ("ff4d6d", {"out": C("1a0608"), "dark": C("6a1a26"), "mid": C("a0283c"), "light": C("e05a6a"), "hi": C("ffc0c8")}, 0.48, "filigree"),
+]
+
+
+def rarity_slot(index):
+    glow, metal, strength, corners = RARITY_SLOTS[index]
+    glow = C(glow)
+    w = h = 24
+    base = C("0b0e16")
+    img = Image.new("RGBA", (w, h))
+    for y in range(h):
+        for x in range(w):
+            d = max(abs(x - 11.5), abs(y - 11.5) * 1.05) / 11.5
+            r = (((x - 11.5) ** 2 + (y - 11.5) ** 2) ** 0.5) / 12.0
+            t = max(0.0, 1.0 - min(d, r * 1.1))
+            band = 0.0 if t < 0.25 else 0.35 if t < 0.5 else 0.65 if t < 0.75 else 1.0
+            a = strength * band
+            c = tuple(int(base[i] + (glow[i] - base[i]) * a) for i in range(3)) + (255,)
+            if strength > 0.0 and (x * 7 + y * 13) % 29 == 0 and band > 0.3:
+                c = tuple(min(255, int(v + 18)) for v in c[:3]) + (255,)
+            img.putpixel((x, y), c)
+    frame(img, 3, metal)
+    for x in range(3, w - 3):
+        img.putpixel((x, 3), C("05070b"))
+    for y in range(3, h - 3):
+        img.putpixel((3, y), C("05070b"))
+    if corners == "pips":
+        for (x, y) in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2)):
+            img.putpixel((x, y), metal["hi"])
+    elif corners == "gems":
+        for (cx, cy) in ((0, 0), (w - 4, 0), (0, h - 4), (w - 4, h - 4)):
+            for y in range(4):
+                for x in range(4):
+                    edge = x in (0, 3) or y in (0, 3)
+                    img.putpixel((cx + x, cy + y), metal["out"] if edge else glow)
+            img.putpixel((cx + 1, cy + 1), C("ffffff"))
+    elif corners == "filigree":
+        for (cx, cy, sx, sy) in ((0, 0, 1, 1), (w - 1, 0, -1, 1), (0, h - 1, 1, -1), (w - 1, h - 1, -1, -1)):
+            for k in range(6):
+                img.putpixel((cx + k * sx, cy), metal["hi"] if k < 3 else metal["light"])
+                img.putpixel((cx, cy + k * sy), metal["hi"] if k < 3 else metal["light"])
+            for (dx, dy) in ((1, 1), (2, 1), (1, 2)):
+                img.putpixel((cx + dx * sx, cy + dy * sy), glow)
+            img.putpixel((cx + 4 * sx, cy + 1 * sy), metal["mid"])
+            img.putpixel((cx + 1 * sx, cy + 4 * sy), metal["mid"])
+        for k in range(8, w - 8, 3):
+            img.putpixel((k, 1), metal["hi"])
+            img.putpixel((k, h - 2), metal["mid"])
+    save(img, "slot_r%d" % index)
 
 
 def button(name, face, metal, edge_lit, edge_dark):
@@ -328,6 +390,8 @@ def main():
     slot("slot", IRON, C("0b0e16"))
     slot("slot_hover", BRONZE, C("141a28"))
     slot("slot_active", GOLD, C("1e1a10"))
+    for index in range(len(RARITY_SLOTS)):
+        rarity_slot(index)
     button("button", C("262c3e"), BRONZE, C("3a4258"), C("181c28"))
     button("button_hover", C("323a52"), GOLD, C("4a5470"), C("1e2232"))
     button("button_pressed", C("4a3a20"), GOLD, C("5e4a28"), C("2e2414"))

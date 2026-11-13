@@ -557,6 +557,7 @@ const ITEMS := {
 	"iron_hatchet": {"name": "Iron Hatchet", "icon": 50, "tint": Color("aab2bc"), "material_rarity": 2, "tool": {"kind": "hatchet", "tier": 3, "speed": 1.4}, "text": "Tier 3 hatchet."},
 	"mithril_hatchet": {"name": "Mithril Hatchet", "icon": 50, "tint": Color("8fe0e8"), "material_rarity": 3, "tool": {"kind": "hatchet", "tier": 4, "speed": 1.7}, "text": "Tier 4 hatchet."},
 	"adamantite_hatchet": {"name": "Adamantite Hatchet", "icon": 50, "tint": Color("d06a5a"), "material_rarity": 4, "tool": {"kind": "hatchet", "tier": 5, "speed": 2.0}, "text": "Tier 5 hatchet."},
+	"bindle": {"name": "Bindle", "icon": 93, "tint": Color("c8b48a"), "material_rarity": 0, "backpack": 6, "value": 12, "text": "A stick over the shoulder and a bundle of woven herb stalks tied to it. Wear it for 6 more bag slots. Anyone can make one by hand."},
 	"satchel": {"name": "Satchel", "icon": 93, "tint": Color("b08a5a"), "material_rarity": 1, "backpack": 10, "value": 60, "text": "A small leather pack. Wear it for 10 more bag slots."},
 	"backpack": {"name": "Backpack", "icon": 93, "tint": Color("8a6a48"), "material_rarity": 2, "backpack": 20, "value": 220, "text": "A sturdy framed pack. Wear it for 20 more bag slots."},
 	"explorers_pack": {"name": "Explorer's Pack", "icon": 93, "tint": Color("6a8ab0"), "material_rarity": 3, "backpack": 30, "value": 700, "text": "Pockets on its pockets. Wear it for 30 more bag slots."},

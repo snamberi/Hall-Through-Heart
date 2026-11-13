@@ -25,12 +25,13 @@ const TOOL_TIERS: Array[Array] = [
 	["mithril", 40, "mithril_ingot", "ancient_wood"], ["adamantite", 65, "adamantite_ingot", "ancient_wood"],
 ]
 ## Recipes that can be made with bare hands, away from a crafting table.
-const NO_TABLE: Array[String] = ["crafting_table", "bandage", "torch", "wooden_club"]
+const NO_TABLE: Array[String] = ["crafting_table", "bandage", "torch", "wooden_club", "bindle"]
 const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "crafting_table", "profession": "building", "level": 1, "inputs": {"oak_wood": 6, "stone": 4}, "item": "crafting_table", "count": 1, "xp": 20.0},
 	{"id": "bandage", "profession": "alchemy", "level": 1, "inputs": {"healing_herb": 1, "husk_fragment": 1}, "item": "bandage", "count": 2, "xp": 6.0},
 	{"id": "torch", "profession": "building", "level": 1, "inputs": {"oak_wood": 1}, "item": "torch", "count": 3, "xp": 3.0},
 	{"id": "wooden_club", "profession": "blacksmithing", "level": 1, "inputs": {"oak_wood": 4}, "equipment": "club", "item_level": 1, "xp": 8.0},
+	{"id": "bindle", "profession": "building", "level": 1, "inputs": {"oak_wood": 2, "healing_herb": 3}, "item": "bindle", "count": 1, "xp": 8.0},
 	{"id": "berry_tart", "profession": "cooking", "level": 5, "inputs": {"wild_berries": 3, "healing_herb": 1}, "item": "berry_tart", "count": 1, "xp": 16.0},
 	{"id": "frost_tea", "profession": "cooking", "level": 15, "inputs": {"frost_lily": 2}, "item": "frost_tea", "count": 1, "xp": 28.0},
 	{"id": "thornberry_jam", "profession": "cooking", "level": 12, "inputs": {"thornberries": 3}, "item": "thornberry_jam", "count": 1, "xp": 24.0},

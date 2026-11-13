@@ -37,6 +37,13 @@ var _enchant: Button
 var _socket: Button
 var _salvage: Button
 var _discard: Button
+var _secondary: Button
+var _pick_toggle: Button
+## Marking many items at once (to throw them away together).
+var _picking := false
+var _marked: Array[Item] = []
+var _confirming := false
+var _bag_marks: Array[MarkOverlay] = []
 var _message: Label
 var _hand_row: HBoxContainer
 var _hand_buttons: Dictionary[String, Button] = {}
@@ -84,11 +91,14 @@ func _build() -> void:
 	scroll.add_child(_grid)
 	_ensure_slots(Inventory.BASE)
 	var bag_actions := HBoxContainer.new()
-	bag_actions.add_theme_constant_override("separation", 10)
+	bag_actions.add_theme_constant_override("separation", 6)
 	left.add_child(bag_actions)
-	_discard = UITheme.button("Discard", _discard_selected, 130.0)
+	_discard = UITheme.button("Discard", _discard_selected, 104.0)
 	bag_actions.add_child(_discard)
-	bag_actions.add_child(UITheme.button("Sort", func() -> void: player.inventory.sort(), 130.0))
+	bag_actions.add_child(UITheme.button("Sort", func() -> void: player.inventory.sort(), 70.0))
+	_pick_toggle = UITheme.button("Select many", _toggle_picking, 120.0)
+	bag_actions.add_child(_pick_toggle)
+	bag_actions.add_child(UITheme.button("Mark common", _mark_common, 120.0))
 
 	# Simple things that need no workbench.
 	left.add_child(UITheme.heading("Craft by hand", 16))
@@ -99,13 +109,16 @@ func _build() -> void:
 		var recipe := RecipeDB.find(recipe_id)
 		var button := Button.new()
 		button.focus_mode = Control.FOCUS_NONE
-		button.custom_minimum_size = Vector2(104.0, 50.0)
-		button.add_theme_font_size_override("font_size", 13)
+		# Icon on top, the name beneath, so five fit across the bag.
+		button.custom_minimum_size = Vector2(82.0, 64.0)
+		button.add_theme_font_size_override("font_size", 12)
 		button.text = RecipeDB.display_name(recipe)
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 		button.expand_icon = true
-		button.add_theme_constant_override("icon_max_width", 30)
+		button.add_theme_constant_override("icon_max_width", 24)
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		var made := Item.create(recipe["item"]) if recipe.has("item") else LootGenerator.make_equipment(1, 0, recipe.get("equipment", "club"))
 		button.icon = made.icon()
@@ -224,6 +237,8 @@ func _build() -> void:
 	right.add_child(_message)
 	_primary = UITheme.button("Equip", _use_selected, 310.0)
 	right.add_child(_primary)
+	_secondary = UITheme.button("", _secondary_action, 310.0)
+	right.add_child(_secondary)
 	var smith := HBoxContainer.new()
 	smith.add_theme_constant_override("separation", 6)
 	right.add_child(smith)
@@ -260,6 +275,7 @@ func _ensure_slots(count: int) -> void:
 		count_label.position -= Vector2(4, 1)
 		count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.add_child(count_label)
+		_bag_marks.append(MarkOverlay.attach(button))
 		_grid.add_child(button)
 		_bag_buttons.append(button)
 		_bag_counts.append(count_label)
@@ -277,10 +293,12 @@ func refresh() -> void:
 	for recipe_id in _hand_buttons:
 		_hand_buttons[recipe_id].disabled = Crafting.blocked_reason(player, RecipeDB.find(recipe_id)) != ""
 	_gold.text = "%d gold" % inventory.gold
+	_marked = _marked.filter(func(item: Item) -> bool: return item in inventory.items)
 	for index in maxi(inventory.capacity(), inventory.items.size()):
 		var item := _bag_item(index)
 		_style_button(_bag_buttons[index], item)
 		_bag_counts[index].text = str(item.count) if item and item.count > 1 else ""
+		_bag_marks[index].visible = item != null and item in _marked
 	for slot in _belt_marks:
 		_belt_marks[slot].visible = player.equipment.active_slot == slot and player.equipment.equipped.has(slot)
 	for slot in _slot_buttons:
@@ -318,7 +336,22 @@ func _refresh_details() -> void:
 	var in_bag := item != null and item in player.inventory.items
 	_primary.disabled = item == null or not (item.is_equipment() or item.is_consumable() or item.is_placeable() or item.is_tool() or item.is_backpack())
 	_primary.text = "Place" if item and item.is_placeable() else "Use" if item and item.is_consumable() else "Equipped  -  click to unequip" if worn else "Equip"
-	_discard.disabled = not in_bag
+	_discard.disabled = not in_bag and _marked.is_empty()
+	_discard.text = ("Really? (%d)" % _marked.size() if _confirming else "Discard %d" % _marked.size()) if not _marked.is_empty() else ("Really?" if _confirming else "Discard")
+	_pick_toggle.text = "Done" if _picking else "Select many"
+	_secondary.visible = item != null and (item.is_consumable() or item.is_placeable() or (item.is_equipment() and item.is_upgradable()))
+	if _secondary.visible:
+		if item.is_equipment():
+			var problem := Crafting.level_up_problem(player, item)
+			_secondary.text = "Level up to %d  -  %d gold" % [item.level + 1, Crafting.level_up_cost(item)]
+			_secondary.disabled = problem != "" and not problem.begins_with("Costs")
+			_secondary.tooltip_text = problem
+		else:
+			var spot := _hotbar_spot(item)
+			var already := player.hotbar.id_in(spot) == item.id
+			_secondary.text = ("On hotbar slot %d" if already else "Equip to hotbar slot %d") % (spot + 1)
+			_secondary.disabled = already
+			_secondary.tooltip_text = ""
 	_upgrade.disabled = item == null or not item.is_equipment() or not item.is_upgradable() or item.upgrade >= ItemDB.MAX_UPGRADE
 	_enchant.disabled = item == null or not item.is_equipment()
 	_salvage.disabled = not in_bag or not item.is_equipment()
@@ -327,6 +360,7 @@ func _refresh_details() -> void:
 
 func _select(item: Item) -> void:
 	_selected = item
+	_confirming = false
 	_message.text = _costs(item)
 	_message.add_theme_color_override("font_color", UITheme.DIM)
 	refresh()
@@ -424,10 +458,79 @@ func _open_gems() -> void:
 
 
 func _discard_selected() -> void:
+	# Throwing things away asks twice.
+	if not _confirming:
+		_confirming = true
+		refresh()
+		return
+	_confirming = false
+	if not _marked.is_empty():
+		var count := _marked.size()
+		for item in _marked.duplicate():
+			if item in player.inventory.items:
+				player.inventory.remove(item)
+		_marked.clear()
+		_report("")
+		_message.text = "Threw away %d item%s." % [count, "" if count == 1 else "s"]
+		return
 	if _selected and _selected in player.inventory.items:
 		var item := _selected
 		_selected = null
 		player.inventory.remove(item)
+
+
+## Marking mode: clicks mark items instead of selecting them.
+func _toggle_picking() -> void:
+	_picking = not _picking
+	_confirming = false
+	if not _picking:
+		_marked.clear()
+	refresh()
+
+
+## Marks every common piece of gear in the bag (the usual junk).
+func _mark_common() -> void:
+	_picking = true
+	_confirming = false
+	for item in player.inventory.items:
+		if item.is_equipment() and item.rarity == 0 and not item.is_unique() and item.set_id == "" and not item in _marked:
+			_marked.append(item)
+	refresh()
+
+
+## Which hotbar slot a usable item goes in: food in 9, potions and other
+## usable things in 7 or 8 (whichever is free, or already holds it).
+func _hotbar_spot(item: Item) -> int:
+	if ItemDB.course_of(item.id) != "":
+		return 8
+	for spot: int in [6, 7]:
+		if player.hotbar.id_in(spot) == item.id:
+			return spot
+	for spot: int in [6, 7]:
+		if player.hotbar.id_in(spot) == "":
+			return spot
+	return 6
+
+
+## The second button: puts a potion or food on the hotbar, or raises a
+## weapon or piece of armour a level for gold.
+func _secondary_action() -> void:
+	var item := _selected
+	if item == null:
+		return
+	if item.is_equipment():
+		var result := Crafting.level_up(player, item)
+		_report(result)
+		if result == "":
+			_message.text = "%s is now level %d." % [item.display_name(), item.level]
+			_message.add_theme_color_override("font_color", UITheme.GOOD)
+		return
+	var spot := _hotbar_spot(item)
+	var problem := player.hotbar.assign(spot, item)
+	_report(problem)
+	if problem == "":
+		_message.text = "%s is on hotbar slot %d." % [item.display_name(), spot + 1]
+		_message.add_theme_color_override("font_color", UITheme.GOOD)
 
 
 func _bag_item(index: int) -> Item:
@@ -441,7 +544,18 @@ func _equipped_slot(item: Item) -> String:
 ## Connects a slot button to whatever item it currently shows.
 ## `empty_text` names the slot in the tooltip when nothing is in it.
 func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
-	button.pressed.connect(func() -> void: _select(item_of.call()))
+	button.pressed.connect(func() -> void:
+		var item: Item = item_of.call()
+		if _picking and item != null and item in player.inventory.items:
+			if item in _marked:
+				_marked.erase(item)
+			else:
+				_marked.append(item)
+			_confirming = false
+			refresh()
+			return
+		_select(item)
+	)
 	button.mouse_entered.connect(func() -> void:
 		var item: Item = item_of.call()
 		_hover(item)

@@ -60,3 +60,34 @@ func test_inventory_stacks_and_takes(t: TestContext) -> void:
 	t.equal(copy.count_of("oak_wood"), 1, "wood after save and load")
 	bag.free()
 	copy.free()
+
+
+func test_every_rarity_has_a_slot_frame(t: TestContext) -> void:
+	for rarity in ItemDB.RARITIES.size():
+		t.check(ResourceLoader.exists("res://assets/ui/slot_r%d.png" % rarity), "no slot frame for %s" % ItemDB.RARITIES[rarity]["name"])
+
+
+func test_beginner_backpack_is_made_by_hand(t: TestContext) -> void:
+	t.check("bindle" in RecipeDB.NO_TABLE, "the bindle needs a table")
+	var recipe := RecipeDB.find("bindle")
+	t.check(not recipe.is_empty(), "no bindle recipe")
+	t.check(Item.create("bindle").is_backpack(), "the bindle is not a backpack")
+
+
+func test_level_up_for_gold(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	player.leveling.level = 10
+	player.inventory.add_gold(1000)
+	var sword := LootGenerator.make_equipment(3, 2, "sword")
+	player.inventory.add(sword)
+	var damage := sword.base_power("damage")
+	var gold := player.inventory.gold
+	var cost := Crafting.level_up_cost(sword)
+	t.equal(Crafting.level_up(player, sword), "", "levelling a level 3 sword at level 10")
+	t.equal(sword.level, 4, "sword level")
+	t.check(sword.base_power("damage") > damage, "damage did not grow")
+	t.equal(player.inventory.gold, gold - cost, "gold after levelling")
+	sword.level = 10
+	t.check(Crafting.level_up(player, sword) != "", "levelled past the player's own level")
+	player.inventory.remove(sword)

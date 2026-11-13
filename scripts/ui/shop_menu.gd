@@ -19,6 +19,10 @@ var _message: Label
 var _tip: ItemTooltip
 ## The selected line: {"item", "price", "selling": bool, "entry": stock entry or null}.
 var _choice: Dictionary = {}
+## Marking many things in the bag to sell together.
+var _picking := false
+var _pick_toggle: Button
+var _sell_marked: Button
 
 
 func _build() -> void:
@@ -65,13 +69,41 @@ func _build() -> void:
 	_bag_grid.setup(player, _tip, 7, 7)
 	_bag_grid.note_for = func(item: Item) -> String:
 		return "[color=#%s]Sells for %d gold%s[/color]" % [UITheme.GOLD.to_html(false), Npc.sell_price(item), " each" if item.count > 1 else ""]
-	_bag_grid.picked.connect(func(item: Item, _index: int) -> void: _choose(item, Npc.sell_price(item), true, {}))
+	_bag_grid.picked.connect(func(item: Item, _index: int) -> void:
+		if _picking:
+			if item in _bag_grid.marked:
+				_bag_grid.marked.erase(item)
+			else:
+				_bag_grid.marked.append(item)
+			refresh()
+			return
+		_choose(item, Npc.sell_price(item), true, {})
+	)
 	_bag_grid.alt_picked.connect(func(item: Item, _index: int) -> void:
 		_choose(item, Npc.sell_price(item), true, {})
 		_trade(1)
 	)
 	bag_box.add_child(_bag_grid)
 	bag_box.add_child(UITheme.label("Sells for a quarter of its worth. Right-click to sell one at once.", 12, UITheme.DIM))
+	var bulk := HBoxContainer.new()
+	bulk.add_theme_constant_override("separation", 6)
+	bag_box.add_child(bulk)
+	_pick_toggle = UITheme.button("Select many", func() -> void:
+		_picking = not _picking
+		if not _picking:
+			_bag_grid.marked.clear()
+		refresh()
+	, 110.0)
+	bulk.add_child(_pick_toggle)
+	bulk.add_child(UITheme.button("Mark common", func() -> void:
+		_picking = true
+		for item: Item in player.inventory.items:
+			if item.is_equipment() and item.rarity == 0 and not item.is_unique() and item.set_id == "" and not item in _bag_grid.marked:
+				_bag_grid.marked.append(item)
+		refresh()
+	, 110.0))
+	_sell_marked = UITheme.button("Sell marked", _sell_all_marked, 150.0)
+	bulk.add_child(_sell_marked)
 
 	# --- the chosen thing
 	var right_panel := UITheme.inset_panel()
@@ -124,7 +156,14 @@ func refresh() -> void:
 		_wares.add_child(UITheme.label("Sold out. Come back when the wares change.", 14, UITheme.DIM))
 	_bag_title.text = "Your bag   %d / %d" % [player.inventory.items.size(), player.inventory.capacity()]
 	_bag_grid.selected = _choice["item"] if not _choice.is_empty() and _choice["selling"] else null
+	_bag_grid.marked = _bag_grid.marked.filter(func(item: Item) -> bool: return item in player.inventory.items)
 	_bag_grid.set_items(player.inventory.items, player.inventory.capacity())
+	_pick_toggle.text = "Done" if _picking else "Select many"
+	var total := 0
+	for item: Item in _bag_grid.marked:
+		total += Npc.sell_price(item) * item.count
+	_sell_marked.disabled = _bag_grid.marked.is_empty()
+	_sell_marked.text = "Sell %d for %d gold" % [_bag_grid.marked.size(), total] if not _bag_grid.marked.is_empty() else "Sell marked"
 	_show()
 
 
@@ -207,12 +246,35 @@ func _show() -> void:
 	_details.text = ItemText.describe(item, player) + "\n\n[color=#%s]%s for %d gold[/color]" % [UITheme.GOLD.to_html(false), "Sells" if _choice["selling"] else "Costs", _choice["price"]]
 
 
+## Sells every marked stack at once.
+func _sell_all_marked() -> void:
+	var gold := 0
+	var count := 0
+	for item: Item in _bag_grid.marked.duplicate():
+		if not item in player.inventory.items:
+			continue
+		gold += Npc.sell_price(item) * item.count
+		count += 1
+		player.inventory.remove(item)
+	_bag_grid.marked.clear()
+	_picking = false
+	if count > 0:
+		player.inventory.add_gold(gold)
+		Events.codex_event.emit("sales", count)
+		Audio.play("pickup", -6.0)
+		_message.add_theme_color_override("font_color", UITheme.GOOD)
+		_message.text = "Sold %d for %d gold." % [count, gold]
+	refresh()
+	_message.add_theme_color_override("font_color", UITheme.GOOD)
+
+
 func _trade(times: int) -> void:
 	if _choice.is_empty():
 		return
 	var item: Item = _choice["item"]
 	var inventory := player.inventory
 	_message.text = ""
+	_message.add_theme_color_override("font_color", UITheme.BAD)
 	if _choice["selling"]:
 		var amount := item.count if times > 1 else 1
 		inventory.add_gold(_choice["price"] * amount)

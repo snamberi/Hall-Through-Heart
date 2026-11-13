@@ -82,6 +82,62 @@ static func upgrade(player: Player, item: Item) -> String:
 	return ""
 
 
+# --- levelling gear with gold
+
+## Gold to raise an item one level: about two fifths of what it is worth.
+static func level_up_cost(item: Item) -> int:
+	return maxi(10, roundi(item.value() * 0.4))
+
+
+## Why the item can't be raised a level, or "".
+static func level_up_problem(player: Player, item: Item) -> String:
+	if not item.is_equipment() or not item.is_upgradable():
+		return "Only weapons and armour can be raised a level."
+	if item.is_unique() or item.set_id != "":
+		return "Uniques and set pieces keep the level they were found at."
+	if item.level >= player.leveling.level:
+		return "It can't be raised above your own level (%d)." % player.leveling.level
+	if player.inventory.gold < level_up_cost(item):
+		return "Costs %d gold." % level_up_cost(item)
+	return ""
+
+
+## Raises an item one level for gold: its damage or armour, its own bonuses
+## and its random bonuses all grow as if it had been found a level higher.
+static func level_up(player: Player, item: Item) -> String:
+	var problem := level_up_problem(player, item)
+	if problem != "":
+		return problem
+	var cost := level_up_cost(item)
+	item.level += 1
+	# Don't leave the player wearing something they can no longer use.
+	if player.equipment.slot_of(item) != "":
+		var refused := player.equipment.cannot_equip_reason(item)
+		if refused != "":
+			item.level -= 1
+			return "A level higher it would need more: " + refused.to_lower()
+	player.inventory.add_gold(-cost)
+	for mod: Dictionary in item.mods:
+		var affix := _affix_for(mod)
+		if affix.is_empty():
+			continue
+		var before: float = affix["base"] + affix["per_level"] * (item.level - 1)
+		var after: float = affix["base"] + affix["per_level"] * item.level
+		if before > 0.0:
+			var value: float = mod["value"] * after / before
+			mod["value"] = maxf(roundf(value), mod["value"]) if mod["kind"] == "flat" and affix["base"] >= 1.0 else snappedf(value, 0.001)
+	Audio.play("level_up", -10.0, 0.1)
+	_item_changed(player)
+	return ""
+
+
+static func _affix_for(mod: Dictionary) -> Dictionary:
+	for affix: Dictionary in ItemDB.AFFIXES:
+		if affix["stat"] == mod["stat"] and affix["kind"] == mod["kind"]:
+			return affix
+	return {}
+
+
 # --- enchanting
 
 ## {"dust": n, "essence": n, "level": enchanting level needed}.

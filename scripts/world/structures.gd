@@ -723,6 +723,7 @@ func _chest(cell: Vector2i, key: String, level: int, richness: float, contents: 
 			chests[key] = contents if not contents.is_empty() else roll_chest(level, richness)
 			used[key] = true
 		chest.set_art(Prop.Art.CHEST_OPEN)
-		Events.loot_opened.emit({"items": chests[key], "title": "Chest", "take_only": true})
+		# Found chests keep what is left in them (and what the player puts in).
+		Events.loot_opened.emit({"items": chests[key], "title": "Chest"})
 		SaveGame.request_save()
 	return chest

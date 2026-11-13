@@ -19,10 +19,13 @@ var tooltip: ItemTooltip
 var note_for: Callable
 ## The item drawn as chosen, if any.
 var selected: Item
+## Items shown with a tick (marked to sell or throw away together).
+var marked: Array = []
 
 var _grid: GridContainer
 var _buttons: Array[Button] = []
 var _counts: Array[Label] = []
+var _marks: Array[MarkOverlay] = []
 var _items: Array = []
 
 
@@ -50,6 +53,7 @@ func set_items(items: Array, capacity: int) -> void:
 		var item: Item = items[index] if index < items.size() else null
 		style_slot(button, item, item != null and item == selected)
 		_counts[index].text = str(item.count) if item and item.count > 1 else ""
+		_marks[index].visible = item != null and item in marked
 
 
 func _add_slot() -> void:
@@ -92,6 +96,7 @@ func _add_slot() -> void:
 	count.position -= Vector2(4, 1)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(count)
+	_marks.append(MarkOverlay.attach(button))
 	_grid.add_child(button)
 	_buttons.append(button)
 	_counts.append(count)
@@ -101,13 +106,16 @@ func _item(index: int) -> Item:
 	return _items[index] if index < _items.size() else null
 
 
-## A sunken pixel-art slot, its iron lip washed in the item's rarity
-## colour; the chosen item's slot is gold.
+## A sunken pixel-art slot in the item's rarity look (see
+## UITheme.rarity_slot), lit up while hovered; the chosen item's is gold.
 static func frame_style(item: Item, chosen: bool, kind: String = "") -> StyleBoxTexture:
+	if item and not chosen and kind in ["", "slot_hover"]:
+		var framed := UITheme.rarity_slot(item.rarity)
+		if kind == "slot_hover":
+			framed.modulate_color = Color(1.35, 1.35, 1.35)
+		return framed
 	var style := UITheme.slot(kind if kind != "" else ("slot_active" if chosen else "slot"))
 	style.set_content_margin_all(5)
-	if item and not chosen and kind == "":
-		style.modulate_color = Color.WHITE.lerp(item.color().lightened(0.15), 0.55)
 	return style
 
 

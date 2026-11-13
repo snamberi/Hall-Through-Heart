@@ -119,6 +119,16 @@ static func slot(kind: String = "slot") -> StyleBoxTexture:
 	return _frame(kind, 8, 4)
 
 
+## An item slot in its rarity's look (0 common .. 5 mythic): the lip in
+## that rarity's metal, the well glowing its colour, gems and filigree on
+## the finer ones. Stretched, not tiled, so the glow stays centred.
+static func rarity_slot(rarity: int) -> StyleBoxTexture:
+	var box := _frame("slot_r%d" % clampi(rarity, 0, 5), 8, 5)
+	box.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	box.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	return box
+
+
 ## The box tooltips sit in.
 static func tooltip_box() -> StyleBoxTexture:
 	return _frame("tooltip", 6, 10)
