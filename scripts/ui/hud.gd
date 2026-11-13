@@ -80,12 +80,17 @@ func setup(player: Player) -> void:
 	_buff_label.visible = false
 	var buff_bar := BuffBar.new()
 	buff_bar.setup(player)
-	buff_bar.position = Vector2(158.0, 112.0)
+	buff_bar.position = Vector2(158.0, 126.0)
 	add_child(buff_bar)
 	var menu_button := HudMenuButton.new()
 	menu_button.setup(player)
-	menu_button.position = Vector2(14.0, 110.0)
+	menu_button.position = Vector2(14.0, 124.0)
 	add_child(menu_button)
+	# Ego, under the experience bar.
+	var ego_bar := EgoBar.new()
+	ego_bar.setup(player)
+	ego_bar.position = Vector2(4.0, 104.0)
+	add_child(ego_bar)
 	_death_message.visible = false
 	_banner.visible = false
 	_refresh()

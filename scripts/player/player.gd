@@ -118,6 +118,8 @@ var _parry_cooldown := 0.0
 @onready var equipment: Equipment = $Equipment
 @onready var abilities: AbilityUser = $Abilities
 @onready var buffs: Buffs = $Buffs
+## Pride from beating stronger foes; it saps damage and speed (see Ego).
+var ego: Ego
 var hotbar: Hotbar
 ## Skin tone, hair, clothes, trousers and look (see Appearance).
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()
@@ -167,6 +169,9 @@ func _ready() -> void:
 	uniques.name = "Uniques"
 	add_child(uniques)
 	uniques.setup(self)
+	ego = Ego.new()
+	ego.name = "Ego"
+	add_child(ego)
 	_mount = Mount.new()
 	_mount.name = "Mount"
 	add_child(_mount)

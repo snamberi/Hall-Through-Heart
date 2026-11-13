@@ -158,3 +158,21 @@ func test_tents_and_houses_can_be_entered(t: TestContext) -> void:
 		instances.leave()
 		await t.frames(3)
 		t.check(not instances.is_inside(), "could not leave the %s" % kind)
+
+
+func test_ego_rises_and_falls(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	player.ego.value = 0.0
+	player.ego.add(0.0)
+	var damage := player.stats.get_stat("physical_damage")
+	player.ego.add(80.0)
+	t.check(player.stats.get_stat("physical_damage") < damage, "a swollen ego did not cut damage")
+	t.check(player.ego.speed_loss() > 0.0, "a swollen ego did not slow attacks")
+	var before := player.ego.value
+	player.ego.humble("cook")
+	player.ego.humble("trade", 2)
+	t.check(player.ego.value < before, "humble work did not lower ego")
+	player.ego.value = 0.0
+	player.ego.add(0.0)
+	t.equal(player.stats.get_stat("physical_damage"), damage, "damage with no ego")

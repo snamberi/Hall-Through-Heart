@@ -292,6 +292,8 @@ func placement_problem(kind: String, at: Vector2) -> String:
 ## Sets a building down. The caller has already checked placement_problem.
 ## `flip` mirrors it left to right.
 func place(kind: String, at: Vector2, item_id: String = "", flip: bool = false) -> void:
+	if not kind in ["ground", "wall"]:
+		Events.codex_event.emit("built", 1)
 	var where := current_place()
 	var record := {"id": _next_id, "kind": kind, "where": where, "x": at.x, "y": at.y, "items": []}
 	if flip:
