@@ -627,6 +627,9 @@ func _spawn(record: Dictionary) -> void:
 	var prop: Prop
 	if kind.has("decor"):
 		prop = Prop.create_decor(kind["decor"], at, kind["solid"])
+		# The player's own crates and barrels are furniture, not loot.
+		prop.hits_left = 0
+		prop.remove_from_group("breakables")
 		if record["kind"] == "plot":
 			prop.prompt_text = _plot_prompt(record)
 			prop.on_interact = func(player: Player) -> void:

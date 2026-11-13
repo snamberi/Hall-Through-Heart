@@ -25,6 +25,11 @@ var reach := REACH
 var tag := ""
 
 var _sprite: Sprite2D
+## Hits left before a crate or barrel breaks (0: it can't be broken).
+var hits_left := 0
+## Crates and barrels broken in the world, by where they stood; saved with
+## the structures, so a broken one stays broken.
+static var broken: Dictionary = {}
 
 
 ## `solid` is the radius of the collision circle, or 0 to walk through.
@@ -59,6 +64,9 @@ const FLAT_DECOR: Array[int] = [Decor.FLOOR, Decor.RUBBLE, Decor.BONES, Decor.RU
 
 
 func _ready() -> void:
+	if hits_left > 0 and broken.has(break_key()):
+		queue_free()
+		return
 	if z_index < 0 or _sprite == null:
 		return
 	var flat: Array[int] = FLAT_DECOR if _sprite.texture == DECOR else FLAT_ART
@@ -93,7 +101,71 @@ static func create_decor(index: int, at: Vector2, solid: float = 0.0, prompt: St
 	prop._sprite.texture = DECOR
 	prop._sprite.hframes = DECOR_FRAMES
 	prop._sprite.frame = index
+	# Crates and barrels found in the world can be smashed open.
+	if index == Decor.CRATE or index == Decor.BARREL:
+		prop.hits_left = 1 if index == Decor.CRATE else 2
+		prop.add_to_group("breakables")
 	return prop
+
+
+func break_key() -> String:
+	return "%d,%d" % [roundi(global_position.x), roundi(global_position.y)]
+
+
+## Takes a blow: a shake, and after enough of them the thing bursts into
+## splinters and spills 1 to 3 things.
+func take_hit(player: Player) -> void:
+	if hits_left <= 0:
+		return
+	hits_left -= 1
+	Audio.play("chop", -6.0, 0.15)
+	if hits_left > 0:
+		var shake := create_tween()
+		for step: float in [3.0, -3.0, 2.0, 0.0]:
+			shake.tween_property(_sprite, "position:x", step, 0.04)
+		_sprite.modulate = Color(1.5, 1.4, 1.3)
+		shake.tween_property(_sprite, "modulate", Color.WHITE, 0.12)
+		return
+	broken[break_key()] = true
+	var wood: Array[Color] = [Color("8a6a48"), Color("6b4f36"), Color("a8875c"), Color("4a3626")]
+	if _sprite.frame == Decor.BARREL:
+		wood.append(Color("7a7680"))
+	Debris.spawn(get_parent(), global_position + Vector2(0, -6), wood, 16)
+	Audio.play("hit", -4.0, 0.2)
+	var loot: Node = player.get_parent().get_node_or_null("Loot")
+	if loot:
+		for thing: Variant in roll_breakable(player.leveling.level, _sprite.frame == Decor.BARREL):
+			var spot := global_position + Vector2(randf_range(-14.0, 14.0), randf_range(-6.0, 10.0))
+			if thing is int:
+				loot.drop_gold(thing, spot)
+			else:
+				loot.drop_item(thing, spot)
+	remove_from_group("breakables")
+	queue_free()
+
+
+## What spills out: 1 to 3 things (an int is a pile of gold). Barrels lean
+## to food and drink, crates to supplies.
+static func roll_breakable(level: int, barrel: bool) -> Array:
+	var table: Array = [["oak_wood", 3.0, 1, 3], ["torch", 2.0, 1, 2], ["bandage", 1.5, 1, 2], ["healing_herb", 2.0, 1, 2],
+		["health_potion", 0.7, 1, 1], ["wheat_seeds", 1.0, 1, 3], ["leather", 0.8, 1, 2], ["gold", 3.0, 0, 0]]
+	if barrel:
+		table.append_array([["wild_berries", 3.0, 1, 4], ["bread", 2.0, 1, 2], ["hunters_brew", 1.0, 1, 1], ["carrot", 1.5, 1, 3]])
+	var total := 0.0
+	for entry: Array in table:
+		total += entry[1]
+	var result: Array = []
+	for i in randi_range(1, 3):
+		var roll := randf() * total
+		for entry: Array in table:
+			roll -= entry[1]
+			if roll <= 0.0:
+				if entry[0] == "gold":
+					result.append(randi_range(2, 6) + level * 2)
+				elif ItemDB.ITEMS.has(entry[0]):
+					result.append(Item.create(entry[0], randi_range(entry[2], entry[3])))
+				break
+	return result
 
 
 ## Where the flames sit on things that burn: [where the flame's base

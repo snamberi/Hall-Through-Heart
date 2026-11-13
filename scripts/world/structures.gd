@@ -69,7 +69,7 @@ func setup(world: World, player: Player, spawner: EnemySpawner, loot: Node2D, in
 
 
 func save_data() -> Dictionary:
-	return {"used": used.keys(), "chests": chests.duplicate(true), "boss_days": boss_days.duplicate()}
+	return {"used": used.keys(), "chests": chests.duplicate(true), "boss_days": boss_days.duplicate(), "broken": Prop.broken.keys()}
 
 
 func load_data(data: Dictionary) -> void:
@@ -80,6 +80,9 @@ func load_data(data: Dictionary) -> void:
 	chests = saved if saved is Dictionary else {}
 	var days: Variant = data.get("boss_days", {})
 	boss_days = days if days is Dictionary else {}
+	Prop.broken.clear()
+	for key: Variant in data.get("broken", []):
+		Prop.broken[str(key)] = true
 
 
 ## What a chest holds: a few materials and gold, sometimes a potion, and gear

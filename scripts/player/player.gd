@@ -328,6 +328,19 @@ func strike_arc(
 		hit_enemy(enemy, multiplier, direction * knockback)
 		already_hit.append(enemy)
 		hits += 1
+	# Crates and barrels in the swing break open.
+	for node in get_tree().get_nodes_in_group("breakables"):
+		var prop := node as Prop
+		if prop == null:
+			continue
+		var to_prop := prop.global_position - global_position
+		if to_prop.length() > reach + 14.0:
+			continue
+		if to_prop.length() > 14.0 and absf(direction.angle_to(to_prop)) > half_arc:
+			continue
+		if not has_line_to(prop.global_position):
+			continue
+		prop.take_hit(self)
 	return hits
 
 

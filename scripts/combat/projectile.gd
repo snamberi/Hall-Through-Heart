@@ -64,6 +64,12 @@ func _physics_process(delta: float) -> void:
 		if not _config.get("pierce", false):
 			_finish()
 			return
+	for node in get_tree().get_nodes_in_group("breakables"):
+		var prop := node as Prop
+		if prop and (prop.global_position + Vector2(0, -12)).distance_to(global_position) < radius + 12.0:
+			prop.take_hit(_player)
+			_finish()
+			return
 
 
 func _strike(enemy: Enemy) -> void:

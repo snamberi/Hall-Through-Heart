@@ -93,3 +93,17 @@ func test_build_mode_hides_the_hud(t: TestContext) -> void:
 	t.check(not BuildPalette.on, "build mode did not turn off")
 	t.check(hud._ability_bar.visible, "ability bar did not come back")
 	t.equal(player.view_zoom, 1.0, "camera zoom after build mode")
+
+
+func test_crates_and_barrels_break_open(t: TestContext) -> void:
+	for i in 30:
+		var spill := Prop.roll_breakable(5, i % 2 == 0)
+		t.check(spill.size() >= 1 and spill.size() <= 3, "a broken crate spilled %d things" % spill.size())
+	var crate := Prop.create_decor(Prop.Decor.CRATE, Vector2.ZERO)
+	t.check(crate.is_in_group("breakables") and crate.hits_left == 1, "a found crate can't be broken")
+	var barrel := Prop.create_decor(Prop.Decor.BARREL, Vector2.ZERO)
+	t.equal(barrel.hits_left, 2, "hits to break a barrel")
+	var chair := Prop.create_decor(Prop.Decor.CHAIR, Vector2.ZERO)
+	t.check(not chair.is_in_group("breakables"), "a chair can be smashed")
+	for prop: Prop in [crate, barrel, chair]:
+		prop.free()
