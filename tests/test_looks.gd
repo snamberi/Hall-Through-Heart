@@ -29,3 +29,20 @@ func test_recolour_shader_uses_modulate_only(t: TestContext) -> void:
 	# The texture colour is already in COLOR in fragment(); multiplying the
 	# recoloured pixel by it again squared every body colour.
 	t.check(not Appearance.SHADER.contains("* COLOR;"), "body shader multiplies by COLOR (the texture) again")
+
+
+func test_every_armour_has_its_worn_look(t: TestContext) -> void:
+	var parts := {"helmet": "helmet", "chest": "chest", "legs": "legs", "boots": "boots"}
+	for id: String in ItemDB.ITEMS:
+		var def: Dictionary = ItemDB.ITEMS[id]
+		var slot: String = def.get("slot", "")
+		if not parts.has(slot):
+			continue
+		for level: int in [1, 30, 60]:
+			var item := LootGenerator.make_equipment(level, 1, id)
+			var sheet := PlayerAnimator.armour_sheet(parts[slot], item)
+			t.check(ResourceLoader.exists("res://assets/sprites/%s.png" % sheet), "%s at level %d needs missing %s" % [id, level, sheet])
+	t.check(PlayerAnimator.armour_sheet("helmet", LootGenerator.make_equipment(1, 0, "helmet")) != PlayerAnimator.armour_sheet("helmet", LootGenerator.make_equipment(60, 0, "helmet")),
+		"plate helmets look the same at every level")
+	t.check(PlayerAnimator.armour_sheet("chest", LootGenerator.make_equipment(5, 0, "leather_vest")) != PlayerAnimator.armour_sheet("chest", LootGenerator.make_equipment(5, 0, "chestplate")),
+		"a leather vest looks like a chestplate")

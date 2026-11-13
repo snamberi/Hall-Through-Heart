@@ -41,6 +41,8 @@ const LAYERS: Array[Dictionary] = [
 	{"name": "look_beard", "behind": false},
 	{"name": "look_hair", "behind": false},
 	{"name": "look_horns", "behind": false},
+	{"name": "legs", "behind": false},
+	{"name": "boots", "behind": false},
 	{"name": "chest", "behind": false},
 	{"name": "shoulders", "behind": false},
 	{"name": "helmet", "behind": false},
@@ -48,6 +50,27 @@ const LAYERS: Array[Dictionary] = [
 	{"name": "shield", "behind": false},
 	{"name": "weapon", "behind": false},
 ]
+## How each piece of armour looks when worn: "plate" (three styles, by
+## item level, tinted with its metal), or a look in its own colours.
+const ARMOUR_LOOKS := {"helmet": "plate", "leather_cap": "leather", "ember_crown": "crown",
+	"chestplate": "plate", "leather_vest": "leather", "fur_cloak": "fur",
+	"greaves": "plate", "leather_leggings": "leather", "boots": "plate", "leather_boots": "leather", "voidwalker": "plate"}
+const PLATE_STYLE_LEVELS: Array[int] = [20, 45]
+
+
+## The layer sheet for a worn piece, e.g. "layers/helmet_plate_2".
+static func armour_sheet(part: String, item: Item) -> String:
+	var look: String = ARMOUR_LOOKS.get(item.id, "plate")
+	# Helmets and chest pieces have three plate styles; legs and boots one.
+	if look == "plate" and part in ["helmet", "chest"]:
+		var style := 1
+		for level: int in PLATE_STYLE_LEVELS:
+			if item.level >= level:
+				style += 1
+		look = "plate_%d" % style
+	return "layers/%s_%s" % [part, look]
+
+
 ## Chest armour of this rarity or better adds shoulder pieces / a cape.
 const SHOULDERS_FROM_RARITY := 2
 const CAPE_FROM_RARITY := 3
@@ -296,10 +319,17 @@ func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 	# A shield stays on the back while both hands are busy.
 	var both_hands: bool = held != null and (held.is_tool() or held.definition().get("two_handed", false))
 	_set_layer("shield", null if both_hands else equipment.get_item("off_hand"), "layers/shield")
-	_set_layer("helmet", equipment.get_item("helmet") if show_helmet else null, "layers/helmet")
+	var helmet: Item = equipment.get_item("helmet") if show_helmet else null
 	var chest := equipment.get_item("chest")
-	_set_layer("chest", chest, "layers/chest")
-	_set_layer("shoulders", chest if chest and chest.rarity >= SHOULDERS_FROM_RARITY else null, "layers/shoulders")
+	var legs := equipment.get_item("legs")
+	var boots := equipment.get_item("boots")
+	for entry: Array in [["helmet", helmet], ["chest", chest], ["legs", legs], ["boots", boots]]:
+		var piece: Item = entry[1]
+		var sheet := armour_sheet(entry[0], piece) if piece else ""
+		# Plate takes its metal's colour; leather, fur and gold keep their own.
+		_set_layer(entry[0], piece, sheet, sheet.contains("_plate"))
+	var plate_chest: bool = chest != null and ARMOUR_LOOKS.get(chest.id, "plate") == "plate"
+	_set_layer("shoulders", chest if plate_chest and chest.rarity >= SHOULDERS_FROM_RARITY else null, "layers/shoulders")
 	_set_layer("cape", chest if chest and chest.rarity >= CAPE_FROM_RARITY else null, "layers/cape")
 	if _layers["cape"].visible:
 		# The cape takes the rarity colour itself rather than the metal's.
