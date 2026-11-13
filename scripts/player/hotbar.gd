@@ -1,26 +1,27 @@
 class_name Hotbar
 extends Node
-## The nine quick slots along the bottom of the screen.
+## The ten quick slots along the bottom of the screen.
 ##
-##   1        a staff or other magic weapon
-##   2, 3     two more weapons
-##   4, 5, 6  pickaxe, hatchet, fishing rod
-##   7, 8     potions (or anything else that can be used or set down)
-##   9        food
+##   1        your combat style (chosen in the Abilities screen)
+##   2        your school of magic (taken up at an Altar of Magic)
+##   3, 4     two weapons (staves too)
+##   5, 6, 7  pickaxe, hatchet, fishing rod
+##   8, 9     potions (or anything else that can be used or set down)
+##   0        food
 ##
-## Slots 1 to 6 are the belt (see Equipment): pressing the key takes that
-## weapon or tool in hand. Slots 7 to 9 remember an item id and use
+## Slots 1 to 7 are the belt (see Equipment): pressing the key takes that
+## style, magic, weapon or tool in hand. Slots 8 to 10 remember an item id and use
 ## whichever stack of it is in the bag. Q uses the quick item, chosen by
 ## hovering something in the inventory and pressing Q.
 
 signal changed
 
-const SIZE := 9
-const BELT_SIZE := 6
+const SIZE := 10
+const BELT_SIZE := 7
 ## What each slot is for, shown in empty slots and in hints.
-const LABELS: Array[String] = ["Magic", "Weapon", "Weapon", "Pickaxe", "Hatchet", "Rod", "Potion", "Potion", "Food"]
+const LABELS: Array[String] = ["Combat", "Magic", "Weapon", "Weapon", "Pickaxe", "Hatchet", "Rod", "Potion", "Potion", "Food"]
 ## Icon shown faintly in an empty slot.
-const GHOST_ICONS: Array[int] = [27, 0, 0, 49, 50, 51, 44, 44, 66]
+const GHOST_ICONS: Array[int] = [38, 33, 0, 0, 49, 50, 51, 44, 44, 66]
 
 ## Item ids for slots 7, 8 and 9.
 var slots: Array[String] = ["", "", ""]
@@ -49,8 +50,10 @@ func assign(index: int, item: Item) -> String:
 		return ""
 	if index < BELT_SIZE:
 		var slot := belt_slot(index)
+		if index < 2:
+			return "Slot %d holds your %s, not items." % [index + 1, "combat style" if index == 0 else "school of magic"]
 		if not _player.equipment.fits(item, slot):
-			return "Slot %d is for a %s." % [index + 1, ("staff or other magic weapon" if index == 0 else LABELS[index].to_lower())]
+			return "Slot %d is for a %s." % [index + 1, LABELS[index].to_lower()]
 		if _player.equipment.slot_of(item) == slot:
 			return ""
 		return _player.equipment.equip(item, slot)
@@ -97,11 +100,33 @@ func quick_item() -> Item:
 
 ## Whether a slot is the one in hand.
 func is_active(index: int) -> bool:
+	if index < 2:
+		return _player.equipment.active_slot == belt_slot(index) and _player.equipment.working_tool == null
 	return index < BELT_SIZE and _player.equipment.active_slot == belt_slot(index) and _player.equipment.equipped.has(belt_slot(index))
+
+
+## The picture for the style and magic slots (they hold no item).
+func hand_icon(index: int) -> Texture2D:
+	if index == 0:
+		return CombatStyles.icon(_player.styles.equipped if _player.styles else "fist")
+	if index == 1 and _player.magic_school != "":
+		return ItemDB.icon(MagicDB.SCHOOLS[_player.magic_school]["icon"])
+	return null
+
+
+## What the style and magic slots are called right now.
+func hand_name(index: int) -> String:
+	if index == 0:
+		return CombatStyles.STYLES[_player.styles.equipped]["name"] if _player.styles else "Brawler's Fists"
+	if index == 1:
+		return MagicDB.SCHOOLS[_player.magic_school]["name"] if _player.magic_school != "" else "No magic yet"
+	return ""
 
 
 ## Uses what is in a slot. Returns "" or why not.
 func activate(index: int) -> String:
+	if index == 1 and _player.magic_school == "":
+		return "Take up a school of magic at an Altar of Magic first."
 	if index < BELT_SIZE:
 		if not _player.equipment.select(belt_slot(index)):
 			return "No %s on your belt." % LABELS[index].to_lower()

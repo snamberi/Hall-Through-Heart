@@ -124,6 +124,8 @@ var _parry_cooldown := 0.0
 var ego: Ego
 ## The relic bag and the relics worn (see Relics).
 var relics: Relics
+## Combat styles known and the one in use (see StyleBook).
+var styles: StyleBook
 var hotbar: Hotbar
 ## Skin tone, hair, clothes, trousers and look (see Appearance).
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()
@@ -179,6 +181,13 @@ func _ready() -> void:
 	relics = Relics.new()
 	relics.name = "Relics"
 	add_child(relics)
+	styles = StyleBook.new()
+	styles.name = "Styles"
+	add_child(styles)
+	styles.changed.connect(_on_equipment_changed)
+	var hands := HandFX.new()
+	hands.setup(self)
+	add_child(hands)
 	var aura := EgoAura.new()
 	aura.setup(self)
 	add_child(aura)
@@ -302,6 +311,12 @@ func attack(direction: Vector2) -> void:
 			multiplier = WeaponMastery.COMBO_DAMAGE
 			reach *= 1.25
 			shake_camera(4.0)
+	if holding_magic() and not mana.spend(MagicDB.BOLT_MANA):
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), "Out of mana", Color(0.5, 0.7, 1.0), 12)
+		return
+	if fighting_bare():
+		_style_strike(direction, reach, multiplier)
+		return
 	if weapon.has("projectile"):
 		var config: Dictionary = weapon["projectile"].duplicate()
 		config["knockback"] = weapon["knockback"]
@@ -507,6 +522,8 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 	Events.damage_dealt.emit(type, dealt)
 	var weapon := equipment.get_item("main_hand")
 	var def: Dictionary = weapon.definition() if weapon else {}
+	if weapon == null and fighting_bare() and styles.data().has("on_hit"):
+		def = {"on_hit": styles.data()["on_hit"]}
 	if def.has("on_hit"):
 		var effect: Dictionary = def["on_hit"]
 		var power: float = effect["power"] if effect["status"] == "chill" else effect["power"] * damage
@@ -929,9 +946,19 @@ func begin_rebirth() -> void:
 	rebirth_finished.emit()
 
 
-## Whether a magic weapon in the magic slot is the one in hand.
+## Whether the school of magic is what the hand holds.
 func holding_magic() -> bool:
-	return equipment.active_slot == "weapon_1" and equipment.equipped.has("weapon_1")
+	return equipment.active_slot == "weapon_1" and magic_school != "" and equipment.working_tool == null
+
+
+## Whether the hand fights with the combat style.
+func fighting_bare() -> bool:
+	return equipment.active_slot == "combat" and equipment.working_tool == null
+
+
+## Brief immunity, for moves that vanish or step out of harm's way.
+func grant_invulnerability(seconds: float) -> void:
+	_invulnerable_left = maxf(_invulnerable_left, seconds)
 
 
 func race() -> String:
@@ -989,6 +1016,7 @@ func take_up_magic(school: String) -> String:
 	if not school in magic_schools:
 		magic_schools.append(school)
 	magic_school = school
+	_on_equipment_changed()
 	abilities.changed.emit()
 	Events.codex_event.emit("magic", 1)
 	SaveGame.request_save()
@@ -1185,6 +1213,12 @@ func _apply_stats() -> void:
 
 
 func _on_equipment_changed() -> void:
+	equipment.set_hand(styles.equipped if styles else "fist", magic_school)
+	# A combat style's bonuses count only while fighting with it.
+	if styles and fighting_bare():
+		stats.set_modifiers_quietly("combat_style", styles.data().get("mods", {}))
+	else:
+		stats.set_modifiers_quietly("combat_style", {})
 	_animator.update_equipment(equipment, show_helmet)
 	stats.weapon_type = weapon_type
 	stats.set_modifiers_quietly("mastery_passive", mastery.passive_modifiers(weapon_type))
@@ -1478,9 +1512,42 @@ func _apply_class() -> void:
 ## Extra scaling for the weapon in hand: magic weapons use magic damage.
 func _weapon_multiplier() -> float:
 	var weapon := equipment.get_item("main_hand")
-	if weapon and weapon.definition().get("magic", false):
+	if (weapon and weapon.definition().get("magic", false)) or holding_magic():
 		return stats.get_stat("magic_power")
 	return 1.0
+
+
+## A plain attack with the combat style: each style lands its blows its own
+## way (quick jabs, wide palms that push, a blink to the side, slow heavy
+## blows that shake the ground, darting kicks, sweeping turns).
+func _style_strike(direction: Vector2, reach: float, multiplier: float) -> void:
+	var info := styles.data()
+	var profile: Dictionary = info["profile"]
+	var color: Color = info["color"]
+	var arc: float = profile["arc"]
+	var knockback: float = profile["knockback"]
+	var element: String = info.get("element", "")
+	match str(info.get("strike", "jab")):
+		"palm":
+			reach *= 1.1
+			RingBurst.spawn(get_parent(), global_position + direction * reach * 0.6 + Vector2(0, -14), color, 26.0)
+		"blink":
+			# Step a little way through the dark before the blow lands.
+			var hop := direction * 34.0
+			if has_line_to(global_position + hop):
+				global_position += hop
+				HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), color)
+		"heavy":
+			multiplier *= 1.15
+			shake_camera(2.5)
+			RingBurst.spawn(get_parent(), global_position + direction * reach * 0.7, color, 34.0)
+		"kick":
+			reach *= 1.15
+			velocity = direction * 220.0
+		"sweep":
+			arc = minf(arc + 40.0, 340.0)
+	_slash.play_weapon("unarmed", element, direction, reach, deg_to_rad(arc), 0.2, color)
+	strike_arc(direction, reach, arc, multiplier, knockback)
 
 
 func _restore_all() -> void:

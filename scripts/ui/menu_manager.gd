@@ -33,7 +33,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options and saving", "side": true},
 ]
 ## Where a screen's Back button leads, when not to the wheel. "" closes.
-const BACK := {"settings": "pause", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": ""}
+const BACK := {"settings": "pause", "teacher": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": ""}
 
 var _menus: Dictionary[String, GameMenu] = {}
 ## "" when closed, "wheel", or a screen id.
@@ -113,6 +113,7 @@ func setup(player: Player) -> void:
 	_add("codex", CodexMenu.new())
 	_add("pets", PetsMenu.new())
 	_add("relics", RelicsMenu.new())
+	_add("teacher", TeacherMenu.new())
 	_add("magic", MagicMenu.new())
 	_add("evolution", EvolutionMenu.new())
 	_add("build", BuildMenu.new())
@@ -299,6 +300,11 @@ func badge_total() -> int:
 
 ## Talking to someone opens their screen.
 func _on_npc_interacted(npc: Node) -> void:
+	if npc.kind == "master":
+		(_menus["teacher"] as TeacherMenu).style = npc.offer.get("style", "fist")
+		(_menus["teacher"] as TeacherMenu).master = npc.title_text
+		open("teacher")
+		return
 	if npc.kind == "recruit":
 		(_menus["recruit"] as RecruitMenu).offer = npc.offer
 		open("recruit")

@@ -1,11 +1,17 @@
 class_name AbilitiesMenu
 extends GameMenu
-## Choosing which eight abilities sit on the bar. Click an ability on the
-## left, then a slot on the right; right-click a slot to empty it.
+## Three columns: the combat styles (equip the ones you know, see who
+## teaches the rest), the four moves of whatever is in hand, and the
+## universal abilities with the four slots Tab switches to. Click a
+## universal ability, then a slot; right-click a slot to empty it.
 
-var _list: VBoxContainer
+var _styles: VBoxContainer
+var _arms_title: Label
+var _arms: VBoxContainer
+var _universal: VBoxContainer
 var _slots: Array[Button] = []
 var _details: RichTextLabel
+var _message: Label
 var _picked := ""
 
 
@@ -13,137 +19,227 @@ func _build() -> void:
 	var title := UITheme.heading("ABILITIES", 30)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(title)
+	var hint := UITheme.label("Slot 1 fights with your combat style, slot 2 with your magic, 3 and 4 with weapons. Every weapon and style has its own four moves; Tab switches to your universal abilities.", 13, UITheme.DIM)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint.custom_minimum_size = Vector2(1000, 0)
+	content.add_child(hint)
 	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 14)
+	columns.add_theme_constant_override("separation", 12)
 	content.add_child(columns)
-
-	var left := UITheme.inset_panel()
-	columns.add_child(left)
-	var left_box := VBoxContainer.new()
-	left.add_child(left_box)
-	left_box.add_child(UITheme.heading("Known abilities", 18))
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(360, 440)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	left_box.add_child(scroll)
-	_list = VBoxContainer.new()
-	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", 4)
-	scroll.add_child(_list)
-
-	var middle := UITheme.inset_panel()
-	columns.add_child(middle)
-	var middle_box := VBoxContainer.new()
-	middle_box.add_theme_constant_override("separation", 10)
-	middle.add_child(middle_box)
-	for set_index in AbilityDB.SETS:
-		middle_box.add_child(UITheme.heading("Set %d" % (set_index + 1), 18))
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		middle_box.add_child(row)
-		for index in AbilityDB.SET_SIZE:
-			var slot := set_index * AbilityDB.SET_SIZE + index
-			var button := Button.new()
-			button.custom_minimum_size = Vector2(70, 70)
-			button.focus_mode = Control.FOCUS_NONE
-			button.expand_icon = true
-			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			button.pressed.connect(func() -> void:
-				if _picked != "":
-					player.abilities.assign(slot, _picked)
-					_picked = ""
+	_styles = _column(columns, "Combat styles", 360)
+	var middle := _column(columns, "", 330)
+	_arms_title = UITheme.heading("In hand", 18)
+	middle.add_child(_arms_title)
+	_arms = VBoxContainer.new()
+	_arms.add_theme_constant_override("separation", 6)
+	middle.add_child(_arms)
+	var right := _column(columns, "Universal abilities", 330)
+	var slot_row := HBoxContainer.new()
+	slot_row.add_theme_constant_override("separation", 6)
+	right.add_child(slot_row)
+	for index in AbilityDB.SET_SIZE:
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(60, 60)
+		button.expand_icon = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.pressed.connect(_on_slot.bind(index))
+		button.gui_input.connect(func(event: InputEvent) -> void:
+			var click := event as InputEventMouseButton
+			if click and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT:
+				player.abilities.clear_slot(index)
 				refresh()
-			)
-			button.gui_input.connect(func(event: InputEvent) -> void:
-				if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-					player.abilities.clear_slot(slot)
-					refresh()
-			)
-			button.mouse_entered.connect(func() -> void: _describe(player.abilities.loadout[slot]))
-			row.add_child(button)
-			_slots.append(button)
-	var keys := UITheme.label("", 14, UITheme.DIM)
-	keys.name = "Keys"
-	keys.autowrap_mode = TextServer.AUTOWRAP_WORD
-	keys.custom_minimum_size = Vector2(320, 60)
-	middle_box.add_child(keys)
-
-	var right := UITheme.inset_panel()
-	columns.add_child(right)
+		)
+		button.mouse_entered.connect(func() -> void: _describe(player.abilities.loadout[index]))
+		slot_row.add_child(button)
+		_slots.append(button)
+	right.add_child(UITheme.label("Pick one below, then a slot. Right-click a slot to empty it.", 12, UITheme.DIM))
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(320, 300)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	right.add_child(scroll)
+	_universal = VBoxContainer.new()
+	_universal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_universal.add_theme_constant_override("separation", 4)
+	scroll.add_child(_universal)
+	_message = UITheme.label("", 14, UITheme.BAD)
+	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(_message)
 	_details = RichTextLabel.new()
 	_details.bbcode_enabled = true
-	_details.custom_minimum_size = Vector2(300, 440)
-	_details.add_theme_font_size_override("normal_font_size", 15)
-	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	right.add_child(_details)
+	_details.fit_content = true
+	_details.custom_minimum_size = Vector2(1000, 60)
+	content.add_child(_details)
 	player.abilities.changed.connect(refresh_if_open)
+	player.styles.changed.connect(refresh_if_open)
+
+
+func _column(parent: Control, heading: String, width: float) -> VBoxContainer:
+	var panel := UITheme.inset_panel()
+	panel.custom_minimum_size = Vector2(width, 470)
+	parent.add_child(panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	panel.add_child(box)
+	if heading != "":
+		box.add_child(UITheme.heading(heading, 18))
+	return box
+
+
+func refresh_if_open() -> void:
+	if is_visible_in_tree():
+		refresh()
 
 
 func refresh() -> void:
-	if _picked == "":
-		_details.text = "[font_size=22][color=#%s]Loadout[/color][/font_size]\n\nYou can carry eight abilities in two sets of four. Only the active set is on your keys; switch sets in a fight to reach the others.\n\n[color=#%s]Weapon abilities come from mastery and work with that weapon in hand. Class abilities come from your class tree.[/color]" % [UITheme.HEADING.to_html(false), UITheme.DIM.to_html(false)]
-	for child in _list.get_children():
+	_refresh_styles()
+	_refresh_arms()
+	_refresh_universal()
+
+
+func _refresh_styles() -> void:
+	for child in _styles.get_children().slice(1):
 		child.queue_free()
-	var known := player.abilities.known()
-	if known.is_empty():
-		_list.add_child(UITheme.label("None yet. Train a weapon to mastery 10, or learn abilities in your class tree.", 14, UITheme.DIM))
-	for id in known:
-		var ability: Dictionary = AbilityDB.ABILITIES[id]
-		var button := Button.new()
-		var source: String = ("Class" if ability.has("class") else WeaponMastery.NAMES[ability["weapon"]])
-		button.text = " %s   (%s)" % [ability["name"], source]
-		button.icon = AbilityDB.icon(id)
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.toggle_mode = true
-		button.button_pressed = id == _picked
-		button.focus_mode = Control.FOCUS_NONE
-		button.add_theme_constant_override("icon_max_width", 22)
-		button.add_theme_font_size_override("font_size", 14)
-		if id in player.abilities.loadout:
-			button.add_theme_color_override("font_color", UITheme.GOOD)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(350, 420)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_styles.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
+	for style: String in CombatStyles.STYLES:
+		var info: Dictionary = CombatStyles.STYLES[style]
+		var known: bool = style in player.styles.learned
+		var worn: bool = player.styles.equipped == style
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", UITheme.card("card_selected" if worn else "card", 6))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		card.add_child(row)
+		var icon := TextureRect.new()
+		icon.texture = CombatStyles.icon(style)
+		icon.custom_minimum_size = Vector2(40, 40)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.modulate = Color.WHITE if known else Color(0.45, 0.45, 0.5)
+		row.add_child(icon)
+		var box := VBoxContainer.new()
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(box)
+		box.add_child(UITheme.label(info["name"] + ("   (in use)" if worn else ""), 15, info["color"] if known else UITheme.DIM))
+		var note: String = info["text"] if known else "Taught by %s, at a hidden shrine. Level %d.  %s" % [info.get("teacher", "a master"), info.get("level", 1), CombatStyles.cost_text(style)]
+		var text := UITheme.label(note, 11, UITheme.DIM)
+		text.autowrap_mode = TextServer.AUTOWRAP_WORD
+		text.custom_minimum_size = Vector2(230, 0)
+		box.add_child(text)
+		if known and not worn:
+			row.add_child(UITheme.button("Use", func() -> void:
+				_message.text = player.styles.equip(style)
+				refresh()
+			, 60.0))
+		card.mouse_entered.connect(func() -> void: _describe_style(style))
+		list.add_child(card)
+
+
+func _refresh_arms() -> void:
+	for child in _arms.get_children():
+		child.queue_free()
+	var abilities := player.abilities
+	var held := "your hands"
+	if abilities.casting():
+		held = MagicDB.SCHOOLS[player.magic_school]["name"]
+	elif player.fighting_bare():
+		held = CombatStyles.STYLES[player.styles.equipped]["name"]
+	elif player.equipment.weapon():
+		held = player.equipment.weapon().display_name()
+	_arms_title.text = "In hand: %s" % held
+	var ids := abilities.arms()
+	if ids.is_empty():
+		_arms.add_child(UITheme.label("Nothing with moves in hand. Take up a style (1), magic (2) or a weapon (3, 4).", 13, UITheme.DIM))
+	for id in ids:
+		_arms.add_child(_row(id, false))
+
+
+func _refresh_universal() -> void:
+	var abilities := player.abilities
+	for index in _slots.size():
+		var id: String = abilities.loadout[index]
+		_slots[index].icon = AbilityDB.icon(id) if id != "" else null
+		_slots[index].tooltip_text = AbilityDB.ABILITIES[id]["name"] if id != "" else "Empty"
+	for child in _universal.get_children():
+		child.queue_free()
+	var ids: Array = AbilityDB.ABILITIES.keys().filter(func(id: String) -> bool:
+		return AbilityDB.is_universal(id) and (not AbilityDB.ABILITIES[id].has("class") or AbilityDB.ABILITIES[id]["class"] == player.class_id))
+	ids.sort_custom(func(a: String, b: String) -> bool: return AbilityDB.unlock_level(a) < AbilityDB.unlock_level(b))
+	for id: String in ids:
+		_universal.add_child(_row(id, true))
+
+
+## One ability as a row: icon, name, whether it is ready to use.
+func _row(id: String, pickable: bool) -> Control:
+	var ability: Dictionary = AbilityDB.ABILITIES[id]
+	var rank := player.abilities.rank(id)
+	var button := Button.new()
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.icon = AbilityDB.icon(id)
+	button.expand_icon = false
+	button.custom_minimum_size = Vector2(300, 44)
+	button.focus_mode = Control.FOCUS_NONE
+	var state := ""
+	if rank == 0:
+		if ability.get("universal", false) or ability.has("class"):
+			state = "  -  level %d" % AbilityDB.unlock_level(id) if ability.get("universal", false) else "  -  learn it in the class tree"
+		else:
+			state = "  -  mastery %d" % AbilityDB.unlock_level(id)
+	elif pickable and id in player.abilities.loadout:
+		state = "  -  on the bar"
+	button.text = "%s%s%s" % [ability["name"], "  (rank %d)" % rank if rank > 0 else "", state]
+	button.modulate = Color.WHITE if rank > 0 else Color(0.6, 0.6, 0.65)
+	if id == _picked:
+		button.add_theme_color_override("font_color", UITheme.GOLD)
+	button.mouse_entered.connect(func() -> void: _describe(id))
+	if pickable:
 		button.pressed.connect(func() -> void:
+			if rank == 0:
+				_message.text = "Not yet: %s" % state.trim_prefix("  -  ")
+				return
 			_picked = id
-			_describe(id)
+			var free := player.abilities.loadout.find("")
+			if free != -1:
+				player.abilities.assign(free, id)
+				_picked = ""
+			_message.text = "" if _picked == "" else "Now click a slot above."
 			refresh()
 		)
-		button.mouse_entered.connect(_describe.bind(id))
-		_list.add_child(button)
-	for slot in _slots.size():
-		var id: String = player.abilities.loadout[slot]
-		_slots[slot].icon = AbilityDB.icon(id) if id != "" else null
-		_slots[slot].text = "" if id != "" else "empty"
-	var keys: PackedStringArray = []
-	for index in AbilityDB.SET_SIZE:
-		keys.append(GameSettings.describe("ability_%d" % (index + 1)).split(" / ")[0])
-	(content.find_child("Keys", true, false) as Label).text = "Keys %s use the active set; %s switches set.\n%s" % [
-		" ".join(keys), GameSettings.describe("ability_swap"), "Click an ability, then a slot." if _picked == "" else "Now click a slot for %s." % AbilityDB.ABILITIES[_picked]["name"]]
+	return button
+
+
+func _on_slot(index: int) -> void:
+	if _picked != "":
+		player.abilities.assign(index, _picked)
+		_picked = ""
+		_message.text = ""
+		refresh()
 
 
 func _describe(id: String) -> void:
-	if id == "":
-		_details.text = "[color=#%s]An empty slot.[/color]" % UITheme.DIM.to_html(false)
+	if id == "" or not AbilityDB.ABILITIES.has(id):
+		_details.text = ""
 		return
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
-	var lines: PackedStringArray = []
-	lines.append("[font_size=22][color=#%s]%s[/color][/font_size]" % [UITheme.HEADING.to_html(false), ability["name"]])
-	var rank := player.abilities.rank(id)
-	if ability.has("class"):
-		lines.append("[color=#%s]%s ability  -  rank %d[/color]" % [UITheme.DIM.to_html(false), HeroClasses.CLASSES[ability["class"]]["name"], rank])
-	else:
-		lines.append("[color=#%s]%s ability  -  rank %d[/color]" % [UITheme.DIM.to_html(false), WeaponMastery.NAMES[ability["weapon"]], rank])
-	lines.append("")
-	lines.append(ability["text"])
-	lines.append("")
-	if ability.has("damage"):
-		lines.append("Damage: x%.1f" % AbilityDB.damage(id, maxi(rank, 1)))
 	var costs: PackedStringArray = []
-	if ability.has("stamina"):
-		costs.append("%d stamina" % ability["stamina"])
-	if ability.has("mana"):
-		costs.append("%d mana" % ability["mana"])
-	lines.append("Cost: %s" % ", ".join(costs))
-	lines.append("Cooldown: %ds" % ability["cooldown"])
-	if ability.has("weapon"):
-		lines.append("[color=#%s]Works with %s in hand.[/color]" % [UITheme.DIM.to_html(false), WeaponMastery.NAMES[ability["weapon"]].to_lower()])
-	_details.text = "\n".join(lines)
+	if ability.get("stamina", 0.0) > 0.0:
+		costs.append("%d stamina" % roundi(ability["stamina"]))
+	if ability.get("mana", 0.0) > 0.0:
+		costs.append("%d mana" % roundi(ability["mana"]))
+	costs.append("%.0fs cooldown" % ability["cooldown"])
+	_details.text = "[color=#%s]%s[/color]   [color=#%s]%s[/color]\n%s" % [UITheme.GOLD.to_html(false), ability["name"], UITheme.DIM.to_html(false), ",  ".join(costs), ability.get("text", "")]
+
+
+func _describe_style(style: String) -> void:
+	var info: Dictionary = CombatStyles.STYLES[style]
+	var moves: PackedStringArray = []
+	for id in AbilityDB.style_moves(style):
+		moves.append(AbilityDB.ABILITIES[id]["name"])
+	_details.text = "[color=#%s]%s[/color]  -  %s\n[color=#%s]Moves: %s[/color]" % [(info["color"] as Color).to_html(false), info["name"], info["text"], UITheme.DIM.to_html(false), ", ".join(moves)]

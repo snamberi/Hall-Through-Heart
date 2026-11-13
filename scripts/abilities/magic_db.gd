@@ -27,6 +27,30 @@ const SCHOOLS := {
 }
 
 
+## Mana each bolt from the hand costs.
+const BOLT_MANA := 3.0
+
+
+## How the hand attacks with a school of magic: a bolt in the school's colour
+## that burns, chills, pierces or drains by its kind.
+static func bolt_profile(school: String) -> Dictionary:
+	var info: Dictionary = SCHOOLS.get(school, SCHOOLS["fire"])
+	var projectile := {"sprite": 1, "speed": 620.0, "radius": 12.0, "range": 470.0, "color": info["color"], "knockback": 160.0}
+	match school:
+		"fire":
+			projectile["status"] = {"status": "burn", "duration": 2.5, "power": 0.25}
+		"frost":
+			projectile["status"] = {"status": "chill", "duration": 2.0, "power": 0.4}
+		"lightning":
+			projectile["pierce"] = true
+			projectile["speed"] = 820.0
+		"dark":
+			projectile["status"] = {"status": "poison", "duration": 3.0, "power": 0.25}
+		"light":
+			projectile["explode"] = 50.0
+	return {"type": "staves", "range": 470.0, "arc": 0.0, "cooldown": 0.45, "knockback": 160.0, "magic": true, "projectile": projectile}
+
+
 static func spells(school: String) -> Array:
 	return SCHOOLS.get(school, {}).get("spells", ["", "", "", ""])
 

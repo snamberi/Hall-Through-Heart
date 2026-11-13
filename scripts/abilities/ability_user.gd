@@ -39,31 +39,65 @@ func _physics_process(delta: float) -> void:
 			cooldowns.erase(id)
 
 
-## Every ability the player has: weapon abilities their mastery has reached
-## (for any weapon), and class abilities learned in their tree.
+## Every ability the player can use somewhere: the moves of every weapon
+## they carry, of the styles they know and their school of magic, and the
+## universal abilities their level (and class) has opened.
 func known() -> Array[String]:
 	var ids: Array[String] = []
+	for id: String in arms():
+		if rank(id) > 0:
+			ids.append(id)
+	ids.append_array(known_universal())
+	return ids
+
+
+## Universal abilities (and class ones) the player has, for the second set.
+func known_universal() -> Array[String]:
+	var ids: Array[String] = []
 	for id: String in AbilityDB.ABILITIES:
-		var ability: Dictionary = AbilityDB.ABILITIES[id]
-		if ability.has("school"):
-			continue
-		if ability.has("class"):
-			if ability["class"] == _player.class_id and _player.has_class_node(id):
-				ids.append(id)
-		elif rank(id) > 0:
+		if AbilityDB.is_universal(id) and rank(id) > 0:
 			ids.append(id)
 	return ids
 
 
-## The four abilities the keys use right now: the school's spells while
-## casting, else the active set.
-func slots() -> Array[String]:
+## The moves of what is in hand: the magic school's spells, the combat
+## style's moves, or the weapon's own; nothing for a tool.
+func arms() -> Array[String]:
+	var none: Array[String] = []
+	if _player == null or _player.equipment == null:
+		return none
 	if casting():
-		var result: Array[String] = []
+		var spells: Array[String] = []
 		for id: String in MagicDB.spells(_player.magic_school):
-			result.append(id)
-		return result
-	return loadout.slice(active_set * AbilityDB.SET_SIZE, (active_set + 1) * AbilityDB.SET_SIZE)
+			spells.append(id)
+		return spells
+	if _player.equipment.active_slot == "combat":
+		return AbilityDB.style_moves(_player.styles.equipped if _player.styles else "fist")
+	var weapon := _player.equipment.weapon()
+	if weapon == null:
+		return none
+	return AbilityDB.moves_for(weapon.id)
+
+
+## The four abilities the keys use right now.
+func slots() -> Array[String]:
+	return _set_ids(active_set)
+
+
+## The four of the other set, shown small beside the bar.
+func other_slots() -> Array[String]:
+	return _set_ids((active_set + 1) % AbilityDB.SETS)
+
+
+func _set_ids(index: int) -> Array[String]:
+	if index == 1:
+		var chosen: Array[String] = []
+		chosen.assign(loadout)
+		return chosen
+	var ids := arms()
+	while ids.size() < AbilityDB.SET_SIZE:
+		ids.append("")
+	return ids
 
 
 ## Whether the keys cast spells: a school taken up and magic in hand.
@@ -71,13 +105,16 @@ func casting() -> bool:
 	return _player != null and _player.magic_school != "" and _player.holding_magic()
 
 
+## Tab: between the moves in hand and the universal abilities.
 func switch_set() -> void:
 	active_set = (active_set + 1) % AbilityDB.SETS
 	changed.emit()
 
 
-## Puts an ability in a slot (0-7), moving it if it was already elsewhere.
+## Puts a universal ability in one of the four universal slots.
 func assign(slot: int, id: String) -> void:
+	if slot < 0 or slot >= loadout.size():
+		return
 	var previous := loadout.find(id)
 	if previous != -1:
 		loadout[previous] = loadout[slot]
@@ -87,12 +124,15 @@ func assign(slot: int, id: String) -> void:
 
 
 func clear_slot(slot: int) -> void:
-	loadout[slot] = ""
-	changed.emit()
-	SaveGame.request_save()
+	if slot >= 0 and slot < loadout.size():
+		loadout[slot] = ""
+		changed.emit()
+		SaveGame.request_save()
 
 
 func rank(id: String) -> int:
+	if not AbilityDB.ABILITIES.has(id):
+		return 0
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
 	if ability.has("school"):
 		if ability["school"] != _player.magic_school:
@@ -102,6 +142,12 @@ func rank(id: String) -> int:
 		if ability["class"] != _player.class_id or not _player.has_class_node(id):
 			return 0
 		return AbilityDB.rank(id, _player.leveling.level)
+	if ability.get("universal", false):
+		return AbilityDB.rank(id, _player.leveling.level)
+	if ability.has("style"):
+		if _player.styles == null or not ability["style"] in _player.styles.learned:
+			return 0
+		return AbilityDB.rank(id, _player.mastery.levels.get("unarmed", 1))
 	return AbilityDB.rank(id, _player.mastery.levels.get(ability["weapon"], 1))
 
 
@@ -120,7 +166,14 @@ func blocked_reason(id: String) -> String:
 	if rank(id) == 0:
 		return "locked"
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
-	if ability.has("weapon") and ability["weapon"] != _player.weapon_type:
+	if ability.has("weapon_item"):
+		var held := _player.equipment.weapon()
+		if held == null or held.id != ability["weapon_item"]:
+			return "weapon"
+	elif ability.has("style"):
+		if _player.equipment.active_slot != "combat" or _player.styles.equipped != ability["style"]:
+			return "weapon"
+	elif ability.has("weapon") and ability["weapon"] != _player.weapon_type:
 		return "weapon"
 	if ability.has("school") and not _player.holding_magic():
 		return "weapon"
@@ -152,11 +205,16 @@ func save_data() -> Dictionary:
 
 
 func load_data(data: Dictionary) -> void:
+	loadout.fill("")
 	var saved: Variant = data.get("loadout", [])
 	if saved is Array:
-		for index in mini(saved.size(), AbilityDB.SLOTS):
-			var id := str(saved[index])
-			loadout[index] = id if AbilityDB.ABILITIES.has(id) else ""
+		# Older saves had eight mixed slots: keep the universal ones.
+		var next := 0
+		for entry: Variant in saved:
+			var id := str(entry)
+			if next < AbilityDB.SLOTS and AbilityDB.is_universal(id) and not id in loadout:
+				loadout[next] = id
+				next += 1
 	active_set = clampi(int(data.get("active_set", 0)), 0, AbilityDB.SETS - 1)
 
 
@@ -164,7 +222,7 @@ func load_data(data: Dictionary) -> void:
 func _fill_empty_slots() -> void:
 	if loadout.is_empty() or _player == null or not _player.is_node_ready():
 		return
-	for id in known():
+	for id in known_universal():
 		if id in loadout:
 			continue
 		var free := loadout.find("")
@@ -195,6 +253,8 @@ func _run(id: String, ability: Dictionary) -> void:
 		damage *= _player.stats.get_stat("magic_power")
 	var weapon := _player.equipment.weapon_profile()
 	_player.face(direction)
+	if ability.has("crit"):
+		_player.stats.set_modifiers("ability_crit", {"critical_chance": {"flat": float(ability["crit"])}})
 	if ability.has("heal"):
 		_player.health.heal(_player.health.max_health * float(ability["heal"]))
 		RingBurst.spawn(_player.get_parent(), _player.global_position + Vector2(0, -14), Color(0.6, 1.0, 0.6), 50.0)
@@ -217,6 +277,12 @@ func _run(id: String, ability: Dictionary) -> void:
 			await _chain(ability, direction, damage)
 		"buff":
 			_buff(id, ability)
+		"blink":
+			await _blink(ability, damage)
+		"veil":
+			_veil(id, ability, damage)
+	if ability.has("crit"):
+		_player.stats.set_modifiers("ability_crit", {})
 	_player.end_ability()
 
 
@@ -287,6 +353,7 @@ func _dash(ability: Dictionary, direction: Vector2, damage: float) -> void:
 			return
 		elapsed += 0.03
 	_player.velocity = Vector2.ZERO
+	_apply_status(ability, hit, damage)
 	await _wait(0.06)
 
 
@@ -312,10 +379,53 @@ func _shot(ability: Dictionary, direction: Vector2, damage: float) -> void:
 	if not await _wait(0.12):
 		return
 	var count: int = ability["count"]
+	var config: Dictionary = (ability["projectile"] as Dictionary).duplicate()
+	# A move's status and colour ride on its shots.
+	if ability.has("status") and not config.has("status"):
+		config["status"] = ability["status"]
+	if ability.has("color") and not config.has("color"):
+		config["color"] = ability["color"]
 	for i in count:
 		var offset := 0.0 if count == 1 else lerpf(-0.5, 0.5, i / float(count - 1)) * deg_to_rad(ability["spread"])
-		Projectile.fire(_player, direction.rotated(offset), ability["projectile"], damage)
+		Projectile.fire(_player, direction.rotated(offset), config, damage)
 	await _wait(0.16)
+
+
+## Vanish and step out where the player points (within reach and line of
+## sight), striking everything near the landing if the move hits at all.
+func _blink(ability: Dictionary, damage: float) -> void:
+	_player.begin_ability(0.2)
+	var from := _player.global_position
+	var offset := (_player.get_global_mouse_position() - from).limit_length(float(ability["distance"]))
+	var landing := from + offset
+	if not _player.has_line_to(landing):
+		landing = from + offset * 0.5
+		if not _player.has_line_to(landing):
+			landing = from
+	RingBurst.spawn(_player.get_parent(), from + Vector2(0, -14), _color(ability), 40.0)
+	_spawn_trail()
+	_player.global_position = landing
+	_player.grant_invulnerability(0.3)
+	RingBurst.spawn(_player.get_parent(), landing + Vector2(0, -14), _color(ability), 50.0)
+	if float(ability.get("radius", 0.0)) > 0.0 and float(ability.get("damage", 0.0)) > 0.0:
+		var hit: Array = []
+		_player.strike_circle(landing, ability["radius"], damage, ability["knockback"], hit)
+		_apply_status(ability, hit, damage)
+	await _wait(0.12)
+
+
+## Darkness or smoke: foes nearby lose the player, and a short boon.
+func _veil(id: String, ability: Dictionary, damage: float) -> void:
+	var at := _player.global_position
+	RingBurst.spawn(_player.get_parent(), at + Vector2(0, -14), _color(ability), 120.0)
+	if float(ability.get("radius", 0.0)) > 0.0 and float(ability.get("damage", 0.0)) > 0.0:
+		_player.strike_circle(at, ability["radius"], damage, ability["knockback"])
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy and enemy.rank < Enemy.Rank.BOSS and enemy.global_position.distance_to(at) < 600.0:
+			enemy.lose_track()
+	if ability.has("mods"):
+		_player.buffs.add(id, ability["name"], ability["duration"], ability["mods"])
 
 
 func _chain(ability: Dictionary, direction: Vector2, damage: float) -> void:
@@ -400,6 +510,10 @@ func _blast(center: Vector2, ability: Dictionary, damage: float) -> void:
 
 
 func _apply_status(ability: Dictionary, enemies: Array, damage: float) -> void:
+	if ability.has("stun"):
+		for enemy: Enemy in enemies:
+			if is_instance_valid(enemy):
+				enemy.stun(float(ability["stun"]))
 	if not ability.has("status"):
 		return
 	var effect: Dictionary = ability["status"]

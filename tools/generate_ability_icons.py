@@ -822,7 +822,7 @@ MENU_ICONS = {
 
 def ability_ids():
     text = open(os.path.join(ROOT, "scripts", "abilities", "ability_db.gd")).read()
-    body = text[text.index("const ABILITIES := {"):]
+    body = text[text.index("const BASE_ABILITIES := {"):]
     body = body[:body.index("\n}\n")]
     return re.findall(r'^\t"([a-z_]+)": \{', body, re.M)
 

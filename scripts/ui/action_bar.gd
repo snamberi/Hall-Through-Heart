@@ -92,12 +92,12 @@ func _layout() -> void:
 		_groups.append(["Quick", Rect2(x - 4.0, y - TITLE, SLOT + 8.0, SLOT + TITLE + 4.0)])
 		x += SLOT + GROUP
 		# Weapons (with the off hand), tools, supplies.
-		for group: Array in [["Weapons", 0, 3], ["Tools", 3, 6], ["Supplies", 6, 9]]:
+		for group: Array in [["Arms", 0, 4], ["Tools", 4, 7], ["Supplies", 7, 10]]:
 			start = x
 			for index in range(group[1], group[2]):
 				_spots.append([Rect2(x, y, SLOT, SLOT), "hotbar", index])
 				x += SLOT + GAP
-			if group[0] == "Weapons":
+			if group[0] == "Arms":
 				_spots.append([Rect2(x, y + SLOT - MINI, MINI, MINI), "off", 0])
 				x += MINI + GAP
 			_groups.append([group[0], Rect2(start - 4.0, y - TITLE, x - GAP - start + 8.0, SLOT + TITLE + 4.0)])
@@ -156,6 +156,11 @@ func _show_tip() -> void:
 			else:
 				_tip.show_text("Quick-use", "Hover a potion or food in the inventory and press %s to put it here." % _key("quick_use"))
 		"hotbar":
+			if spot[2] < 2:
+				var what := "Fight bare-handed with your combat style. Change styles in the Abilities screen." if spot[2] == 0 else (
+					"Cast with your school of magic: the hand glows and fires bolts; the ability keys cast its spells." if _player.magic_school != "" else "Take up a school of magic at an Altar of Magic, then cast from here.")
+				_tip.show_text(_player.hotbar.hand_name(spot[2]), "%s\nKey %s" % [what, _key("hotbar_%d" % (spot[2] + 1))])
+				return
 			var item := _player.hotbar.item_in(spot[2])
 			if item:
 				_tip.show_item(item, _player, "[color=#%s]Key %s[/color]" % [UITheme.GOLD.to_html(false), _key("hotbar_%d" % (spot[2] + 1))])
@@ -194,6 +199,18 @@ func _ability_text(id: String) -> String:
 		"stamina":
 			parts.append("Not enough stamina.")
 	return "\n".join(parts)
+
+
+## What the keys use now: the moves in hand, or the universal ones.
+func _set_name(abilities: AbilityUser) -> String:
+	if abilities.active_set == 1:
+		return "Universal"
+	if abilities.casting():
+		return "%s magic" % MagicDB.SCHOOLS[_player.magic_school]["short"]
+	if _player.fighting_bare():
+		return CombatStyles.STYLES[_player.styles.equipped]["name"]
+	var weapon := _player.equipment.weapon()
+	return weapon.definition()["name"] if weapon else "Nothing in hand"
 
 
 func _ability_id(index: int) -> String:
@@ -235,30 +252,29 @@ func _draw() -> void:
 	# The column: the other set small beside each slot, the set below.
 	if show_abilities and not show_items:
 		var abilities := _player.abilities
-		var other := (abilities.active_set + 1) % AbilityDB.SETS
-		var casting := abilities.casting()
+		var others := abilities.other_slots()
 		for index in AbilityDB.SET_SIZE:
 			var slot: Rect2 = _spots[index][0]
 			var mini_rect := Rect2(slot.end.x + 6.0, slot.position.y + (COLUMN_SLOT - COLUMN_MINI) / 2.0, COLUMN_MINI, COLUMN_MINI)
 			draw_rect(mini_rect, Color(0.05, 0.05, 0.08, 0.85))
-			var other_id: String = abilities.loadout[other * AbilityDB.SET_SIZE + index] if not casting else ""
+			var other_id: String = others[index] if index < others.size() else ""
 			if other_id != "":
 				draw_texture_rect(AbilityDB.icon(other_id), mini_rect.grow(-3.0), false, Color(0.62, 0.62, 0.68))
 			draw_rect(mini_rect, Color(0.3, 0.28, 0.26), false, 1.0)
-		var label := "Set %d  %s" % [abilities.active_set + 1, _key("ability_swap")] if not casting else "%s magic" % MagicDB.SCHOOLS[_player.magic_school]["short"]
+		var label := "%s  %s" % [_set_name(abilities), _key("ability_swap")]
 		var bottom: Rect2 = _groups[0][1]
 		draw_string_outline(_font, Vector2(bottom.position.x + 4.0, bottom.end.y + 15.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 3, Color.BLACK)
 		draw_string(_font, Vector2(bottom.position.x + 4.0, bottom.end.y + 15.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADING)
 	elif show_abilities:
 		var abilities := _player.abilities
-		var other := (abilities.active_set + 1) % AbilityDB.SETS
+		var others := abilities.other_slots()
 		var tab: Rect2 = _groups[0][1]
-		var casting := abilities.casting()
-		var set_text := "Set %d  %s" % [abilities.active_set + 1, _key("ability_swap")] if not casting else "%s magic" % MagicDB.SCHOOLS[_player.magic_school]["short"]
+		var casting := false
+		var set_text := "%s  %s" % [_set_name(abilities), _key("ability_swap")]
 		var text_width := _font.get_string_size(set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		draw_string(_font, tab.position + Vector2(tab.size.x - text_width - 4.0 - 4 * 14.0, 13), set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.DIM)
 		for index in (0 if casting else AbilityDB.SET_SIZE):
-			var other_id: String = abilities.loadout[other * AbilityDB.SET_SIZE + index]
+			var other_id: String = others[index] if index < others.size() else ""
 			var mini_rect := Rect2(tab.end.x - 4.0 * 14.0 - 2.0 + index * 14.0, tab.position.y + 2.0, 12.0, 12.0)
 			draw_rect(mini_rect, Color(0.05, 0.05, 0.08))
 			if other_id != "":
@@ -279,6 +295,10 @@ func _draw() -> void:
 				_key_badge(rect, _key("quick_use"))
 			"hotbar":
 				var hotbar := _player.hotbar
+				if spot[2] < 2:
+					_hand_slot(rect, hotbar.hand_icon(spot[2]), Hotbar.GHOST_ICONS[spot[2]], hotbar.is_active(spot[2]), hovered, _press_flash[spot[2]])
+					_key_badge(rect, _key("hotbar_%d" % (spot[2] + 1)))
+					continue
 				var item := hotbar.item_in(spot[2])
 				var id := hotbar.id_in(spot[2])
 				var shown: Item = item if item else (Item.create(id) if id != "" else null)
@@ -377,6 +397,28 @@ func _slot(rect: Rect2, item: Item, ghost: int, missing: bool, active: bool, hov
 		draw_rect(rect, Color(1, 1, 1, 0.35 * flash))
 	if active:
 		# In hand: a bright double edge, raised, with a marker above.
+		draw_rect(rect.grow(3.0), Color(1.0, 0.85, 0.45, 0.4 + 0.25 * sin(Time.get_ticks_msec() / 200.0)), false, 2.0)
+		draw_rect(rect, Color("ffe08a"), false, 3.0)
+		var top := Vector2(rect.get_center().x, rect.position.y - 3.0)
+		draw_colored_polygon(PackedVector2Array([top + Vector2(-6, -6), top + Vector2(6, -6), top]), Color("ffe08a"))
+
+
+## The style and magic slots: a picture rather than an item.
+func _hand_slot(rect: Rect2, picture: Texture2D, ghost: int, active: bool, hovered: bool, flash: float) -> void:
+	if active:
+		rect.position += Vector2(0, -3)
+	var frame: StyleBoxTexture = _slot_styles["slot_active" if active else "slot_hover" if hovered else "slot"]
+	frame.modulate_color = Color.WHITE
+	draw_style_box(frame, rect.grow(3.0))
+	if picture:
+		draw_texture_rect(picture, rect.grow(-5.0), false)
+	else:
+		draw_texture_rect(ItemDB.icon(ghost), rect.grow(-10.0), false, Color(1, 1, 1, 0.2))
+	if hovered:
+		draw_rect(rect, Color(1, 1, 1, 0.1))
+	if flash > 0.0:
+		draw_rect(rect, Color(1, 1, 1, 0.35 * flash))
+	if active:
 		draw_rect(rect.grow(3.0), Color(1.0, 0.85, 0.45, 0.4 + 0.25 * sin(Time.get_ticks_msec() / 200.0)), false, 2.0)
 		draw_rect(rect, Color("ffe08a"), false, 3.0)
 		var top := Vector2(rect.get_center().x, rect.position.y - 3.0)

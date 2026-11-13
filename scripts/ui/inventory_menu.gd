@@ -17,8 +17,8 @@ const RIGHT_SLOTS: Array[String] = ["helmet", "chest", "legs", "boots", "off_han
 ## Faint icon shown in an empty equipment slot.
 const SLOT_ICONS := {"necklace": 10, "ring_1": 11, "ring_2": 11, "artifact": 12, "backpack": 93, "belt": 115,
 	"helmet": 6, "chest": 7, "legs": 8, "boots": 9, "off_hand": 5,
-	"weapon_1": 27, "weapon_2": 0, "weapon_3": 0, "tool_pickaxe": 49, "tool_hatchet": 50, "tool_rod": 51}
-const BELT_SLOT := 46.0
+	"combat": 38, "weapon_1": 33, "weapon_2": 0, "weapon_3": 0, "tool_pickaxe": 49, "tool_hatchet": 50, "tool_rod": 51}
+const BELT_SLOT := 42.0
 ## Rows of the bag shown at once; the rest scroll.
 const VISIBLE_ROWS := 6
 
@@ -170,7 +170,7 @@ func _build() -> void:
 		_belt_marks[slot] = mark
 		belt.add_child(button)
 		_slot_buttons[slot] = button
-		if index == 2:
+		if index == 3:
 			var gap := Control.new()
 			gap.custom_minimum_size.x = 8.0
 			belt.add_child(gap)
@@ -552,14 +552,14 @@ func _mark_common() -> void:
 ## usable things in 7 or 8 (whichever is free, or already holds it).
 func _hotbar_spot(item: Item) -> int:
 	if ItemDB.course_of(item.id) != "":
-		return 8
-	for spot: int in [6, 7]:
+		return 9
+	for spot: int in [7, 8]:
 		if player.hotbar.id_in(spot) == item.id:
 			return spot
-	for spot: int in [6, 7]:
+	for spot: int in [7, 8]:
 		if player.hotbar.id_in(spot) == "":
 			return spot
-	return 6
+	return 7
 
 
 ## The second button: puts a potion or food on the hotbar, or raises a

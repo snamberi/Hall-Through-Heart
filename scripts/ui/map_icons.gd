@@ -8,7 +8,7 @@ const SHEET: Texture2D = preload("res://assets/icons/map.png")
 const CELL := 22
 const KINDS: Array[String] = ["village", "ruin", "shrine", "cave", "lair", "portal", "camp", "waystone", "obelisk", "merchant", "shipwreck", "treasure",
 	"boss", "dungeon", "bounty", "temple", "home", "checkpoint", "player", "animal", "monster", "pet", "npc", "chest", "altar",
-	"watchtower", "graveyard", "henge", "farmstead", "library"]
+	"watchtower", "graveyard", "henge", "farmstead", "library", "dojo"]
 
 static var _textures: Dictionary = {}
 

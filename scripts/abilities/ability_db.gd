@@ -24,7 +24,7 @@ const RANK_EVERY := 25
 const RANK_DAMAGE := 0.1
 const MAX_RANK := 10
 
-const ABILITIES := {
+const BASE_ABILITIES := {
 	# --- swords
 	"heavy_slash": {
 		"name": "Heavy Slash", "weapon": "swords", "mastery": 10, "icon": 26, "shape": "arc",
@@ -429,8 +429,11 @@ static var _icons: Dictionary = {}
 
 
 static func icon(id: String) -> Texture2D:
+	# Generated moves borrow the picture of the ability they grew from.
+	if ABILITIES.has(id) and ABILITIES[id].has("icon_from"):
+		return icon(ABILITIES[id]["icon_from"])
 	if not _icons.has(id):
-		var index := ABILITIES.keys().find(id)
+		var index := BASE_ABILITIES.keys().find(id)
 		if index < 0:
 			return ItemDB.icon(0)
 		var atlas := AtlasTexture.new()
@@ -440,9 +443,95 @@ static func icon(id: String) -> Texture2D:
 	return _icons[id]
 
 
+## Two sets on the bar, switched with Tab: 0 is the moves of whatever is
+## in hand (the weapon's own, the combat style's, or the magic school's
+## spells), 1 is the universal abilities chosen in the Abilities screen.
 const SET_SIZE := 4
 const SETS := 2
-const SLOTS := SET_SIZE * SETS
+const SLOTS := SET_SIZE
+
+## Abilities anyone can use with or without a weapon, unlocked by level
+## ("u_<id>"). Class abilities join them for their class.
+const UNIVERSAL := {
+	"flash_step": {"name": "Flash Step", "shape": "dash", "icon_from": "arcane_dash", "level": 1, "damage": 0.6, "stamina": 15.0, "cooldown": 6.0,
+		"distance": 200.0, "radius": 30.0, "knockback": 100.0, "color": Color(0.85, 0.95, 1.0), "text": "A blink-quick step you cannot be hit during."},
+	"second_wind": {"name": "Second Wind", "shape": "buff", "icon_from": "iron_skin", "level": 3, "heal": 0.25, "stamina": 0.0, "cooldown": 60.0,
+		"duration": 6.0, "mods": {"health_regen": {"flat": 3.0}}, "color": Color(0.6, 1.0, 0.6), "text": "Catch your breath: heal a quarter of your health and more over 6 seconds."},
+	"aegis": {"name": "Aegis", "shape": "buff", "icon_from": "bastion", "level": 6, "stamina": 20.0, "cooldown": 30.0, "duration": 4.0,
+		"mods": {"damage_taken": {"percent": -0.6}}, "color": Color(0.8, 0.9, 1.0), "text": "A shield of force: for 4 seconds take 60% less damage."},
+	"blink": {"name": "Blink", "shape": "blink", "icon_from": "shadow_step", "level": 10, "damage": 0.0, "mana": 15.0, "cooldown": 12.0,
+		"distance": 260.0, "radius": 0.0, "knockback": 0.0, "color": Color(0.75, 0.6, 1.0), "text": "Vanish and reappear where you point."},
+	"haste": {"name": "Haste", "shape": "buff", "icon_from": "hunters_mark", "level": 15, "stamina": 15.0, "cooldown": 40.0, "duration": 8.0,
+		"mods": {"move_speed": {"percent": 0.3}, "attack_speed": {"percent": 0.15}}, "color": Color(0.9, 1.0, 0.6), "text": "For 8 seconds move 30% and strike 15% faster."},
+	"shockwave": {"name": "Shockwave", "shape": "spin", "icon_from": "war_stomp", "level": 20, "damage": 1.2, "stamina": 25.0, "cooldown": 14.0,
+		"radius": 140.0, "hits": 1, "knockback": 800.0, "color": Color(0.9, 0.85, 0.7), "text": "A burst of force that throws everyone near you back."},
+	"smoke_veil": {"name": "Smoke Veil", "shape": "veil", "icon_from": "smoke_bomb", "level": 28, "damage": 0.0, "stamina": 20.0, "cooldown": 45.0,
+		"radius": 0.0, "duration": 5.0, "knockback": 0.0, "mods": {"move_speed": {"percent": 0.25}}, "color": Color(0.6, 0.6, 0.7),
+		"text": "Vanish in smoke: foes lose you, and you move faster for 5 seconds."},
+	"war_cry": {"name": "War Cry", "shape": "buff", "icon_from": "battle_cry", "level": 35, "stamina": 20.0, "cooldown": 50.0, "duration": 10.0,
+		"mods": {"physical_damage": {"percent": 0.2}, "critical_chance": {"flat": 0.05}}, "color": Color(1.0, 0.55, 0.35), "text": "For 10 seconds hit 20% harder and crit more."},
+}
+
+## Every ability: the hand-written ones, each weapon's and each combat
+## style's own moves (WeaponMoves, CombatStyles), and the universal ones.
+static var ABILITIES: Dictionary = _all()
+
+
+static func _all() -> Dictionary:
+	var all: Dictionary = BASE_ABILITIES.duplicate(true)
+	for weapon_id: String in WeaponMoves.MOVES:
+		var type: String = ItemDB.ITEMS[weapon_id]["weapon"]["type"]
+		var moves: Array = WeaponMoves.MOVES[weapon_id]
+		for index in moves.size():
+			var move := _move(moves[index])
+			move["weapon_item"] = weapon_id
+			move["weapon"] = type
+			move["mastery"] = WeaponMoves.UNLOCK[index]
+			all["wm_%s_%d" % [weapon_id, index]] = move
+	for style: String in CombatStyles.STYLES:
+		var moves: Array = CombatStyles.STYLES[style]["moves"]
+		for index in moves.size():
+			var move := _move(moves[index])
+			move.erase("weapon")
+			move["style"] = style
+			move["mastery"] = 1
+			all["st_%s_%d" % [style, index]] = move
+	for id: String in UNIVERSAL:
+		var move: Dictionary = UNIVERSAL[id].duplicate(true)
+		move["universal"] = true
+		all["u_" + id] = move
+	return all
+
+
+## A move given as an ability id becomes a copy of it that borrows its icon.
+static func _move(entry: Variant) -> Dictionary:
+	if entry is String:
+		var copy: Dictionary = BASE_ABILITIES[entry].duplicate(true)
+		copy["icon_from"] = entry
+		copy.erase("class")
+		copy.erase("level")
+		return copy
+	return (entry as Dictionary).duplicate(true)
+
+
+## The four moves of a weapon (by item id), or of a combat style.
+static func moves_for(weapon_id: String) -> Array[String]:
+	var ids: Array[String] = []
+	for index in WeaponMoves.MOVES.get(weapon_id, []).size():
+		ids.append("wm_%s_%d" % [weapon_id, index])
+	return ids
+
+
+static func style_moves(style: String) -> Array[String]:
+	var ids: Array[String] = []
+	for index in CombatStyles.STYLES.get(style, {}).get("moves", []).size():
+		ids.append("st_%s_%d" % [style, index])
+	return ids
+
+
+## Universal abilities and class abilities: what the second set can hold.
+static func is_universal(id: String) -> bool:
+	return ABILITIES.has(id) and (ABILITIES[id].get("universal", false) or ABILITIES[id].has("class"))
 
 
 ## Ability ids for a weapon type, in unlock order.

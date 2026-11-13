@@ -9,6 +9,7 @@ const KINDS := {
 	"villager": {"name": "Villager", "prompt": "Talk", "sheet": "res://assets/sprites/npc_merchant.png"},
 	"settler": {"name": "Settler", "prompt": "Talk", "sheet": "res://assets/sprites/npc_merchant.png"},
 	"recruit": {"name": "Wanderer", "prompt": "Talk", "sheet": "res://assets/sprites/npc_warden.png"},
+	"master": {"name": "Master", "prompt": "Speak with the master", "sheet": "res://assets/sprites/npc_warden.png"},
 }
 ## A merchant's wares change this often, in seconds.
 const RESTOCK_SECONDS := 1200.0

@@ -11,7 +11,7 @@ const T := TerrainTiles.Type
 ## Chance per chunk of each structure, checked in this order.
 const CHANCES: Array[Array] = [["ruin", 0.07], ["shrine", 0.03], ["cave", 0.035], ["lair", 0.03], ["portal", 0.02], ["dungeon", 0.014], ["boss", 0.009],
 	["camp", 0.04], ["waystone", 0.025], ["obelisk", 0.015], ["merchant", 0.015],
-	["watchtower", 0.02], ["graveyard", 0.02], ["henge", 0.015], ["farmstead", 0.02], ["library", 0.012]]
+	["watchtower", 0.02], ["graveyard", 0.02], ["henge", 0.015], ["farmstead", 0.02], ["library", 0.012], ["dojo", 0.006]]
 ## Notes left in abandoned camps.
 const NOTES: Array[String] = [
 	"Day nine. The husks came again at dusk. We burned the fence to keep them back. No fence now.",
@@ -685,6 +685,26 @@ func _build_farmstead(cell: Vector2i, key: String, level: int, random: RandomNum
 
 ## A ruined library: broken walls round shelves of rotten books, a reading
 ## table lit by candles, and one book still worth reading.
+## A master's shrine: a quiet paved square with braziers and banners where
+## a master of one legendary combat style waits to teach it.
+func _build_dojo(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	_floor(placed, cell, 3, "shrine")
+	var legendary: Array = CombatStyles.STYLES.keys().filter(func(id: String) -> bool: return id != "fist")
+	var style: String = legendary[absi(hash(key)) % legendary.size()]
+	var info: Dictionary = CombatStyles.STYLES[style]
+	for dx: int in [-3, 3]:
+		_decor(placed, Prop.Decor.BRAZIER, cell + Vector2i(dx, -2), 8.0, true)
+		_decor(placed, Prop.Decor.BANNER, cell + Vector2i(dx, 1), 6.0)
+	_decor(placed, Prop.Decor.STATUE, cell + Vector2i(0, -3), 12.0)
+	_decor(placed, Prop.Decor.RUG, cell + Vector2i(0, 1))
+	var master := Npc.create("master", _at(cell + Vector2i(0, -1)))
+	master.offer = {"style": style}
+	master.title_text = info["teacher"]
+	master.prompt_text = "Speak with %s" % info["teacher"]
+	master.tint = (info["color"] as Color).lightened(0.2)
+	placed.append(master)
+
+
 func _build_library(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
 	_floor(placed, cell, 3, "temple")
 	var wall_cells: Array = []

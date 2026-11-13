@@ -85,17 +85,11 @@ func _build() -> void:
 func _take_up(school: String) -> void:
 	if not _at_altar():
 		return
-	var gift := ""
-	if not player.equipment.equipped.has("weapon_1"):
-		# The altar gives a plain staff to one who comes without a magic weapon.
-		var staff := LootGenerator.make_equipment(maxi(player.leveling.level, 1), 1, "altar_staff")
-		player.inventory.add(staff)
-		if player.equipment.equip(staff, "weapon_1") == "":
-			gift = "  The altar gives you a staff for your magic slot."
 	player.take_up_magic(school)
+	player.equipment.select("weapon_1")
 	RingBurst.spawn(player.get_parent(), player.global_position + Vector2(0, -14), MagicDB.SCHOOLS[school]["color"], 120.0)
 	Audio.play("level_up", -6.0, 0.0)
-	Events.announcement.emit(str(MagicDB.SCHOOLS[school]["name"]).to_upper(), "Hold your magic (slot 1) and the ability keys cast its spells.%s" % gift)
+	Events.announcement.emit(str(MagicDB.SCHOOLS[school]["name"]).to_upper(), "Press 2 to hold your magic: your hand fires its bolts and the ability keys cast its spells.")
 	refresh()
 
 

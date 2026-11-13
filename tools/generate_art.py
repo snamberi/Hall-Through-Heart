@@ -2737,6 +2737,8 @@ MAP_ICONS = [
                    ("wood", "rect", (15, 12, 15, 19)), ("wood", "rect", (19, 12, 19, 19)), ("wood", "rect", (15, 14, 19, 14)), ("grass_m", "rect", (14, 17, 20, 19))]),
     ("library", [("wood", "rect", (3, 3, 18, 19)), ("night", "rect", (5, 5, 16, 17)), ("danger", "rect", (6, 6, 7, 10)), ("sky_m", "rect", (8, 6, 9, 10)), ("coin", "rect", (10, 7, 11, 10)),
                  ("grass_m", "rect", (13, 6, 14, 10)), ("shell", "rect", (6, 12, 8, 16)), ("danger", "rect", (10, 12, 11, 16)), ("coin", "rect", (13, 13, 15, 16))]),
+    ("dojo", [("danger", "rect", (2, 4, 19, 6)), ("danger", "poly", [(0, 4), (21, 4), (19, 2), (2, 2)]), ("danger", "rect", (4, 6, 6, 20)), ("danger", "rect", (15, 6, 17, 20)),
+              ("coin", "rect", (3, 9, 18, 10)), ("night", "ellipse", (8, 12, 13, 17)), ("coin", "rect", (10, 13, 11, 16))]),
 ]
 
 # Things to gather in the world: 64px frames in one row. Pale parts are

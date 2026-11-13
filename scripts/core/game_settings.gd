@@ -31,7 +31,7 @@ const REBINDABLE: Array[Array] = [
 	["ability_1", "Ability 1"], ["ability_2", "Ability 2"], ["ability_3", "Ability 3"], ["ability_4", "Ability 4"],
 	["ability_swap", "Switch ability set"], ["quick_use", "Quick-use potion or food"],
 	["hotbar_1", "Hotbar 1"], ["hotbar_2", "Hotbar 2"], ["hotbar_3", "Hotbar 3"], ["hotbar_4", "Hotbar 4"], ["hotbar_5", "Hotbar 5"],
-	["hotbar_6", "Hotbar 6"], ["hotbar_7", "Hotbar 7"], ["hotbar_8", "Hotbar 8"], ["hotbar_9", "Hotbar 9"],
+	["hotbar_6", "Hotbar 6"], ["hotbar_7", "Hotbar 7"], ["hotbar_8", "Hotbar 8"], ["hotbar_9", "Hotbar 9"], ["hotbar_10", "Hotbar 10"],
 	["toggle_menu", "Menu wheel"], ["build_mode", "Build mode"], ["mount", "Mount / dismount"], ["recall_home", "Recall home"],
 	["relic_ability", "Relic power"],
 ]

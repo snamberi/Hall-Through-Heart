@@ -10,11 +10,16 @@ extends Node
 
 signal changed
 
-const WEAPON_SLOTS: Array[String] = ["weapon_1", "weapon_2", "weapon_3"]
+## Slots that hold a weapon item. Staves and other magic weapons go here
+## too; they still shoot magic.
+const WEAPON_SLOTS: Array[String] = ["weapon_2", "weapon_3"]
+## What the hand can hold: a combat style ("combat"), the school of magic
+## ("weapon_1", no item), or one of the two weapons.
+const HAND_SLOTS: Array[String] = ["combat", "weapon_1", "weapon_2", "weapon_3"]
 const TOOL_SLOTS := {"pickaxe": "tool_pickaxe", "hatchet": "tool_hatchet", "rod": "tool_rod"}
 ## Belt slots in hotbar order.
-const BELT: Array[String] = ["weapon_1", "weapon_2", "weapon_3", "tool_pickaxe", "tool_hatchet", "tool_rod"]
-const BELT_NAMES := {"weapon_1": "Magic", "weapon_2": "Weapon", "weapon_3": "Weapon", "tool_pickaxe": "Pickaxe",
+const BELT: Array[String] = ["combat", "weapon_1", "weapon_2", "weapon_3", "tool_pickaxe", "tool_hatchet", "tool_rod"]
+const BELT_NAMES := {"combat": "Combat style", "weapon_1": "Magic", "weapon_2": "Weapon", "weapon_3": "Weapon", "tool_pickaxe": "Pickaxe",
 	"tool_hatchet": "Hatchet", "tool_rod": "Fishing rod", "backpack": "Backpack", "belt": "Belt"}
 ## Worn slots, the belt, and the backpack: everything that can hold an item.
 const ALL_SLOTS: Array[String] = ["off_hand", "helmet", "chest", "legs", "boots", "necklace", "ring_1", "ring_2", "artifact",
@@ -71,6 +76,11 @@ func weapon() -> Item:
 	return equipped.get(active_slot) if active_slot in WEAPON_SLOTS else null
 
 
+## Whether the hand is the combat style or the school of magic (no item).
+func empty_hand() -> bool:
+	return active_slot in ["combat", "weapon_1"] and working_tool == null
+
+
 ## Whatever is in hand to look at: a tool at work, or the belt item.
 func in_hand() -> Item:
 	return working_tool if working_tool else equipped.get(active_slot)
@@ -100,7 +110,7 @@ func relic_slots() -> int:
 
 ## Takes a belt slot's item in hand. False if the slot is empty.
 func select(slot: String) -> bool:
-	if not slot in BELT or not equipped.has(slot):
+	if not slot in BELT or (not equipped.has(slot) and not slot in ["combat", "weapon_1"]):
 		return false
 	working_tool = null
 	if active_slot != slot:
@@ -133,7 +143,7 @@ func fits(item: Item, slot: String) -> bool:
 	if item.is_belt():
 		return slot == "belt"
 	if item.slot() == "main_hand":
-		return slot in WEAPON_SLOTS and (slot == "weapon_1") == bool(item.definition().get("magic", false))
+		return slot in WEAPON_SLOTS
 	if item.slot() == "ring":
 		return slot in ["ring_1", "ring_2"]
 	return slot == item.slot()
@@ -149,8 +159,6 @@ func target_slot(item: Item) -> String:
 	if item.is_belt():
 		return "belt"
 	if item.slot() == "main_hand":
-		if item.definition().get("magic", false):
-			return "weapon_1"
 		for candidate: String in ["weapon_2", "weapon_3"]:
 			if not equipped.has(candidate):
 				return candidate
@@ -237,7 +245,21 @@ func equip_directly(item: Item) -> void:
 ## Attack profile of the weapon in hand, or bare hands.
 func weapon_profile() -> Dictionary:
 	var held := weapon()
-	return held.definition()["weapon"] if held else ItemDB.UNARMED
+	if held:
+		return held.definition()["weapon"]
+	if active_slot == "weapon_1" and _player_magic != "":
+		return MagicDB.bolt_profile(_player_magic)
+	return CombatStyles.profile(_player_style)
+
+
+## Kept up to date by the player, so the hand knows what it fights with.
+var _player_style := "fist"
+var _player_magic := ""
+
+
+func set_hand(style: String, school: String) -> void:
+	_player_style = style
+	_player_magic = school
 
 
 ## Everything whose stats count now: what is worn, and the weapon in hand.
@@ -361,9 +383,29 @@ func load_data(data: Dictionary) -> void:
 	if old is Dictionary:
 		var item := Item.from_dict(old)
 		if item and item.is_equipment():
-			equipped["weapon_1" if item.definition().get("magic", false) else "weapon_2"] = item
+			equipped["weapon_1"] = item
+	# The magic slot holds a school now, not a staff: a staff found there
+	# moves to a free weapon slot, or into the bag.
+	if equipped.has("weapon_1"):
+		var staff: Item = equipped["weapon_1"]
+		equipped.erase("weapon_1")
+		var free := ""
+		for slot in WEAPON_SLOTS:
+			if not equipped.has(slot):
+				free = slot
+				break
+		if free != "":
+			equipped[free] = staff
+			if str(data.get("active_slot", "")) == "weapon_1":
+				data = data.duplicate()
+				data["active_slot"] = free
+		elif _inventory:
+			_inventory.items.append(staff)
 	active_slot = str(data.get("active_slot", "weapon_2"))
-	if not equipped.has(active_slot):
+	if not active_slot in HAND_SLOTS and not active_slot in BELT:
+		active_slot = "combat"
+	if active_slot in WEAPON_SLOTS and not equipped.has(active_slot):
+		active_slot = "combat"
 		for slot in WEAPON_SLOTS:
 			if equipped.has(slot):
 				active_slot = slot
