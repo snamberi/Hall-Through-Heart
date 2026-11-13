@@ -349,7 +349,7 @@ func _build_shrine(cell: Vector2i, key: String, _level: int, random: RandomNumbe
 func _build_lair(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
 	for index in 8:
 		placed.append(Prop.create(Prop.Art.TOTEM, _at(cell + Vector2i(Vector2.from_angle(TAU * index / 8.0 + 0.4) * 5.0)), 6.0))
-	_decor(placed, Prop.Decor.TENT, cell + Vector2i(-3, -2), 22.0)
+	placed.append(_tent(cell + Vector2i(-3, -2), key, level + 1, "Raiders' tent"))
 	_decor(placed, Prop.Decor.CAGE, cell + Vector2i(3, -2), 16.0)
 	_decor(placed, Prop.Decor.CAGE, cell + Vector2i(3, 2), 16.0)
 	for i in 3:
@@ -476,7 +476,7 @@ func _waystones() -> Waystones:
 
 ## An abandoned camp: a cold fire, a torn tent, crates, and a note.
 func _build_camp(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
-	_decor(placed, Prop.Decor.TENT, cell + Vector2i(-2, -1), 22.0)
+	placed.append(_tent(cell + Vector2i(-2, -1), key, level, "Abandoned tent"))
 	var fire := Prop.create(Prop.Art.CAMPFIRE, _at(cell + Vector2i(1, 1)), 11.0)
 	fire.sprite().modulate = Color(0.55, 0.5, 0.5)
 	placed.append(fire)
@@ -660,7 +660,9 @@ func _build_henge(cell: Vector2i, _key: String, _level: int, random: RandomNumbe
 ## An abandoned farmstead: a cottage, plots gone to weeds, a scarecrow, a
 ## well and a tipped cart, with seed and food left in the store.
 func _build_farmstead(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
-	var house := Prop.create(Prop.Art.HOUSE, _at(cell + Vector2i(-2, -2)), 30.0)
+	var house := Prop.create(Prop.Art.HOUSE, _at(cell + Vector2i(-2, -2)), 30.0, "Enter the farmhouse", func(_p: Player) -> void:
+		_instances.enter_dwelling("cottage", "Farmhouse", level, hash(key), used.has(key + ":inside"), func() -> void: used[key + ":inside"] = true)
+	)
 	HouseStyles.dress(house, _world.generator.tile_type_at(cell))
 	placed.append(house)
 	for row in 2:
@@ -714,6 +716,18 @@ func _build_library(cell: Vector2i, key: String, level: int, random: RandomNumbe
 		SaveGame.request_save()
 	placed.append(table)
 	placed.append(_chest(cell + Vector2i(2, -1), key, level, 1.2))
+
+
+## A tent that can be entered: inside are a bedroll, candles, a crate and
+## a chest worth opening once.
+func _tent(cell: Vector2i, key: String, level: int, title: String) -> Prop:
+	var inside := key + ":tent"
+	return Prop.create_decor(Prop.Decor.TENT, _at(cell), 22.0, "Enter the tent", func(_p: Player) -> void:
+		_instances.enter_dwelling("tent", title, level, hash(inside), used.has(inside), func() -> void:
+			used[inside] = true
+			SaveGame.request_save()
+		)
+	)
 
 
 ## A chest whose contents are rolled the first time it is opened (or given

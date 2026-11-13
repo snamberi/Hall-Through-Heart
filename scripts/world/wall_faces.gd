@@ -13,6 +13,8 @@ const STYLES := {
 		"top": Color(0.16, 0.15, 0.19), "seam": Color(0.1, 0.1, 0.13)},
 	"wood": {"face": Color(0.45, 0.31, 0.2), "light": Color(0.58, 0.42, 0.28), "dark": Color(0.26, 0.17, 0.11), "rim": Color(0.68, 0.52, 0.36),
 		"top": Color(0.19, 0.13, 0.09), "seam": Color(0.11, 0.07, 0.05)},
+	"cloth": {"face": Color(0.66, 0.58, 0.42), "light": Color(0.8, 0.72, 0.55), "dark": Color(0.4, 0.34, 0.24), "rim": Color(0.86, 0.79, 0.62),
+		"top": Color(0.5, 0.43, 0.3), "seam": Color(0.36, 0.3, 0.2)},
 	"void": {"face": Color(0.22, 0.16, 0.32), "light": Color(0.42, 0.3, 0.6), "dark": Color(0.1, 0.07, 0.16), "rim": Color(0.62, 0.45, 0.9),
 		"top": Color(0.07, 0.05, 0.11), "seam": Color(0.04, 0.03, 0.07)},
 }
@@ -91,6 +93,12 @@ func _cap(rect: Rect2, colors: Dictionary, seed: int) -> void:
 					draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), colors["seam"], 1.0)
 			if seed % 3 == 0:
 				draw_rect(Rect2(rect.position + Vector2(seed % 30 + 4, 3), Vector2(2, 2)), Color(colors["face"], 0.5))
+		"cloth":
+			# Canvas overhead: seams running across, sagging a little.
+			for k in range(1, 3):
+				var y := rect.position.y + 15.0 * k
+				if y < rect.end.y:
+					draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y + 1.0), colors["seam"], 1.0)
 		"stone":
 			var x := rect.position.x + (22.0 if seed % 2 else 0.0)
 			draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), colors["seam"], 1.0)
@@ -115,6 +123,13 @@ func _face_detail(face: Rect2, colors: Dictionary, seed: int) -> void:
 				if random.randf() < 0.4:
 					var knot := Vector2(face.position.x + random.randf_range(6, face.size.x - 6), y + face.size.y / rows / 2.0)
 					draw_circle(knot, 1.6, colors["dark"])
+		"cloth":
+			# Canvas panels with stitched seams, darker where it sags.
+			draw_rect(Rect2(face.position.x, face.position.y, face.size.x, face.size.y * 0.4), colors["face"].lerp(colors["light"], 0.3))
+			for x in [face.position.x + 1.0, face.position.x + face.size.x / 2.0]:
+				for y in range(int(face.position.y) + 2, int(face.end.y) - 1, 3):
+					draw_rect(Rect2(x, y, 1, 2), colors["seam"])
+			draw_line(Vector2(face.position.x, face.end.y - 4), Vector2(face.end.x, face.end.y - 4), Color(colors["dark"], 0.6), 1.0)
 		"stone", "void":
 			# Dressed blocks in courses.
 			var rows := 2

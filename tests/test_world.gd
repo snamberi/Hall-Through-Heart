@@ -135,3 +135,26 @@ func test_every_monster_has_a_sheet_and_loot(t: TestContext) -> void:
 			t.check(ItemDB.ITEMS.has(drop["id"]), "%s drops unknown %s" % [id, drop["id"]])
 	for id: String in ["sheep", "cow", "chicken", "bear", "grey_wolf", "giant_spider", "web_spider"]:
 		t.check(EnemyDB.ENEMIES.has(id), "no %s" % id)
+
+
+func test_tents_and_houses_can_be_entered(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var instances: Instances = main.get_node("Instances")
+	for kind: String in ["tent", "cottage"]:
+		var looted := [false]
+		instances.enter_dwelling(kind, "Test " + kind, 5, 42, false, func() -> void: looted[0] = true)
+		await t.frames(3)
+		t.check(instances.is_inside(), "could not enter a %s" % kind)
+		var chest: Prop = null
+		for node in t.tree.get_nodes_in_group("props"):
+			if node is Prop and (node.prompt_text == "Open the chest" or node.prompt_text == "Open the cupboard"):
+				chest = node
+		t.check(chest != null, "no chest or cupboard in the %s" % kind)
+		if chest:
+			chest.interact(main.get_node("Player"))
+			await t.frames(2)
+			t.check(looted[0], "opening the %s's chest did not count as looting it" % kind)
+			main.get_node("Menus").close()
+		instances.leave()
+		await t.frames(3)
+		t.check(not instances.is_inside(), "could not leave the %s" % kind)

@@ -513,6 +513,78 @@ func _spawn_wave_boss() -> void:
 	)
 
 
+# --- dwellings
+
+## Steps into a small furnished interior: a "tent" (canvas walls, a
+## bedroll, candles, a crate and a chest) or a "cottage" (wooden walls,
+## a bed, a fire in the hearth, a table and chairs, shelves and a
+## cupboard). Its chest or cupboard has loot only while `looted` is false;
+## `on_loot` is called when it is first opened.
+func enter_dwelling(kind: String, title: String, level: int, dwelling_seed: int, looted: bool, on_loot: Callable) -> void:
+	prepare_room()
+	var random := RandomNumberGenerator.new()
+	random.seed = dwelling_seed
+	var tent := kind == "tent"
+	var size := Vector2i(5, 4) if tent else Vector2i(7, 5)
+	var home := Room.new()
+	home.wall_style = "cloth" if tent else "wood"
+	home.title = title
+	home.gloom = 0.25 if tent else 0.1
+	for y in range(-1, size.y + 1):
+		for x in range(-1, size.x + 1):
+			var wall := x < 0 or y < 0 or x >= size.x or y >= size.y
+			home.cells[Vector2i(x, y)] = T.WALL if wall else (T.PATH if tent else T.PLANK)
+	home.entry = Vector2i(size.x / 2, size.y - 1)
+	home.build(_world.tile_set())
+	enter(home)
+	var way_out := home.cell_position(Vector2i(size.x / 2, size.y)) + Vector2(0, 6)
+	if tent:
+		home.add_prop(Prop.create_decor(Prop.Decor.RUG, way_out - Vector2(0, 10), 0.0, "Leave the tent", func(_p: Player) -> void: leave()))
+	else:
+		home.add_prop(Prop.create(Prop.Art.DOOR, way_out, 0.0, "Leave the house", func(_p: Player) -> void: leave()))
+	var place := func(decor: Prop.Decor, cell: Vector2i, solid: float = 0.0, lit: bool = false) -> void:
+		var prop := Prop.create_decor(decor, home.cell_position(cell), solid)
+		# Furniture indoors is someone's, not loot to smash.
+		prop.hits_left = 0
+		prop.remove_from_group("breakables")
+		if lit:
+			prop.add_light(0.9, 1.4)
+		home.add_prop(prop)
+	var contents: Array = []
+	if tent:
+		place.call(Prop.Decor.RUG, Vector2i(1, 1))
+		place.call(Prop.Decor.CANDLES, Vector2i(0, 0), 0.0, true)
+		place.call(Prop.Decor.CRATE, Vector2i(size.x - 1, 0), 10.0)
+		place.call(Prop.Decor.BARREL if random.randf() < 0.5 else Prop.Decor.BONES, Vector2i(size.x - 1, 2), 10.0)
+		if not looted:
+			contents = Structures.roll_chest(level, 0.9)
+	else:
+		home.add_prop(Prop.create(Prop.Art.BED, home.cell_position(Vector2i(0, 0)), 13.0))
+		place.call(Prop.Decor.FIREPLACE, Vector2i(size.x / 2, 0), 20.0, true)
+		place.call(Prop.Decor.SHELF, Vector2i(size.x - 1, 0), 12.0)
+		place.call(Prop.Decor.TABLE, Vector2i(size.x - 2, 2), 14.0)
+		place.call(Prop.Decor.CHAIR, Vector2i(size.x - 3, 2))
+		place.call(Prop.Decor.RUG, Vector2i(size.x / 2, 2))
+		place.call(Prop.Decor.BARREL, Vector2i(0, size.y - 2), 10.0)
+		place.call(Prop.Decor.PLANT_POT, Vector2i(size.x - 1, size.y - 2), 8.0)
+		place.call(Prop.Decor.CANDLES, Vector2i(2, 1), 0.0, true)
+		if not looted:
+			for id: String in ["bread", "wild_berries", "health_potion", "torch", "bandage"]:
+				if random.randf() < 0.6:
+					contents.append(Item.create(id, random.randi_range(1, 3)).to_dict())
+	# The chest (or cupboard) keeps its contents for this visit; once opened
+	# the dwelling counts as looted.
+	var chest := Prop.create(Prop.Art.CHEST_OPEN if looted else Prop.Art.CHEST, home.cell_position(Vector2i(size.x - 2, 0) if tent else Vector2i(1, size.y - 2)), 12.0, "Open the chest" if tent else "Open the cupboard")
+	chest.on_interact = func(_p: Player) -> void:
+		if not chest.get_meta("opened", false):
+			chest.set_meta("opened", true)
+			if not looted and on_loot.is_valid():
+				on_loot.call()
+		chest.set_art(Prop.Art.CHEST_OPEN)
+		Events.loot_opened.emit({"items": contents, "title": "Chest" if tent else "Cupboard", "take_only": true})
+	home.add_prop(chest)
+
+
 # --- shared
 
 ## A chest that scatters its loot when opened. `richness` scales it.

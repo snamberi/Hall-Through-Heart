@@ -124,7 +124,17 @@ func _build(center: Vector2i) -> Array:
 			var spot := Vector2i(quarter.x * random.randi_range(8, 12), quarter.y * random.randi_range(3, 5) if house_index == 0 else quarter.y * random.randi_range(9, 12))
 			if absi(spot.x) <= 2 or absi(spot.y) <= 2:
 				continue
-			var house := Prop.create(Prop.Art.HOUSE, _at(center + spot), 34.0, "The door is barred")
+			var house_key := "house:%d,%d" % [center.x + spot.x, center.y + spot.y]
+			var house := Prop.create(Prop.Art.HOUSE, _at(center + spot), 34.0, "Enter the house", func(_player: Player) -> void:
+				var structures: Structures = get_parent().get_node_or_null("Structures")
+				var instances: Instances = get_parent().get_node_or_null("Instances")
+				if structures == null or instances == null:
+					return
+				instances.enter_dwelling("cottage", "A villager's house", _world.generator.enemy_level_at(center), hash(house_key), structures.used.has(house_key), func() -> void:
+					structures.used[house_key] = true
+					SaveGame.request_save()
+				)
+			)
 			house.sprite().scale = Vector2(2.0, 2.0)
 			house.sprite().position.y = -50.0
 			HouseStyles.dress(house, tile)
