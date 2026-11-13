@@ -17,7 +17,12 @@ static var LIGHT: Texture2D = _make_light()
 enum Art { PILLAR, WALL, CHEST, CHEST_OPEN, ALTAR, CAVE, PORTAL, LADDER, TABLE, BED, DOOR, CAMPFIRE, TOTEM, HOUSE }
 
 ## What the prompt says, e.g. "Open the chest". Empty for scenery.
-var prompt_text := ""
+var prompt_text := "":
+	set(value):
+		prompt_text = value
+		# Anything given something to say can be used, whenever that is.
+		if value != "" and not is_in_group("props"):
+			add_to_group("props")
 ## Called with the player when they interact.
 var on_interact: Callable
 ## How close the player must be to use it; big things reach further.

@@ -219,3 +219,28 @@ func test_root_machines_and_farms_work(t: TestContext) -> void:
 	(farm["animals"] as Array).clear()
 	(farm["items"] as Array).clear()
 	t.equal(buildings.take_down(farm), "", "packing up the empty farmhouse")
+
+
+func test_dungeon_doors_open_with_a_key(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var instances: Instances = main.get_node("Instances")
+	instances.enter_dungeon(13, 5, "hollow_king", func() -> void: pass)
+	await t.frames(5)
+	var doors: Array = instances.room.find_children("*", "Prop", true, false).filter(func(prop: Prop) -> bool: return prop.prompt_text.begins_with("Unlock the door"))
+	t.check(not doors.is_empty(), "the dungeon has no doors")
+	player.inventory.add(Item.create("dungeon_key"))
+	(doors[0] as Prop).interact(player)
+	await t.frames(2)
+	t.equal(player.inventory.count_of("dungeon_key"), 0, "the key was used on the door")
+	instances.leave()
+	await t.frames(3)
+	t.check(not instances.is_inside(), "could not leave the dungeon")
+
+
+func test_props_given_a_prompt_later_can_be_used(t: TestContext) -> void:
+	var prop := Prop.create_decor(Prop.Decor.BARREL, Vector2.ZERO, 0.0)
+	t.check(not prop.is_in_group("props"), "a prop with nothing to say is usable")
+	prop.prompt_text = "Open it"
+	t.check(prop.is_in_group("props"), "a prop given a prompt later is not usable")
+	prop.free()

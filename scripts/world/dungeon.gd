@@ -39,7 +39,7 @@ func _physics_process(_delta: float) -> void:
 
 
 ## Opens door `index` if the player has a key.
-func try_door(index: int) -> void:
+func try_door(_by: Player, index: int) -> void:
 	var door: Dictionary = doors[index]
 	if door["open"]:
 		return
