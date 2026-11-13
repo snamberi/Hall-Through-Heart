@@ -127,6 +127,13 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "rope_belt", "profession": "building", "level": 1, "inputs": {"healing_herb": 4, "oak_wood": 1}, "item": "rope_belt", "count": 1, "xp": 8.0},
 	{"id": "leather_belt", "profession": "blacksmithing", "level": 6, "inputs": {"leather": 4, "iron_ingot": 1}, "item": "leather_belt", "count": 1, "xp": 30.0},
 	{"id": "reliquary_belt", "profession": "blacksmithing", "level": 20, "inputs": {"leather": 8, "gold_ingot": 3, "boss_trophy": 1}, "item": "reliquary_belt", "count": 1, "xp": 120.0},
+	{"id": "heartsworn_helm", "profession": "blacksmithing", "level": 18, "inputs": {"crimson_plate": 3, "heartblood": 2, "iron_ingot": 2}, "equipment": "heartsworn_helm", "item_level": 22, "xp": 90.0},
+	{"id": "heartsworn_cuirass", "profession": "blacksmithing", "level": 20, "inputs": {"crimson_plate": 6, "heartblood": 3, "iron_ingot": 4}, "equipment": "heartsworn_cuirass", "item_level": 24, "xp": 130.0},
+	{"id": "heartsworn_greaves", "profession": "blacksmithing", "level": 19, "inputs": {"crimson_plate": 4, "heartblood": 2, "iron_ingot": 3}, "equipment": "heartsworn_greaves", "item_level": 23, "xp": 110.0},
+	{"id": "heartsworn_sabatons", "profession": "blacksmithing", "level": 18, "inputs": {"crimson_plate": 2, "heartblood": 2, "leather": 2}, "equipment": "heartsworn_sabatons", "item_level": 22, "xp": 90.0},
+	{"id": "pulsebrand", "profession": "blacksmithing", "level": 22, "inputs": {"crimson_plate": 5, "heartblood": 4, "silver_ingot": 3}, "equipment": "pulsebrand", "item_level": 26, "xp": 150.0},
+	{"id": "heartpiercer", "profession": "blacksmithing", "level": 20, "inputs": {"crimson_plate": 3, "heartblood": 3, "pine_wood": 3}, "equipment": "heartpiercer", "item_level": 24, "xp": 120.0},
+	{"id": "heartstring", "profession": "blacksmithing", "level": 20, "inputs": {"heartblood": 5, "pine_wood": 4, "fiend_horn": 1}, "equipment": "heartstring", "item_level": 24, "xp": 120.0},
 	{"id": "satchel", "profession": "blacksmithing", "level": 2, "inputs": {"leather": 5}, "item": "satchel", "count": 1, "xp": 18.0},
 	{"id": "backpack", "profession": "blacksmithing", "level": 8, "inputs": {"leather": 12, "iron_ingot": 2}, "item": "backpack", "count": 1, "xp": 40.0},
 	{"id": "explorers_pack", "profession": "blacksmithing", "level": 16, "inputs": {"leather": 20, "silver_ingot": 4}, "item": "explorers_pack", "count": 1, "xp": 80.0},
@@ -197,7 +204,12 @@ static func find(id: String) -> Dictionary:
 ## Name shown for a recipe: what it makes.
 static func display_name(recipe: Dictionary) -> String:
 	if recipe.has("equipment"):
-		return "%s %s" % [ItemDB.tier_name(recipe["item_level"]), ItemDB.ITEMS[recipe["equipment"]]["name"]]
+		var def: Dictionary = ItemDB.ITEMS[recipe["equipment"]]
+		if def.has("set"):
+			return "%s %s" % [ItemDB.ITEM_SETS[def["set"]]["name"], def["name"]]
+		if not def.get("tiered", false):
+			return def["name"]
+		return "%s %s" % [ItemDB.tier_name(recipe["item_level"]), def["name"]]
 	var name: String = ItemDB.ITEMS[recipe["item"]]["name"]
 	return name if recipe["count"] == 1 else "%s x%d" % [name, recipe["count"]]
 

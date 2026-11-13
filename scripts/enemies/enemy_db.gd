@@ -243,6 +243,20 @@ const ENEMIES := {
 		"attack": {"kind": "spin", "range": 70.0, "windup": 0.5, "radius": 84.0, "recover": 0.9, "color": Color(0.95, 0.3, 0.3)},
 		"touch": {"status": "bleed", "duration": 3.0, "power": 0.3}, "traits": ["lifesteal", "enrage"],
 	},
+	# The heart's own: a living heart that pulses blood in waves, and a
+	# knight whose open chest cage still holds a beating heart.
+	"veinheart": {
+		"active": "always", "name": "Veinheart", "health": 42.0, "damage": 12.0, "speed": 92.0, "xp": 18, "flying": true,
+		"radius": 15.0, "size": 1.05, "tiles": [T.CRIMSON, T.THORN, T.ASH, T.BOG], "min_level": 14, "weight": 4.0,
+		"attack": {"kind": "slam", "range": 96.0, "windup": 0.7, "recover": 1.1, "radius": 118.0, "color": Color(1.0, 0.3, 0.4), "knockback": 300.0},
+		"touch": {"status": "bleed", "duration": 4.0, "power": 0.3}, "traits": ["lifesteal", "regen"],
+	},
+	"heartsworn_knight": {
+		"active": "night", "name": "Heartsworn Knight", "health": 72.0, "damage": 15.0, "speed": 102.0, "xp": 26,
+		"radius": 15.0, "size": 1.12, "tiles": [T.CRIMSON, T.THORN, T.ASH, T.DEAD_GRASS], "min_level": 18, "weight": 3.0,
+		"attack": {"kind": "combo", "range": 64.0, "windup": 0.5, "count": 3, "gap": 0.22, "arc": 110.0, "claws": 1, "recover": 1.0, "color": Color(1.0, 0.35, 0.45)},
+		"touch": {"status": "bleed", "duration": 3.0, "power": 0.25}, "traits": ["armored", "enrage"],
+	},
 	"magma_slime": {
 		"active": "always", "name": "Magma Slime", "health": 38.0, "damage": 12.0, "speed": 70.0, "xp": 13,
 		"radius": 14.0, "size": 1.0, "tiles": [T.CINDER, T.ASH, T.TAR], "min_level": 6, "weight": 7.0,

@@ -28,7 +28,9 @@ static func make_equipment(
 	var item := Item.new()
 	item.id = base_id if base_id != "" else _random_base(rarity)
 	item.level = maxi(level, 1)
-	item.rarity = rarity
+	item.rarity = maxi(rarity, int(ItemDB.ITEMS[item.id].get("min_rarity", 0)))
+	rarity = item.rarity
+	item.set_id = str(ItemDB.ITEMS[item.id].get("set", ""))
 	if ItemDB.ITEMS[item.id].has("unique"):
 		item.rarity = 4
 		rarity = 4

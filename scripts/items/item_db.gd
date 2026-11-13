@@ -260,6 +260,35 @@ const ITEMS := {
 		"implicit": [{"stat": "fire_resist", "kind": "flat", "base": 0.15, "per_level": 0.0}]},
 	"phoenix_ring": {"name": "Phoenix Ring", "icon": 11, "tint": Color("ffb060"), "slot": "ring", "unique": "phoenix", "min_rarity": 4, "drop_weight": 0.0,
 		"implicit": [{"stat": "health_regen", "kind": "flat", "base": 0.5, "per_level": 0.05}]},
+	# --- the Heartsworn: forged from what heart monsters leave behind (see
+	# RecipeDB), worn as a set. Each piece carries a heart of its own.
+	"heartsworn_helm": {"name": "Helm", "icon": 117, "slot": "helmet", "set": "heartsworn", "drop_weight": 0.0, "min_rarity": 2, "armor": 5.0,
+		"implicit": [{"stat": "max_health", "kind": "flat", "base": 12.0, "per_level": 2.5}]},
+	"heartsworn_cuirass": {"name": "Cuirass", "icon": 118, "slot": "chest", "set": "heartsworn", "drop_weight": 0.0, "min_rarity": 2, "armor": 10.0,
+		"implicit": [{"stat": "life_steal", "kind": "flat", "base": 0.015, "per_level": 0.0}]},
+	"heartsworn_greaves": {"name": "Greaves", "icon": 119, "slot": "legs", "set": "heartsworn", "drop_weight": 0.0, "min_rarity": 2, "armor": 7.0,
+		"implicit": [{"stat": "health_regen", "kind": "flat", "base": 0.6, "per_level": 0.05}]},
+	"heartsworn_sabatons": {"name": "Sabatons", "icon": 120, "slot": "boots", "set": "heartsworn", "drop_weight": 0.0, "min_rarity": 2, "armor": 4.0,
+		"implicit": [{"stat": "move_speed", "kind": "flat", "base": 8.0, "per_level": 0.1}]},
+	"pulsebrand": {
+		"name": "Pulsebrand", "icon": 121, "visual": "pulsebrand", "slot": "main_hand", "set": "heartsworn", "drop_weight": 0.0, "min_rarity": 2,
+		"damage": 12.5, "two_handed": true, "slash": Color(1.0, 0.35, 0.45), "life_steal": 0.04, "requires": {"strength": [4.0, 1.0]},
+		"on_hit": {"status": "bleed", "duration": 4.0, "power": 0.25},
+		"weapon": {"type": "greatswords", "range": 84.0, "arc": 150.0, "cooldown": 0.6, "knockback": 540.0},
+	},
+	"heartpiercer": {
+		"name": "Heartpiercer", "icon": 122, "visual": "heartpiercer", "slot": "main_hand", "drop_weight": 0.0, "min_rarity": 2,
+		"damage": 8.5, "two_handed": true, "slash": Color(1.0, 0.35, 0.45), "life_steal": 0.03,
+		"on_hit": {"status": "bleed", "duration": 4.0, "power": 0.3},
+		"weapon": {"type": "spears", "range": 112.0, "arc": 50.0, "cooldown": 0.42, "knockback": 420.0},
+	},
+	"heartstring": {
+		"name": "Heartstring", "icon": 123, "visual": "heartstring", "slot": "main_hand", "drop_weight": 0.0, "min_rarity": 2,
+		"damage": 6.5, "two_handed": true, "slash": Color(1.0, 0.35, 0.45), "life_steal": 0.02, "requires": {"agility": [3.0, 0.7]},
+		"on_hit": {"status": "bleed", "duration": 3.0, "power": 0.25},
+		"weapon": {"type": "bows", "range": 580.0, "arc": 0.0, "cooldown": 0.48, "knockback": 200.0,
+			"projectile": {"sprite": 0, "speed": 800.0, "radius": 10.0, "range": 580.0}},
+	},
 	"voidwalker": {"name": "Voidwalkers", "icon": 9, "tint": Color("b88aff"), "slot": "boots", "unique": "void_rift", "min_rarity": 4, "drop_weight": 0.0, "armor": 3.0,
 		"implicit": [{"stat": "move_speed", "kind": "flat", "base": 10.0, "per_level": 0.1}]},
 	"gravecaller": {"name": "Gravecaller", "icon": 12, "tint": Color("8affb0"), "slot": "artifact", "unique": "spirit_bolt", "min_rarity": 4, "drop_weight": 0.0,
@@ -368,6 +397,8 @@ const ITEMS := {
 	"scorpion_stinger": {"name": "Scorpion Stinger", "icon": 15, "tint": Color("d8b070"), "material_rarity": 1, "text": "A drop of venom still beads at the tip."},
 	"mummy_wrap": {"name": "Mummy Wrap", "icon": 89, "tint": Color("e0d4b4"), "material_rarity": 1, "text": "Linen that has outlasted kingdoms."},
 	"void_shard": {"name": "Void Shard", "icon": 42, "tint": Color("a070f0"), "material_rarity": 2, "text": "A splinter of nothing, given edges."},
+	"heartblood": {"name": "Heartblood", "icon": 124, "material_rarity": 2, "value": 40, "text": "Still warm, and it beats against the glass. Left by heart monsters."},
+	"crimson_plate": {"name": "Crimson Plate", "icon": 125, "material_rarity": 2, "value": 45, "text": "A shard of a Heartsworn Knight's armour. Smiths can forge it anew."},
 	"fiend_horn": {"name": "Fiend Horn", "icon": 85, "tint": Color("e05a3a"), "material_rarity": 1, "text": "Hot to the touch."},
 	"magma_core": {"name": "Magma Core", "icon": 16, "tint": Color("ff8a2e"), "material_rarity": 2, "text": "Molten rock that will not cool."},
 	"harpy_feather": {"name": "Harpy Feather", "icon": 84, "tint": Color("a8b8d0"), "material_rarity": 1, "text": "It crackles in dry air."},
@@ -618,6 +649,9 @@ const ITEM_SETS := {
 		"bonuses": {2: {"critical_chance": {"flat": 0.05}}, 3: {"shadow_damage": {"percent": 0.5}, "attack_speed": {"percent": 0.08}}, 5: {"critical_damage": {"flat": 0.5}, "life_steal": {"flat": 0.03}}}},
 	"archmage": {"name": "Archmage", "pieces": ["helmet", "chestplate", "staff", "ring", "relic"],
 		"bonuses": {2: {"max_mana": {"percent": 0.2}}, 3: {"magic_power": {"percent": 0.15}, "mana_regen": {"percent": 0.3}}, 5: {"magic_power": {"percent": 0.25}, "holy_damage": {"percent": 0.5}}}},
+	"heartsworn": {"name": "Heartsworn", "pieces": ["heartsworn_helm", "heartsworn_cuirass", "heartsworn_greaves", "heartsworn_sabatons", "pulsebrand"],
+		"bonuses": {2: {"max_health": {"percent": 0.12}}, 3: {"life_steal": {"flat": 0.03}, "health_regen": {"percent": 0.5}},
+			5: {"physical_damage": {"percent": 0.15}, "damage_taken": {"percent": -0.1}}}},
 	"sunward": {"name": "Sunward", "pieces": ["helmet", "chestplate", "greaves", "spear", "necklace"],
 		"bonuses": {2: {"holy_damage": {"percent": 0.3}}, 3: {"shadow_resist": {"flat": 0.25}, "health_regen": {"percent": 0.5}}, 5: {"holy_damage": {"percent": 0.6}, "max_health": {"percent": 0.1}}}},
 }
@@ -708,6 +742,10 @@ const LOOT_TABLES := {
 		{"id": "magma_core", "chance": 0.2, "count": [1, 1]}, {"id": "slime_gel", "chance": 0.3, "count": [1, 1]}]},
 	"cinder_imp": {"gold": [1, 2], "gear": [["ember_staff", 0.015], ["flame_sword", 0.008]], "materials": [
 		{"id": "ember_core", "chance": 0.25, "count": [1, 1]}, {"id": "fiend_horn", "chance": 0.1, "count": [1, 1]}]},
+	"veinheart": {"gold": [2, 4], "gear": [["heartstring", 0.01]], "materials": [
+		{"id": "heartblood", "chance": 0.45, "count": [1, 2]}, {"id": "essence", "chance": 0.12, "count": [1, 1]}]},
+	"heartsworn_knight": {"gold": [3, 6], "gear": [["heartsworn_helm", 0.008], ["heartsworn_sabatons", 0.008], ["heartpiercer", 0.008]], "materials": [
+		{"id": "crimson_plate", "chance": 0.4, "count": [1, 2]}, {"id": "heartblood", "chance": 0.25, "count": [1, 1]}]},
 	"bog_lurker": {"gold": [0, 2], "gear": [["boots", 0.015]], "materials": [
 		{"id": "lurker_tongue", "chance": 0.35, "count": [1, 1]}, {"id": "slime_gel", "chance": 0.2, "count": [1, 1]}]},
 	"storm_harpy": {"gold": [1, 2], "gear": [["bow", 0.025], ["spear", 0.015]], "materials": [

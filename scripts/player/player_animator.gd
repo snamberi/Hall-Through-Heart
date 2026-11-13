@@ -54,7 +54,8 @@ const LAYERS: Array[Dictionary] = [
 ## item level, tinted with its metal), or a look in its own colours.
 const ARMOUR_LOOKS := {"helmet": "plate", "leather_cap": "leather", "ember_crown": "crown",
 	"chestplate": "plate", "leather_vest": "leather", "fur_cloak": "fur",
-	"greaves": "plate", "leather_leggings": "leather", "boots": "plate", "leather_boots": "leather", "voidwalker": "plate"}
+	"greaves": "plate", "leather_leggings": "leather", "boots": "plate", "leather_boots": "leather", "voidwalker": "plate",
+	"heartsworn_helm": "heart", "heartsworn_cuirass": "heart", "heartsworn_greaves": "heart", "heartsworn_sabatons": "heart"}
 const PLATE_STYLE_LEVELS: Array[int] = [20, 45]
 
 
