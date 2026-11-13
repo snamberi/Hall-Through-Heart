@@ -32,15 +32,19 @@ const RUN_SPEED := 150.0
 const LAYERS: Array[Dictionary] = [
 	{"name": "look_tail", "behind": true},
 	{"name": "look_wings", "behind": true},
+	{"name": "look_cape", "behind": true},
 	{"name": "cape", "behind": true},
 	{"name": "look_ears", "behind": false},
 	{"name": "look_race", "behind": false},
 	{"name": "look_eyes", "behind": false},
 	{"name": "look_mark", "behind": false},
 	{"name": "look_race_accent", "behind": false},
+	{"name": "look_neck", "behind": false},
+	{"name": "look_face", "behind": false},
 	{"name": "look_beard", "behind": false},
 	{"name": "look_hair", "behind": false},
 	{"name": "look_horns", "behind": false},
+	{"name": "look_hat", "behind": false},
 	{"name": "legs", "behind": false},
 	{"name": "boots", "behind": false},
 	{"name": "chest", "behind": false},
@@ -350,7 +354,7 @@ func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 ## the character's height.
 var _rest_y := -23.0
 ## Features a helmet covers.
-const UNDER_HELMET: Array[String] = ["hair", "horns"]
+const UNDER_HELMET: Array[String] = ["hair", "horns", "hat"]
 var _features: Dictionary = {}
 
 

@@ -26,43 +26,53 @@ const SKIN_TONES: Array[Array] = [
 	["eeeadc", "cfcab8", "9c9888", "b8b4a2"], ["e87060", "bc4c42", "84302c", "a03c36"], ["a83a44", "802a32", "581a20", "6c222a"],
 	["5ab4a2", "3e8c7c", "2a6458", "34786a"], ["7ab8e8", "5690c4", "3a6894", "487cac"], ["a8a8b6", "848490", "5c5c68", "70707c"],
 	["b890e0", "9068b8", "664888", "7a58a0"], ["f0e4e8", "d4c0c8", "a4909a", "bca8b0"], ["e4b470", "bc8c4c", "8a6030", "a47440"],
+	["c89068", "a06c48", "70482e", "88583a"], ["f0c8b8", "d0a494", "a07868", "bc8e7e"], ["5a3428", "42241a", "2c1610", "361c14"]
 ]
 const SKIN_NAMES: Array[String] = ["Fair", "Pale", "Tan", "Brown", "Dark", "Ashen", "Goblin green", "Olive", "Slime", "Bone", "Ember red", "Crimson",
-	"Scale teal", "Sea blue", "Stone", "Violet", "Moonlit", "Golden"]
+	"Scale teal", "Sea blue", "Stone", "Violet", "Moonlit", "Golden", "Bronze", "Rosy", "Umber"]
 const HAIR: Array[Array] = [
 	["8a6044", "523625", "38241a"], ["3a3238", "1c181c", "100c10"], ["f0d078", "c8a050", "907034"], ["d05a34", "963820", "6a2414"],
 	["f0eef2", "bcbac2", "8a8892"], ["7a8ab0", "4c5a7a", "343e56"], ["fff4d8", "e0d0a8", "b0a078"], ["f090b8", "c06088", "8a3c5c"],
 	["78c860", "4c9838", "306a22"], ["50c8c0", "2c9890", "1a6a64"], ["a070e0", "7448b0", "4c2c80"], ["f09040", "c46820", "8c4410"],
 	["4a5a9a", "303c70", "1e264c"], ["a89080", "7c6858", "544438"],
+	["c8b8a8", "9c8c7c", "706252"], ["e05050", "a83030", "701c1c"], ["4060c0", "283c8c", "18245c"], ["f8f0a0", "d8c868", "a09038"],
+	["202830", "141a20", "0a0e12"], ["e8a0d8", "b870a8", "804c74"]
 ]
-const HAIR_NAMES: Array[String] = ["Brown", "Black", "Blond", "Red", "White", "Steel blue", "Platinum", "Rose", "Moss", "Teal", "Violet", "Copper", "Midnight", "Ash"]
+const HAIR_NAMES: Array[String] = ["Brown", "Black", "Blond", "Red", "White", "Steel blue", "Platinum", "Rose", "Moss", "Teal", "Violet", "Copper", "Midnight", "Ash", "Silver", "Scarlet", "Cobalt", "Straw", "Raven", "Orchid"]
 const EYES: Array[Array] = [
 	["2a2228", "1a1418", "0c080c"], ["5ab0ff", "3a80d0", "2458a0"], ["6ad070", "40a048", "246c2c"], ["f0b040", "c08020", "8a5810"], ["ff5050", "d02828", "901414"],
 	["c080ff", "9050d8", "6030a0"], ["c0c8d0", "909aa4", "646e78"], ["ffe060", "e0b830", "a88410"], ["80fff0", "40d8c8", "1ca090"], ["ffffff", "e0e0e8", "b0b0bc"],
+	["8a5a30", "6a4020", "482a14"], ["ff80c0", "d05090", "903060"], ["a0ff60", "70d030", "409018"]
 ]
-const EYE_NAMES: Array[String] = ["Dark", "Blue", "Green", "Amber", "Red", "Violet", "Grey", "Gold", "Glowing cyan", "White"]
+const EYE_NAMES: Array[String] = ["Dark", "Blue", "Green", "Amber", "Red", "Violet", "Grey", "Gold", "Glowing cyan", "White", "Hazel", "Pink", "Lime"]
 const CLOTHES: Array[Array] = [
 	["b9ad92", "968a72", "6e6454", "7d7260"], ["b03a3a", "862a2c", "5a1a1e", "6e2226"], ["4e8a4a", "386a36", "264a24", "2e5a2c"],
 	["3e5a92", "2c4472", "1e2e50", "26385e"], ["3a3440", "28242e", "18161e", "201c26"], ["7a4a9a", "5c3678", "3e2452", "4a2c62"],
 	["e8e2d4", "c4bcaa", "948c7a", "aca492"], ["c08a3a", "966a2a", "6a4a1c", "7c5822"], ["3a8a8a", "2a6a6c", "1c4a4e", "225a5c"],
 	["c86a8a", "9c4a6a", "6e2e48", "843a58"], ["8a5a3a", "6a4028", "462a1a", "583420"], ["5a6a3a", "44522a", "2e3a1c", "384622"],
+	["d0a030", "a87c20", "785814", "8c6618"], ["5a8ac8", "4068a0", "2c4874", "345484"], ["a03a6a", "7c2a52", "561c38", "662044"],
+	["6a6a74", "50505a", "38383e", "424248"], ["e07a30", "b45a20", "7e3e14", "924818"], ["8ac0a0", "68987e", "48705a", "548268"]
 ]
-const CLOTHES_NAMES: Array[String] = ["Undyed", "Red", "Green", "Blue", "Black", "Purple", "White", "Ochre", "Teal", "Rose", "Leather", "Moss"]
+const CLOTHES_NAMES: Array[String] = ["Undyed", "Red", "Green", "Blue", "Black", "Purple", "White", "Ochre", "Teal", "Rose", "Leather", "Moss", "Saffron", "Sky", "Plum", "Ash grey", "Rust", "Sage"]
 const TROUSERS: Array[Array] = [
 	["4c4a5e", "383648", "272633"], ["6a5040", "4e3a2e", "34261e"], ["2a2a30", "1c1c22", "121216"], ["3a4a6a", "2a3650", "1c2438"],
 	["8a8070", "6a6254", "4a443a"], ["5a3a3a", "422828", "2c1a1a"], ["3a5a44", "2a4432", "1c2e22"], ["c8c0b0", "a09888", "746c60"],
+	["8a6a3a", "6a5028", "48361a"], ["5a5a8a", "44446a", "2e2e4a"], ["6a2a2a", "4e1e1e", "341414"], ["3a3a3a", "2a2a2a", "1c1c1c"]
 ]
-const TROUSER_NAMES: Array[String] = ["Slate", "Brown", "Black", "Blue", "Linen", "Oxblood", "Forest", "White"]
+const TROUSER_NAMES: Array[String] = ["Slate", "Brown", "Black", "Blue", "Linen", "Oxblood", "Forest", "White", "Tan", "Indigo", "Maroon", "Charcoal"]
 ## Feature lists: "sheet" is a file in assets/sprites/looks ("" for none).
 const HAIR_STYLES: Array[Dictionary] = [
 	{"name": "Tousled", "sheet": "hair_0"}, {"name": "Cropped", "sheet": "hair_1"}, {"name": "Long", "sheet": "hair_2"}, {"name": "Ponytail", "sheet": "hair_3"},
 	{"name": "Mohawk", "sheet": "hair_4"}, {"name": "Topknot", "sheet": "hair_5"}, {"name": "Spiky", "sheet": "hair_6"}, {"name": "Bob", "sheet": "hair_7"},
 	{"name": "Braids", "sheet": "hair_8"}, {"name": "Wild mane", "sheet": "hair_9"}, {"name": "Side sweep", "sheet": "hair_10"}, {"name": "Curls", "sheet": "hair_11"},
 	{"name": "Curtains", "sheet": "hair_12"}, {"name": "Bald", "sheet": ""},
+	{"name": "Buzz cut", "sheet": "hair_13"}, {"name": "Twin tails", "sheet": "hair_14"}, {"name": "Long braid", "sheet": "hair_15"}, {"name": "Cloud", "sheet": "hair_16"},
+	{"name": "Undercut", "sheet": "hair_17"}, {"name": "Messy bun", "sheet": "hair_18"}, {"name": "Slicked back", "sheet": "hair_19"}, {"name": "Shaggy", "sheet": "hair_20"},
 ]
 const BEARDS: Array[Dictionary] = [
 	{"name": "Clean shaven", "sheet": ""}, {"name": "Moustache", "sheet": "beard_1"}, {"name": "Goatee", "sheet": "beard_2"}, {"name": "Short beard", "sheet": "beard_3"},
 	{"name": "Long beard", "sheet": "beard_4"}, {"name": "Forked beard", "sheet": "beard_5"},
+	{"name": "Chin strap", "sheet": "beard_6"}, {"name": "Mutton chops", "sheet": "beard_7"}, {"name": "Braided beard", "sheet": "beard_8"},
 ]
 const EARS: Array[Dictionary] = [
 	{"name": "Round", "sheet": ""}, {"name": "Pointed", "sheet": "ears_1"}, {"name": "Long", "sheet": "ears_2"}, {"name": "Beast", "sheet": "ears_3", "tint": "hair"},
@@ -82,7 +92,35 @@ const MARKS: Array[Dictionary] = [
 	{"name": "None", "sheet": ""}, {"name": "Scar", "sheet": "mark_1"}, {"name": "War paint", "sheet": "mark_2"}, {"name": "Freckles", "sheet": "mark_3"},
 	{"name": "Blush", "sheet": "mark_4"}, {"name": "Brow gem", "sheet": "mark_5"}, {"name": "Tattoo", "sheet": "mark_6"}, {"name": "Tusks", "sheet": "mark_7"},
 	{"name": "Fangs", "sheet": "mark_8"},
+	{"name": "Woad", "sheet": "mark_9", "color": Color.WHITE}, {"name": "Star", "sheet": "mark_10", "color": Color.WHITE},
+	{"name": "Gold paint", "sheet": "mark_11", "color": Color.WHITE}, {"name": "Third eye", "sheet": "mark_12", "color": Color.WHITE},
 ]
+## Things worn: "dyed" ones take the chosen dye colour, the rest keep their own.
+const HATS: Array[Dictionary] = [
+	{"name": "None", "sheet": ""}, {"name": "Hood", "sheet": "hat_1", "dyed": true}, {"name": "Bandana", "sheet": "hat_2", "dyed": true},
+	{"name": "Straw hat", "sheet": "hat_3"}, {"name": "Wizard hat", "sheet": "hat_4", "dyed": true}, {"name": "Flower crown", "sheet": "hat_5"},
+	{"name": "Circlet", "sheet": "hat_6"}, {"name": "Feathered cap", "sheet": "hat_7", "dyed": true}, {"name": "Headband", "sheet": "hat_8", "dyed": true},
+	{"name": "Woolly hat", "sheet": "hat_9", "dyed": true}, {"name": "Tricorn", "sheet": "hat_10", "dyed": true},
+]
+const ACCESSORIES: Array[Dictionary] = [
+	{"name": "None", "sheet": ""}, {"name": "Spectacles", "sheet": "acc_1"}, {"name": "Eyepatch", "sheet": "acc_2"}, {"name": "Monocle", "sheet": "acc_3"},
+	{"name": "Earrings", "sheet": "acc_4"}, {"name": "Nose ring", "sheet": "acc_5"}, {"name": "Face cloth", "sheet": "acc_6", "dyed": true},
+]
+const NECKWEAR: Array[Dictionary] = [
+	{"name": "None", "sheet": ""}, {"name": "Scarf", "sheet": "neck_1", "dyed": true}, {"name": "Fur collar", "sheet": "neck_2"}, {"name": "Shawl", "sheet": "neck_3", "dyed": true},
+	{"name": "Pendant", "sheet": "neck_4"}, {"name": "Bandolier", "sheet": "neck_5"},
+]
+const CAPES: Array[Dictionary] = [
+	{"name": "None", "sheet": ""}, {"name": "Short cape", "sheet": "cape_1", "dyed": true}, {"name": "Long cloak", "sheet": "cape_2", "dyed": true},
+	{"name": "Tattered cloak", "sheet": "cape_3", "dyed": true}, {"name": "Feather mantle", "sheet": "cape_4"},
+]
+## The dye for hats, scarves and capes.
+const DYES: Array[Array] = [
+	["a83030", "7c2020", "541414"], ["2e5a9a", "20427a", "142c54"], ["3e7a3a", "2c5a2a", "1c3c1c"], ["2a2830", "1c1a20", "121014"], ["e8e2d4", "c4bcaa", "948c7a"],
+	["7a4a9a", "5c3678", "3e2452"], ["c8962e", "9c7020", "6c4c14"], ["3a8a8a", "2a6a6c", "1c4a4e"], ["c86a8a", "9c4a6a", "6e2e48"], ["8a5a3a", "6a4028", "462a1a"],
+	["d06a2a", "a44e1c", "723410"], ["6a7a8a", "4e5c6a", "36404a"],
+]
+const DYE_NAMES: Array[String] = ["Crimson", "Royal blue", "Forest", "Black", "Bone white", "Purple", "Gold", "Teal", "Rose", "Leather", "Amber", "Slate"]
 const HEIGHTS: Array[Dictionary] = [
 	{"name": "Small", "scale": 0.88}, {"name": "Short", "scale": 0.94}, {"name": "Average", "scale": 1.0}, {"name": "Tall", "scale": 1.06}, {"name": "Towering", "scale": 1.12},
 ]
@@ -128,6 +166,8 @@ const OPTIONS: Array[Array] = [
 	["eyes", "Eyes", "EYES", "colour"], ["mark", "Face", "MARKS", "shape"], ["ears", "Ears", "EARS", "shape"], ["horns", "Horns", "HORNS", "shape"],
 	["tail", "Tail", "TAILS", "shape"], ["wings", "Wings", "WINGS", "shape"],
 	["clothes", "Clothes", "CLOTHES", "colour"], ["trousers", "Trousers", "TROUSERS", "colour"],
+	["hat", "Hat", "HATS", "shape"], ["accessory", "Accessory", "ACCESSORIES", "shape"], ["neck", "Neck", "NECKWEAR", "shape"],
+	["cape", "Cape", "CAPES", "shape"], ["dye", "Dye", "DYES", "colour"],
 ]
 ## Looks unlocked by achievements. Each fixes the colours ("skin", "hair",
 ## "clothes", "trousers" as option indices) and may add a hood.
@@ -143,17 +183,18 @@ const LOOKS := {
 		"hair": 2, "clothes": 6, "trousers": 4},
 }
 const DEFAULT := {"race": "human", "skin": 0, "hair": 0, "hair_style": 0, "beard": 0, "eyes": 0, "ears": 0, "horns": 0, "tail": 0, "wings": 0, "mark": 0,
-	"height": 2, "build": 1, "clothes": 0, "trousers": 0, "look": "wanderer"}
+	"height": 2, "build": 1, "clothes": 0, "trousers": 0, "look": "wanderer", "hat": 0, "accessory": 0, "neck": 0, "cape": 0, "dye": 0}
 ## Slots for feature layers, back to front: [slot, appearance key, list, drawn behind the body].
 const FEATURES: Array[Array] = [
-	["tail", "tail", "TAILS", true], ["wings", "wings", "WINGS", true], ["ears", "ears", "EARS", false], ["eyes", "eyes", "", false],
-	["mark", "mark", "MARKS", false], ["beard", "beard", "BEARDS", false], ["hair", "hair_style", "HAIR_STYLES", false], ["horns", "horns", "HORNS", false],
+	["tail", "tail", "TAILS", true], ["wings", "wings", "WINGS", true], ["cape", "cape", "CAPES", true], ["ears", "ears", "EARS", false], ["eyes", "eyes", "", false],
+	["mark", "mark", "MARKS", false], ["neck", "neck", "NECKWEAR", false], ["face", "accessory", "ACCESSORIES", false], ["beard", "beard", "BEARDS", false],
+	["hair", "hair_style", "HAIR_STYLES", false], ["horns", "horns", "HORNS", false], ["hat", "hat", "HATS", false],
 ]
 ## Layers every race has of its own (not chosen in the creator).
 const RACE_LAYERS: Array[String] = ["race", "race_accent"]
 ## Every look layer in drawing order, back to front: [slot, behind body].
-const LAYER_ORDER: Array[Array] = [["tail", true], ["wings", true], ["ears", false], ["race", false], ["eyes", false], ["mark", false],
-	["race_accent", false], ["beard", false], ["hair", false], ["horns", false]]
+const LAYER_ORDER: Array[Array] = [["tail", true], ["wings", true], ["cape", true], ["ears", false], ["race", false], ["eyes", false], ["mark", false],
+	["race_accent", false], ["neck", false], ["face", false], ["beard", false], ["hair", false], ["horns", false], ["hat", false]]
 
 const SHADER := """
 shader_type canvas_item;
@@ -202,6 +243,11 @@ static func list(list_name: String) -> Array:
 		"EYES": return EYES
 		"CLOTHES": return CLOTHES
 		"TROUSERS": return TROUSERS
+		"HATS": return HATS
+		"ACCESSORIES": return ACCESSORIES
+		"NECKWEAR": return NECKWEAR
+		"CAPES": return CAPES
+		"DYES": return DYES
 		"HAIR_STYLES": return HAIR_STYLES
 		"BEARDS": return BEARDS
 		"EARS": return EARS
@@ -222,6 +268,7 @@ static func option_name(list_name: String, index: int) -> String:
 		"EYES": return EYE_NAMES[index]
 		"CLOTHES": return CLOTHES_NAMES[index]
 		"TROUSERS": return TROUSER_NAMES[index]
+		"DYES": return DYE_NAMES[index]
 	return str(list(list_name)[index]["name"])
 
 
@@ -264,13 +311,27 @@ static func random() -> Dictionary:
 		for row in OPTIONS:
 			if row[0] == key:
 				result[key] = randi() % list(row[2]).size()
-	if randf() < 0.7 and int(result["hair_style"]) != HAIR_STYLES.size() - 1:
-		result["hair_style"] = randi() % (HAIR_STYLES.size() - 1)
+	if randf() < 0.7 and HAIR_STYLES[int(result["hair_style"])]["sheet"] != "":
+		result["hair_style"] = hair_styles_with_hair().pick_random()
 	if randf() < 0.25:
 		result["beard"] = randi() % BEARDS.size()
 	if randf() < 0.3:
 		result["mark"] = randi() % MARKS.size()
 	result["height"] = clampi(int(result["height"]) + randi_range(-1, 1), 0, HEIGHTS.size() - 1)
+	# Now and then something worn: a hat, a scarf, a cloak, spectacles.
+	for entry: Array in [["hat", HATS, 0.3], ["neck", NECKWEAR, 0.25], ["cape", CAPES, 0.2], ["accessory", ACCESSORIES, 0.12]]:
+		if randf() < entry[2]:
+			result[entry[0]] = randi_range(1, (entry[1] as Array).size() - 1)
+	result["dye"] = randi() % DYES.size()
+	return result
+
+
+## Indices of every hair style that has hair.
+static func hair_styles_with_hair() -> Array[int]:
+	var result: Array[int] = []
+	for index in HAIR_STYLES.size():
+		if HAIR_STYLES[index]["sheet"] != "":
+			result.append(index)
 	return result
 
 
@@ -308,7 +369,9 @@ static func layers(appearance: Dictionary) -> Dictionary:
 		if choice["sheet"] == "":
 			continue
 		var tint := Color.WHITE
-		if slot in ["hair", "beard"] or choice.get("tint", "") == "hair":
+		if choice.get("dyed", false):
+			tint = Color(DYES[worn["dye"]][0])
+		elif slot in ["hair", "beard"] or choice.get("tint", "") == "hair":
 			tint = hair
 		elif slot == "ears" or choice.get("tint", "") == "skin":
 			tint = skin

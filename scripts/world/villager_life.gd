@@ -48,6 +48,13 @@ const JOBS := {
 		"pays": [["taming_treat", 2], ["sweet_roll", 2], ["topaz_1", 1]],
 		"lines": ["Are you an adventurer? Have you killed a dragon?", "I'm not scared of ghosts. Much.", "Mum says not to go past the lanterns."]},
 }
+## What each trade tends to wear (indices into Appearance's lists).
+const WEAR := {
+	"farmer": {"hat": [3, 2], "neck": [1]}, "woodcutter": {"hat": [9, 8], "neck": [1]}, "fisher": {"hat": [9, 3, 10], "neck": [1]},
+	"miner": {"hat": [8, 2], "neck": [5]}, "hunter": {"hat": [7], "cape": [1, 3], "neck": [2]}, "herbalist": {"hat": [5, 1], "neck": [3, 4]},
+	"baker": {"hat": [2], "neck": [3]}, "guard": {"cape": [1, 2], "neck": [5]}, "elder": {"hat": [1, 4], "neck": [3, 4], "cape": [2]},
+	"child": {"hat": [5, 9]},
+}
 ## Shared remarks, by the hour.
 const MORNING: Array[String] = ["Morning. Mind the mud.", "Up early? Good. Work's waiting.", "The night's done. We made it again."]
 const DUSK: Array[String] = ["Getting dark. Best be indoors soon.", "Lanterns are lit. Stay close.", "Hear that? Probably nothing."]
@@ -70,11 +77,23 @@ static func make(village: Vector2i, index: int, world_seed: int) -> Dictionary:
 	if race in ["human", "elf", "dwarf"]:
 		look["skin"] = PLAIN_SKINS[random.randi() % PLAIN_SKINS.size()]
 	if random.randf() < 0.85:
-		look["hair_style"] = random.randi() % (Appearance.HAIR_STYLES.size() - 1)
+		var styles := Appearance.hair_styles_with_hair()
+		look["hair_style"] = styles[random.randi() % styles.size()]
 	if job != "child" and random.randf() < 0.3:
 		look["beard"] = random.randi() % Appearance.BEARDS.size()
 	if job == "elder":
 		look["hair"] = 4
+	# Dressed for the work: a hat, maybe something round the neck.
+	var wear: Dictionary = WEAR.get(job, {})
+	if wear.has("hat") and random.randf() < 0.75:
+		look["hat"] = (wear["hat"] as Array)[random.randi() % (wear["hat"] as Array).size()]
+	if wear.has("neck") and random.randf() < 0.5:
+		look["neck"] = (wear["neck"] as Array)[random.randi() % (wear["neck"] as Array).size()]
+	if wear.has("cape") and random.randf() < 0.5:
+		look["cape"] = (wear["cape"] as Array)[random.randi() % (wear["cape"] as Array).size()]
+	if random.randf() < 0.12:
+		look["accessory"] = [1, 3, 4, 5][random.randi() % 4]
+	look["dye"] = random.randi() % Appearance.DYES.size()
 	look["height"] = clampi(int(look.get("height", 2)) + random.randi_range(-1, 1), 0, Appearance.HEIGHTS.size() - 1)
 	look["build"] = random.randi() % Appearance.BUILDS.size()
 	# Names step through the list from a village's own start, so no two

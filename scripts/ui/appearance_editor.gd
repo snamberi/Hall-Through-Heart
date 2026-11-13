@@ -14,12 +14,13 @@ const TABS: Array[Array] = [
 	["Hair", ["hair_style", "hair", "beard"]],
 	["Face", ["eyes", "mark", "ears"]],
 	["Extras", ["horns", "tail", "wings"]],
-	["Clothes", ["clothes", "trousers"]],
+	["Clothes", ["clothes", "trousers", "dye"]],
+	["Wear", ["hat", "accessory", "neck", "cape"]],
 ]
 ## Rows drawn as pictures; the rest of the shape rows are named buttons.
-const PICTURED: Array[String] = ["hair_style", "beard", "mark", "ears", "horns", "tail", "wings"]
+const PICTURED: Array[String] = ["hair_style", "beard", "mark", "ears", "horns", "tail", "wings", "hat", "accessory", "neck", "cape"]
 ## Rows whose pictures show the whole figure rather than the head.
-const WHOLE: Array[String] = ["tail", "wings"]
+const WHOLE: Array[String] = ["tail", "wings", "neck", "cape"]
 const THUMB := 62.0
 
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()

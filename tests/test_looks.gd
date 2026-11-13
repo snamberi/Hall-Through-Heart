@@ -46,3 +46,26 @@ func test_every_armour_has_its_worn_look(t: TestContext) -> void:
 		"plate helmets look the same at every level")
 	t.check(PlayerAnimator.armour_sheet("chest", LootGenerator.make_equipment(5, 0, "leather_vest")) != PlayerAnimator.armour_sheet("chest", LootGenerator.make_equipment(5, 0, "chestplate")),
 		"a leather vest looks like a chestplate")
+
+
+func test_every_choice_has_its_art_and_name(t: TestContext) -> void:
+	for row: Array in Appearance.OPTIONS:
+		var entries := Appearance.list(row[2])
+		t.check(entries.size() > 1, "%s offers no choice" % row[1])
+		for index in entries.size():
+			t.check(Appearance.option_name(row[2], index) != "", "%s %d has no name" % [row[1], index])
+			if row[3] == "shape" and entries[index] is Dictionary and entries[index].get("sheet", "") != "":
+				t.check(ResourceLoader.exists("res://assets/sprites/looks/%s.png" % entries[index]["sheet"]), "%s %d has no art" % [row[1], index])
+	t.equal(Appearance.SKIN_NAMES.size(), Appearance.SKIN_TONES.size(), "every skin has a name")
+	t.equal(Appearance.HAIR_NAMES.size(), Appearance.HAIR.size(), "every hair colour has a name")
+	t.equal(Appearance.EYE_NAMES.size(), Appearance.EYES.size(), "every eye colour has a name")
+	t.equal(Appearance.CLOTHES_NAMES.size(), Appearance.CLOTHES.size(), "every clothes colour has a name")
+	t.equal(Appearance.TROUSER_NAMES.size(), Appearance.TROUSERS.size(), "every trouser colour has a name")
+	t.equal(Appearance.DYE_NAMES.size(), Appearance.DYES.size(), "every dye has a name")
+	var dressed := Appearance.for_race("human")
+	dressed.merge({"hat": 4, "accessory": 1, "neck": 1, "cape": 2, "dye": 5}, true)
+	var layers := Appearance.layers(dressed)
+	for slot: String in ["hat", "face", "neck", "cape"]:
+		t.check(layers.has(slot), "a worn %s shows" % slot)
+	t.equal(layers["hat"]["tint"], Color(Appearance.DYES[5][0]), "a dyed hat takes the dye")
+	t.check(Appearance.option_count() >= 200, "plenty of choices (%d)" % Appearance.option_count())
