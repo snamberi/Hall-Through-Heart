@@ -34,13 +34,13 @@ const ENEMIES := {
 	"husk": {
 		"active": "night", "name": "Husk", "sheet": "res://assets/sprites/husk_sheet.png", "health": 30.0, "damage": 10.0, "speed": 105.0, "xp": 8,
 		"radius": 13.0, "size": 1.0, "tiles": [T.DEAD_GRASS, T.DARK_GRASS, T.MUD, T.ASH, T.BOG, T.SNOW, T.FROSTPINE, T.CRIMSON, T.SAND, T.THORN], "min_level": 1, "weight": 10.0,
-		"attack": {"kind": "lunge", "range": 76.0, "windup": 0.45, "speed": 470.0, "time": 0.22, "recover": 0.7},
+		"attack": {"kind": "swipe", "range": 62.0, "windup": 0.5, "arc": 110.0, "recover": 0.8, "color": Color(0.85, 0.8, 0.7)},
 		"traits": [],
 	},
 	"rot_hound": {
 		"active": "day", "name": "Rot Hound", "health": 22.0, "damage": 8.0, "speed": 165.0, "xp": 9,
 		"radius": 13.0, "size": 1.0, "tiles": [T.DEAD_GRASS, T.MUD, T.ASH, T.SNOW, T.SALT, T.THORN, T.CRIMSON], "min_level": 2, "weight": 7.0,
-		"attack": {"kind": "lunge", "range": 120.0, "windup": 0.32, "speed": 640.0, "time": 0.24, "recover": 0.55},
+		"attack": {"kind": "pounce", "range": 140.0, "windup": 0.4, "time": 0.36, "radius": 46.0, "recover": 0.7, "color": Color(0.9, 0.4, 0.35)},
 		"touch": {"status": "bleed", "duration": 3.0, "power": 0.25}, "traits": ["pack", "enrage"],
 	},
 	"bone_archer": {
@@ -52,13 +52,14 @@ const ENEMIES := {
 	"bog_slime": {
 		"active": "day", "name": "Bog Slime", "health": 34.0, "damage": 7.0, "speed": 70.0, "xp": 9,
 		"radius": 14.0, "size": 1.0, "tiles": [T.BOG, T.MUD, T.FUNGAL, T.TAR], "min_level": 2, "weight": 8.0,
-		"attack": {"kind": "lunge", "range": 70.0, "windup": 0.5, "speed": 360.0, "time": 0.26, "recover": 0.8},
+		"attack": {"kind": "spit", "range": 200.0, "windup": 0.6, "recover": 1.2, "sprite": 1, "speed": 300.0, "count": 3, "spread": 34.0, "color": Color(0.55, 0.9, 0.4),
+			"status": {"status": "poison", "duration": 3.0, "power": 0.25}},
 		"touch": {"status": "poison", "duration": 4.0, "power": 0.3}, "traits": ["split"],
 	},
 	"carrion_bat": {
 		"active": "night", "name": "Carrion Bat", "health": 14.0, "damage": 7.0, "speed": 175.0, "xp": 8, "flying": true,
 		"radius": 11.0, "size": 0.9, "tiles": [T.DEAD_GRASS, T.DARK_GRASS, T.BOG, T.THORN, T.CRIMSON, T.SAND, T.FROSTPINE], "min_level": 3, "weight": 6.0,
-		"attack": {"kind": "lunge", "range": 110.0, "windup": 0.3, "speed": 600.0, "time": 0.22, "recover": 0.9},
+		"attack": {"kind": "swoop", "range": 150.0, "windup": 0.35, "speed": 620.0, "time": 0.42, "recover": 1.1},
 		"traits": ["erratic", "lifesteal"],
 	},
 	"thorn_stalker": {
@@ -115,12 +116,12 @@ const ENEMIES := {
 	"wild_pig": {
 		"active": "day", "wild": "defend", "name": "Wild Pig", "health": 30.0, "damage": 6.0, "speed": 120.0, "xp": 5,
 		"radius": 13.0, "size": 1.0, "tiles": [T.DARK_GRASS, T.BOG, T.MUD, T.DEAD_GRASS], "min_level": 1, "weight": 6.0,
-		"attack": {"kind": "lunge", "range": 100.0, "windup": 0.5, "speed": 520.0, "time": 0.24, "recover": 0.9}, "traits": [],
+		"attack": {"kind": "charge", "range": 180.0, "windup": 0.6, "speed": 520.0, "time": 0.45, "recover": 0.9, "knockback": 360.0}, "traits": [],
 	},
 	"mountain_goat": {
 		"active": "day", "wild": "defend", "name": "Mountain Goat", "health": 32.0, "damage": 7.0, "speed": 135.0, "xp": 6,
 		"radius": 13.0, "size": 1.0, "tiles": [T.ROCK, T.PEAK, T.SNOW, T.FROSTPINE], "min_level": 2, "weight": 7.0,
-		"attack": {"kind": "lunge", "range": 120.0, "windup": 0.55, "speed": 600.0, "time": 0.24, "recover": 1.0}, "traits": [],
+		"attack": {"kind": "charge", "range": 220.0, "windup": 0.65, "speed": 600.0, "time": 0.45, "recover": 1.0, "knockback": 520.0}, "traits": [],
 	},
 	"pheasant": {
 		"active": "day", "wild": "flee", "name": "Pheasant", "health": 9.0, "damage": 0.0, "speed": 160.0, "xp": 2,
@@ -140,7 +141,7 @@ const ENEMIES := {
 	"shore_crab": {
 		"active": "always", "wild": "defend", "name": "Shore Crab", "health": 20.0, "damage": 5.0, "speed": 90.0, "xp": 3,
 		"radius": 12.0, "size": 0.9, "tiles": [T.SAND, T.MUD, T.SALT], "min_level": 1, "weight": 4.0,
-		"attack": {"kind": "lunge", "range": 70.0, "windup": 0.45, "speed": 380.0, "time": 0.2, "recover": 0.8}, "traits": ["armored"],
+		"attack": {"kind": "combo", "range": 58.0, "windup": 0.45, "count": 2, "gap": 0.2, "arc": 90.0, "claws": 2, "recover": 0.9, "color": Color(1.0, 0.6, 0.45)}, "traits": ["armored"],
 	},
 	"marsh_toad": {
 		"active": "always", "wild": "flee", "name": "Marsh Toad", "health": 14.0, "damage": 0.0, "speed": 95.0, "xp": 3,
@@ -151,7 +152,7 @@ const ENEMIES := {
 	"frost_wolf": {
 		"active": "always", "name": "Frost Wolf", "health": 26.0, "damage": 10.0, "speed": 175.0, "xp": 11,
 		"radius": 13.0, "size": 1.0, "tiles": [T.SNOW, T.FROSTPINE, T.PEAK], "min_level": 4, "weight": 9.0,
-		"attack": {"kind": "lunge", "range": 125.0, "windup": 0.32, "speed": 660.0, "time": 0.24, "recover": 0.55},
+		"attack": {"kind": "pounce", "range": 150.0, "windup": 0.38, "time": 0.34, "radius": 50.0, "recover": 0.6, "color": Color(0.7, 0.9, 1.0)},
 		"touch": {"status": "chill", "duration": 2.0, "power": 0.3}, "traits": ["pack"],
 	},
 	"frost_troll": {
@@ -164,7 +165,7 @@ const ENEMIES := {
 	"dire_boar": {
 		"active": "day", "name": "Dire Boar", "health": 40.0, "damage": 13.0, "speed": 140.0, "xp": 12,
 		"radius": 15.0, "size": 1.1, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.THORN], "min_level": 3, "weight": 5.0,
-		"attack": {"kind": "lunge", "range": 170.0, "windup": 0.6, "speed": 760.0, "time": 0.32, "recover": 0.9},
+		"attack": {"kind": "charge", "range": 280.0, "windup": 0.8, "speed": 760.0, "time": 0.6, "recover": 1.0, "knockback": 600.0},
 		"traits": ["enrage"],
 	},
 	"treant": {
@@ -176,19 +177,19 @@ const ENEMIES := {
 	"sand_scorpion": {
 		"active": "always", "name": "Sand Scorpion", "health": 30.0, "damage": 11.0, "speed": 130.0, "xp": 11,
 		"radius": 14.0, "size": 1.05, "tiles": [T.SAND, T.SALT], "min_level": 3, "weight": 9.0,
-		"attack": {"kind": "lunge", "range": 90.0, "windup": 0.4, "speed": 520.0, "time": 0.22, "recover": 0.7},
+		"attack": {"kind": "thrust", "range": 104.0, "windup": 0.5, "arc": 34.0, "recover": 0.8, "color": Color(1.0, 0.85, 0.5)},
 		"touch": {"status": "poison", "duration": 4.0, "power": 0.35}, "traits": [],
 	},
 	"dune_mummy": {
 		"active": "night", "name": "Dune Mummy", "health": 45.0, "damage": 12.0, "speed": 68.0, "xp": 14,
 		"radius": 13.0, "size": 1.05, "tiles": [T.SAND, T.SALT, T.ASH], "min_level": 5, "weight": 6.0,
-		"attack": {"kind": "lunge", "range": 80.0, "windup": 0.55, "speed": 420.0, "time": 0.24, "recover": 0.9},
+		"attack": {"kind": "swipe", "range": 70.0, "windup": 0.6, "arc": 150.0, "claws": 1, "recover": 1.0, "color": Color(0.95, 0.9, 0.75)},
 		"touch": {"status": "bleed", "duration": 4.0, "power": 0.25}, "traits": ["regen"],
 	},
 	"void_stalker": {
 		"active": "night", "name": "Void Stalker", "health": 34.0, "damage": 15.0, "speed": 160.0, "xp": 17,
 		"radius": 13.0, "size": 1.05, "tiles": [T.VOIDSCAR, T.CRIMSON], "min_level": 9, "weight": 6.0,
-		"attack": {"kind": "lunge", "range": 130.0, "windup": 0.35, "speed": 700.0, "time": 0.22, "recover": 0.6},
+		"attack": {"kind": "combo", "range": 66.0, "windup": 0.35, "count": 3, "gap": 0.14, "arc": 100.0, "recover": 0.8, "color": Color(0.8, 0.55, 1.0)},
 		"traits": ["blink", "erratic"],
 	},
 	"void_eye": {
@@ -200,13 +201,14 @@ const ENEMIES := {
 	"crimson_fiend": {
 		"active": "night", "name": "Crimson Fiend", "health": 40.0, "damage": 14.0, "speed": 120.0, "xp": 16,
 		"radius": 13.0, "size": 1.05, "tiles": [T.CRIMSON, T.THORN], "min_level": 7, "weight": 6.0,
-		"attack": {"kind": "lunge", "range": 100.0, "windup": 0.38, "speed": 600.0, "time": 0.22, "recover": 0.65},
+		"attack": {"kind": "spin", "range": 70.0, "windup": 0.5, "radius": 84.0, "recover": 0.9, "color": Color(0.95, 0.3, 0.3)},
 		"touch": {"status": "bleed", "duration": 3.0, "power": 0.3}, "traits": ["lifesteal", "enrage"],
 	},
 	"magma_slime": {
 		"active": "always", "name": "Magma Slime", "health": 38.0, "damage": 12.0, "speed": 70.0, "xp": 13,
 		"radius": 14.0, "size": 1.0, "tiles": [T.CINDER, T.ASH, T.TAR], "min_level": 6, "weight": 7.0,
-		"attack": {"kind": "lunge", "range": 70.0, "windup": 0.5, "speed": 360.0, "time": 0.26, "recover": 0.8},
+		"attack": {"kind": "spit", "range": 210.0, "windup": 0.6, "recover": 1.2, "sprite": 2, "speed": 320.0, "count": 3, "spread": 30.0, "color": Color(1.0, 0.55, 0.2),
+			"status": {"status": "burn", "duration": 3.0, "power": 0.25}},
 		"touch": {"status": "burn", "duration": 3.0, "power": 0.35}, "traits": ["split"],
 	},
 	"cinder_imp": {
@@ -219,13 +221,13 @@ const ENEMIES := {
 	"bog_lurker": {
 		"active": "night", "name": "Bog Lurker", "health": 36.0, "damage": 12.0, "speed": 95.0, "xp": 12,
 		"radius": 15.0, "size": 1.05, "tiles": [T.BOG, T.MUD, T.FUNGAL], "min_level": 4, "weight": 6.0,
-		"attack": {"kind": "lunge", "range": 145.0, "windup": 0.45, "speed": 620.0, "time": 0.24, "recover": 0.8},
+		"attack": {"kind": "burrow", "range": 220.0, "windup": 1.1, "radius": 72.0, "recover": 1.0, "color": Color(0.5, 0.75, 0.4), "knockback": 300.0},
 		"touch": {"status": "poison", "duration": 4.0, "power": 0.3}, "traits": [],
 	},
 	"storm_harpy": {
 		"active": "day", "name": "Storm Harpy", "health": 24.0, "damage": 11.0, "speed": 170.0, "xp": 13, "flying": true,
 		"radius": 12.0, "size": 1.0, "tiles": [T.ROCK, T.PEAK, T.SALT, T.DEAD_GRASS], "min_level": 5, "weight": 5.0,
-		"attack": {"kind": "lunge", "range": 150.0, "windup": 0.4, "speed": 700.0, "time": 0.26, "recover": 0.9},
+		"attack": {"kind": "swoop", "range": 180.0, "windup": 0.4, "speed": 700.0, "time": 0.45, "recover": 1.0},
 		"traits": ["erratic"],
 	},
 }

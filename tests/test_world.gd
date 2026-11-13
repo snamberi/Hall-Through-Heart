@@ -107,3 +107,19 @@ func test_crates_and_barrels_break_open(t: TestContext) -> void:
 	t.check(not chair.is_in_group("breakables"), "a chair can be smashed")
 	for prop: Prop in [crate, barrel, chair]:
 		prop.free()
+
+
+func test_every_enemy_attack_is_handled(t: TestContext) -> void:
+	var kinds := ["lunge", "charge", "swoop", "swipe", "thrust", "combo", "pounce", "spit", "spin", "burrow", "shoot", "slam", "cloud", "explode"]
+	var used := {}
+	for id: String in EnemyDB.ENEMIES:
+		var attack: Dictionary = EnemyDB.ENEMIES[id]["attack"]
+		t.check(attack["kind"] in kinds, "%s attacks with unknown kind %s" % [id, attack["kind"]])
+		t.check(attack.has("range") and attack.has("windup") and attack.has("recover"), "%s's attack lacks range, windup or recover" % id)
+		if attack["kind"] in ["slam", "cloud", "explode", "spin", "burrow"]:
+			t.check(attack.has("radius"), "%s's area attack has no radius" % id)
+		if attack["kind"] in ["shoot", "spit"]:
+			t.check(attack.has("sprite") and attack.has("speed"), "%s's shot has no sprite or speed" % id)
+		if float(attack["range"]) > 0.0:
+			used[attack["kind"]] = true
+	t.check(used.size() >= 10, "only %d kinds of attack among the monsters" % used.size())

@@ -130,6 +130,12 @@ var _molten_left := 0.0
 var _summon_left := SUMMON_SECONDS
 var _minions := 0
 var _weave := 0.0
+## Swipes left in a combo; the pounce's start, end and progress; a charge
+## that hit a wall.
+var _combo_left := 0
+var _pounce_from := Vector2.ZERO
+var _pounce_to := Vector2.ZERO
+var _pouncing := false
 ## status id -> {"time": seconds left, "power": float, "tick": seconds to next tick}
 var _statuses: Dictionary = {}
 
@@ -223,7 +229,7 @@ func has_trait(id: String) -> bool:
 
 ## True while a wind-up will end in an area attack (for the ground marker).
 func is_area_attack() -> bool:
-	return _attack["kind"] in ["slam", "cloud", "explode"]
+	return _attack["kind"] in ["slam", "cloud", "explode", "spin", "burrow"]
 
 
 func _physics_process(delta: float) -> void:
@@ -265,6 +271,9 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
+	# Back above ground if a burrow was cut short.
+	if state != State.WINDUP and _visual.modulate.a < 1.0 and _attack["kind"] == "burrow":
+		_visual.modulate.a = 1.0
 	match state:
 		State.WANDER:
 			velocity = _direction * _speed * 0.4 * _ground_speed
@@ -292,21 +301,50 @@ func _physics_process(delta: float) -> void:
 			velocity = Vector2.ZERO
 			if has_target:
 				_direction = to_target.normalized()
+			if _attack["kind"] == "burrow" and has_target:
+				# Under the ground, sliding in beneath the player.
+				velocity = to_target.normalized() * minf(_speed * 1.8, distance / maxf(_state_time_left, 0.05))
+				_visual.modulate.a = 0.25
+			if _attack["kind"] == "charge":
+				# Pawing the ground before the rush.
+				_visual.position.x = sin(Time.get_ticks_msec() / 30.0) * 1.5
 			if is_area_attack():
 				queue_redraw()
 			if _state_time_left == 0.0:
 				_visual.modulate = _tint
+				_visual.position.x = 0.0
 				_has_hit = false
 				_strike(has_target)
 		State.LUNGE:
-			velocity = _direction * _attack.get("speed", 400.0) * _speed_multiplier() * _ground_speed
-			if has_target and not _has_hit and distance < body_radius + 13.0:
-				_has_hit = true
-				_hit_target(_current_damage())
-			if _state_time_left == 0.0:
-				_enter(State.RECOVER, _attack["recover"])
+			if _pouncing:
+				# A leap in an arc onto where the player stood.
+				var total: float = _attack.get("time", 0.4)
+				var t := 1.0 - _state_time_left / total
+				velocity = (_pounce_to - _pounce_from) / total
+				_visual.position.y = -sin(t * PI) * 26.0
+				if _state_time_left == 0.0:
+					_pouncing = false
+					_visual.position.y = 0.0
+					_blast(_attack.get("radius", 48.0))
+					_enter(State.RECOVER, _attack["recover"])
+			else:
+				velocity = _direction * _attack.get("speed", 400.0) * _speed_multiplier() * _ground_speed
+				if has_target and not _has_hit and distance < body_radius + 13.0:
+					_has_hit = true
+					if _hit_target(_current_damage()) and _attack.has("knockback"):
+						target.velocity = _direction * _attack["knockback"]
+						target.shake_camera(5.0)
+				if _attack["kind"] == "charge" and is_on_wall():
+					# Ran headlong into a wall: dazed for a moment.
+					HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(1, 1, 0.8), true)
+					_enter(State.STAGGER, 1.4)
+				elif _state_time_left == 0.0:
+					if _attack["kind"] == "swoop":
+						# Off and away again after the pass.
+						velocity = -_direction * _attack.get("speed", 400.0) * 0.5
+					_enter(State.RECOVER, _attack["recover"])
 		State.RECOVER:
-			velocity = velocity.move_toward(Vector2.ZERO, 2000.0 * delta)
+			velocity = velocity.move_toward(Vector2.ZERO, (500.0 if _attack["kind"] == "swoop" else 2000.0) * delta)
 			if _state_time_left == 0.0:
 				state = State.CHASE
 		State.STAGGER:
@@ -537,8 +575,51 @@ func _in_attack_range(distance: float) -> bool:
 ## Carries out the attack once the wind-up ends.
 func _strike(has_target: bool) -> void:
 	match _attack["kind"]:
-		"lunge":
-			_enter(State.LUNGE, lunge_time)
+		"lunge", "charge", "swoop":
+			_enter(State.LUNGE, _attack.get("time", lunge_time))
+		"swipe", "thrust":
+			_swipe(_attack.get("arc", 110.0))
+			_enter(State.RECOVER, _attack["recover"])
+		"combo":
+			# Several quick swipes, each with a short wind-up of its own.
+			if _combo_left <= 0:
+				_combo_left = int(_attack.get("count", 3))
+			_combo_left -= 1
+			_swipe(_attack.get("arc", 100.0))
+			velocity = _direction * 120.0
+			if _combo_left > 0:
+				_enter(State.WINDUP, _attack.get("gap", 0.16))
+				_visual.modulate = Color(1.5, 0.7, 0.6)
+			else:
+				_enter(State.RECOVER, _attack["recover"])
+		"pounce":
+			if has_target:
+				_pounce_from = global_position
+				var reach: float = _attack["range"] * 1.15
+				_pounce_to = global_position + (target.global_position - global_position).limit_length(reach)
+				_pouncing = true
+			_enter(State.LUNGE, _attack.get("time", 0.4))
+		"spit":
+			if has_target:
+				var shots: int = _attack.get("count", 3)
+				var spread := deg_to_rad(_attack.get("spread", 30.0))
+				var aim := global_position.direction_to(target.global_position)
+				for i in shots:
+					var angle := -spread / 2.0 + spread * i / maxf(shots - 1, 1)
+					EnemyProjectile.fire(self, target, _attack, _current_damage() * 0.7, aim.rotated(angle))
+			_enter(State.RECOVER, _attack["recover"])
+		"spin":
+			_blast()
+			var spin := create_tween()
+			spin.tween_property(_visual, "rotation", TAU, 0.3)
+			spin.tween_callback(func() -> void: _visual.rotation = 0.0)
+			_enter(State.RECOVER, _attack["recover"])
+		"burrow":
+			_visual.modulate.a = 1.0
+			_blast()
+			if target and not target.is_dead() and target.global_position.distance_to(global_position) < _attack["radius"]:
+				target.velocity = Vector2(0, -1).rotated(randf_range(-1.0, 1.0)) * 260.0
+			_enter(State.RECOVER, _attack["recover"])
 		"shoot":
 			if has_target:
 				EnemyProjectile.fire(self, target, _attack, _current_damage())
@@ -554,9 +635,28 @@ func _strike(has_target: bool) -> void:
 	queue_redraw()
 
 
+## A swipe in front: claw marks sweep across, and the player is hit if
+## inside its reach and angle.
+func _swipe(arc_degrees: float) -> void:
+	var reach: float = _attack.get("reach", _attack["range"])
+	var claws := 1 if _attack["kind"] == "thrust" else int(_attack.get("claws", 3))
+	ClawSwipe.spawn(get_parent(), global_position, _direction, reach, arc_degrees, _attack.get("color", Color(1.0, 0.92, 0.8)), claws)
+	Audio.play("swing", -10.0, 0.2)
+	if target == null or target.is_dead():
+		return
+	var offset := target.global_position - global_position
+	if offset.length() > reach + 12.0:
+		return
+	if offset.length() > body_radius + 8.0 and absf(_direction.angle_to(offset)) > deg_to_rad(arc_degrees) / 2.0:
+		return
+	if _hit_target(_current_damage()) and _attack.has("knockback"):
+		target.velocity = _direction * _attack["knockback"]
+
+
 ## An area attack centred on this enemy.
-func _blast() -> void:
-	var radius: float = _attack["radius"]
+func _blast(radius: float = -1.0) -> void:
+	if radius < 0.0:
+		radius = _attack["radius"]
 	var color: Color = _attack.get("color", Color(1.0, 0.6, 0.3))
 	RingBurst.spawn(get_parent(), global_position, color, radius)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -10), color, true)
@@ -573,7 +673,7 @@ func _hit_target(amount: float) -> bool:
 	if not target.take_damage(amount, global_position, level, Elements.attack_element(enemy_id)):
 		return false
 	on_dealt_damage(amount)
-	var effects: Array = [_data.get("touch", {}), _attack.get("status", {}) if _attack["kind"] != "shoot" else {}]
+	var effects: Array = [_data.get("touch", {}), _attack.get("status", {}) if not _attack["kind"] in ["shoot", "spit"] else {}]
 	for modifier in modifiers:
 		effects.append(MODIFIERS[modifier].get("touch", {}))
 	for effect: Dictionary in effects:
@@ -625,7 +725,7 @@ func _inspired() -> bool:
 func _chase_velocity(to_target: Vector2, distance: float, delta: float) -> Vector2:
 	var heading := to_target.normalized()
 	# Ranged enemies back away when the player gets too close.
-	if _attack["kind"] == "shoot" and distance < _attack["range"] * 0.45:
+	if _attack["kind"] in ["shoot", "spit"] and distance < _attack["range"] * 0.45:
 		heading = -heading
 	if has_trait("erratic"):
 		_weave += delta * 7.0
