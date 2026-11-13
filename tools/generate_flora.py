@@ -159,73 +159,99 @@ def oak(seed=1, wide=1.0, lift=0):
     return c.img
 
 
+def _bough(c, x0, y0, x1, y1, w0, colours):
+    """A branch that tapers from w0 pixels at its base to a point, bending
+    a little halfway so it doesn't look ruled."""
+    mx, my = (x0 + x1) / 2 + (y1 - y0) * 0.08, (y0 + y1) / 2 - abs(x1 - x0) * 0.08
+    for (ax, ay, bx, by, wa, wb) in ((x0, y0, mx, my, w0, max(1.0, w0 * 0.6)), (mx, my, x1, y1, max(1.0, w0 * 0.6), 0.6)):
+        dx, dy = bx - ax, by - ay
+        length = max(math.hypot(dx, dy), 0.01)
+        nx, ny = -dy / length, dx / length
+        c.shade("poly", [(ax + nx * wa / 2, ay + ny * wa / 2), (bx + nx * wb / 2, by + ny * wb / 2),
+                         (bx - nx * wb / 2, by - ny * wb / 2), (ax - nx * wa / 2, ay - ny * wa / 2)], colours)
+
+
 def dead_tree():
+    """A dead tree: a cracked grey trunk splitting into tapering limbs that
+    fork again into twigs, with a knot hole and a broken stub."""
     c = Canvas(64, 96)
+    grey = ramp("9a8a78", "6a5a4a", "463c32")
     c.shadow(32, 90, 14, 4)
-    trunk(c, 32, 30, 90, 7, ramp("8a7a68", "6a5a4a", "4a3e34"))
-    for (a, b, w) in [((32, 52), (14, 34), 3), ((14, 34), (8, 22), 2), ((32, 44), (50, 26), 3), ((50, 26), (56, 14), 2),
-                      ((32, 32), (26, 12), 2), ((32, 32), (40, 8), 2), ((50, 26), (44, 18), 1), ((14, 34), (20, 26), 1)]:
-        c.shade("line", (a[0], a[1], b[0], b[1]), ramp("8a7a68", "6a5a4a", "4a3e34"), width=w, dither=False)
+    trunk(c, 32, 34, 90, 8, grey)
+    limbs = [((31, 56), (13, 36), 4.0), ((33, 48), (51, 28), 4.0), ((32, 38), (27, 14), 3.0), ((33, 36), (41, 10), 3.0)]
+    twigs = [((13, 36), (7, 24), 2.0), ((13, 36), (5, 38), 1.6), ((51, 28), (57, 16), 2.0), ((51, 28), (59, 32), 1.6),
+             ((27, 14), (22, 5), 1.6), ((41, 10), (47, 3), 1.6), ((22, 45), (19, 39), 1.4), ((44, 37), (48, 33), 1.4)]
+    for (a, b, w) in limbs + twigs:
+        _bough(c, a[0], a[1], b[0], b[1], w, grey)
+    # A knot hole and a snapped stub.
+    c.fill("ellipse", (33, 62, 35, 65), C("2a221c"))
+    c.shade("poly", [(29, 70), (24, 67), (24, 69), (29, 72)], grey)
+    for y in range(40, 88, 7):
+        c.put(31 + (y // 7) % 3, y, C("3a3028"))
+        c.put(31 + (y // 7) % 3, y + 1, C("3a3028"))
     c.outline()
     return c.img
 
 
 def pine(snowy, seed=2, tiers=5, wide=1.0):
-    """A conifer of separate drooping boughs: each tier a fan of needles
-    with a ragged, upturned hem, a dark band of shade beneath it and a
-    glimpse of trunk between tiers at the edges."""
+    """A conifer of rounded, drooping boughs: each tier a row of needle
+    clumps over a dark inner mass, wider tiers lower down, a shaded band
+    under each, needle strokes lit from the left, and (snowy) snow lying
+    along the tops of the clumps."""
     c = Canvas(64, 96)
     r = random.Random(seed)
     c.shadow(32, 90, int(16 * wide), 4)
-    trunk(c, 32, 24, 90, 5, roots=False)
-    greens = ramp("4a7a6a", "2f5a50", "1f3e38")
-    lit = C("6a9a8a")
-    top_y, bottom_y = 4 if tiers > 5 else 8, 78
+    trunk(c, 32, 30, 90, 5, roots=False)
+    greens = ramp("4f806e", "325e52", "20423a")
+    deep = ramp("2a4c42", "1e3a32", "142a24")
+    lit = C("74a690")
+    top_y, bottom_y = 6 if tiers > 5 else 10, 80
     span = (bottom_y - top_y) / tiers
-    for k in range(tiers):
-        top = top_y + k * span * 0.92
-        base = top_y + (k + 1) * span + 2
-        half = (6 + (k + 1) * (19 / tiers) * 0.95 * 5 / 5) * wide
-        half = min(half, 28)
-        # The bough fan: apex, drooping tips, a hem of needle clumps. Each
-        # tier sits a pixel off true, so the tree is not a perfect cone.
-        cx = 32 + r.choice((-1, 0, 0, 1)) if k > 0 else 32
-        hem = []
-        clumps = max(3, int(half / 4))
-        for i in range(clumps + 1):
-            x = cx - half + 2 * half * i / clumps
-            droop = (2 if i in (0, clumps) else 0) + (r.randint(0, 1) if i in (0, clumps) else 0)
-            hem.append((x, base + droop))
-            if i < clumps:
-                hem.append((x + half / clumps, base - 3 + r.randint(0, 1)))
-        c.shade("poly", [(cx, top)] + hem[::-1] + [(cx - half, base + 2)], greens)
-        # Shade under the fan, then needle strokes: lit left, dark right.
-        for x in range(int(32 - half + 3), int(32 + half - 2)):
-            if (x, int(base - 4)) in c.filled:
-                c.put(x, base - 4, greens[2])
-        for i in range(int(half * 1.2)):
-            px = 32 - r.uniform(1, half - 2)
-            py = top + (base - top) * r.uniform(0.35, 0.85)
-            if (int(px), int(py)) in c.filled and (int(px) - 1, int(py) + 1) in c.filled:
-                c.put(px, py, lit)
-                c.put(px - 1, py + 1, greens[0])
-            qx = 32 + r.uniform(2, half - 2)
-            if (int(qx), int(py)) in c.filled:
-                c.put(qx, py, greens[2])
-        c.put(32, top, lit)
-        if snowy:
-            for x in range(int(32 - half + 1), int(32 + half)):
-                if (x + k) % 3 != 0:
-                    y = base - 1 - (1 if (x * 7 + k) % 4 == 0 else 0)
-                    c.put(x, y, C("eef2f6"))
-            for x in range(int(32 - half + 3), int(32 + half - 2)):
-                if (x + k) % 4 == 0:
-                    c.put(x, base - 2, C("dce6ee"))
-            c.put(32, top, C("ffffff"))
-    for _ in range(3 if not snowy else 0):
-        x, y = r.randint(26, 38), r.randint(30, 70)
-        if (x, y) in c.filled:
-            c.put(x, y, C("8a5a3a"))
+    tops = []
+    for k in range(tiers - 1, -1, -1):
+        cy = top_y + (k + 0.62) * span
+        half = min((3.0 + (k + 1) * 21.0 / tiers) * wide, 27.0)
+        # Fewer tiers overlap more, so a squat tree doesn't fall apart.
+        h = span * (1.05 + max(0, 5 - tiers) * 0.2)
+        # The inner mass of the tier: a fan wider at the bottom.
+        c.shade("poly", [(32, cy - h * 0.55), (32 + half * 0.8, cy + h * 0.38), (32, cy + h * 0.5), (32 - half * 0.8, cy + h * 0.38)], deep)
+        clumps = max(2, int(round(half / 4.0)))
+        for i in range(clumps):
+            t = (i + 0.5) / clumps
+            x = 32 - half + 2 * half * t + r.uniform(-0.8, 0.8)
+            out = abs(x - 32) / max(half, 1)
+            # Clumps droop and thin toward the tips of the boughs.
+            rx = half / clumps + 2.0 - out * 0.8
+            ry = h * (0.3 - out * 0.06)
+            y = cy - 1 + (out ** 1.6) * 6.5 + r.uniform(-0.5, 0.5)
+            pts = c.shade("ellipse", (x - rx, y - ry, x + rx, y + ry), greens)
+            tops.append((x, y - ry, rx))
+            # Needle strokes: lit on the left of each clump, dark on the right.
+            for _ in range(int(rx * 2)):
+                px, py = r.choice(pts)
+                if px < x:
+                    c.put(px, py, lit)
+                    c.put(px + 1, py + 1, greens[0])
+                else:
+                    c.put(px, py, greens[2])
+        # A shadowed band under the tier, where the next tier tucks in.
+        for x in range(int(32 - half * 0.8), int(32 + half * 0.8)):
+            yy = int(cy + h * 0.46)
+            if (x, yy) in c.filled and (x * 3 + k) % 4 != 0:
+                c.put(x, yy, deep[2])
+    # The leading shoot at the very top.
+    c.shade("poly", [(32, top_y - 7), (34, top_y + 1), (33.5, top_y + 5), (30.5, top_y + 5), (30, top_y + 1)], greens)
+    c.put(31, top_y - 3, lit)
+    if snowy:
+        snow, shade = C("f2f6fa"), C("cdd8e4")
+        for (x, y, rx) in tops:
+            for dx in range(int(-rx + 1), int(rx)):
+                yy = int(y + 1 + (dx * dx) / max(rx * rx, 1) * 2.5)
+                if (int(x + dx), yy) in c.filled:
+                    c.put(x + dx, yy, snow)
+                    if (int(x + dx), yy + 1) in c.filled and (dx % 3) == 0:
+                        c.put(x + dx, yy + 1, shade)
+        c.put(32, top_y - 6, C("ffffff"))
     c.outline()
     return c.img
 
@@ -1148,9 +1174,18 @@ def decor(kind):
         # awake), lichen, and a few fallen stones and moss at its foot.
         glow = kind == "waystone_lit"
         granite = ramp("b4b0bc", "86828f", "57535f")
-        c.shade("ellipse", (13, 54, 51, 62), ramp("7d8a5a", "5d6e40", "3e4c2c"))
-        c.shade("poly", [(19, 59), (18, 44), (20, 26), (22, 15), (26, 8), (29, 9), (32, 4), (36, 6), (40, 12),
-                         (43, 22), (45, 36), (46, 50), (45, 59)], granite)
+        # A stepped plinth of dressed stone blocks under it.
+        plinth = ramp("a4a0ae", "7a7684", "524e5c")
+        c.shade("poly", [(8, 62), (56, 62), (54, 56), (10, 56)], plinth)
+        c.shade("poly", [(13, 57), (51, 57), (49, 51), (15, 51)], plinth)
+        for x in (18, 28, 38, 48):
+            c.fill("rect", (x, 57, x, 61), C("3e3a46"))
+        for x in (22, 32, 42):
+            c.fill("rect", (x, 52, x, 56), C("3e3a46"))
+        c.fill("rect", (10, 56, 54, 56), C("c4c0cc"))
+        c.fill("rect", (15, 51, 49, 51), C("c4c0cc"))
+        c.shade("poly", [(19, 52), (18, 40), (20, 26), (22, 15), (26, 8), (29, 9), (32, 4), (36, 6), (40, 12),
+                         (43, 22), (45, 36), (46, 46), (45, 52)], granite)
         # Facets: a lit left face, a shadowed right face.
         c.fill("poly", [(21, 56), (20, 30), (23, 15), (27, 10), (25, 30), (24, 56)], C("c2bec8"))
         c.fill("poly", [(40, 14), (43, 24), (45, 38), (45, 58), (41, 58), (41, 36)], C("5f5b68"))
@@ -1167,7 +1202,7 @@ def decor(kind):
         glyphs = [[(0, 0, 0, 6), (0, 0, 3, 2), (0, 3, 3, 5)], [(1, 0, 1, 6), (0, 2, 3, 2), (0, 5, 3, 4)],
                   [(0, 0, 3, 3), (3, 3, 0, 6), (0, 0, 0, 6)], [(0, 6, 1, 0), (1, 0, 3, 6), (0, 3, 3, 3)],
                   [(1, 0, 1, 6), (1, 2, 3, 0), (1, 2, -1, 0)]]
-        for (gx, gy), glyph in zip([(31, 12), (31, 21), (30, 30), (32, 39), (31, 48)], glyphs):
+        for (gx, gy), glyph in zip([(31, 13), (31, 21), (30, 29), (32, 37), (31, 44)], glyphs):
             for (x0, y0, x1, y1) in glyph:
                 c.fill("line", (gx + x0 + 1, gy + y0 + 1, gx + x1 + 1, gy + y1 + 1), C("b4e8f0") if glow else C("a8a4b2"), 1)
                 c.fill("line", (gx + x0, gy + y0, gx + x1, gy + y1), C("4ad8f0") if glow else C("403c48"), 1)
@@ -1177,11 +1212,13 @@ def decor(kind):
         # Lichen and moss.
         for (x, y) in [(22, 24), (23, 25), (43, 44), (44, 45), (42, 46), (21, 50)]:
             c.put(x, y, C("9aa84e"))
-        for x in range(18, 47):
-            if r.random() < 0.6:
-                c.put(x, 58 - r.randrange(0, 3), C("5d7a3f") if r.random() < 0.6 else C("8aaa5a"))
-        c.shade("ellipse", (12, 55, 19, 60), ramp("9a96a4", "6e6a78", "4a4654"))
-        c.shade("ellipse", (46, 56, 51, 60), ramp("9a96a4", "6e6a78", "4a4654"))
+        for x in range(10, 55):
+            if r.random() < 0.35:
+                c.put(x, 61 - r.randrange(0, 2), C("5d7a3f") if r.random() < 0.6 else C("8aaa5a"))
+        # A socket cut into the crown, where the waystone's crystal floats.
+        c.fill("ellipse", (29, 6, 35, 10), C("2a2834"))
+        if glow:
+            c.fill("rect", (31, 7, 33, 8), C("8ff0ff"))
     elif kind == "gravestone":
         # A weathered headstone, rounded at the top, a cross cut into it,
         # leaning a little, with a mound of earth and grass in front.

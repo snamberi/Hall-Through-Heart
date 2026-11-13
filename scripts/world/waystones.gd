@@ -34,6 +34,7 @@ func make_stone(key: String, place_name: String, cell: Vector2i) -> Prop:
 	var stone := Prop.create_decor(Prop.Decor.WAYSTONE_LIT if awake else Prop.Decor.WAYSTONE, _world.cell_to_world(cell), 10.0, "Touch the waystone", func(_p: Player) -> void: use(key, place_name, cell))
 	if awake:
 		stone.add_light(0.5, 1.2, GLOW)
+		stone.add_child(WaystoneGlow.new())
 	stone.set_meta("waystone", key)
 	return stone
 
@@ -48,6 +49,7 @@ func use(key: String, place_name: String, cell: Vector2i) -> void:
 			if node.get_meta("waystone", "") == key:
 				node.sprite().frame = Prop.Decor.WAYSTONE_LIT
 				node.add_light(0.5, 1.2, GLOW)
+				node.add_child(WaystoneGlow.new())
 		SaveGame.request_save()
 	current = key
 	Events.screen_requested.emit("waystones")
