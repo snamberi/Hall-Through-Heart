@@ -18,6 +18,8 @@ var enchant: Dictionary = {}
 var sockets: Array[String] = []
 ## The named set this piece belongs to (ItemDB.ITEM_SETS), or "".
 var set_id := ""
+## Materials worked into it, oldest first (see Infusions).
+var infusions: Array[String] = []
 
 
 static func create(item_id: String, p_count: int = 1) -> Item:
@@ -51,6 +53,11 @@ static func from_dict(data: Dictionary) -> Item:
 		for gem: Variant in saved_sockets:
 			item.sockets.append(str(gem) if ItemDB.ITEMS.has(str(gem)) else "")
 	item.set_id = str(data.get("set", "")) if ItemDB.ITEM_SETS.has(str(data.get("set", ""))) else ""
+	var saved_infusions: Variant = data.get("infusions", [])
+	if saved_infusions is Array:
+		for material: Variant in saved_infusions:
+			if Infusions.MATERIALS.has(str(material)):
+				item.infusions.append(str(material))
 	var saved_mods: Variant = data.get("mods", [])
 	if saved_mods is Array:
 		for mod: Variant in saved_mods:
@@ -75,6 +82,8 @@ func to_dict() -> Dictionary:
 		data["sockets"] = sockets.duplicate()
 	if set_id != "":
 		data["set"] = set_id
+	if not infusions.is_empty():
+		data["infusions"] = infusions.duplicate()
 	return data
 
 
@@ -234,6 +243,8 @@ func all_modifiers() -> Array[Dictionary]:
 	for gem in sockets:
 		if gem != "":
 			result.append(Gems.modifier(gem, slot()))
+	for material in infusions:
+		result.append(Infusions.modifier(material, level))
 	return result
 
 

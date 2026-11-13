@@ -133,6 +133,13 @@ static func describe(item: Item, player: Player) -> String:
 		if item.is_tool():
 			lines.append("")
 			lines.append("[color=#%s]Kept on the belt. Works %d%% as fast as a worn tool.[/color]" % [dim, roundi(def["tool"]["speed"] * 100.0)])
+		if Infusions.MATERIALS.has(item.id):
+			lines.append("")
+			lines.append("[color=#e88aa0]Infuses gear (%s): %s at item level 10[/color]" % [Infusions.MATERIALS[item.id]["name"], Infusions.describe(item.id, 10)])
+		var uses := material_uses(item.id)
+		if uses != "":
+			lines.append("")
+			lines.append("[color=#%s]%s[/color]" % [dim, uses])
 		if item.is_stackable():
 			lines.append("")
 			lines.append("[color=#%s]You have %d.[/color]" % [dim, player.inventory.count_of(item.id)])
@@ -176,6 +183,10 @@ static func describe(item: Item, player: Player) -> String:
 		lines.append("[color=#%s]+[/color] [color=#%s]%s[/color]" % [UITheme.HEADING.to_html(false), UITheme.INFO.to_html(false), ItemDB.describe_modifier(modifier)])
 	if not item.enchant.is_empty():
 		lines.append("[color=#c08cff]+ %s  (enchanted)[/color]" % ItemDB.describe_modifier(item.enchant))
+	for material in item.infusions:
+		lines.append("[color=#%s]~ %s: %s  (infused)[/color]" % ["e88aa0", Infusions.MATERIALS[material]["name"], Infusions.describe(material, item.level)])
+	if item.infusions.size() < Infusions.room(item):
+		lines.append("[color=#%s]~ %d infusion%s free[/color]" % [dim, Infusions.room(item) - item.infusions.size(), "s" if Infusions.room(item) - item.infusions.size() > 1 else ""])
 	for gem in item.sockets:
 		if gem == "":
 			lines.append("[color=#%s]<> Empty socket[/color]" % dim)
@@ -200,6 +211,20 @@ static func describe(item: Item, player: Player) -> String:
 		lines.append("")
 		lines.append(comparison)
 	return "\n".join(lines)
+
+
+## "Used to make: A, B, C and 4 more", or "" if nothing needs it.
+static func material_uses(item_id: String) -> String:
+	var names: PackedStringArray = []
+	for recipe: Dictionary in RecipeDB.all():
+		if recipe["inputs"].has(item_id):
+			var name := RecipeDB.display_name(recipe)
+			if not name in names:
+				names.append(name)
+	if names.is_empty():
+		return ""
+	var shown := names.slice(0, 4)
+	return "Used to make: %s%s" % [", ".join(shown), "" if names.size() <= 4 else " and %d more" % (names.size() - 4)]
 
 
 ## A relic's boons at its rarity and its power (BBCode).

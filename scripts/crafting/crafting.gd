@@ -36,7 +36,8 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 	var made: Item
 	if recipe.has("equipment"):
 		# A better smith is likelier to turn out something special.
-		var rarity := LootGenerator.roll_rarity(player.stats.get_stat("magic_find"), skill / 20.0)
+		# Rarer materials make for rarer gear.
+		var rarity := LootGenerator.roll_rarity(player.stats.get_stat("magic_find"), skill / 20.0 + material_quality(recipe) * 1.5)
 		made = LootGenerator.make_equipment(recipe["item_level"], rarity, recipe["equipment"], skill / 100.0)
 	else:
 		made = Item.create(recipe["item"], recipe["count"])
@@ -48,6 +49,17 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 	player.professions.add_xp(recipe["profession"], recipe["xp"])
 	Events.item_crafted.emit(recipe["id"])
 	return ""
+
+
+## How fine a recipe's materials are: their average rarity (0 = common).
+static func material_quality(recipe: Dictionary) -> float:
+	var total := 0.0
+	var count := 0
+	for item_id: String in recipe["inputs"]:
+		var amount: int = recipe["inputs"][item_id]
+		total += float(ItemDB.ITEMS[item_id].get("material_rarity", 0)) * amount
+		count += amount
+	return total / maxf(count, 1.0)
 
 
 # --- upgrading (blacksmithing)

@@ -88,3 +88,51 @@ func test_ego_grows_on_stronger_foes_and_shrinks_with_honest_work(t: TestContext
 	t.check(player.ego.value < high, "crafting and trading bring ego down")
 	player.ego.value = 0.0
 	player.ego.add(0.0)
+
+
+func test_every_talent_can_be_reached(t: TestContext) -> void:
+	t.check(TalentDB.NODES.size() >= 100, "the tree has only %d talents" % TalentDB.NODES.size())
+	var seen := {"awakened_heart": true}
+	var queue: Array[String] = ["awakened_heart"]
+	while not queue.is_empty():
+		var id: String = queue.pop_back()
+		for other: String in TalentDB.neighbours(id):
+			if not seen.has(other):
+				seen[other] = true
+				queue.append(other)
+	for id: String in TalentDB.NODES:
+		t.check(seen.has(id), "talent %s cannot be reached from the Heart" % id)
+		for stat: String in TalentDB.NODES[id]["mods"]:
+			t.check(TalentDB.describe(id, 1).size() > 0, "talent %s describes nothing" % id)
+	var spots := {}
+	for id: String in TalentDB.NODES:
+		var at := TalentDB.position(id)
+		for other: String in spots:
+			t.check(at.distance_to(spots[other]) > 30.0, "talents %s and %s overlap" % [id, other])
+		spots[id] = at
+
+
+func test_infusion_materials_are_real(t: TestContext) -> void:
+	for material: String in Infusions.MATERIALS:
+		t.check(ItemDB.ITEMS.has(material), "infusion material %s is not an item" % material)
+		var stat: String = Infusions.MATERIALS[material]["stat"]
+		t.check(Infusions.modifier(material, 10)["value"] > 0.0, "%s infuses nothing" % material)
+		t.check(stat != "", "%s has no stat" % material)
+	var item := LootGenerator.make_equipment(10, 4, "sword")
+	t.equal(Infusions.room(item), 3, "legendary gear holds three infusions")
+	item.infusions.append("fiend_horn")
+	t.equal(Item.from_dict(item.to_dict()).infusions, item.infusions, "infusions after a save")
+
+
+func test_heart_monsters_and_gear_are_whole(t: TestContext) -> void:
+	for id: String in ["veinheart", "heartsworn_knight"]:
+		t.check(EnemyDB.ENEMIES.has(id), "%s is not a monster" % id)
+		t.check(ResourceLoader.exists(EnemyDB.SHEETS % id), "%s has no sprite sheet" % id)
+		t.check(ItemDB.LOOT_TABLES.has(id), "%s drops nothing of its own" % id)
+	for piece: String in ItemDB.ITEM_SETS["heartsworn"]["pieces"]:
+		var item := LootGenerator.make_equipment(20, 0, piece)
+		t.equal(item.set_id, "heartsworn", "%s joins its set" % piece)
+		t.check(item.rarity >= 2, "%s comes at least Rare" % piece)
+		t.check(not RecipeDB.find(piece).is_empty(), "%s cannot be forged" % piece)
+	for weapon: String in ["pulsebrand", "heartpiercer", "heartstring"]:
+		t.check(ResourceLoader.exists("res://assets/sprites/weapons/%s.png" % weapon), "%s has no sprite" % weapon)

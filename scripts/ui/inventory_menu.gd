@@ -34,6 +34,7 @@ var _details: RichTextLabel
 var _primary: Button
 var _upgrade: Button
 var _enchant: Button
+var _infuse: Button
 var _socket: Button
 var _salvage: Button
 var _discard: Button
@@ -244,10 +245,12 @@ func _build() -> void:
 	right.add_child(smith)
 	_upgrade = UITheme.button("Upgrade", func() -> void: _act(Crafting.upgrade), 99.0)
 	_enchant = UITheme.button("Enchant", func() -> void: _act(Crafting.enchant), 99.0)
+	_infuse = UITheme.button("Infuse", _open_infusions, 99.0)
+	_infuse.tooltip_text = "Work monster and animal parts into this piece for a lasting bonus."
 	_salvage = UITheme.button("Salvage", func() -> void: _act(Crafting.salvage), 99.0)
 	_socket = UITheme.button("Gems", _open_gems, 99.0)
-	for button: Button in [_upgrade, _enchant, _salvage, _socket]:
-		button.custom_minimum_size.x = 74.0
+	for button: Button in [_upgrade, _enchant, _infuse, _salvage, _socket]:
+		button.custom_minimum_size.x = 58.0
 		smith.add_child(button)
 
 	_tip = ItemTooltip.new()
@@ -354,6 +357,7 @@ func _refresh_details() -> void:
 			_secondary.tooltip_text = ""
 	_upgrade.disabled = item == null or not item.is_equipment() or not item.is_upgradable() or item.upgrade >= ItemDB.MAX_UPGRADE
 	_enchant.disabled = item == null or not item.is_equipment()
+	_infuse.disabled = not Infusions.can_infuse(item)
 	_salvage.disabled = not in_bag or not item.is_equipment()
 	_socket.disabled = item == null or not item.is_equipment() or item.sockets.is_empty()
 
@@ -422,6 +426,50 @@ func _report(result: String) -> void:
 
 
 ## A small window listing the gems in the bag that fit the selected item.
+## Materials in the bag that can be worked into the chosen piece.
+func _open_infusions() -> void:
+	var item := _selected
+	if not Infusions.can_infuse(item):
+		return
+	var popup := PopupPanel.new()
+	popup.add_theme_stylebox_override("panel", UITheme.get_theme().get_stylebox("panel", "PanelContainer"))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	popup.add_child(box)
+	box.add_child(UITheme.heading("Infuse %s" % item.display_name(), 18))
+	var price := Infusions.cost(item)
+	var room := Infusions.room(item)
+	box.add_child(UITheme.label("%d of %d infusions used. The next takes %d of a material and %d gold." % [item.infusions.size(), room, price["count"], price["gold"]], 14, UITheme.DIM))
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(420, 300)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 4)
+	scroll.add_child(list)
+	var seen := {}
+	for material in player.inventory.items:
+		if material == null or seen.has(material.id) or not Infusions.MATERIALS.has(material.id):
+			continue
+		seen[material.id] = true
+		var have := player.inventory.count_of(material.id)
+		var button := UITheme.button("%s (%d)  ->  %s: %s" % [material.display_name(), have, Infusions.MATERIALS[material.id]["name"], Infusions.describe(material.id, item.level)], func() -> void:
+			_report(Infusions.infuse(player, item, material.id))
+			popup.hide()
+		, 400.0)
+		button.icon = material.icon()
+		button.add_theme_color_override("icon_normal_color", material.tint())
+		button.disabled = Infusions.problem(player, item, material.id) != ""
+		button.tooltip_text = Infusions.problem(player, item, material.id)
+		list.add_child(button)
+	if seen.is_empty():
+		list.add_child(UITheme.label("No parts to infuse. Hunt animals and monsters: hides, horns,\nfeathers, silk, cores and more all work.", 14, UITheme.DIM))
+	box.add_child(UITheme.button("Close", popup.hide, 420.0))
+	add_child(popup)
+	popup.popup_centered()
+	popup.popup_hide.connect(popup.queue_free)
+
+
 func _open_gems() -> void:
 	var item := _selected
 	if item == null:

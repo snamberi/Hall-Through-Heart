@@ -9,7 +9,7 @@ var _points: Label
 var _canvas: Control
 var _details: RichTextLabel
 var _offset := Vector2.ZERO
-var _zoom := 0.85
+var _zoom := 0.7
 var _dragging := false
 var _dragged := 0.0
 var _hovered := ""
@@ -83,7 +83,7 @@ func _on_input(event: InputEvent) -> void:
 					if id != "" and player.talents.learn(id):
 						Audio.play("level_up", -12.0, 0.1)
 		elif event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-			_zoom = clampf(_zoom * (1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.89), 0.45, 1.6)
+			_zoom = clampf(_zoom * (1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.89), 0.3, 1.6)
 			_canvas.queue_redraw()
 	elif event is InputEventMouseMotion:
 		if _dragging:
@@ -101,7 +101,7 @@ func _draw_tree() -> void:
 	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), Color("0b0d15"))
 	var talents := player.talents
 	# Faint rings for each distance out.
-	for ring in range(1, 8):
+	for ring in range(1, 10):
 		_canvas.draw_arc(_to_screen("awakened_heart"), ring * TalentDB.STEP * _zoom, 0.0, TAU, 96, Color(1, 1, 1, 0.03), 1.0)
 	for edge: Array in TalentDB.edges():
 		var both: bool = talents.has(edge[0]) and talents.has(edge[1])
