@@ -204,7 +204,86 @@ func _compute(cell: Vector2i) -> int:
 	var village: Variant = village_near(cell)
 	if village != null:
 		return _village_tile(cell, village)
-	return _natural(cell)
+	var natural := _natural(cell)
+	if on_road(cell):
+		# Roads cut through hills and cross shallows on planks; deep water
+		# stops them.
+		if natural == T.DEEP_WATER:
+			return natural
+		return T.PLANK if natural == T.SHALLOW_WATER else T.PATH
+	return natural
+
+
+# --- roads
+
+## Villages further apart than this have no road between them.
+const ROAD_REACH := 340.0
+## Roads that pass through each village region: region -> [[from, to, phase]].
+var _roads: Dictionary = {}
+
+
+## Whether a tile lies on a road: a wandering track two tiles wide between
+## neighbouring villages, and one from the Sanctuary to the first village.
+func on_road(cell: Vector2i) -> bool:
+	var point := Vector2(cell)
+	for road: Array in roads_near(Vector2i((point / VILLAGE_REGION).floor())):
+		var from: Vector2 = road[0]
+		var to: Vector2 = road[1]
+		var length := from.distance_to(to)
+		var direction := (to - from) / length
+		var t := (point - from).dot(direction) / length
+		if t < 0.0 or t > 1.0:
+			continue
+		if absf(direction.cross(point - from) - road_bend(road, t)) <= 1.05:
+			return true
+	return false
+
+
+## How far a road strays to one side of the straight line, partway along.
+static func road_bend(road: Array, t: float) -> float:
+	var length: float = (road[0] as Vector2).distance_to(road[1])
+	return (sin(t * length / 29.0 + road[2]) * 5.0 + sin(t * length / 11.0 + road[2] * 2.0) * 1.6) * sin(PI * t)
+
+
+## A point on a road, partway along it, in tiles.
+static func road_point(road: Array, t: float) -> Vector2:
+	var from: Vector2 = road[0]
+	var to: Vector2 = road[1]
+	var direction := (to - from).normalized()
+	return from.lerp(to, t) + direction.orthogonal() * -road_bend(road, t)
+
+
+## Every road that passes through a village region.
+func roads_near(region: Vector2i) -> Array:
+	if _roads.has(region):
+		return _roads[region]
+	var area := Rect2(Vector2(region * VILLAGE_REGION), Vector2(VILLAGE_REGION, VILLAGE_REGION)).grow(10.0)
+	var found: Array = []
+	var candidates: Array = []
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			candidates.append_array(roads_from(region + Vector2i(dx, dy)))
+	var first := Vector2(first_village())
+	candidates.append([first.normalized() * 12.0, first, 0.7])
+	for road: Array in candidates:
+		if Rect2(road[0], Vector2.ZERO).expand(road[1]).grow(10.0).intersects(area):
+			found.append(road)
+	_roads[region] = found
+	return found
+
+
+## The roads leading out of the village in a region toward its neighbours
+## east and south (each pair of villages shares one road).
+func roads_from(region: Vector2i) -> Array:
+	var center: Variant = village_center(region)
+	if center == null:
+		return []
+	var result: Array = []
+	for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, -1)]:
+		var other: Variant = village_center(region + step)
+		if other != null and Vector2(other - center).length() < ROAD_REACH:
+			result.append([Vector2(center), Vector2(other), float(posmod(hash(Vector3i(region.x, region.y, step.x * 3 + step.y)), 1000)) / 100.0])
+	return result
 
 
 ## Inside a village: roads crossing the middle, and the land's own ground,

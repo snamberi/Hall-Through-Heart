@@ -244,3 +244,26 @@ func test_props_given_a_prompt_later_can_be_used(t: TestContext) -> void:
 	prop.prompt_text = "Open it"
 	t.check(prop.is_in_group("props"), "a prop given a prompt later is not usable")
 	prop.free()
+
+
+func test_roads_lead_out_of_the_sanctuary(t: TestContext) -> void:
+	var main := await t.game()
+	var world: World = main.get_node("World")
+	var generator := world.generator
+	var first := generator.first_village()
+	var roads := generator.roads_near(Vector2i((Vector2(first) / WorldGenerator.VILLAGE_REGION).floor()))
+	var home: Array = roads.filter(func(r: Array) -> bool: return (r[0] as Vector2).length() < 20.0)
+	t.equal(home.size(), 1, "one road runs from the Sanctuary to the first village")
+	var on := 0
+	for i in 40:
+		var point := WorldGenerator.road_point(home[0], (i + 0.5) / 40.0)
+		if generator.on_road(Vector2i(point.round())):
+			on += 1
+	t.check(on >= 38, "the road is unbroken (%d of 40 points on it)" % on)
+	var structures: Structures = main.get_node("Structures")
+	var sites := structures.nearest_sites(Vector2i(20, 20), 3, 6, [], 14.0)
+	t.check(sites.size() >= 1 and sites.size() <= 3, "a sign finds one to three places")
+	for site: Dictionary in sites:
+		t.check(float(site["distance"]) > 14.0, "a sign does not point at what stands beside it")
+	t.equal(Structures.compass(Vector2(0, -5)), "north", "north is up the map")
+	t.equal(Structures.compass(Vector2(5, 5)), "south-east", "south-east is down and right")

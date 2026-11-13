@@ -123,6 +123,10 @@ func _ready() -> void:
 	add_child(feel)
 	feel.setup(_player)
 	ambience.setup(_player, _world, _day_night)
+	var life := AmbientLife.new()
+	life.name = "AmbientLife"
+	add_child(life)
+	life.setup(_player, _world, _day_night)
 	var steps := Footsteps.new()
 	steps.name = "Footsteps"
 	_player.add_child(steps)

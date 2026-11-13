@@ -299,11 +299,88 @@ def thunder():
     return out
 
 
+def amb_day():
+    """A warm day: a soft hum of insects under distant birdsong, looping."""
+    seconds = 8.0
+    n = int(seconds * RATE)
+    hum = _filtered(41, seconds, 0.08, 0.5)
+    out = [0.0] * n
+    for i in range(n):
+        t = i / RATE
+        out[i] = hum[i] * (0.6 + 0.4 * math.sin(t * 0.9)) * 0.5 + 0.02 * math.sin(2 * math.pi * 220 * t) * (0.5 + 0.5 * math.sin(t * 3.1))
+    rnd = noise(42)
+    start = 0.3
+    while start < seconds - 0.6:
+        pitch = 2600 + 900 * abs(rnd())
+        notes = 2 + int(abs(rnd()) * 4)
+        for note in range(notes):
+            for i in range(int(0.08 * RATE)):
+                t = i / RATE
+                j = int((start + note * 0.11) * RATE) + i
+                if j < n:
+                    out[j] += 0.08 * math.sin(2 * math.pi * (pitch - note * 120 + 600 * math.sin(t * 70.0)) * t) * math.sin(math.pi * t / 0.08)
+        start += 0.9 + 1.4 * abs(rnd())
+    return _loop(out)
+
+
+def buzz():
+    """A bee drifting past: a reedy hum that swells and fades."""
+    n = int(0.9 * RATE)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        f = 210 + 25 * math.sin(t * 9.0)
+        wave_ = (math.sin(2 * math.pi * f * t) + 0.5 * math.sin(2 * math.pi * f * 2 * t) + 0.25 * math.sin(2 * math.pi * f * 3 * t))
+        out.append(0.14 * wave_ * math.sin(math.pi * t / 0.9) * (0.7 + 0.3 * math.sin(t * 40.0)))
+    return out
+
+
+def flutter():
+    """Wings beating as a bird takes off."""
+    n = int(0.6 * RATE)
+    rnd = noise(51)
+    out = []
+    smooth = 0.0
+    for i in range(n):
+        t = i / RATE
+        smooth += (rnd() - smooth) * 0.35
+        beat = max(0.0, math.sin(2 * math.pi * 14.0 * t)) ** 2
+        out.append(0.5 * smooth * beat * math.exp(-t * 3.0))
+    return out
+
+
+def crow():
+    """A hoarse caw."""
+    n = int(0.42 * RATE)
+    rnd = noise(61)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        f = 520 - 160 * t
+        tone = math.sin(2 * math.pi * f * t) + 0.6 * math.sin(2 * math.pi * f * 2.02 * t) + 0.4 * rnd()
+        out.append(0.22 * tone * math.sin(math.pi * min(t / 0.38, 1.0)) * (1.0 if t < 0.38 else 0.0))
+    return out
+
+
+def owl():
+    """Two soft hoots in the dark."""
+    out = []
+    for length, pitch in ((0.32, 380.0), (0.12, 0.0), (0.5, 350.0)):
+        for i in range(int(length * RATE)):
+            t = i / RATE
+            if pitch == 0.0:
+                out.append(0.0)
+            else:
+                out.append(0.25 * math.sin(2 * math.pi * (pitch - 20 * t) * t) * math.sin(math.pi * t / length))
+    return out
+
+
 SFX = (("ui_hover", lambda: ui_hover()), ("ui_click", lambda: ui_click()), ("chop", lambda: chop()), ("mine", lambda: mine()), ("transform", lambda: transform()),
        ("heartbeat", lambda: heartbeat()), ("step_grass", lambda: step("grass")), ("step_stone", lambda: step("stone")), ("step_snow", lambda: step("snow")),
        ("step_water", lambda: step("water")), ("step_sand", lambda: step("sand")), ("amb_wind", lambda: amb_wind()), ("amb_rain", lambda: amb_rain()),
        ("amb_night", lambda: amb_night()), ("amb_cave", lambda: amb_cave()), ("amb_fire", lambda: amb_fire()), ("bird", lambda: bird()), ("drip", lambda: drip()),
-       ("thunder", lambda: thunder()))
+       ("thunder", lambda: thunder()), ("amb_day", lambda: amb_day()), ("buzz", lambda: buzz()), ("flutter", lambda: flutter()), ("crow", lambda: crow()),
+       ("owl", lambda: owl()))
 
 
 if __name__ == "__main__":

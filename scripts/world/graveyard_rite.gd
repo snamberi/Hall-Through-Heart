@@ -31,6 +31,10 @@ func _exit_tree() -> void:
 		_boss.queue_free()
 
 
+func _ready() -> void:
+	add_to_group("graveyards")
+
+
 func _process(delta: float) -> void:
 	_check -= delta
 	if _check > 0.0:

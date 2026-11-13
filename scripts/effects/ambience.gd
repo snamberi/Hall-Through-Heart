@@ -5,9 +5,9 @@ extends Node
 ## and then a bird, a drip, a roll of thunder. Each bed fades up and down
 ## as the player moves between places.
 
-const BEDS: Array[String] = ["amb_wind", "amb_rain", "amb_night", "amb_cave", "amb_fire"]
+const BEDS: Array[String] = ["amb_wind", "amb_rain", "amb_night", "amb_cave", "amb_fire", "amb_day"]
 ## Loudest each bed gets, in decibels.
-const LEVELS := {"amb_wind": -17.0, "amb_rain": -9.0, "amb_night": -15.0, "amb_cave": -11.0, "amb_fire": -9.0}
+const LEVELS := {"amb_wind": -17.0, "amb_rain": -9.0, "amb_night": -15.0, "amb_cave": -11.0, "amb_fire": -9.0, "amb_day": -17.0}
 
 var _player: Player
 var _world: World
@@ -79,6 +79,9 @@ func _listen() -> void:
 	_wanted["amb_rain"] = 0.0 if inside else 1.0 if storm == "Thunderstorm" else 0.7 if storm == "Rain" else 0.0
 	var warm_night := not inside and _day_night.is_night() and storm == "" and not tile in [T.SNOW, T.FROSTPINE, T.PEAK, T.SALT, T.VOIDSCAR, T.CINDER, T.ASH]
 	_wanted["amb_night"] = 1.0 if warm_night else 0.0
+	# Birdsong and the hum of insects on a fair day in green country.
+	var green := tile in [T.DARK_GRASS, T.DEAD_GRASS, T.THORN, T.FROSTPINE, T.FUNGAL, T.PATH]
+	_wanted["amb_day"] = 1.0 if not inside and green and not _day_night.is_night() and storm == "" else 0.0
 	_wanted["amb_cave"] = 1.0 if cave else 0.0
 	# The nearest fire, louder the closer.
 	var nearest := 9999.0
@@ -101,6 +104,12 @@ func _sing() -> void:
 		return
 	var T := TerrainTiles.Type
 	var tile := _world.tile_type_at_position(_player.global_position)
+	if _day_night.is_night() and tile in [T.DARK_GRASS, T.FROSTPINE, T.FUNGAL, T.THORN] and randf() < 0.3:
+		Audio.play("owl", randf_range(-22.0, -14.0), 0.15)
+		return
+	if not _day_night.is_night() and tile in [T.ASH, T.DEAD_GRASS, T.CRIMSON, T.MUD] and randf() < 0.35:
+		Audio.play("crow", randf_range(-22.0, -13.0), 0.2)
+		return
 	if Atmosphere.weather == "" and not _day_night.is_night() and tile in [T.DARK_GRASS, T.DEAD_GRASS, T.THORN, T.BOG, T.FROSTPINE, T.MUD, T.FUNGAL]:
 		Audio.play("bird", randf_range(-20.0, -12.0), 0.3)
 		if randf() < 0.5:

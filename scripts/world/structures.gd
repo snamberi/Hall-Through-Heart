@@ -142,7 +142,7 @@ const SITE_NAMES := {"ruin": "Ruins", "shrine": "Shrine", "cave": "Cave", "lair"
 ## The nearest places to a tile: up to `count` of {"kind", "name", "cell",
 ## "distance"} (in tiles), nearest first, from the structures within
 ## `reach` chunks and any villages close by.
-func nearest_sites(cell: Vector2i, count: int, reach: int = 6, skip: Array = []) -> Array:
+func nearest_sites(cell: Vector2i, count: int, reach: int = 6, skip: Array = [], closest: float = 4.0) -> Array:
 	var chunk := Vector2i((Vector2(cell) / World.CHUNK_SIZE).floor())
 	var found: Array = []
 	for dy in range(-reach, reach + 1):
@@ -151,7 +151,7 @@ func nearest_sites(cell: Vector2i, count: int, reach: int = 6, skip: Array = [])
 			if site.is_empty() or site["kind"] in skip:
 				continue
 			var distance := Vector2(site["cell"] - cell).length()
-			if distance > 4.0:
+			if distance > closest:
 				found.append({"kind": site["kind"], "name": SITE_NAMES.get(site["kind"], str(site["kind"]).capitalize()), "cell": site["cell"], "distance": distance})
 	if not "village" in skip:
 		var region := Vector2i((Vector2(cell) / WorldGenerator.VILLAGE_REGION).floor())

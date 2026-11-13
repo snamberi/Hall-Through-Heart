@@ -20,6 +20,8 @@ const LINES: Array[String] = [
 var _world: World
 var _by_chunk: Dictionary = {}
 var _built: Dictionary = {}
+## Signposts along the roads, by the chunk they stand in.
+var _signs: Dictionary = {}
 
 
 func setup(world: World) -> void:
@@ -34,6 +36,7 @@ func is_built_up(cell: Vector2i) -> bool:
 
 
 func _on_chunk_built(chunk: Vector2i) -> void:
+	_place_road_signs(chunk)
 	var origin := chunk * World.CHUNK_SIZE
 	var middle := origin + Vector2i(World.CHUNK_SIZE / 2, World.CHUNK_SIZE / 2)
 	var center: Variant = _world.generator.village_near(middle)
@@ -52,6 +55,10 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 
 
 func _on_chunk_freed(chunk: Vector2i) -> void:
+	for sign: Variant in _signs.get(chunk, []):
+		if is_instance_valid(sign):
+			sign.queue_free()
+	_signs.erase(chunk)
 	if not _by_chunk.has(chunk):
 		return
 	for node: Variant in _by_chunk[chunk]:
@@ -61,6 +68,39 @@ func _on_chunk_freed(chunk: Vector2i) -> void:
 	for center: Vector2i in _built.keys():
 		if _built[center] == chunk:
 			_built.erase(center)
+
+
+## Every so often along a road, a signpost to the places nearby.
+const SIGN_EVERY := 80.0
+
+
+func _place_road_signs(chunk: Vector2i) -> void:
+	var bounds := Rect2i(chunk * World.CHUNK_SIZE, Vector2i(World.CHUNK_SIZE, World.CHUNK_SIZE))
+	var region := Vector2i((Vector2(bounds.get_center()) / WorldGenerator.VILLAGE_REGION).floor())
+	var placed: Array = []
+	for road: Array in _world.generator.roads_near(region):
+		var length: float = (road[0] as Vector2).distance_to(road[1])
+		# The road out of the Sanctuary gets a sign close to the temple.
+		var along := 8.0 if (road[0] as Vector2).length() < 20.0 else WorldGenerator.VILLAGE_RADIUS + 30.0
+		var structures: Structures = get_parent().get_node_or_null("Structures")
+		while along < length - WorldGenerator.VILLAGE_RADIUS - 20.0:
+			var t := along / length
+			var spot := _beside_road(road, t)
+			if bounds.has_point(spot) and not _world.generator.on_road(spot) and _world.generator.is_walkable(spot) \
+					and (structures == null or not structures.is_reserved(spot) or along < 10.0):
+				var sign := Signpost.create(_at(spot), spot, get_parent().get_node_or_null("Structures"))
+				add_child(sign)
+				placed.append(sign)
+			along += SIGN_EVERY
+	if not placed.is_empty():
+		_signs[chunk] = placed
+
+
+## A tile just off the side of a road, partway along it.
+func _beside_road(road: Array, t: float) -> Vector2i:
+	var direction := ((road[1] as Vector2) - (road[0] as Vector2)).normalized()
+	var point := WorldGenerator.road_point(road, t) + direction.orthogonal() * 2.6
+	return Vector2i(point.round())
 
 
 func _at(cell: Vector2i, offset: Vector2 = Vector2.ZERO) -> Vector2:
@@ -115,7 +155,22 @@ func _build(center: Vector2i) -> Array:
 			var lantern := Prop.create_decor(Prop.Decor.LANTERN, _at(center + side), 5.0)
 			lantern.add_light(0.9, 1.5)
 			add.call(lantern)
-	add.call(Prop.create_decor(Prop.Decor.SIGNPOST, _at(center + Vector2i(2, 15)), 6.0))
+	# Signposts where the roads leave the village, pointing to what is near.
+	var site_book: Structures = get_parent().get_node_or_null("Structures")
+	var exits := 0
+	for road: Array in _world.generator.roads_near(Vector2i((Vector2(center) / WorldGenerator.VILLAGE_REGION).floor())):
+		var length: float = (road[0] as Vector2).distance_to(road[1])
+		var t := -1.0
+		if (road[0] as Vector2).distance_to(Vector2(center)) < 1.0:
+			t = (WorldGenerator.VILLAGE_RADIUS + 3.0) / length
+		elif (road[1] as Vector2).distance_to(Vector2(center)) < 1.0:
+			t = 1.0 - (WorldGenerator.VILLAGE_RADIUS + 3.0) / length
+		if t > 0.0:
+			var spot := _beside_road(road, t)
+			add.call(Signpost.create(_at(spot), spot, site_book))
+			exits += 1
+	if exits == 0:
+		add.call(Signpost.create(_at(center + Vector2i(3, 15)), center + Vector2i(3, 15), site_book))
 	add.call(Prop.create_decor(Prop.Decor.BANNER, _at(center + Vector2i(2, -6)), 5.0))
 
 	# Houses in each quarter between the roads.
