@@ -970,11 +970,28 @@ def decor(kind):
             if (x, y) not in c.filled:
                 c.put(x, y, STONE[1] if r.random() < 0.5 else STONE[2])
     elif kind == "statue":
-        c.shade("rect", (18, 50, 46, 60), STONE)
-        c.shade("poly", [(24, 50), (26, 22), (38, 22), (40, 50)], STONE)
-        c.shade("ellipse", (26, 8, 38, 22), STONE)
-        c.shade("poly", [(38, 26), (48, 14), (50, 16), (40, 32)], STONE)
-        c.fill("line", (24, 30, 22, 42), STONE[2], 2)
+        # A knight on a plinth, weathered: helm, shield on the arm, a sword
+        # point-down before it, moss in the cracks.
+        stone = ramp("b4b0bc", "86828f", "57535f")
+        c.shade("poly", [(14, 62), (50, 62), (48, 54), (16, 54)], ramp("9a96a4", "726e7c", "4e4a58"))
+        c.fill("rect", (16, 54, 48, 54), C("c4c0cc"))
+        c.shade("poly", [(19, 54), (21, 40), (24, 26), (32, 22), (40, 26), (43, 40), (45, 54)], stone)
+        c.shade("poly", [(26, 54), (27, 42), (31, 42), (31, 54)], stone)
+        c.shade("poly", [(33, 54), (33, 42), (37, 42), (38, 54)], stone)
+        c.shade("ellipse", (26, 9, 38, 24), stone)
+        c.fill("rect", (27, 15, 37, 16), C("3e3a46"))
+        c.fill("rect", (31, 16, 32, 21), C("3e3a46"))
+        c.shade("poly", [(15, 28), (24, 27), (24, 42), (19, 47), (14, 42)], ramp("a8a4b0", "7c7886", "54505e"))
+        c.fill("rect", (18, 33, 20, 38), C("c4c0cc"))
+        c.shade("rect", (39, 30, 42, 53), stone)
+        c.shade("rect", (36, 30, 45, 32), stone)
+        c.fill("line", (40, 34, 40, 50), C("d0ccd8"), 1)
+        c.fill("line", (28, 30, 26, 46), C("4a4654"), 1)
+        r = random.Random(17)
+        for _ in range(16):
+            x, y = r.randrange(16, 48), r.randrange(10, 60)
+            if (x, y) in c.filled:
+                c.put(x, y, C("5d7a3f") if r.random() < 0.5 else C("6e6a78"))
     elif kind == "brazier":
         # An iron bowl on a stand, coals glowing in it; the flame is animated
         # in game (tools/generate_fire.py).
@@ -996,21 +1013,60 @@ def decor(kind):
         c.shade("poly", [(23, 11), (43, 11), (43, 40), (33, 34), (23, 40)], CLOTH)
         c.shade("poly", [(29, 18), (37, 18), (33, 28)], ramp("f0cf6a", "c09a3c", "866a26"))
     elif kind == "bone_pile":
-        bone = ramp("f2efe2", "cfcbb8", "9b9889")
-        for (a, b) in [((14, 56), (34, 48)), ((30, 58), (50, 50)), ((20, 50), (40, 56))]:
-            c.shade("line", (a[0], a[1], b[0], b[1]), bone, width=3, dither=False)
-        c.shade("ellipse", (36, 38, 50, 52), bone)
-        c.fill("rect", (39, 43, 41, 45), OUTLINE)
-        c.fill("rect", (45, 43, 47, 45), OUTLINE)
+        # A skull lying in the grass with its jaw beside it, a thigh bone,
+        # ribs and finger bones scattered round.
+        bone = ramp("f4f0e2", "d2cdb8", "9e9a88")
+        for (a, b, w) in [((10, 58), (28, 52), 3), ((40, 60), (56, 54), 2), ((20, 61), (26, 59), 2)]:
+            c.shade("line", (a[0], a[1], b[0], b[1]), bone, width=w, dither=False)
+        for end in [(10, 58), (28, 52)]:
+            c.shade("ellipse", (end[0] - 2, end[1] - 2, end[0] + 2, end[1] + 2), bone)
+        for k in range(4):
+            c.fill("line", (42 + k * 3, 50 - k, 45 + k * 3, 56 - k // 2), bone[1], 1)
+        c.shade("ellipse", (24, 34, 44, 52), bone)
+        c.shade("rect", (28, 48, 40, 54), bone)
+        c.fill("ellipse", (27, 40, 32, 46), C("1a1418"))
+        c.fill("ellipse", (36, 40, 41, 46), C("1a1418"))
+        c.fill("poly", [(33, 47), (35, 47), (34, 50)], C("1a1418"))
+        for x in (29, 32, 35, 38):
+            c.fill("rect", (x, 52, x, 53), C("6a6458"))
+        c.fill("line", (36, 35, 34, 39), C("8a8474"), 1)
+        c.shade("poly", [(14, 52), (24, 52), (23, 55), (15, 55)], bone)
+        for x in (16, 19, 22):
+            c.put(x, 52, C("6a6458"))
     elif kind == "crate":
-        c.shade("rect", (16, 28, 48, 60), WOOD)
-        c.fill("rect", (16, 28, 48, 30), WOOD[2])
-        c.fill("line", (16, 30, 48, 60), WOOD[2], 2)
-        c.fill("line", (48, 30, 16, 60), WOOD[2], 2)
+        # A crate in three-quarter view: plank front with a braced X, a lit
+        # top, iron corner brackets and nail heads.
+        wood = ramp("b08a5c", "84603e", "5a3e28")
+        c.shade("poly", [(14, 30), (40, 30), (50, 24), (24, 24)], ramp("c8a272", "a07a4e", "7a5638"))
+        c.shade("rect", (14, 30, 40, 60), wood)
+        c.shade("poly", [(40, 30), (50, 24), (50, 54), (40, 60)], ramp("8a6440", "6a4a30", "4a3220"))
+        for y in (37, 45, 53):
+            c.fill("line", (15, y, 39, y), C("4a3220"), 1)
+        for y in (34, 42, 50):
+            c.fill("line", (41, y, 49, y - 6), C("3a2818"), 1)
+        c.shade("line", (16, 32, 38, 58), wood, width=3, dither=False)
+        c.shade("line", (38, 32, 16, 58), wood, width=3, dither=False)
+        for (x, y) in ((14, 30), (37, 30), (14, 57), (37, 57)):
+            c.fill("rect", (x, y, x + 3, y + 3), C("6a6670"))
+            c.put(x + 1, y + 1, C("b0acb8"))
+        for (x, y) in ((27, 33), (27, 56), (18, 44), (36, 44)):
+            c.put(x, y, C("2a2220"))
     elif kind == "barrel":
-        c.shade("ellipse", (18, 22, 46, 62), WOOD)
-        for y in (30, 50):
-            c.fill("rect", (18, y, 46, y + 2), ramp("8a8794", "6e6b78", "55525e")[1])
+        # A barrel in three-quarter view: bulging staves, the round lid
+        # seen from above, two iron hoops catching the light, a tap bung.
+        wood = ramp("b08a5c", "84603e", "5a3e28")
+        c.shade("poly", [(20, 28), (44, 28), (47, 36), (48, 46), (46, 56), (42, 61), (22, 61), (18, 56), (16, 46), (17, 36)], wood)
+        for x in (24, 29, 34, 39):
+            c.fill("line", (x, 30, x + (1 if x > 32 else -1), 60), C("5a3e28"), 1)
+        c.shade("ellipse", (20, 24, 44, 33), ramp("c8a272", "a07a4e", "7a5638"))
+        c.fill("ellipse", (23, 26, 41, 31), C("8a6440"))
+        c.fill("line", (24, 28, 40, 28), C("6a4a30"), 1)
+        hoop = ramp("8a8694", "5e5a68", "3a3844")
+        for (y, inset) in ((36, 1), (52, 0)):
+            c.shade("poly", [(17 + inset, y), (47 - inset, y), (47 - inset, y + 3), (17 + inset, y + 3)], hoop)
+            c.fill("line", (18 + inset, y, 46 - inset, y), C("c4c0cc"), 1)
+        c.fill("ellipse", (30, 43, 34, 47), C("3a2818"))
+        c.fill("rect", (31, 44, 32, 45), C("8a6440"))
     elif kind == "well":
         c.shade("ellipse", (10, 34, 54, 60), STONE)
         c.fill("ellipse", (16, 38, 48, 52), C("101824"))
@@ -1048,8 +1104,18 @@ def decor(kind):
         for (x, col) in [(16, C("c0303a")), (26, C("f0cf6a")), (36, C("6a9a4a")), (46, C("e08a3a"))]:
             c.fill("ellipse", (x - 3, 28, x + 3, 34), col)
     elif kind == "signpost":
-        c.shade("rect", (30, 20, 33, 62), WOOD)
-        c.shade("poly", [(14, 18), (46, 18), (52, 24), (46, 30), (14, 30)], WOOD)
+        # A waymarker: a post sunk in a cairn of stones, two arrow boards
+        # pointing different ways with carved letters, nails, a lantern hook.
+        c.shade("ellipse", (24, 56, 40, 62), STONE)
+        c.shade("rect", (30, 14, 34, 60), WOOD)
+        c.shade("poly", [(32, 10), (35, 13), (29, 13)], WOOD)
+        board = ramp("b08a5c", "84603e", "5a3e28")
+        c.shade("poly", [(12, 18), (42, 18), (49, 23), (42, 28), (12, 28)], board)
+        c.shade("poly", [(52, 32), (22, 32), (15, 37), (22, 42), (52, 42)], board)
+        for (x0, x1, y) in ((16, 38, 21), (16, 30, 25), (26, 48, 35), (34, 48, 39)):
+            c.fill("line", (x0, y, x1, y), C("3a2818"), 1)
+        for (x, y) in ((31, 23), (33, 37)):
+            c.put(x, y, C("c4c0cc"))
     elif kind == "rug":
         c.shade("rect", (4, 20, 60, 50), CLOTH, dither=False)
         c.fill("rect", (8, 24, 56, 46), ramp("f0cf6a", "c09a3c", "866a26")[1])
@@ -1057,24 +1123,62 @@ def decor(kind):
         c.fill("poly", [(32, 29), (42, 35), (32, 41), (22, 35)], ramp("f0cf6a", "c09a3c", "866a26")[0])
         return c.img
     elif kind == "shelf":
-        c.shade("rect", (8, 10, 56, 60), WOOD)
-        for y in (22, 38, 54):
-            c.fill("rect", (10, y, 54, y + 2), WOOD[2])
-        for (x, y, col) in [(14, 14, C("c0303a")), (24, 14, C("5a8af0")), (34, 30, C("f0cf6a")), (44, 46, C("6a9a4a")), (16, 46, C("e0c0ff"))]:
-            c.fill("rect", (x, y, x + 5, y + 7), col)
+        # A bookshelf: a framed case of three shelves crowded with books of
+        # many colours and heights, a few leaning, a jar and a scroll.
+        frame = ramp("9a7450", "6e5034", "4a3422")
+        c.shade("rect", (8, 6, 56, 62), frame)
+        c.fill("rect", (11, 9, 53, 59), C("2a1e16"))
+        for y in (24, 41, 58):
+            c.shade("rect", (10, y, 54, y + 2), frame)
+        colours = ["b03a3a", "3a6ab0", "c8a040", "4a8a4a", "8a4aa0", "c86a3a", "3a8a8a", "d8c8a0"]
+        r = random.Random(31)
+        for shelf_y in (24, 41, 58):
+            x = 12
+            while x < 51:
+                w = r.choice((3, 3, 4, 2))
+                h = r.randrange(9, 14)
+                if r.random() < 0.12 and x < 46:
+                    c.shade("ellipse", (x, shelf_y - 7, x + 5, shelf_y - 1), ramp("c8e0e8", "90b0c0", "607888"))
+                    x += 7
+                    continue
+                col = C(r.choice(colours))
+                lean = 2 if r.random() < 0.1 else 0
+                c.fill("poly", [(x + lean, shelf_y - h), (x + w + lean, shelf_y - h), (x + w, shelf_y - 1), (x, shelf_y - 1)], col)
+                c.fill("line", (x + lean, shelf_y - h, x, shelf_y - 1), C("ffffff", 90), 1)
+                c.put(x + w // 2, shelf_y - h + 3, C("e8d090"))
+                x += w + (1 if r.random() < 0.3 else 0)
+        c.fill("rect", (8, 6, 56, 7), C("b8946a"))
     elif kind == "plant_pot":
         c.shade("poly", [(22, 46), (42, 46), (38, 60), (26, 60)], ramp("d08a5a", "a8643a", "7a4424"))
         canopy(c, [(32, 36, 12, 10), (24, 40, 7, 6), (40, 40, 7, 6)], ramp("6a9a4a", "4a7a3a", "2f5a2a"), 21)
     elif kind == "table":
-        c.shade("rect", (10, 30, 54, 38), WOOD)
-        c.shade("rect", (12, 38, 15, 58), WOOD)
-        c.shade("rect", (49, 38, 52, 58), WOOD)
-        c.shade("ellipse", (26, 24, 38, 31), ramp("f4f2ec", "d4d0c4", "a8a498"))
+        # A trestle table in three-quarter view: a planked top with its
+        # front edge, braced legs, and a plate and cup on it.
+        top = ramp("b08a5c", "84603e", "5a3e28")
+        c.shade("poly", [(8, 34), (50, 34), (56, 28), (14, 28)], ramp("c8a272", "a07a4e", "7a5638"))
+        for x in (20, 30, 40):
+            c.fill("line", (x, 34, x + 6, 28), C("7a5638"), 1)
+        c.shade("rect", (8, 34, 50, 38), top)
+        c.shade("rect", (11, 38, 14, 58), top)
+        c.shade("rect", (44, 38, 47, 58), top)
+        c.shade("rect", (51, 32, 54, 52), ramp("8a6440", "6a4a30", "4a3220"))
+        c.fill("line", (14, 50, 44, 50), C("5a3e28"), 2)
+        c.shade("ellipse", (18, 28, 30, 33), ramp("f4f2ec", "d4d0c4", "a8a498"))
+        c.shade("rect", (36, 25, 40, 31), ramp("c8c4d0", "9894a0", "6a6670"))
     elif kind == "chair":
-        c.shade("rect", (22, 14, 42, 18), WOOD)
-        c.shade("rect", (22, 18, 25, 58), WOOD)
-        c.shade("rect", (39, 18, 42, 58), WOOD)
-        c.shade("rect", (22, 38, 42, 42), WOOD)
+        # A chair in three-quarter view: a slatted back, a seat seen from
+        # above, four legs and a stretcher.
+        wood = ramp("b08a5c", "84603e", "5a3e28")
+        c.shade("rect", (22, 14, 25, 46), wood)
+        c.shade("rect", (37, 14, 40, 46), wood)
+        for y in (17, 23, 29):
+            c.shade("rect", (25, y, 37, y + 3), wood)
+        c.shade("poly", [(20, 44), (42, 44), (46, 38), (24, 38)], ramp("c8a272", "a07a4e", "7a5638"))
+        c.shade("rect", (20, 44, 42, 47), wood)
+        for x in (20, 39):
+            c.shade("rect", (x, 47, x + 3, 61), wood)
+        c.shade("rect", (43, 42, 45, 56), ramp("8a6440", "6a4a30", "4a3220"))
+        c.fill("line", (22, 55, 40, 55), C("5a3e28"), 1)
     elif kind == "candles":
         # Wax candles with drips and wicks; the flames are animated in game.
         c.shade("ellipse", (16, 55, 48, 61), ramp("8a7a68", "6a5a4a", "4a3e34"))
@@ -1090,8 +1194,23 @@ def decor(kind):
             c.fill("rect", (x, 18, x + 1, 56), C("4a4650"))
         c.shade("ellipse", (26, 42, 38, 56), ramp("f2efe2", "cfcbb8", "9b9889"))
     elif kind == "tent":
-        c.shade("poly", [(4, 60), (32, 8), (60, 60)], ramp("b0a080", "8a7a5a", "5a4e3a"))
-        c.fill("poly", [(26, 60), (32, 36), (38, 60)], C("201a1c"))
+        # A canvas tent in three-quarter view: the front gable with its flap
+        # tied open on a dark inside, the long side sloping away, stitched
+        # seams, the ridge pole poking out, guy ropes and pegs.
+        canvas = ramp("d0c09a", "a8946c", "7a6a4a")
+        side = ramp("b8a680", "8e7a56", "62543a")
+        c.shade("poly", [(26, 10), (56, 18), (62, 56), (40, 60)], side)
+        c.shade("poly", [(4, 60), (26, 10), (44, 60)], canvas)
+        c.fill("poly", [(17, 60), (26, 30), (33, 60)], C("1e1814"))
+        c.fill("poly", [(26, 30), (21, 44), (17, 60), (14, 60)], canvas[1])
+        c.fill("line", (26, 30, 21, 46), C("6a5a3e"), 1)
+        for t in (0.3, 0.55, 0.8):
+            c.fill("line", (int(26 + (56 - 26) * t), int(10 + 8 * t), int(40 + (62 - 40) * t), int(60 - 4 * t)), C("7a6a4a"), 1)
+        c.fill("line", (26, 10, 56, 18), C("e8dcbc"), 1)
+        c.shade("rect", (24, 5, 27, 11), WOOD)
+        for (x0, y0, x1, y1) in ((10, 46, 2, 62), (58, 40, 63, 60)):
+            c.fill("line", (x0, y0, x1, y1), C("c8b890"), 1)
+            c.fill("rect", (x1 - 1, y1 - 2, x1, y1), C("6a4a30"))
     elif kind == "obelisk":
         c.shade("poly", [(24, 62), (26, 12), (32, 4), (38, 12), (40, 62)], ramp("5a5668", "3a3748", "2a2836"))
         for y in range(18, 56, 9):
