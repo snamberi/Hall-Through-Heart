@@ -91,6 +91,15 @@ PALETTE = {
     "eye_white": ["fffaf0", "e8dccc", "b8a898"],
     "glow_purple": ["e080ff"] * 3,
     "bristle": ["5a3e30", "3e2a20", "2a1c16"],
+    "wool": ["fbf8f0", "dcd6c8", "aaa494"],
+    "cowhide": ["f6f0e6", "d8cfc0", "a89c8c"],
+    "cow_patch": ["7a4a30", "5a3422", "3a2216"],
+    "bear": ["8a5e3e", "64422c", "40281a"],
+    "bear_muzzle": ["c8a078", "a07c58", "74583e"],
+    "wolf_fur": ["a0a0aa", "74747e", "484850"],
+    "wolf_dark": ["5a5a64", "40404a", "2a2a32"],
+    "spider": ["6e5670", "4a3a4e", "2a2030"],
+    "spider_pale": ["d0c8b8", "a09888", "6e6658"],
     "wrap_pale": ["e8dcc0", "c4b48e", "8e7e5e"],
     "leaf_dark": ["4a7a3a", "34602a", "22401c"],
     "plate": ["f4f6f8", "c2c9d0", "8c96a0"],
@@ -439,7 +448,7 @@ def _rich_tone(shades, t, x, y):
 # flesh read differently at a glance. Patterns use part-relative
 # coordinates (u, v) so they travel with the part from frame to frame.
 TEXTURES = {
-    "fur": ["hide", "frost_fur", "bristle", "troll", "feather"],
+    "fur": ["hide", "frost_fur", "bristle", "troll", "feather", "wool", "bear", "wolf_fur", "wolf_dark", "cow_patch"],
     "stone": ["stone", "obsidian", "plate_dark"],
     "bone": ["bone", "rib", "tooth", "wrap_pale"],
     "spectral": ["ghost", "storm", "void_skin"],
@@ -1119,6 +1128,88 @@ SNOW_FOX = _quad(
     leg=lambda x: [("frost_fur", R(x + 0.5, 32, x + 3, 40)), ("troll", R(x + 0.3, 39.5, x + 3.2, 41.4))],
     head_pivot=(29, 27),
 )
+# Farm animals gone wild, and bigger game.
+SHEEP = _quad(
+    body=[("wool", E(7, 18, 35, 33)), ("wool", E(7, 16, 16, 24)), ("wool", E(13, 14, 23, 22)), ("wool", E(21, 14, 31, 22)), ("wool", E(28, 16, 36, 24)),
+          ("wool", E(9, 27, 18, 34.5)), ("wool", E(17, 28, 26, 35)), ("wool", E(25, 27, 33, 34.5))],
+    head=[("bristle", E(31, 19, 41, 29)), ("bristle", [(32, 21), (28.5, 22), (32, 24.5)]), ("wool", E(30, 15.5, 39, 22)),
+          ("eye_white", R(36.4, 22.4, 37.8, 23.8)), ("void", R(37, 23, 37.8, 23.8)), ("gill", R(39.4, 26, 40.6, 27))],
+    tail=[("wool", E(4.5, 20, 10, 26))],
+    leg=lambda x: [("bristle", R(x + 0.3, 31, x + 2.7, 40)), ("void", R(x, 39.8, x + 3, 41.4))],
+    head_pivot=(32, 23),
+)
+COW = _quad(
+    body=[("cowhide", E(4, 16, 36, 32)), ("cow_patch", E(8, 17, 19, 26)), ("cow_patch", E(22, 21, 32, 30.5)), ("cow_patch", E(27, 16.5, 33, 20)),
+          ("gill", E(14, 29.5, 21, 34)), ("gill", R(15.5, 33, 16.3, 35)), ("gill", R(18.5, 33, 19.3, 35))],
+    head=[("cowhide", [(30, 20), (33, 12), (39, 11), (43, 15), (43, 22), (39, 25), (34, 25)]), ("cow_patch", [(33, 12), (39, 11), (40, 16), (34, 17)]),
+          ("gill", E(38, 19, 44.5, 25.5)), ("void", R(40, 21.6, 41, 22.6)), ("void", R(42.4, 21.6, 43.4, 22.6)), ("void", R(36.5, 15.5, 37.7, 16.7)),
+          ("bone", [(34, 12), (32, 7), (35.5, 10.5)]), ("bone", [(38, 11), (40.5, 6), (40.5, 11.5)]), ("cow_patch", [(32.5, 13), (29, 14.5), (32.5, 16.5)])],
+    tail=[("cowhide", [(6, 19), (3, 21), (3, 29), (4.5, 29), (5, 22), (7, 21)]), ("cow_patch", E(2, 28, 5.5, 33))],
+    leg=lambda x: [("cowhide", R(x, 30, x + 3.2, 39.5)), ("void", R(x - 0.2, 39.5, x + 3.4, 41.4))],
+    head_pivot=(33, 20),
+)
+CHICKEN = _quad(
+    body=[("wool", E(14, 25, 30, 37)), ("eye_white", [(16, 28), (26, 27), (28, 32), (18, 33.5)])],
+    head=[("wool", [(27, 28), (29, 19), (33, 18), (35, 21), (33.5, 24), (31, 29)]), ("blood", [(29.5, 19.5), (30.5, 15.5), (31.5, 18.5), (32.5, 15.5), (33.6, 19)]),
+          ("void", R(32.3, 20, 33.3, 21)), ("guard", [(34.6, 21), (38, 22), (34.6, 23)]), ("blood", E(33, 23, 35, 26))],
+    tail=[("wool", [(15, 27), (8, 20), (7, 24), (10, 26), (8, 29.5), (14, 31)])],
+    leg=lambda x: [("guard", R(x + 3, 36, x + 4, 41)), ("guard", R(x + 2, 40.6, x + 5.5, 41.4))],
+)
+BEAR = _quad(
+    body=[("bear", E(3, 13, 36, 33)), ("bear", E(5, 11, 20, 24)), ("bear_muzzle", E(12, 27, 28, 33.5))],
+    head=[("bear", E(27, 12, 42, 27)), ("bear", E(27.5, 9.5, 33, 15)), ("bear", E(36, 8.5, 41.5, 14)), ("bear_muzzle", E(36, 19, 45, 27)),
+          ("void", R(42.4, 20.4, 44.6, 22)), ("void", R(35, 16.4, 36.5, 17.9)), ("void", R(39, 24.5, 43.6, 25.2)),
+          ("tooth", [(40, 25.2), (41, 25.2), (40.5, 27)])],
+    tail=[("bear", E(3, 18, 8, 23))],
+    leg=lambda x: [("bear", R(x - 0.5, 29, x + 4, 40)), ("bone", R(x - 0.5, 40, x + 4.6, 41.4))],
+    head_pivot=(30, 21),
+)
+GREY_WOLF = _quad(
+    body=[("wolf_fur", E(8, 19, 34, 32)), ("wolf_dark", [(11, 20), (31, 20), (28, 23.5), (14, 23.5)]), ("eye_white", E(14, 27.5, 27, 32.5)),
+          ("wolf_fur", [(10, 30), (14, 34), (16, 30)]), ("wolf_dark", [(26, 20), (28, 16.5), (30, 20.5)])],
+    head=[("wolf_fur", E(28, 15, 40, 26)), ("wolf_fur", [(37, 19), (44, 21), (44, 25), (37, 26)]), ("eye_white", [(37, 23), (44, 23.6), (44, 25), (37, 26)]),
+          ("void", R(38, 24.6, 44, 25.4)), ("tooth", [(39.5, 24.6), (40.7, 24.6), (40.1, 27)]), ("tooth", [(42, 24.6), (43.2, 24.6), (42.6, 26.6)]),
+          ("void", R(43.4, 20.6, 44.4, 21.6)), ("guard", R(35, 19, 36.4, 20.4)), ("wolf_fur", [(30, 16), (31, 9.5), (34, 15)]),
+          ("wolf_dark", [(31, 15), (31.4, 11.5), (33, 15)]), ("wolf_fur", [(34.5, 15.5), (36.5, 10.5), (38, 16)])],
+    tail=[("wolf_fur", [(10, 23), (3, 18), (1, 23), (4, 28), (9, 28)]), ("wolf_dark", [(3, 18), (1, 23), (3.5, 22)])],
+    leg=lambda x: [("wolf_fur", R(x, 31, x + 3, 40)), ("wolf_dark", R(x, 39.5, x + 4, 41.4))],
+)
+
+
+def _spider_legs(px, dx, shell):
+    """A pair of legs seen from above, one each side of the body: out from
+    the body to a raised knee, then down to a foot further out. `dx` leans
+    the pair backwards (negative) or forwards."""
+    parts = []
+    for (y0, ky, fy) in ((31, 20, 23), (37, 48, 45)):
+        kx, fx = px + dx * 0.55, px + dx
+        parts.append((shell, [(px - 0.9, y0), (px + 0.9, y0), (kx + 0.9, ky), (kx - 0.9, ky)]))
+        parts.append((shell, [(kx - 0.9, ky), (kx + 0.9, ky), (fx + 0.8, fy), (fx - 0.8, fy)]))
+    return parts
+
+
+def _spider(shell, eye, mark):
+    """A spider seen from above: a fat marked abdomen, a small head with a
+    cluster of eyes and two fangs, and four legs fanning out each side."""
+    return {
+        "root": dict(parent=None, pivot=(22, 41), parts=[]),
+        "body": dict(parent="root", pivot=(20, 34), parts=[
+            (shell, E(4, 26, 21, 42)), (mark, [(10, 30), (15, 30), (12.5, 33.5)]), (mark, [(10, 38), (15, 38), (12.5, 34.5)]),
+            ("shine", R(7, 28.6, 9, 29.5)), (shell, E(19, 29, 31, 39))]),
+        "head": dict(parent="body", pivot=(29, 34), parts=[
+            (shell, E(28, 30, 37.5, 38)), (eye, R(33.5, 31.4, 34.9, 32.8)), (eye, R(33.5, 35.2, 34.9, 36.6)), (eye, R(35.4, 32.6, 36.4, 33.6)),
+            (eye, R(35.4, 34.6, 36.4, 35.6)), ("bone", [(37, 32), (40.5, 32.6), (37.2, 33.8)]), ("bone", [(37, 36), (40.5, 35.4), (37.2, 34.4)])]),
+        "tail": dict(parent="body", pivot=(6, 34), parts=[(shell, [(5, 32), (2, 34), (5, 36)])]),
+        "leg_bl": dict(parent="body", pivot=(21, 34), parts=_spider_legs(21, -9, shell)),
+        "leg_br": dict(parent="body", pivot=(24, 34), parts=_spider_legs(24, -3.5, shell)),
+        "leg_fl": dict(parent="body", pivot=(27, 34), parts=_spider_legs(27, 3.5, shell)),
+        "leg_fr": dict(parent="body", pivot=(30, 34), parts=_spider_legs(30, 9, shell)),
+    }
+
+
+GIANT_SPIDER = _spider("spider", "glow_red", "blood")
+WEB_SPIDER = _spider("spider_pale", "glow_cyan", "bristle")
+
 # A crab seen from the front: a broad shell, eyes on stalks, two raised
 # claws, and three walking legs a side that scuttle in turn.
 def _crab_leg(x, side):
@@ -1213,6 +1304,13 @@ WILDLIFE = {
     "snow_fox": (SNOW_FOX, QUAD_ORDER, QUAD_ANIMATIONS),
     "shore_crab": (SHORE_CRAB, CRAB_ORDER, CRAB_ANIMATIONS),
     "marsh_toad": (MARSH_TOAD, TOAD_ORDER, TOAD_ANIMATIONS),
+    "sheep": (SHEEP, QUAD_ORDER, QUAD_ANIMATIONS),
+    "cow": (COW, QUAD_ORDER, QUAD_ANIMATIONS),
+    "chicken": (CHICKEN, QUAD_ORDER, QUAD_ANIMATIONS),
+    "bear": (BEAR, QUAD_ORDER, QUAD_ANIMATIONS),
+    "grey_wolf": (GREY_WOLF, QUAD_ORDER, QUAD_ANIMATIONS),
+    "giant_spider": (GIANT_SPIDER, QUAD_ORDER, QUAD_ANIMATIONS),
+    "web_spider": (WEB_SPIDER, QUAD_ORDER, QUAD_ANIMATIONS),
 }
 
 # Mounts: drawn as quadrupeds, ridden by the player.

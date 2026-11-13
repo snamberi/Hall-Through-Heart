@@ -87,6 +87,13 @@ const LORE := {
 	"snow_fox": "A white ghost of the snowfields, prized for its fur.",
 	"shore_crab": "Snaps at anything that pokes it.",
 	"marsh_toad": "Fat, slow, and singing all night.",
+	"sheep": "Flocks gone wild since the farms emptied. Wool, mutton, and no sense at all.",
+	"cow": "Slow, patient and worth the chase: beef for a week and a hide besides.",
+	"chicken": "It ran from the coop years ago and has been running since.",
+	"bear": "Leave it be and it will leave you be. Strike it and you had better finish the job.",
+	"grey_wolf": "They hunt the forest roads at night, and never alone.",
+	"giant_spider": "It drops on you from the dark with venom on its fangs. Burn it.",
+	"web_spider": "It keeps its distance and spits sticky web that drags at your legs.",
 }
 
 var stats: Dictionary = {}

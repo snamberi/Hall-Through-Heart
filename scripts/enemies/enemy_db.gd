@@ -148,7 +148,46 @@ const ENEMIES := {
 		"radius": 12.0, "size": 0.85, "tiles": [T.BOG, T.FUNGAL, T.MUD, T.TAR], "min_level": 1, "weight": 6.0,
 		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
 	},
+	"sheep": {
+		"active": "day", "wild": "flee", "name": "Sheep", "health": 18.0, "damage": 0.0, "speed": 105.0, "xp": 3,
+		"radius": 13.0, "size": 1.0, "tiles": [T.DARK_GRASS, T.DEAD_GRASS], "min_level": 1, "weight": 6.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"cow": {
+		"active": "day", "wild": "flee", "name": "Cow", "health": 42.0, "damage": 0.0, "speed": 85.0, "xp": 5,
+		"radius": 15.0, "size": 1.15, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.MUD], "min_level": 1, "weight": 4.5,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"chicken": {
+		"active": "day", "wild": "flee", "name": "Chicken", "health": 6.0, "damage": 0.0, "speed": 135.0, "xp": 1,
+		"radius": 8.0, "size": 0.8, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.SAND], "min_level": 1, "weight": 5.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"bear": {
+		"active": "always", "wild": "defend", "name": "Bear", "health": 95.0, "damage": 16.0, "speed": 125.0, "xp": 18,
+		"radius": 16.0, "size": 1.3, "tiles": [T.DARK_GRASS, T.FROSTPINE, T.ROCK, T.THORN], "min_level": 4, "weight": 2.5,
+		"attack": {"kind": "swipe", "range": 74.0, "windup": 0.55, "arc": 130.0, "recover": 0.9, "knockback": 380.0, "color": Color(1.0, 0.9, 0.75)}, "traits": ["enrage"],
+	},
 	# --- biome families
+	"grey_wolf": {
+		"active": "night", "name": "Grey Wolf", "health": 26.0, "damage": 9.0, "speed": 170.0, "xp": 10,
+		"radius": 13.0, "size": 1.0, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.FROSTPINE, T.THORN, T.ROCK], "min_level": 2, "weight": 6.0,
+		"attack": {"kind": "pounce", "range": 150.0, "windup": 0.38, "time": 0.34, "radius": 48.0, "recover": 0.6, "color": Color(0.85, 0.85, 0.9)},
+		"touch": {"status": "bleed", "duration": 3.0, "power": 0.2}, "traits": ["pack"],
+	},
+	"giant_spider": {
+		"active": "night", "name": "Giant Spider", "health": 32.0, "damage": 10.0, "speed": 150.0, "xp": 12,
+		"radius": 14.0, "size": 1.25, "tiles": [T.DARK_GRASS, T.THORN, T.FUNGAL, T.BOG, T.CRIMSON], "min_level": 3, "weight": 5.0,
+		"attack": {"kind": "pounce", "range": 130.0, "windup": 0.45, "time": 0.3, "radius": 44.0, "recover": 0.8, "color": Color(0.8, 0.4, 0.9)},
+		"touch": {"status": "poison", "duration": 4.0, "power": 0.3}, "traits": ["erratic"],
+	},
+	"web_spider": {
+		"active": "always", "name": "Web Spinner", "health": 20.0, "damage": 7.0, "speed": 120.0, "xp": 9,
+		"radius": 12.0, "size": 1.0, "tiles": [T.FUNGAL, T.BOG, T.ROCK, T.DEAD_GRASS, T.ASH], "min_level": 2, "weight": 4.0,
+		"attack": {"kind": "shoot", "range": 260.0, "windup": 0.55, "recover": 1.3, "sprite": 3, "speed": 340.0, "color": Color(0.95, 0.95, 1.0),
+			"status": {"status": "chill", "duration": 3.0, "power": 0.55}},
+		"traits": [],
+	},
 	"frost_wolf": {
 		"active": "always", "name": "Frost Wolf", "health": 26.0, "damage": 10.0, "speed": 175.0, "xp": 11,
 		"radius": 13.0, "size": 1.0, "tiles": [T.SNOW, T.FROSTPINE, T.PEAK], "min_level": 4, "weight": 9.0,

@@ -486,6 +486,20 @@ const ITEMS := {
 	"pig_hide": {"name": "Pig Hide", "icon": 82, "tint": Color("d8a0a0"), "material_rarity": 0, "value": 6, "text": "Thick and bristly."},
 	"goat_meat": {"name": "Goat Meat", "icon": 66, "tint": Color("b85a50"), "material_rarity": 0, "use": {"heal": 0.05}, "value": 7, "text": "Tough and gamey."},
 	"goat_horn": {"name": "Goat Horn", "icon": 85, "tint": Color("6a5040"), "material_rarity": 1, "value": 12, "text": "Curled and hard as stone."},
+	"mutton": {"name": "Raw Mutton", "icon": 66, "tint": Color("c86a6a"), "material_rarity": 0, "use": {"heal": 0.05}, "value": 6, "text": "Fatty and rich. Better roasted."},
+	"beef": {"name": "Raw Beef", "icon": 66, "tint": Color("b03a3a"), "material_rarity": 0, "use": {"heal": 0.05}, "value": 8, "text": "A good red cut. Cook it."},
+	"cow_hide": {"name": "Cow Hide", "icon": 82, "tint": Color("c8b8a0"), "material_rarity": 0, "value": 9, "text": "A big, tough hide. Tans into plenty of leather."},
+	"chicken_meat": {"name": "Raw Chicken", "icon": 68, "tint": Color("f0d0b0"), "material_rarity": 0, "use": {"heal": 0.03}, "value": 4, "text": "Do cook this one."},
+	"egg": {"name": "Egg", "icon": 17, "tint": Color("f4ead8"), "material_rarity": 0, "use": {"heal": 0.03}, "value": 3, "text": "Still warm. Good in a pan."},
+	"feather": {"name": "Feather", "icon": 84, "tint": Color("f4f0e8"), "material_rarity": 0, "value": 2, "text": "Soft and white."},
+	"bear_meat": {"name": "Bear Meat", "icon": 66, "tint": Color("8a3030"), "material_rarity": 1, "use": {"heal": 0.06}, "value": 12, "text": "Dark, strong meat. It wants a long stew."},
+	"bear_pelt": {"name": "Bear Pelt", "icon": 82, "tint": Color("7a5236"), "material_rarity": 1, "value": 30, "text": "Thick enough to sleep on. Tans into a lot of leather."},
+	"spider_silk": {"name": "Spider Silk", "icon": 89, "tint": Color("e8e8f4"), "material_rarity": 1, "value": 10, "text": "Stronger than it has any right to be."},
+	"roast_mutton": {"name": "Roast Mutton", "icon": 67, "tint": Color("b86a48"), "material_rarity": 0, "use": {"buff": "food", "name": "Well Fed", "duration": 360.0, "mods": {"max_health": {"flat": 30.0}, "health_regen": {"flat": 0.8}}}, "value": 20, "text": "+30 maximum HP and +0.8 health a second for 6 minutes."},
+	"beef_steak": {"name": "Beef Steak", "icon": 67, "tint": Color("9a4a30"), "material_rarity": 0, "use": {"buff": "food", "name": "Well Fed", "duration": 420.0, "mods": {"physical_damage": {"percent": 0.06}, "max_health": {"flat": 30.0}}}, "value": 28, "text": "+6% damage and +30 maximum HP for 7 minutes."},
+	"roast_chicken": {"name": "Roast Chicken", "icon": 68, "tint": Color("d89850"), "material_rarity": 0, "use": {"buff": "food", "name": "Well Fed", "duration": 300.0, "mods": {"stamina_regen": {"percent": 0.2}, "max_health": {"flat": 15.0}}}, "value": 14, "text": "Stamina returns 20% faster and +15 maximum HP for 5 minutes."},
+	"omelette": {"name": "Omelette", "icon": 71, "tint": Color("f0d060"), "material_rarity": 0, "use": {"heal": 0.25}, "value": 10, "text": "Quick, hot and filling. Restores 25% of your health."},
+	"bear_stew": {"name": "Bear Stew", "icon": 69, "tint": Color("7a4a30"), "material_rarity": 1, "use": {"buff": "food", "name": "Well Fed", "duration": 480.0, "mods": {"max_health": {"flat": 60.0}, "armor": {"percent": 0.08}}}, "value": 50, "text": "+60 maximum HP and +8% armour for 8 minutes."},
 	"wool": {"name": "Wool", "icon": 89, "tint": Color("f0ece4"), "material_rarity": 0, "value": 5, "text": "Warm, white and itchy."},
 	"pheasant_meat": {"name": "Pheasant", "icon": 68, "tint": Color("d89070"), "material_rarity": 0, "use": {"heal": 0.04}, "value": 6, "text": "A plump bird for the pot."},
 	"pheasant_feather": {"name": "Pheasant Feather", "icon": 84, "tint": Color("c86a3a"), "material_rarity": 0, "value": 4, "text": "Long, bright and barred."},
@@ -691,6 +705,16 @@ const LOOT_TABLES := {
 	"desert_lizard": {"gold": [0, 0], "materials": [{"id": "lizard_meat", "chance": 0.9, "count": [1, 1]}, {"id": "lizard_scale", "chance": 0.6, "count": [1, 2]}]},
 	"snow_fox": {"gold": [0, 0], "materials": [{"id": "fox_pelt", "chance": 0.7, "count": [1, 1]}, {"id": "hare_meat", "chance": 0.4, "count": [1, 1]}]},
 	"shore_crab": {"gold": [0, 1], "materials": [{"id": "crab_meat", "chance": 0.9, "count": [1, 2]}, {"id": "crab_shell", "chance": 0.6, "count": [1, 1]}]},
+	"sheep": {"gold": [0, 0], "materials": [{"id": "mutton", "chance": 0.9, "count": [1, 2]}, {"id": "wool", "chance": 0.95, "count": [1, 3]}]},
+	"cow": {"gold": [0, 0], "materials": [{"id": "beef", "chance": 0.95, "count": [2, 4]}, {"id": "cow_hide", "chance": 0.7, "count": [1, 1]}]},
+	"chicken": {"gold": [0, 0], "materials": [{"id": "chicken_meat", "chance": 0.9, "count": [1, 1]}, {"id": "feather", "chance": 0.8, "count": [1, 3]}, {"id": "egg", "chance": 0.4, "count": [1, 2]}]},
+	"bear": {"gold": [0, 0], "materials": [{"id": "bear_meat", "chance": 0.95, "count": [2, 3]}, {"id": "bear_pelt", "chance": 0.7, "count": [1, 1]}, {"id": "claw", "chance": 0.5, "count": [1, 2]}]},
+	"grey_wolf": {"gold": [0, 2], "gear": [["boots", 0.02], ["dagger", 0.01]], "materials": [
+		{"id": "hound_pelt", "chance": 0.4, "count": [1, 1]}, {"id": "claw", "chance": 0.2, "count": [1, 1]}]},
+	"giant_spider": {"gold": [0, 3], "gear": [["dagger", 0.02], ["ring", 0.01]], "materials": [
+		{"id": "spider_silk", "chance": 0.6, "count": [1, 2]}, {"id": "venom_sac", "chance": 0.25, "count": [1, 1]}, {"id": "chitin", "chance": 0.2, "count": [1, 1]}]},
+	"web_spider": {"gold": [0, 2], "gear": [["bow", 0.01]], "materials": [
+		{"id": "spider_silk", "chance": 0.8, "count": [1, 3]}, {"id": "venom_sac", "chance": 0.1, "count": [1, 1]}]},
 	"marsh_toad": {"gold": [0, 0], "materials": [{"id": "toad_legs", "chance": 0.9, "count": [1, 2]}, {"id": "toad_slime", "chance": 0.5, "count": [1, 1]}]},
 }
 

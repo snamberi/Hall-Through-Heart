@@ -123,3 +123,15 @@ func test_every_enemy_attack_is_handled(t: TestContext) -> void:
 		if float(attack["range"]) > 0.0:
 			used[attack["kind"]] = true
 	t.check(used.size() >= 10, "only %d kinds of attack among the monsters" % used.size())
+
+
+func test_every_monster_has_a_sheet_and_loot(t: TestContext) -> void:
+	for id: String in EnemyDB.ENEMIES:
+		var data: Dictionary = EnemyDB.ENEMIES[id]
+		var sheet: String = data.get("sheet", EnemyDB.SHEETS % id)
+		t.check(ResourceLoader.exists(sheet), "%s has no sprite sheet" % id)
+		t.check(ItemDB.LOOT_TABLES.has(id), "%s has no loot table" % id)
+		for drop: Dictionary in ItemDB.LOOT_TABLES.get(id, {}).get("materials", []):
+			t.check(ItemDB.ITEMS.has(drop["id"]), "%s drops unknown %s" % [id, drop["id"]])
+	for id: String in ["sheep", "cow", "chicken", "bear", "grey_wolf", "giant_spider", "web_spider"]:
+		t.check(EnemyDB.ENEMIES.has(id), "no %s" % id)

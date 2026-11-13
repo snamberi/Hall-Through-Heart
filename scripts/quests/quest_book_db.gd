@@ -470,7 +470,8 @@ static func _hunting() -> void:
 	var root := _q("hunting_root", "The Hunter's Way", "Hunt a wild animal: deer, hares, pigs and more roam by day.", {"monster": "deer"}, ["main_awakening"],
 		[_o("kill_wild", {"count": 1})], 1.0, [], true)
 	var animals := {"deer": ["roast_venison", "jerky"], "wild_hare": ["hare_stew"], "wild_pig": ["grilled_pork", "pork_pie"], "mountain_goat": ["goat_skewer"],
-		"pheasant": ["roast_pheasant"], "desert_lizard": ["spiced_lizard"], "snow_fox": [], "shore_crab": ["crab_cakes"], "marsh_toad": ["fried_toad_legs"]}
+		"pheasant": ["roast_pheasant"], "desert_lizard": ["spiced_lizard"], "snow_fox": [], "shore_crab": ["crab_cakes"], "marsh_toad": ["fried_toad_legs"],
+		"sheep": ["roast_mutton"], "cow": ["beef_steak"], "chicken": ["roast_chicken", "omelette"], "bear": ["bear_stew"]}
 	for animal: String in animals:
 		var name: String = EnemyDB.ENEMIES[animal]["name"]
 		var first := _q("hunting_%s_5" % animal, name, "Hunt 5 %s." % name.to_lower(), {"monster": animal}, [root], [_o("kill", {"monster": animal, "count": 5})], 1.5)

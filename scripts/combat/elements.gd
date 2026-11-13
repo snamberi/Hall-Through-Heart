@@ -24,6 +24,10 @@ const ATTACK_SHARE := 0.5
 ## Monster id -> {"attack": element, "weak": [...], "hardy": [...]}.
 const MONSTERS := {
 	"husk": {"weak": ["fire", "holy"]},
+	"grey_wolf": {"weak": ["fire"]},
+	"giant_spider": {"attack": "poison", "weak": ["fire"], "hardy": ["poison"]},
+	"web_spider": {"weak": ["fire"], "hardy": ["poison"]},
+	"bear": {"hardy": ["frost"]},
 	"rot_hound": {"attack": "poison", "weak": ["fire"]},
 	"bone_archer": {"weak": ["holy"], "hardy": ["poison", "frost"]},
 	"bog_slime": {"attack": "poison", "weak": ["fire"], "hardy": ["poison"]},

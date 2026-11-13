@@ -12,13 +12,13 @@ const CAVE_MONSTERS: Array[String] = ["carrion_bat", "bog_slime", "thorn_stalker
 ## Each cave rolls a theme: who lives there, what the floor is, what lies
 ## about, how much ore, and who guards it when it is a lair.
 const CAVE_THEMES := {
-	"cavern": {"title": "Cavern", "floor": T.CAVE_FLOOR, "monsters": ["carrion_bat", "rot_hound", "crag_golem", "bone_archer", "husk"], "boss": "crag_golem",
+	"cavern": {"title": "Cavern", "floor": T.CAVE_FLOOR, "monsters": ["carrion_bat", "rot_hound", "crag_golem", "bone_archer", "husk", "giant_spider", "web_spider"], "boss": "crag_golem",
 		"decor": [Prop.Decor.RUBBLE, Prop.Decor.BONES, Prop.Decor.CRATE], "ore": 1.0, "light": Color(1.0, 0.8, 0.55)},
 	"roost": {"title": "Bat Roost", "floor": T.CAVE_FLOOR, "monsters": ["carrion_bat", "carrion_bat", "carrion_bat", "rot_hound"], "boss": "carrion_bat",
 		"decor": [Prop.Decor.BONES, Prop.Decor.BONES, Prop.Decor.RUBBLE], "ore": 0.6, "light": Color(0.75, 0.7, 1.0), "count": 1.4},
 	"grotto": {"title": "Fungal Grotto", "floor": T.FUNGAL, "monsters": ["spore_shambler", "bog_slime", "bog_lurker"], "boss": "spore_shambler",
 		"decor": [Prop.Decor.RUBBLE, Prop.Decor.BONES], "ore": 0.6, "herbs": 10, "light": Color(0.55, 1.0, 0.75)},
-	"mine": {"title": "Abandoned Mine", "floor": T.CAVE_FLOOR, "monsters": ["crag_golem", "husk", "bone_archer"], "boss": "crag_golem",
+	"mine": {"title": "Abandoned Mine", "floor": T.CAVE_FLOOR, "monsters": ["crag_golem", "husk", "bone_archer", "web_spider", "giant_spider"], "boss": "crag_golem",
 		"decor": [Prop.Decor.CRATE, Prop.Decor.BARREL, Prop.Decor.LANTERN, Prop.Decor.FENCE], "ore": 2.0, "light": Color(1.0, 0.85, 0.5)},
 	"ossuary": {"title": "Ossuary", "floor": T.ASH, "monsters": ["bone_archer", "husk", "rot_cultist", "ash_wraith", "dune_mummy"], "boss": "rot_cultist",
 		"decor": [Prop.Decor.BONES, Prop.Decor.CANDLES, Prop.Decor.STATUE, Prop.Decor.BONES], "ore": 0.5, "light": Color(0.9, 0.95, 1.0)},
