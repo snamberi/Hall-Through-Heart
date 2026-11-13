@@ -15,10 +15,10 @@ enum Rank { NORMAL, ELITE, CHAMPION, MINIBOSS, BOSS }
 ## "modifiers" is how many random modifiers the rank rolls.
 const RANK_DATA := {
 	Rank.NORMAL: {"id": "normal", "title": "", "health": 1.0, "damage": 1.0, "xp": 1.0, "size": 1.0, "tint": Color.WHITE, "modifiers": 0},
-	Rank.ELITE: {"id": "elite", "title": "Elite ", "health": 3.0, "damage": 1.4, "xp": 3.75, "size": 1.3, "tint": Color(1.0, 0.8, 0.55), "modifiers": 1},
+	Rank.ELITE: {"id": "elite", "title": "Elite ", "health": 3.2, "damage": 1.4, "xp": 3.75, "size": 1.3, "tint": Color(1.0, 0.8, 0.55), "modifiers": 1},
 	Rank.CHAMPION: {"id": "champion", "title": "Champion ", "health": 6.0, "damage": 1.7, "xp": 9.0, "size": 1.5, "tint": Color(0.85, 0.65, 1.0), "modifiers": 2},
-	Rank.MINIBOSS: {"id": "miniboss", "title": "Ancient ", "health": 16.0, "damage": 2.0, "xp": 30.0, "size": 1.9, "tint": Color(1.0, 0.72, 0.6), "modifiers": 2},
-	Rank.BOSS: {"id": "boss", "title": "", "health": 56.0, "damage": 2.3, "xp": 120.0, "size": 1.0, "tint": Color.WHITE, "modifiers": 0},
+	Rank.MINIBOSS: {"id": "miniboss", "title": "Ancient ", "health": 14.0, "damage": 2.0, "xp": 30.0, "size": 1.9, "tint": Color(1.0, 0.72, 0.6), "modifiers": 2},
+	Rank.BOSS: {"id": "boss", "title": "", "health": 70.0, "damage": 2.3, "xp": 120.0, "size": 1.0, "tint": Color.WHITE, "modifiers": 0},
 }
 ## Random modifiers for Elites and Champions. Each changes how the enemy
 ## fights, not just its numbers, and each adds REWARD_PER_MODIFIER to its XP.
@@ -58,6 +58,9 @@ const POISE: Array[float] = [0.6, 0.35, 0.2, 0.08, 0.0]
 const FROZEN_AURA_RADIUS := 170.0
 const SUMMON_SECONDS := 8.0
 const SUMMON_LIMIT := 3
+## How much tougher monsters are than their listed health (wild animals
+## keep theirs): a fair fight takes several blows, not one.
+const TOUGHNESS := 2.5
 ## Extra health and damage per level above 1, as a share of the base value.
 const HEALTH_PER_LEVEL := 0.25
 const DAMAGE_PER_LEVEL := 0.12
@@ -190,6 +193,8 @@ func _ready() -> void:
 	elif named_id != "":
 		size *= float(MinibossDB.NAMED[named_id]["size"])
 	health.max_health = _data["health"] * rank_data["health"] * (1.0 + HEALTH_PER_LEVEL * (level - 1)) * (0.35 if is_fragment else 1.0) * Difficulty.value("health") * (1.6 if giant else 1.0)
+	if not _data.has("wild"):
+		health.max_health *= TOUGHNESS
 	health.current = health.max_health
 	_damage = _data["damage"] * rank_data["damage"] * (1.0 + DAMAGE_PER_LEVEL * (level - 1)) * (0.6 if is_fragment else 1.0)
 	_speed = _data["speed"] * (1.4 if "swift" in modifiers else 1.0) * (0.85 if giant else 1.0) * Difficulty.value("speed")
