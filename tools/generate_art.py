@@ -2122,6 +2122,10 @@ ICON_PALETTE = {
     "metal": ["eef0f0", "b4bcc2", "7d8890"],
     "steel": ["9aa7b8", "6f7c90", "4c5668"],
     "gold": ["f0cf6a", "c09a3c", "866a26"],
+    "coin_edge": ["d8a838", "a87a22", "785414"],
+    "coin_line": ["8a6418", "8a6418", "6a4a10"],
+    "coin_mark": ["fff0a0", "e8c450", "b08a28"],
+    "coin_shine": ["ffffff", "fff8d8", "fff0b0"],
     "wood": ["8a6a48", "6b4f36", "4a3626"],
     "leather": ["7a5a44", "5a4032", "3b2a22"],
     "bone": ["f2efe2", "cfcbb8", "9b9889"],
@@ -2156,7 +2160,12 @@ ICONS = [
     ("bone", [("bone", "line", (6, 15, 15, 6), 3), ("bone", "ellipse", (3, 14, 8, 19)), ("bone", "ellipse", (13, 2, 18, 7))]),
     ("claw", [("bone", "poly", [(5, 18), (8, 8), (15, 3), (18, 4), (13, 9), (11, 18)])]),
     ("essence", [("green", "ellipse", (5, 5, 17, 17)), ("bone", "rect", (9, 8, 10, 9))]),
-    ("gold", [("gold", "ellipse", (3, 9, 13, 18)), ("gold", "ellipse", (9, 5, 19, 14))]),
+    # A stack of coins seen edge-on, and one big coin in front stamped
+    # with a crown.
+    ("gold", [("coin_edge", "rect", (2, 9, 11, 19)), ("gold", "ellipse", (2, 7, 11, 11)), ("coin_line", "rect", (2, 12, 11, 12)),
+              ("coin_line", "rect", (2, 15, 11, 15)), ("coin_edge", "ellipse", (2, 17, 11, 20)),
+              ("gold", "ellipse", (8, 6, 20, 18)), ("coin_line", "ring", (10, 8, 18, 16), 1), ("coin_mark", "poly", [(11, 13), (11, 10), (12.5, 11.5), (14, 9.5), (15.5, 11.5), (17, 10), (17, 13)]),
+              ("coin_shine", "rect", (10, 8, 11, 9))]),
 ]
 # Icons 18-25: the newer weapons, drawn from their in-hand art.
 ICONS += [(name, None) for name in ["flame_sword", "frost_sword", "dark_sword", "katana", "executioner", "reaver", "fang", "halberd"]]

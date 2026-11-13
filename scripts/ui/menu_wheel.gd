@@ -97,7 +97,7 @@ func _draw() -> void:
 		var lift: float = _lift[index] if index < _lift.size() else 0.0
 		var spot := center + Vector2.from_angle(middle) * SOCKETS - Vector2(0, SOCKET_RISE)
 		var icon_size := 44.0
-		draw_texture_rect(ItemDB.icon(entries[index]["icon"]), Rect2((spot - Vector2(icon_size, icon_size) / 2.0).floor(), Vector2(icon_size, icon_size)), false, Color(1, 1, 1, fade))
+		draw_texture_rect(MenuIcons.icon(entries[index]["id"]), Rect2((spot - Vector2(icon_size, icon_size) / 2.0).floor(), Vector2(icon_size, icon_size)), false, Color(1, 1, 1, fade))
 		var title: String = entries[index]["title"]
 		var title_font: Font = UITheme.bold() if lift > 0.5 else font
 		draw_string_outline(title_font, spot + Vector2(-70.0, 58.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 16, 4, Color(0, 0, 0, 0.9 * fade))

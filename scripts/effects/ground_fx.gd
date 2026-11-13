@@ -24,14 +24,22 @@ void vertex() {
 }
 
 void fragment() {
-	float n = texture(noise, world / 620.0).r * 0.7 + texture(noise, world / 150.0 + vec2(0.37, 0.71)).r * 0.3;
+	// Snapped to the game's 2px pixel grid, so drifts have hard pixel edges.
+	vec2 px = floor(world / 2.0) * 2.0;
+	float n = texture(noise, px / 520.0).r * 0.65 + texture(noise, px / 120.0 + vec2(0.37, 0.71)).r * 0.35;
 	float edge = 1.0 - cover;
-	float land = texture(land_mask, (world - mask_origin) / mask_size).r;
-	float a = smoothstep(edge - 0.05, edge + 0.03, n) * smoothstep(0.42, 0.75, land + (n - 0.5) * 0.7);
-	float grain = fract(sin(dot(floor(world / 2.0), vec2(12.9898, 78.233))) * 43758.5453);
-	vec3 snow = mix(vec3(0.82, 0.87, 0.95), vec3(0.97, 0.98, 1.0), smoothstep(edge, edge + 0.12, n));
-	snow = mix(snow, vec3(1.0), step(0.992, grain));
-	COLOR = vec4(snow, a * 0.92);
+	float land = texture(land_mask, (px - mask_origin) / mask_size).r;
+	float dot_noise = fract(sin(dot(floor(world / 2.0), vec2(12.9898, 78.233))) * 43758.5453);
+	// Drifts, with a dithered fringe round them, and only on land.
+	float solid = step(edge, n);
+	float fringe = step(edge - 0.035, n) * step(dot_noise, 0.45);
+	float on_land = step(0.55, land + (n - 0.5) * 0.4);
+	float a = max(solid, fringe) * on_land;
+	// Single flakes lying in the grass between the drifts.
+	a = max(a, step(0.988, dot_noise) * step(edge - 0.22, n) * step(0.55, land));
+	// Two tones: a cool shaded rim and bright snow inside.
+	vec3 snow = mix(vec3(0.78, 0.84, 0.94), vec3(0.96, 0.97, 1.0), step(edge + 0.05, n));
+	COLOR = vec4(snow, a * 0.95);
 }
 """
 
@@ -191,10 +199,11 @@ func _age(list: Array, delta: float) -> void:
 func _settle_snow(delta: float) -> void:
 	var before := snow
 	match Atmosphere.weather:
+		# Settled snow stays patchy, so the ground can still be read.
 		"Snowfall":
-			snow = minf(snow + delta * 0.008, 0.62)
+			snow = minf(snow + delta * 0.006, 0.3)
 		"Blizzard":
-			snow = minf(snow + delta * 0.02, 0.8)
+			snow = minf(snow + delta * 0.015, 0.45)
 		_:
 			snow = maxf(snow - delta * (0.004 + 0.008 * (1.0 - _day_night.darkness())), 0.0)
 	match Atmosphere.weather:

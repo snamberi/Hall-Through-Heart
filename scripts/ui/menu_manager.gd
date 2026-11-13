@@ -241,7 +241,7 @@ func _make_side_panel() -> PanelContainer:
 			continue
 		var row := Button.new()
 		row.text = screen["title"]
-		row.icon = ItemDB.icon(screen["icon"])
+		row.icon = MenuIcons.icon(screen["id"])
 		row.expand_icon = false
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row.focus_mode = Control.FOCUS_NONE

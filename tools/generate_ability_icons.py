@@ -662,6 +662,148 @@ def EFFECTS():
     }
 
 
+# --- menu icons: no badge, just the thing, outlined --------------------------
+# Order matters: scripts/ui/menu_icons.gd lists the same ids.
+MENU_IDS = ["inventory", "abilities", "class", "magic", "build", "professions", "journal", "map",
+            "attributes", "talents", "mastery", "evolution", "codex", "pets", "wardrobe", "pause"]
+PARCHMENT = C("e8d8b0")
+INK = C("5a4630")
+
+
+def backpack(L):
+    L.poly([(6, 7), (18, 7), (19, 20), (5, 20)], C("8a5a32"))
+    L.rect((7, 4, 17, 8), C("6e4426"))
+    L.poly([(6, 8), (18, 8), (17, 13), (7, 13)], C("a06a3a"))
+    L.rect((11, 11, 13, 14), GOLD)
+    L.rect((7, 15, 17, 19), C("7a4c2a"))
+    L.rect((8, 16, 16, 16), C("5a3a20"))
+    L.line([(9, 4), (10, 2), (14, 2), (15, 4)], C("4a2e18"), 1)
+
+
+def crossed_swords(L):
+    sword(L, 5, 19, 45, 24)
+    sword(L, 19, 19, -45, 24)
+
+
+def crest(L):
+    shield(L, 12, 11, face=C("3a5aa0"), rim=GOLD, w=8, h=9, boss=None)
+    L.poly([(12, 6), (14, 10), (12, 14), (10, 10)], C("e0d0a0"))
+    L.rect((8, 10, 16, 11), C("c83a3a"))
+
+
+def spellbook(L):
+    L.poly([(2, 8), (11, 6), (12, 19), (3, 20)], PARCHMENT)
+    L.poly([(13, 6), (22, 8), (21, 20), (12, 19)], PARCHMENT)
+    L.rect((11, 6, 13, 20), C("6a3a7a"))
+    for y in (10, 13, 16):
+        L.line([(4, y), (9, y - 1)], INK)
+    L.ellipse((14, 9, 20, 15), C("8a5aff"))
+    L.put(16, 11, C("ffffff"))
+
+
+def hammer_brick(L):
+    L.rect((3, 14, 13, 20), C("b0583a"))
+    L.line([(3, 17), (13, 17)], C("7a3a26"))
+    L.line([(8, 14), (8, 17)], C("7a3a26"))
+    L.line([(9, 21), (19, 7)], WOOD, 2)
+    L.poly([(14, 3), (21, 8), (19, 11), (12, 6)], IRON)
+
+
+def anvil(L):
+    L.poly([(3, 9), (20, 9), (20, 12), (15, 13), (15, 16), (18, 19), (6, 19), (9, 16), (9, 13), (5, 12)], C("5a5e6a"))
+    L.poly([(20, 9), (23, 10), (20, 12)], C("5a5e6a"))
+    L.line([(6, 8), (13, 2)], WOOD, 2)
+    L.poly([(11, 1), (16, 4), (15, 6), (9, 3)], IRON)
+
+
+def scroll_quill(L):
+    L.rect((4, 6, 16, 19), PARCHMENT)
+    L.ellipse((2, 4, 6, 8), C("c8b088"))
+    L.ellipse((14, 17, 18, 21), C("c8b088"))
+    for y in (9, 12, 15):
+        L.line([(6, y), (14, y)], INK)
+    L.poly([(13, 13), (21, 2), (22, 4), (15, 14)], C("f0f0f0"))
+    L.line([(13, 14), (11, 18)], INK)
+
+
+def folded_map(L):
+    L.poly([(2, 6), (8, 4), (8, 19), (2, 21)], PARCHMENT)
+    L.poly([(8, 4), (15, 6), (15, 21), (8, 19)], C("d8c49c"))
+    L.poly([(15, 6), (22, 4), (22, 19), (15, 21)], PARCHMENT)
+    L.ellipse((4, 9, 9, 13), C("7aa860"))
+    L.ellipse((16, 12, 20, 16), C("6a9ad0"))
+    for (x, y) in ((5, 16), (7, 15), (9, 14), (11, 13), (13, 11)):
+        L.put(x, y, C("8a3a2a"))
+    L.line([(16, 7), (19, 10)], C("d03030"), 1)
+    L.line([(19, 7), (16, 10)], C("d03030"), 1)
+
+
+def bust(L):
+    L.ellipse((8, 3, 16, 11), SKIN)
+    L.poly([(3, 21), (5, 14), (9, 12), (15, 12), (19, 14), (21, 21)], C("4a6aa8"))
+    L.rect((8, 3, 16, 5), C("6a4a30"))
+    L.rect((11, 13, 13, 16), GOLD)
+
+
+def talent_tree(L):
+    L.line([(12, 21), (12, 10)], WOOD, 2)
+    L.line([(12, 14), (6, 8)], WOOD, 1)
+    L.line([(12, 12), (18, 6)], WOOD, 1)
+    L.line([(12, 10), (12, 4)], WOOD, 1)
+    for (x, y, c) in ((6, 7, C("60d070")), (18, 5, C("60a0ff")), (12, 3, GOLD), (4, 13, C("e05050")), (20, 12, C("b070f0"))):
+        L.ellipse((x - 2, y - 2, x + 2, y + 2), c)
+    L.line([(12, 16), (4, 13)], WOOD, 1)
+    L.line([(12, 15), (20, 12)], WOOD, 1)
+
+
+def mastery_sword(L):
+    sword(L, 12, 18, 0, 20)
+    star(L, 18, 6, 4, GOLD, 5, 0.45)
+
+
+def evolution_crystal(L):
+    crystal(L, 12, 21, 18, 4, C("b080ff"))
+    for y in (8, 13):
+        L.line([(3, y + 3), (5, y), (7, y + 3)], C("90f0a0"), 1)
+        L.line([(17, y + 3), (19, y), (21, y + 3)], C("90f0a0"), 1)
+
+
+def tome(L):
+    L.rect((5, 3, 19, 21), C("5a2a2a"))
+    L.rect((17, 4, 19, 20), PARCHMENT)
+    L.rect((5, 3, 7, 21), C("3a1a1a"))
+    skull(L, 12, 11)
+
+
+def paw(L):
+    L.ellipse((7, 12, 17, 21), C("c89a6a"))
+    for (x, y) in ((4, 9), (9, 5), (15, 5), (20, 9)):
+        L.ellipse((x - 2, y - 2, x + 1, y + 2), C("c89a6a"))
+
+
+def tunic_hanger(L):
+    L.line([(12, 1), (12, 4)], IRON)
+    L.line([(4, 7), (12, 4), (20, 7)], C("8a6a48"), 1)
+    L.poly([(5, 7), (19, 7), (22, 12), (18, 13), (18, 21), (6, 21), (6, 13), (2, 12)], C("3a7a5a"))
+    L.rect((6, 15, 18, 16), C("8a6a30"))
+    L.line([(12, 8), (12, 14)], C("2a5a40"))
+
+
+def cog(L):
+    for k in range(8):
+        a = math.tau * k / 8
+        L.poly(tf([(-2, -10), (2, -10), (2, -6), (-2, -6)], 12, 12, math.degrees(a)), C("8a92a8"))
+    L.ellipse((5, 5, 19, 19), C("8a92a8"))
+    L.ellipse((9, 9, 15, 15), C("1a1a24"))
+
+
+MENU_ICONS = {
+    "inventory": backpack, "abilities": crossed_swords, "class": crest, "magic": spellbook, "build": hammer_brick,
+    "professions": anvil, "journal": scroll_quill, "map": folded_map, "attributes": bust, "talents": talent_tree,
+    "mastery": mastery_sword, "evolution": evolution_crystal, "codex": tome, "pets": paw, "wardrobe": tunic_hanger, "pause": cog,
+}
+
+
 def ability_ids():
     text = open(os.path.join(ROOT, "scripts", "abilities", "ability_db.gd")).read()
     body = text[text.index("const ABILITIES := {"):]
@@ -689,6 +831,13 @@ def main():
         sheet.paste(compose_round(theme, motif, under, over), (index * SIZE, 0))
     sheet.save(os.path.join(ROOT, "assets", "icons", "effects.png"))
     print("effects", len(EFFECT_IDS))
+    sheet = Image.new("RGBA", (len(MENU_IDS) * SIZE, SIZE), (0, 0, 0, 0))
+    for index, menu in enumerate(MENU_IDS):
+        L = Layer()
+        MENU_ICONS[menu](L)
+        sheet.paste(L.finish(), (index * SIZE, 0))
+    sheet.save(os.path.join(ROOT, "assets", "icons", "menus.png"))
+    print("menus", len(MENU_IDS))
 
 
 if __name__ == "__main__":
