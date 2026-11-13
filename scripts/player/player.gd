@@ -322,10 +322,35 @@ func strike_arc(
 		# Enemies standing right on top of the player are hit from any side.
 		if offset.length() > enemy.body_radius and absf(direction.angle_to(offset)) > half_arc:
 			continue
+		# No hitting through walls.
+		if not has_line_to(enemy.global_position):
+			continue
 		hit_enemy(enemy, multiplier, direction * knockback)
 		already_hit.append(enemy)
 		hits += 1
 	return hits
+
+
+## Whether a straight line from the player to `point` is clear of walls:
+## terrain walls, stone walls, palisades and buildings block it; small
+## props on the same physics layer (crates, chests, statues) do not.
+func has_line_to(point: Vector2) -> bool:
+	var space := get_world_2d().direct_space_state
+	var query := PhysicsRayQueryParameters2D.create(global_position, point, TerrainTiles.WALL_COLLISION)
+	var skip: Array[RID] = []
+	for attempt in 6:
+		query.exclude = skip
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			return true
+		var collider := hit["collider"] as Node
+		if collider is StaticBody2D and collider.get_parent() is Prop and collider.get_child_count() > 0:
+			var shape := (collider.get_child(0) as CollisionShape2D).shape as CircleShape2D
+			if shape != null and shape.radius < 20.0:
+				skip.append(hit["rid"])
+				continue
+		return false
+	return true
 
 
 ## Damages every enemy within `radius` of a point, pushing them away from it.

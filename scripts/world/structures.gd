@@ -401,8 +401,8 @@ func _build_portal(cell: Vector2i, key: String, level: int, random: RandomNumber
 	_decor(placed, Prop.Decor.CANDLES, cell + Vector2i(-1, 2))
 	_decor(placed, Prop.Decor.CANDLES, cell + Vector2i(1, 2))
 	var arena_seed := random.randi()
-	var portal: Prop
-	portal = Prop.create(Prop.Art.PORTAL, _at(cell), 0.0, "Step into the void portal", func(_player: Player) -> void:
+	var portal := Prop.create(Prop.Art.PORTAL, _at(cell), 0.0, "Step into the void portal")
+	portal.on_interact = func(_player: Player) -> void:
 		_instances.enter_arena(arena_seed, level, func() -> void:
 			used[key] = true
 			SaveGame.request_save()
@@ -410,7 +410,6 @@ func _build_portal(cell: Vector2i, key: String, level: int, random: RandomNumber
 			if is_instance_valid(portal):
 				portal.queue_free()
 		)
-	)
 	var tween := portal.create_tween().set_loops()
 	tween.tween_property(portal.sprite(), "scale", Vector2(1.08, 1.08), 0.8)
 	tween.tween_property(portal.sprite(), "scale", Vector2(0.95, 0.95), 0.8)

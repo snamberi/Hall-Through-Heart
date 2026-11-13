@@ -518,16 +518,17 @@ func _spawn_wave_boss() -> void:
 ## A chest that scatters its loot when opened. `richness` scales it.
 func _add_chest(in_room: Room, cell: Vector2i, level: int, richness: float, on_open: Callable) -> void:
 	var contents: Array = []
-	var chest: Prop
-	chest = Prop.create(Prop.Art.CHEST, in_room.cell_position(cell), 12.0, "Open the chest", func(_p: Player) -> void:
-		if contents.is_empty() and chest.get_meta("rolled", false) == false:
+	# Made first, then given its action: a lambda captures variables when it
+	# is made, so one written inside create() would only ever see null.
+	var chest := Prop.create(Prop.Art.CHEST, in_room.cell_position(cell), 12.0, "Open the chest")
+	chest.on_interact = func(_p: Player) -> void:
+		if not chest.get_meta("rolled", false):
 			contents.append_array(Structures.roll_chest(level, richness))
 			chest.set_meta("rolled", true)
 			if on_open.is_valid():
 				on_open.call()
 		chest.set_art(Prop.Art.CHEST_OPEN)
 		Events.loot_opened.emit({"items": contents, "title": "Chest", "take_only": true})
-	)
 	in_room.add_prop(chest)
 
 
