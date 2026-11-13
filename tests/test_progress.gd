@@ -136,3 +136,50 @@ func test_heart_monsters_and_gear_are_whole(t: TestContext) -> void:
 		t.check(not RecipeDB.find(piece).is_empty(), "%s cannot be forged" % piece)
 	for weapon: String in ["pulsebrand", "heartpiercer", "heartstring"]:
 		t.check(ResourceLoader.exists("res://assets/sprites/weapons/%s.png" % weapon), "%s has no sprite" % weapon)
+
+
+func test_rising_bosses_and_the_ninefold_blade(t: TestContext) -> void:
+	for id: String in BossDB.REVIVES:
+		t.check(BossDB.BOSSES.has(id), "%s rises again but is no boss" % id)
+	t.equal(BossDB.PIECES.size(), 9, "nine bosses each hold a piece of the blade")
+	var recipe := RecipeDB.find("ninefold_blade")
+	t.check(not recipe.is_empty(), "the Ninefold Blade can be forged")
+	for id: String in BossDB.PIECES:
+		var piece: String = BossDB.PIECES[id]
+		t.check(ItemDB.ITEMS.has(piece), "%s is not an item" % piece)
+		t.check(recipe["inputs"].has(piece), "the blade does not need %s" % piece)
+		t.check(BossDB.drops(id, 20).any(func(d: Dictionary) -> bool: return d["id"] == piece), "%s does not leave %s" % [id, piece])
+	for monster: String in ["rotten_corpse", "ghost"]:
+		t.check(EnemyDB.ENEMIES.has(monster), "%s is not a monster" % monster)
+		t.check(ResourceLoader.exists(EnemyDB.SHEETS % monster), "%s has no sprite sheet" % monster)
+		t.check(ItemDB.LOOT_TABLES.has(monster), "%s drops nothing of its own" % monster)
+	for i in 200:
+		t.check(LootGenerator.make_equipment(30, 5).id != "ninefold_blade", "the Ninefold Blade dropped as loot")
+	t.equal(AbilityDB.moves_for("ninefold_blade").size(), 4, "the blade has its own four moves")
+
+
+func test_a_boss_falls_twice(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var spawner: EnemySpawner = main.get_node("Enemies")
+	var boss: Enemy = spawner.enemy_scene.instantiate()
+	boss.boss_id = "hollow_king"
+	boss.position = player.global_position + Vector2(160, 0)
+	boss.target = player
+	boss.configure(5, Enemy.Rank.BOSS, "husk")
+	spawner.add_child(boss)
+	var deaths := [0]
+	boss.died.connect(func(_e: Enemy) -> void: deaths[0] += 1)
+	await t.frames(2)
+	boss.take_damage(1e9, Vector2.ZERO)
+	await t.frames(2)
+	t.check(boss.state != Enemy.State.DEAD, "the Hollow King rises again")
+	t.equal(deaths[0], 0, "its first fall is not its death")
+	t.equal(boss.health.current, boss.health.max_health, "it rises whole")
+	t.equal(boss.display_name, BossDB.REVIVES["hollow_king"]["name"], "it rises under a new name")
+	t.equal(boss.take_damage(1e9, Vector2.ZERO), 0.0, "it cannot be struck as it rises")
+	boss.revive_shield = 0.0
+	boss.take_damage(1e9, Vector2.ZERO)
+	await t.frames(2)
+	t.check(boss.state == Enemy.State.DEAD, "the second fall is the last")
+	t.equal(deaths[0], 1, "it dies once")

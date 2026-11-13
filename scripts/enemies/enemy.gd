@@ -110,6 +110,8 @@ var _direction := Vector2.ZERO
 var _has_hit := false
 var _flash_tween: Tween
 var _damage := 0.0
+## Seconds a boss rising for its second life cannot be hurt.
+var revive_shield := 0.0
 var _speed := 100.0
 var _tint := Color.WHITE
 var _last_weapon_type := ""
@@ -241,6 +243,7 @@ func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
+	revive_shield = maxf(revive_shield - delta, 0.0)
 	_since_hurt += delta
 	_stagger_cooldown = maxf(_stagger_cooldown - delta, 0.0)
 	_plate_check -= delta
@@ -409,6 +412,8 @@ func take_damage(
 	amount: float, knockback: Vector2, critical: bool = false, weapon_type: String = "", element: String = ""
 ) -> float:
 	if state == State.DEAD:
+		return 0.0
+	if revive_shield > 0.0:
 		return 0.0
 	if element != "":
 		# Elemental damage riding on a blow: its own coloured number, and no
@@ -891,7 +896,24 @@ func _flash() -> void:
 	_flash_tween.tween_property(_visual, "modulate", back, 0.15)
 
 
+## A boss's second life begins: it grows, takes a new colour and name, and
+## fights harder.
+func rise_again(tint: Color) -> void:
+	_tint = tint
+	_visual.modulate = Color(3.0, 3.0, 3.0)
+	var tween := create_tween()
+	tween.tween_property(_visual, "modulate", _tint, 1.2)
+	tween.parallel().tween_property(_visual, "scale", _visual.scale * 1.15, 1.2)
+	_damage *= 1.25
+	if _nameplate:
+		_nameplate.text = "Lv %d %s" % [level, display_name]
+		_nameplate.position.x = -_nameplate.get_minimum_size().x / 4.0
+
+
 func _on_died() -> void:
+	if brain and brain.can_revive():
+		brain.revive()
+		return
 	state = State.DEAD
 	_statuses.clear()
 	_refresh_status_tint()

@@ -380,6 +380,14 @@ WEAPONS = {
                   ("frost", [(32, 30), (39, 30), (38, 31.5), (33, 31.5)]), ("wrap", R(35, 31.5, 36, 34)), ("crystal", E(34.6, 34, 36.4, 35.8))],
     "sunfang": [("holy", R(35, 3, 36, 41)), ("holy", [(32.5, 7), (38.5, 7), (35.5, -6)]), ("fire_core", [(35, 5), (36, 5), (35.5, -2)]),
                 ("guard", [(31, 8), (40, 8), (38, 10), (33, 10)]), ("wrap", R(34.6, 10, 36.4, 13)), ("guard", E(33.6, 38, 37.4, 42))],
+    # The mythic blade, forged from nine bosses' pieces: a long pale blade
+    # with nine gems down the fuller and a winged golden guard.
+    "ninefold_blade": [("blade", R(33.2, 2, 37.8, 29.5)), ("blade", [(33.2, 2), (37.8, 2), (35.5, -5)]), ("plate", R(35.2, 0, 35.8, 28)),
+                       ("ruby", R(34.9, 3, 36.1, 4.2)), ("sapphire", R(34.9, 6, 36.1, 7.2)), ("gold_m", R(34.9, 9, 36.1, 10.2)),
+                       ("poison", R(34.9, 12, 36.1, 13.2)), ("glow_purple", R(34.9, 15, 36.1, 16.2)), ("crystal", R(34.9, 18, 36.1, 19.2)),
+                       ("ruby", R(34.9, 21, 36.1, 22.2)), ("holy", R(34.9, 24, 36.1, 25.2)), ("glow_cyan", R(34.9, 27, 36.1, 28.2)),
+                       ("gold_m", [(28.5, 28), (33, 29.5), (38, 29.5), (42.5, 28), (41, 32), (30, 32)]), ("ruby", E(34.2, 29.4, 36.8, 32)),
+                       ("wrap", R(34.8, 32, 36.2, 37)), ("gold_m", E(33.8, 36.6, 37.2, 40))],
     # Heartsworn arms.
     "heartpiercer": [("hplate_d", R(35, 9, 36, 41)), ("vein", R(34.7, 15, 36.3, 18)), ("vein", R(34.7, 30, 36.3, 33)),
                      ("htrim", R(33.8, 8.4, 37.2, 10)), ("heart", E(32.2, 4.6, 35.8, 8.8)), ("heart", E(35.2, 4.6, 38.8, 8.8)),
@@ -1531,6 +1539,34 @@ HEARTSWORN_KNIGHT = _biped(
                ("htrim", R(28.5, 27.6, 35.5, 29.2)), ("belt", R(31, 29.2, 33, 33)), ("heart", E(30.8, 32.6, 33.2, 35))],
 )
 
+# The graveyard's own: a corpse grown through with roots, and a ghost.
+PALETTE.update({"corpse": ["a8ae96", "7a806c", "4e5446"], "corpse_d": ["5e6454", "444a3c", "2e3228"], "rag": ["7a6a58", "5a4c3e", "3a3028"],
+                "rootling": ["9a7a50", "6a5032", "40301c"], "grave_glow": ["c8ffb0"] * 3, "ghost_glow": ["e0f8ff"] * 3})
+TEXTURES["flesh"] += ["corpse", "corpse_d"]
+ROTTEN_CORPSE = _biped(
+    back_arm=[("corpse", [(12, 21), (15, 21), (15, 30), (13, 34), (11, 31)]), ("corpse_d", [(11, 31), (13, 34), (10, 36)]), ("rootling", [(12, 23), (8, 26), (6, 25)])],
+    leg_l=[("corpse", R(16.5, 33, 20, 41)), ("rag", R(16, 33, 20.5, 36)), ("corpse_d", R(16, 39.5, 20.5, 41.4))],
+    leg_r=[("corpse", [(23, 33), (27, 33), (28, 41), (24, 41)]), ("corpse_d", R(23.5, 39.5, 28.5, 41.4))],
+    torso=[("rag", [(15, 19), (29, 19), (30, 34), (14, 34)]), ("corpse", [(17, 20), (27, 20), (26, 29), (18, 29)]),
+           ("void", R(18.5, 22, 25.5, 22.8)), ("void", R(18.5, 24.6, 25.5, 25.4)), ("void", R(18.5, 27.2, 25.5, 28)), ("corpse_d", R(21.6, 21, 22.4, 29)),
+           ("rootling", [(27, 19), (31, 12), (34, 10), (32, 14), (29, 21)]), ("rootling", [(16, 19), (13, 13), (10, 12), (12, 16), (15, 21)]),
+           ("leaf_dark", E(32, 8, 36, 12)), ("leaf_dark", E(9, 10, 13, 14)), ("rag", [(14, 33), (17, 38), (19, 34), (23, 38), (26, 34), (30, 37), (30, 33)])],
+    head=[("corpse", E(16, 6, 29, 20)), ("corpse_d", E(17, 14, 28, 21)), ("void", E(18, 10, 21.6, 14)), ("grave_glow", R(19.2, 11.4, 20.6, 12.8)),
+          ("void", E(23.6, 10, 27, 14)), ("void", [(19, 17), (26, 17), (25, 21), (20, 21)]), ("tooth", [(20.4, 17), (21.6, 17), (21, 19)]),
+          ("tooth", [(23.4, 17), (24.6, 17), (24, 19)]), ("rootling", [(22, 6), (21, 1), (23, 2), (24, 6)]), ("moss", E(15, 5, 20, 9))],
+    front_arm=[("corpse", [(29, 21), (32, 21), (33, 30), (31, 34), (29, 31)]), ("corpse_d", [(31, 31), (34, 35), (31, 36)]),
+               ("bone", [(31, 34), (33, 38), (32, 38.5), (30, 35)])],
+)
+GHOST = _floater(
+    body=[("ghost", [(13, 14), (31, 14), (33, 26), (32, 34), (28, 31), (25, 36), (22, 32), (19, 36), (16, 31), (12, 34), (11, 26)]),
+          ("ghost", E(13, 6, 31, 24)), ("void", E(16.5, 12, 21, 17.5)), ("void", E(23, 12, 27.5, 17.5)), ("ghost_glow", R(18.2, 13.6, 19.8, 15.2)),
+          ("ghost_glow", R(24.6, 13.6, 26.2, 15.2)), ("void", E(19.5, 19, 24.5, 24))],
+    head=[("ghost", [(15, 8), (13, 3), (18, 6)]), ("ghost", [(29, 8), (31, 3), (26, 6)])],
+    tail=[("ghost", [(14, 30), (16, 40), (19, 34), (22, 43), (25, 34), (28, 40), (30, 30)])],
+    wing_b=[("ghost", [(13, 18), (5, 22), (3, 27), (6, 25), (9, 26), (13, 23)])],
+    wing_f=[("ghost", [(31, 18), (39, 22), (41, 27), (38, 25), (35, 26), (31, 23)])],
+)
+
 # id -> (rig, draw order, animations). Ids match scripts/enemies/enemy_db.gd.
 MONSTERS = {
     "bone_archer": (BONE_ARCHER, HUSK_ORDER, HUSK_ANIMATIONS),
@@ -1558,6 +1594,8 @@ MONSTERS = {
     "magma_slime": (MAGMA_SLIME, ["body"], SLIME_ANIMATIONS),
     "veinheart": (VEINHEART, FLOAT_ORDER, FLOAT_ANIMATIONS),
     "heartsworn_knight": (HEARTSWORN_KNIGHT, HUSK_ORDER, HUSK_ANIMATIONS),
+    "rotten_corpse": (ROTTEN_CORPSE, HUSK_ORDER, HUSK_ANIMATIONS),
+    "ghost": (GHOST, FLOAT_ORDER, FLOAT_ANIMATIONS),
 }
 
 
@@ -2689,6 +2727,11 @@ ICONS += [
               ("coal_shine", "rect", (7, 8, 8, 9)), ("coal_shine", "rect", (13, 9, 13, 10)), ("coal_shine", "rect", (9, 15, 10, 15))]),
 ]
 
+# 139: the Ninefold Blade; 140-148: its nine pieces, one from each boss.
+ICONS += [("ninefold_blade", None)]
+ICONS += [('pommel_hollow', [('bone', 'ellipse', (6, 6, 16, 16)), ('gold', 'ring', (5, 5, 17, 17), 1), ('gold', 'rect', (10, 1, 12, 6))]), ('guard_cinder', [('gold', 'poly', [(1, 9), (21, 9), (18, 14), (4, 14)]), ('flame', 'poly', [(4, 10), (18, 10), (16, 13), (6, 13)]), ('red', 'ellipse', (9, 9, 13, 14))]), ('edge_frost', [('ice', 'poly', [(3, 18), (16, 3), (19, 4), (7, 19)]), ('shine_w', 'line', [(5, 17), (17, 4)], 1)]), ('grip_pale', [('silver', 'rect', (9, 3, 13, 19)), ('leather', 'line', [(9, 5), (13, 8)], 1), ('leather', 'line', [(9, 10), (13, 13)], 1), ('leather', 'line', [(9, 15), (13, 18)], 1), ('gold', 'rect', (8, 2, 14, 4)), ('gold', 'rect', (8, 18, 14, 20))]), ('wrap_briar', [('leather', 'rect', (8, 3, 14, 19)), ('vine', 'line', [(7, 4), (15, 8), (7, 12), (15, 16), (8, 19)], 2), ('bone', 'rect', (11, 6, 11, 7))]), ('fuller_dune', [('metal', 'poly', [(4, 17), (15, 3), (19, 6), (8, 20)]), ('idol', 'line', [(7, 16), (16, 5)], 2)]), ('core_molten', [('dark', 'ellipse', (4, 4, 18, 18)), ('hearth_glow', 'ellipse', (6, 6, 16, 16)), ('shine_w', 'rect', (8, 8, 9, 9))]), ('gem_eye', [('gold', 'poly', [(11, 1), (19, 8), (11, 21), (3, 8)]), ('void_g', 'poly', [(11, 3), (17, 8), (11, 19), (5, 8)]), ('shine_w', 'rect', (9, 6, 10, 7))]), ('heart_blade', [('heart', 'ellipse', (3, 4, 12, 13)), ('heart', 'ellipse', (10, 4, 19, 13)), ('heart', 'poly', [(4, 10), (18, 10), (11, 19)]), ('gold', 'rect', (10, 1, 12, 5)), ('shine_w', 'rect', (6, 6, 7, 7))])]
+
+# Icons for the map and minimap: one row of 22px cells in assets/icons/map.png.
 # The order is MapIcons.KINDS in the game.
 ICON_PALETTE.update({"roof": ["d86a5a", "b04a40", "7c3030"], "wall_w": ["f0e4c8", "cdbf9e", "9a8d70"], "stone_m": ["b4b0bd", "8a8794", "5c5966"],
                      "tent": ["d8b07a", "b08a54", "7c5e36"], "void_m": ["c8a0ff", "9a6cf0", "5e3aa8"], "coin": ["ffe27a", "f0b830", "b07c10"],

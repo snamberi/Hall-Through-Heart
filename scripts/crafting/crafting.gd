@@ -50,7 +50,12 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 		made = LootGenerator.make_equipment(player.leveling.level, rarity, recipe["equipment"], skill / 100.0)
 		if ItemDB.ITEMS[recipe["equipment"]].get("tiered", false):
 			made.forged_tier = recipe["item_level"]
-		made.quality = metal_quality(recipe["item_level"], ItemDB.ITEMS[recipe["equipment"]].get("tiered", false)) * (1.0 + MATERIAL_RARITY_BONUS * material_rarity)
+		var def: Dictionary = ItemDB.ITEMS[recipe["equipment"]]
+		made.quality = metal_quality(recipe["item_level"], def.get("tiered", false), def.get("mythic", false))
+		if not def.get("mythic", false):
+			made.quality *= 1.0 + MATERIAL_RARITY_BONUS * material_rarity
+		else:
+			Events.announcement.emit("THE %s IS FORGED" % str(def["name"]).to_upper(), "Nine bosses' worth of power in one blade")
 	else:
 		made = Item.create(recipe["item"], recipe["count"])
 		# A practised cook stretches a pot further: a chance of a spare serving.
@@ -69,7 +74,10 @@ const METAL_QUALITY := {1: 0.7, 10: 0.8, 20: 0.9, 30: 1.0, 40: 1.1, 50: 1.2, 65:
 const MATERIAL_RARITY_BONUS := 0.06
 
 
-static func metal_quality(item_level: int, tiered: bool) -> float:
+static func metal_quality(item_level: int, tiered: bool, mythic: bool = false) -> float:
+	if mythic:
+		# Above the finest heartstone, without running away with the game.
+		return 1.25
 	if not tiered:
 		# Special gear (heart arms and the like) is a fine metal of its own.
 		return 1.15

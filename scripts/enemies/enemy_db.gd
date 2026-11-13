@@ -257,6 +257,20 @@ const ENEMIES := {
 		"attack": {"kind": "combo", "range": 64.0, "windup": 0.5, "count": 3, "gap": 0.22, "arc": 110.0, "claws": 1, "recover": 1.0, "color": Color(1.0, 0.35, 0.45)},
 		"touch": {"status": "bleed", "duration": 3.0, "power": 0.25}, "traits": ["armored", "enrage"],
 	},
+	# The graveyard's own: corpses the roots have got into, and ghosts.
+	"rotten_corpse": {
+		"active": "always", "name": "Rotten Corpse", "health": 34.0, "damage": 11.0, "speed": 72.0, "xp": 12,
+		"radius": 13.0, "size": 1.0, "tiles": [T.DEAD_GRASS, T.MUD, T.BOG], "min_level": 4, "weight": 2.0,
+		"attack": {"kind": "swipe", "range": 58.0, "windup": 0.65, "arc": 100.0, "recover": 1.0, "color": Color(0.6, 0.75, 0.45)},
+		"touch": {"status": "poison", "duration": 3.0, "power": 0.25}, "traits": ["regen"],
+	},
+	"ghost": {
+		"active": "night", "name": "Ghost", "health": 24.0, "damage": 10.0, "speed": 110.0, "xp": 13, "flying": true,
+		"radius": 12.0, "size": 1.0, "tiles": [T.DEAD_GRASS, T.ASH, T.SNOW, T.MUD], "min_level": 6, "weight": 2.5,
+		"attack": {"kind": "shoot", "range": 280.0, "windup": 0.6, "recover": 1.3, "sprite": 3, "speed": 320.0, "color": Color(0.8, 0.95, 1.0),
+			"status": {"status": "chill", "duration": 2.5, "power": 0.45}},
+		"traits": ["blink", "erratic"],
+	},
 	"magma_slime": {
 		"active": "always", "name": "Magma Slime", "health": 38.0, "damage": 12.0, "speed": 70.0, "xp": 13,
 		"radius": 14.0, "size": 1.0, "tiles": [T.CINDER, T.ASH, T.TAR], "min_level": 6, "weight": 7.0,

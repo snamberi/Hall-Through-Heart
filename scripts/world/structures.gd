@@ -618,6 +618,11 @@ func _build_graveyard(cell: Vector2i, key: String, level: int, random: RandomNum
 		for dx: int in [-4, 4]:
 			if random.randf() < 0.8:
 				_decor(placed, Prop.Decor.FENCE, cell + Vector2i(dx, dy), 8.0)
+	var rite := GraveyardRite.new()
+	rite.structures = self
+	rite.cell = cell
+	rite.key = key
+	rite.level = level
 	for row in 3:
 		for column in 4:
 			if random.randf() < 0.85:
@@ -625,6 +630,7 @@ func _build_graveyard(cell: Vector2i, key: String, level: int, random: RandomNum
 				if grave == cell + Vector2i(1, -1):
 					continue
 				_decor(placed, Prop.Decor.GRAVESTONE, grave, 8.0, false, Vector2(random.randf_range(-4.0, 4.0), 0))
+				rite.graves.append(_at(grave))
 				if random.randf() < 0.25:
 					_decor(placed, Prop.Decor.CANDLES, grave + Vector2i(0, 1), 0.0, true)
 	_floor(placed, cell + Vector2i(0, 2), 1)
@@ -632,10 +638,12 @@ func _build_graveyard(cell: Vector2i, key: String, level: int, random: RandomNum
 	var contents: Array = roll_chest(level, 1.5)
 	contents.append(Item.create("bone", random.randi_range(2, 5)).to_dict())
 	placed.append(_chest(cell + Vector2i(0, 2), key, level, 1.5, contents))
-	if used.has(key):
-		return
-	for spot: Vector2i in [Vector2i(-2, 1), Vector2i(2, 1), Vector2i(0, -2)]:
-		placed.append(_spawner.spawn_at(_at(cell + spot), level, Enemy.Rank.NORMAL, "husk" if spot.y > 0 else "bone_archer"))
+	# The Corpse of Roots' hoard, if it has not been emptied yet.
+	if boss_days.has(key):
+		var hoard_key := "%s:%d" % [key, int(boss_days[key])]
+		if chests.has(hoard_key) and not (chests[hoard_key] as Array).is_empty():
+			placed.append(_chest(cell + Vector2i(0, 1), hoard_key, level, 3.0))
+	placed.append(rite)
 
 
 ## Standing stones: a ring of carved menhirs round a capstone. Laying a

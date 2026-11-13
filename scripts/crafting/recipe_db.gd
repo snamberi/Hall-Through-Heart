@@ -127,6 +127,8 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "rope_belt", "profession": "building", "level": 1, "inputs": {"healing_herb": 4, "oak_wood": 1}, "item": "rope_belt", "count": 1, "xp": 8.0},
 	{"id": "leather_belt", "profession": "blacksmithing", "level": 6, "inputs": {"leather": 4, "iron_ingot": 1}, "item": "leather_belt", "count": 1, "xp": 30.0},
 	{"id": "reliquary_belt", "profession": "blacksmithing", "level": 20, "inputs": {"leather": 8, "gold_ingot": 3, "boss_trophy": 1}, "item": "reliquary_belt", "count": 1, "xp": 120.0},
+	{"id": "ninefold_blade", "profession": "blacksmithing", "level": 30, "inputs": {"pommel_hollow": 1, "guard_cinder": 1, "edge_frost": 1, "grip_pale": 1,
+		"wrap_briar": 1, "fuller_dune": 1, "core_molten": 1, "gem_eye": 1, "heart_blade": 1, "gold_ingot": 5}, "equipment": "ninefold_blade", "item_level": 100, "xp": 2000.0},
 	{"id": "heartsworn_helm", "profession": "blacksmithing", "level": 18, "inputs": {"crimson_plate": 3, "heartblood": 2, "iron_ingot": 2}, "equipment": "heartsworn_helm", "item_level": 22, "xp": 90.0},
 	{"id": "heartsworn_cuirass", "profession": "blacksmithing", "level": 20, "inputs": {"crimson_plate": 6, "heartblood": 3, "iron_ingot": 4}, "equipment": "heartsworn_cuirass", "item_level": 24, "xp": 130.0},
 	{"id": "heartsworn_greaves", "profession": "blacksmithing", "level": 19, "inputs": {"crimson_plate": 4, "heartblood": 2, "iron_ingot": 3}, "equipment": "heartsworn_greaves", "item_level": 23, "xp": 110.0},

@@ -12,6 +12,17 @@ extends RefCounted
 
 const T := TerrainTiles.Type
 const BOSSES := {
+	# Keeper of the Ninefold Blade's last piece, deep in the high, cold places.
+	"sword_keeper": {"name": "The Sword Keeper", "monster": "heartsworn_knight", "tint": Color(0.8, 0.88, 1.0), "size": 2.4, "health": 1.4,
+		"attacks": ["charge", "slam", "volley"], "phase2": ["spiral"], "phase3": ["teleport"], "color": Color(0.85, 0.9, 1.0),
+		"tiles": [T.ROCK, T.PEAK, T.SNOW, T.ASH], "set": "gravewarden", "unique": "stormcaller", "min_level": 30},
+	# Rises in a graveyard once its dead have been put down (see Structures).
+	"corpse_of_roots": {"name": "The Corpse of Roots", "monster": "rotten_corpse", "tint": Color(0.85, 1.0, 0.75), "size": 2.8, "health": 1.1,
+		"attacks": ["slam", "summon", "pools"], "phase2": ["charge"], "phase3": ["nova"], "color": Color(0.55, 0.85, 0.35),
+		"tiles": [], "set": "gravewarden", "unique": "wispkeeper"},
+	"weeping_shade": {"name": "The Weeping Shade", "monster": "ghost", "tint": Color(0.75, 0.8, 1.0), "size": 2.6, "health": 0.9,
+		"attacks": ["teleport", "volley", "spiral"], "phase2": ["summon"], "phase3": ["nova"], "color": Color(0.7, 0.85, 1.0),
+		"tiles": [T.ASH, T.DEAD_GRASS, T.SNOW], "set": "nightstalker", "unique": "frostbite", "min_level": 18},
 	"hollow_king": {"name": "The Hollow King", "monster": "husk", "tint": Color(0.75, 0.68, 0.95), "size": 2.6, "health": 1.0,
 		"attacks": ["slam", "charge", "summon"], "phase2": ["volley"], "phase3": ["nova"], "color": Color(0.75, 0.55, 1.0),
 		"tiles": [T.DEAD_GRASS, T.DARK_GRASS, T.MUD], "set": "gravewarden", "unique": "bloodthirst"},
@@ -59,6 +70,24 @@ const DAMAGE := 1.15
 const RESPAWN_DAYS := 3
 
 
+## Bosses that rise again when first beaten: a second life at full health,
+## a new name, a new colour and harder moves. Only the second fall counts.
+const REVIVES := {
+	"sword_keeper": {"name": "The Sword Keeper, Unsheathed", "moves": ["nova", "meteor"], "tint": Color(1.0, 0.9, 0.6)},
+	"corpse_of_roots": {"name": "The Corpse of Roots, Rerooted", "moves": ["spiral", "summon"], "tint": Color(0.7, 1.0, 0.5)},
+	"hollow_king": {"name": "The Hollow King, Unbound", "moves": ["spiral", "meteor"], "tint": Color(0.9, 0.55, 1.0)},
+	"cinderlord": {"name": "The Cinderlord Reborn", "moves": ["nova", "pools"], "tint": Color(1.2, 0.7, 0.4)},
+	"pale_matron": {"name": "The Pale Matron, Risen", "moves": ["teleport", "nova"], "tint": Color(0.8, 0.9, 1.2)},
+	"elder_grove": {"name": "The Elder Grove, Rekindled", "moves": ["meteor", "charge"], "tint": Color(1.0, 0.8, 0.5)},
+}
+## The boss that leaves each piece of the Ninefold Blade.
+const PIECES := {
+	"hollow_king": "pommel_hollow", "cinderlord": "guard_cinder", "frostwarden": "edge_frost", "pale_matron": "grip_pale",
+	"briar_queen": "wrap_briar", "dune_tyrant": "fuller_dune", "molten_heart": "core_molten", "unblinking_eye": "gem_eye",
+	"sword_keeper": "heart_blade",
+}
+
+
 static func for_tile(tile: int) -> String:
 	for id: String in BOSSES:
 		if tile in BOSSES[id]["tiles"]:
@@ -91,6 +120,8 @@ static func drops(id: String, level: int) -> Array:
 	for i in 2:
 		items.append(Item.create(Gems.random_gem(level + 20)).to_dict())
 	items.append(Item.create("heart_shard", 3).to_dict())
+	if PIECES.has(id):
+		items.append(Item.create(PIECES[id]).to_dict())
 	items.append(Item.create("boss_trophy").to_dict())
 	var steed: String = {"frostwarden": "frost_elk_whistle", "sunless_prophet": "sand_strider_whistle", "pale_matron": "nightmare_whistle", "hollow_king": "nightmare_whistle"}.get(id, "")
 	if steed != "" and randf() < 0.2:

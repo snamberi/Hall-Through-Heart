@@ -94,6 +94,10 @@ static func poison(power: float = 0.3) -> Dictionary:
 static func _moves() -> Dictionary:
 	var magic := {"mana": 18.0, "stamina": 0.0, "magic": true}
 	return {
+		"ninefold_blade": [arc("Nine Cuts", "blade_dance", 1.2, 4.0, 160.0, 1.3, 400.0, "Nine strikes that land as one, each from a different boss's piece.", {"color": Color(1.0, 0.95, 0.8)}),
+			dash("Oathstride", "shadow_dash", 2.4, 5.0, 280.0, "Cross the field in a flash of nine colours, cutting all in the way.", {"color": Color(1.0, 0.9, 0.6)}),
+			spin("Ninefold Storm", "cleaving_storm", 1.8, 10.0, 160.0, 3, "Three turns of a storm of every element.", {"color": Color(0.9, 0.8, 1.0), "status": {"status": "burn", "duration": 3.0, "power": 0.3}}),
+			slam("Kingsfall", "earthshatter", 5.0, 16.0, 170.0, 110.0, "Bring the blade down with the weight of nine fallen kings.", {"color": Color(1.0, 0.85, 0.5), "stun": 1.2})],
 		"club": [arc("Skull Knock", "palm_strike", 2.2, 4.0, 80.0, 1.1, 700.0, "A crack on the head that leaves the foe dazed.", {"stun": 1.2}),
 			spin("Club Spin", "whirlwind", 1.1, 7.0, 80.0, 2, "Swing round twice, battering everything close."),
 			"rapid_blows", slam("Pound", "ground_breaker", 2.4, 8.0, 80.0, 50.0, "Bring the club down so hard the ground jumps.")],

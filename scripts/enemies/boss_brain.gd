@@ -32,7 +32,7 @@ func _init(enemy: Enemy, id: String) -> void:
 
 
 func speed_scale() -> float:
-	return 1.0 + 0.2 * (phase - 1)
+	return 1.0 + 0.2 * (phase - 1) + (0.1 if revived else 0.0)
 
 
 func physics(delta: float) -> void:
@@ -64,6 +64,35 @@ func physics(delta: float) -> void:
 				_rest = randf_range(0.6, 1.4) / speed_scale()
 	_update_meteors(delta)
 	e.queue_redraw()
+
+
+## Whether this boss gets its second life, and has not used it yet.
+var revived := false
+
+
+func can_revive() -> bool:
+	return not revived and BossDB.REVIVES.has(boss_id)
+
+
+## The boss falls, and rises again: full health, a new name and colour, a
+## burst of light, and harder moves for the second fight.
+func revive() -> void:
+	revived = true
+	var info: Dictionary = BossDB.REVIVES[boss_id]
+	var e := _enemy
+	e.health.current = e.health.max_health
+	e.health.changed.emit(e.health.current, e.health.max_health)
+	e.revive_shield = 2.8
+	moves.append_array(info["moves"])
+	phase = 3
+	e.display_name = info["name"]
+	e.rise_again(info["tint"])
+	RingBurst.spawn(e.get_parent(), e.global_position + Vector2(0, -20), data["color"], 220.0)
+	LightPillar.spawn(e.get_parent(), e.global_position, data["color"])
+	if e.target:
+		e.target.shake_camera(10.0)
+	Events.announcement.emit("%s RISES AGAIN" % str(data["name"]).to_upper(), info["name"])
+	_finish(2.5)
 
 
 func _check_phase() -> void:

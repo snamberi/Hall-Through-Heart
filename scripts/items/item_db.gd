@@ -276,6 +276,15 @@ const ITEMS := {
 		"on_hit": {"status": "bleed", "duration": 4.0, "power": 0.25},
 		"weapon": {"type": "greatswords", "range": 84.0, "arc": 150.0, "cooldown": 0.6, "knockback": 540.0},
 	},
+	# --- the Ninefold Blade: never dropped, only forged from nine pieces, one
+	# from each of eight world bosses and the last from the Sword Keeper.
+	"ninefold_blade": {
+		"name": "Ninefold Blade", "icon": 139, "visual": "ninefold_blade", "slot": "main_hand", "drop_weight": 0.0, "min_rarity": 5, "mythic": true,
+		"damage": 9.0, "slash": Color(1.0, 0.95, 0.8), "life_steal": 0.03,
+		"implicit": [{"stat": "physical_damage", "kind": "percent", "base": 0.15, "per_level": 0.0}, {"stat": "critical_chance", "kind": "flat", "base": 0.06, "per_level": 0.0},
+			{"stat": "attack_speed", "kind": "percent", "base": 0.08, "per_level": 0.0}],
+		"weapon": {"type": "swords", "range": 72.0, "arc": 130.0, "cooldown": 0.34, "knockback": 460.0},
+	},
 	"heartpiercer": {
 		"name": "Heartpiercer", "icon": 122, "visual": "heartpiercer", "slot": "main_hand", "drop_weight": 0.0, "min_rarity": 2,
 		"damage": 8.5, "two_handed": true, "slash": Color(1.0, 0.35, 0.45), "life_steal": 0.03,
@@ -397,6 +406,15 @@ const ITEMS := {
 	"scorpion_stinger": {"name": "Scorpion Stinger", "icon": 15, "tint": Color("d8b070"), "material_rarity": 1, "text": "A drop of venom still beads at the tip."},
 	"mummy_wrap": {"name": "Mummy Wrap", "icon": 89, "tint": Color("e0d4b4"), "material_rarity": 1, "text": "Linen that has outlasted kingdoms."},
 	"void_shard": {"name": "Void Shard", "icon": 42, "tint": Color("a070f0"), "material_rarity": 2, "text": "A splinter of nothing, given edges."},
+	"pommel_hollow": {"name": "Pommel of Hollow Bone", "icon": 140, "material_rarity": 5, "blade_piece": "hollow_king", "value": 900, "text": "One of the nine pieces of the Ninefold Blade. Left by the Hollow King."},
+	"guard_cinder": {"name": "Cinder-Forged Guard", "icon": 141, "material_rarity": 5, "blade_piece": "cinderlord", "value": 900, "text": "One of the nine pieces of the Ninefold Blade. Left by the Cinderlord."},
+	"edge_frost": {"name": "Frostwarden's Edge", "icon": 142, "material_rarity": 5, "blade_piece": "frostwarden", "value": 900, "text": "One of the nine pieces of the Ninefold Blade. Left by the Frostwarden."},
+	"grip_pale": {"name": "Pale Grip", "icon": 143, "material_rarity": 5, "blade_piece": "pale_matron", "value": 900, "text": "One of the nine pieces of the Ninefold Blade. Left by the Pale Matron."},
+	"wrap_briar": {"name": "Briar Wrapping", "icon": 144, "material_rarity": 5, "blade_piece": "briar_queen", "value": 900, "text": "One of the nine pieces of the Ninefold Blade. Left by the Briar Queen."},
+	"fuller_dune": {"name": "Sunbaked Fuller", "icon": 145, "material_rarity": 5, "blade_piece": "dune_tyrant", "value": 900, "text": "One of the nine pieces of the Ninefold Blade. Left by the Dune Tyrant."},
+	"core_molten": {"name": "Molten Core", "icon": 146, "material_rarity": 5, "blade_piece": "molten_heart", "value": 900, "text": "One of the nine pieces of the Ninefold Blade. Left by the Molten Heart."},
+	"gem_eye": {"name": "Unblinking Gem", "icon": 147, "material_rarity": 5, "blade_piece": "unblinking_eye", "value": 900, "text": "One of the nine pieces of the Ninefold Blade. Left by the Unblinking Eye."},
+	"heart_blade": {"name": "Heart of the Blade", "icon": 148, "material_rarity": 5, "blade_piece": "sword_keeper", "value": 1500, "text": "The last of the nine pieces of the Ninefold Blade, kept by the Sword Keeper until it fell."},
 	"heartblood": {"name": "Heartblood", "icon": 124, "material_rarity": 2, "value": 40, "text": "Still warm, and it beats against the glass. Left by heart monsters."},
 	"crimson_plate": {"name": "Crimson Plate", "icon": 125, "material_rarity": 2, "value": 45, "text": "A shard of a Heartsworn Knight's armour. Smiths can forge it anew."},
 	"fiend_horn": {"name": "Fiend Horn", "icon": 85, "tint": Color("e05a3a"), "material_rarity": 1, "text": "Hot to the touch."},
@@ -771,6 +789,10 @@ const LOOT_TABLES := {
 		{"id": "heartblood", "chance": 0.45, "count": [1, 2]}, {"id": "essence", "chance": 0.12, "count": [1, 1]}]},
 	"heartsworn_knight": {"gold": [3, 6], "gear": [["heartsworn_helm", 0.008], ["heartsworn_sabatons", 0.008], ["heartpiercer", 0.008]], "materials": [
 		{"id": "crimson_plate", "chance": 0.4, "count": [1, 2]}, {"id": "heartblood", "chance": 0.25, "count": [1, 1]}]},
+	"rotten_corpse": {"gold": [1, 3], "gear": [["helmet", 0.01]], "materials": [
+		{"id": "bone", "chance": 0.5, "count": [1, 2]}, {"id": "husk_fragment", "chance": 0.35, "count": [1, 2]}, {"id": "heartwood", "chance": 0.04, "count": [1, 1]}]},
+	"ghost": {"gold": [1, 3], "gear": [["necklace", 0.012]], "materials": [
+		{"id": "wraith_cloth", "chance": 0.3, "count": [1, 1]}, {"id": "essence", "chance": 0.2, "count": [1, 1]}]},
 	"bog_lurker": {"gold": [0, 2], "gear": [["boots", 0.015]], "materials": [
 		{"id": "lurker_tongue", "chance": 0.35, "count": [1, 1]}, {"id": "slime_gel", "chance": 0.2, "count": [1, 1]}]},
 	"storm_harpy": {"gold": [1, 2], "gear": [["bow", 0.025], ["spear", 0.015]], "materials": [
