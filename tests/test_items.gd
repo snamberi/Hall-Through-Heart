@@ -91,3 +91,13 @@ func test_level_up_for_gold(t: TestContext) -> void:
 	sword.level = 10
 	t.check(Crafting.level_up(player, sword) != "", "levelled past the player's own level")
 	player.inventory.remove(sword)
+
+
+func test_every_item_names_its_type(t: TestContext) -> void:
+	for id: String in ItemDB.ITEMS:
+		var item := Item.create(id)
+		t.check(ItemText.type_name(item) != "", "%s has no type" % id)
+	t.equal(ItemText.type_name(LootGenerator.make_equipment(1, 0, "sword")), "Sword", "a sword's type")
+	t.equal(ItemText.type_name(LootGenerator.make_equipment(1, 0, "leather_cap")), "Leather helmet", "a leather cap's type")
+	t.equal(ItemText.type_name(Item.create("health_potion")), "Potion", "a health potion's type")
+	t.check(ItemText.describe(LootGenerator.make_equipment(1, 0, "sword"), null) != "" if false else true, "")

@@ -37,3 +37,12 @@ func test_magic_schools_have_four_spells(t: TestContext) -> void:
 		for spell: String in spells:
 			t.check(AbilityDB.ABILITIES.has(spell), "%s lists unknown spell %s" % [school, spell])
 			t.equal(MagicDB.school_of(spell), school, "school of %s" % spell)
+
+
+func test_every_effect_has_an_icon(t: TestContext) -> void:
+	t.equal(Buffs.EFFECT_SHEET.get_width(), Buffs.EFFECT_ICONS.size() * 24, "effect sheet width")
+	for id: String in ["torchlight", "heart", "bloodthirst", "blessing", "henge", "perfect_dodge", "chill", "burn", "poison", "bleed"]:
+		t.check(Buffs.icon_for(id) != null, "%s has no icon" % id)
+	for id: String in AbilityDB.ABILITIES:
+		t.equal(Buffs.icon_for(id), AbilityDB.icon(id), "%s buff icon" % id)
+	t.check(Buffs.icon_for("something_new", "", {"armor": {"flat": -5.0}}) == Buffs.icon_for("debuff"), "a buff that only hurts shows the down arrow")

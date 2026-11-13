@@ -590,6 +590,78 @@ def ICONS():
     }
 
 
+# --- effects (buffs and statuses), on a round badge ---------------------------
+# Order matters: scripts/combat/buffs.gd lists the same ids in EFFECT_ICONS.
+EFFECT_IDS = ["buff", "torchlight", "heart_racing", "heart_steady", "bloodthirst", "blessing", "henge",
+              "perfect_dodge", "chill", "burn", "poison", "bleed", "well_fed", "debuff"]
+
+THEMES.update({
+    "e_warm": ("3a2410", "f0a040"), "e_red": ("3a1018", "e04050"), "e_green": ("12301a", "60c070"),
+    "e_gold": ("38300e", "f8d860"), "e_cyan": ("12283a", "70d0f0"), "e_violet": ("24183e", "a080f0"),
+    "e_grey": ("1e2030", "8890a8"),
+})
+
+
+def round_badge(theme):
+    deep, glow = (C(h) for h in THEMES[theme])
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(SIZE):
+        for x in range(SIZE):
+            d = math.hypot(x - 11.5, y - 11.5)
+            if d > 11.6:
+                continue
+            if d > 10.4:
+                px[x, y] = OUT
+                continue
+            t = max(0.0, 1.0 - math.hypot(x - 10.5, y - 9.5) / 11.0)
+            band = 0.0 if t < 0.25 else 0.25 if t < 0.5 else 0.5 if t < 0.72 else 0.72
+            px[x, y] = mix(deep, glow, band * 0.75)
+            if 9.4 < d <= 10.4:
+                lit = (x - 11.5) + (y - 11.5) < 0
+                px[x, y] = mix(glow, WHITE, 0.3) if lit else mix(deep, OUT, 0.4)
+    return img
+
+
+def compose_round(theme, motif, under=None, over=None):
+    img = round_badge(theme)
+    for fn, finish in ((under, False), (motif, True), (over, False)):
+        if fn is None:
+            continue
+        L = Layer()
+        fn(L)
+        img.alpha_composite(L.finish() if finish else L.img)
+    return img
+
+
+def torch(L, cx, cy):
+    L.line([(cx, cy + 8), (cx, cy - 1)], WOOD, 2)
+    L.rect((cx - 2, cy - 3, cx + 2, cy), IRON)
+    flame(L, cx, cy - 3, 0.6)
+
+
+def EFFECTS():
+    return {
+        "buff": ("e_gold", lambda L: L.poly([(12, 4), (19, 12), (15, 12), (15, 19), (9, 19), (9, 12), (5, 12)], HOLY), None, None),
+        "torchlight": ("e_warm", lambda L: torch(L, 12, 11), lambda F: F.ellipse((5, 2, 19, 15), C("ffd070", 70)), lambda F: (sparkle(F, 7, 5, FIRE_Y), sparkle(F, 17, 7, FIRE_Y))),
+        "heart_racing": ("e_red", lambda L: heart(L, 13, 11, C("e03848")), lambda F: speed_lines(F, 2, 7, 3, 4, C("ffb0b8"), 4), None),
+        "heart_steady": ("e_green", lambda L: heart(L, 12, 10, C("e03848")), None, lambda F: F.line([(3, 18), (8, 18), (10, 14), (12, 21), (14, 17), (20, 17)], C("90f090"), 1)),
+        "bloodthirst": ("e_red", lambda L: (L.poly([(12, 4), (17, 12), (17, 15), (12, 19), (7, 15), (7, 12)], BLOOD), L.poly([(9, 6), (11, 6), (10, 11)], BONE), L.poly([(13, 6), (15, 6), (14, 11)], BONE)), None, None),
+        "blessing": ("e_gold", lambda L: star(L, 12, 13, 7, HOLY, 4, 0.4), lambda F: F.d.ellipse((6, 3, 18, 8), outline=C("fff0a0"), width=1), None),
+        "henge": ("e_cyan", lambda L: (L.rect((5, 9, 8, 19), C("9a96a4")), L.rect((16, 9, 19, 19), C("9a96a4")), L.rect((4, 6, 20, 9), C("aaa6b2")), L.rect((11, 12, 13, 19), C("8a8694"))),
+                  None, lambda F: (F.rect((12, 14, 12, 16), C("8ff0ff")), sparkle(F, 12, 4, C("dffcff")))),
+        "perfect_dodge": ("e_violet", lambda L: L.ellipse((12, 6, 16, 10), C("e0d8ff")), lambda F: (F.ellipse((4, 6, 8, 10), C("a080f0", 120)), F.ellipse((8, 6, 12, 10), C("c0a8ff", 170)),
+                          speed_lines(F, 3, 13, 3, 12, C("d0c0ff"), 3)), None),
+        "chill": ("e_cyan", lambda L: snowflake(L, 12, 12, 7), None, None),
+        "burn": ("e_warm", lambda L: flame(L, 12, 18, 1.1), None, lambda F: (sparkle(F, 5, 8, FIRE_Y), sparkle(F, 19, 6, FIRE_Y))),
+        "poison": ("e_green", lambda L: (L.poly([(12, 4), (17, 13), (17, 16), (12, 20), (7, 16), (7, 13)], C("70d050")), L.rect((10, 12, 14, 14), C("20401a"))),
+                   None, lambda F: (F.ellipse((15, 4, 18, 7), C("90f070")), F.ellipse((5, 7, 7, 9), C("90f070")))),
+        "bleed": ("e_red", lambda L: (L.poly([(8, 5), (11, 11), (11, 13), (8, 15), (5, 13), (5, 11)], BLOOD), L.poly([(16, 9), (19, 15), (19, 17), (16, 19), (13, 17), (13, 15)], BLOOD)), None, None),
+        "well_fed": ("e_warm", lambda L: (L.ellipse((5, 11, 19, 19), C("c8a060")), L.rect((5, 14, 19, 15), C("8a6030"))), None, lambda F: [F.line([(x, 9), (x + 1, 6), (x, 3)], C("e0e0e0", 160)) for x in (8, 12, 16)] and None),
+        "debuff": ("e_grey", lambda L: L.poly([(12, 19), (19, 11), (15, 11), (15, 4), (9, 4), (9, 11), (5, 11)], C("e05050")), None, None),
+    }
+
+
 def ability_ids():
     text = open(os.path.join(ROOT, "scripts", "abilities", "ability_db.gd")).read()
     body = text[text.index("const ABILITIES := {"):]
@@ -610,6 +682,13 @@ def main():
         sheet.paste(compose(theme, motif, under, over), (index % COLUMNS * SIZE, index // COLUMNS * SIZE))
     sheet.save(os.path.join(ROOT, "assets", "icons", "abilities.png"))
     print("abilities", len(ids))
+    effects = EFFECTS()
+    sheet = Image.new("RGBA", (len(EFFECT_IDS) * SIZE, SIZE), (0, 0, 0, 0))
+    for index, effect in enumerate(EFFECT_IDS):
+        theme, motif, under, over = effects[effect]
+        sheet.paste(compose_round(theme, motif, under, over), (index * SIZE, 0))
+    sheet.save(os.path.join(ROOT, "assets", "icons", "effects.png"))
+    print("effects", len(EFFECT_IDS))
 
 
 if __name__ == "__main__":

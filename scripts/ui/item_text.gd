@@ -15,6 +15,93 @@ const FLAVOR := {
 }
 
 
+const WEAPON_TYPES := {"swords": "Sword", "greatswords": "Greatsword", "axes": "Axe", "daggers": "Dagger", "spears": "Spear",
+	"bows": "Bow", "staves": "Staff", "unarmed": "Fist weapon"}
+const ARMOUR_PIECES := {"helmet": "helmet", "chest": "body armour", "legs": "leg armour", "boots": "boots"}
+const TOOL_TYPES := {"pickaxe": "Pickaxe", "hatchet": "Hatchet", "rod": "Fishing rod"}
+
+
+## What kind of thing an item is, in a word or two: "Sword", "Plate
+## helmet", "Ring", "Health potion", "Ore", "Furniture"...
+static func type_name(item: Item) -> String:
+	var def := item.definition()
+	var id := item.id
+	if def.has("weapon"):
+		if id in ["club", "halberd", "katana"]:
+			return id.capitalize()
+		return WEAPON_TYPES.get(def["weapon"]["type"], "Weapon")
+	if item.is_equipment():
+		var slot := item.slot()
+		if slot == "off_hand":
+			return "Shield" if def.has("armor") else "Off-hand"
+		if ARMOUR_PIECES.has(slot):
+			var material := "Leather" if id.contains("leather") else "Fur" if id.contains("fur") else "Cloth" if id.contains("robe") or id.contains("cloth") else "Plate"
+			return "%s %s" % [material, ARMOUR_PIECES[slot]]
+		return {"necklace": "Necklace", "ring": "Ring", "artifact": "Relic"}.get(slot, "Gear")
+	if item.is_tool():
+		return TOOL_TYPES.get(def["tool"]["kind"], "Tool")
+	if item.is_backpack():
+		return "Backpack"
+	if item.is_consumable():
+		var course := ItemDB.course_of(id)
+		if course != "":
+			return {"meal": "Food", "drink": "Drink", "treat": "Treat"}[course]
+		for word: String in ["potion", "elixir", "draught", "tonic", "salve"]:
+			if id.contains(word):
+				return "Potion"
+		if id == "bandage":
+			return "Bandage"
+		if id.ends_with("_whistle"):
+			return "Mount whistle"
+		if id == "rowboat":
+			return "Boat"
+		if id == "taming_treat":
+			return "Pet treat"
+		if id.contains("scroll"):
+			return "Scroll"
+		if id.contains("map"):
+			return "Map"
+		if id.contains("seed"):
+			return "Seed"
+		if def.get("use", {}).has("heal"):
+			return "Food"
+		return "Consumable"
+	if item.is_placeable():
+		if def.has("floor"):
+			return "Floor tile"
+		if def.has("ground"):
+			return "Ground tile"
+		if def.has("wall"):
+			return "Wall"
+		if def.has("flora"):
+			return "Plant"
+		return "Furniture" if def.has("decor") else "Building"
+	if id.ends_with("_ore") or id == "stone" or id.contains("ore"):
+		return "Ore"
+	if id.ends_with("_ingot"):
+		return "Ingot"
+	if id.ends_with("_wood") or id.ends_with("_log"):
+		return "Wood"
+	if id.ends_with("_seeds"):
+		return "Seed"
+	for gem: String in Gems.KINDS:
+		if id.contains(gem):
+			return "Gem"
+	if id.contains("herb") or id.contains("lily") or id.contains("bloom") or id.contains("shroom") or id.contains("weed"):
+		return "Herb"
+	if id.contains("meat") or id.contains("fish") or id in ["minnow", "trout", "salmon", "carp", "eel"]:
+		return "Raw food"
+	if id.contains("hide") or id.contains("pelt") or id in ["leather", "wool", "feather", "fur"]:
+		return "Hide"
+	for word: String in ["bone", "claw", "fang", "horn", "husk", "scale", "eye", "tooth", "venom", "silk", "ichor", "chitin"]:
+		if id.contains(word):
+			return "Monster part"
+	for word: String in ["essence", "dust", "crystal", "heartstone", "void", "rune"]:
+		if id.contains(word):
+			return "Arcane material"
+	return "Material"
+
+
 ## BBCode description of an item, as shown in the inventory's details panel
 ## and in the tooltip that follows the mouse everywhere items appear.
 static func describe(item: Item, player: Player) -> String:
@@ -25,7 +112,7 @@ static func describe(item: Item, player: Player) -> String:
 	lines.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [item.color().to_html(false), item.display_name()])
 	var rarity: String = ItemDB.RARITIES[item.rarity]["name"]
 	if not item.is_equipment():
-		var kind := "Tool" if item.is_tool() else "Backpack" if item.is_backpack() else "Consumable" if item.is_consumable() else "Building" if item.is_placeable() else "Material"
+		var kind := type_name(item)
 		lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s[/color]" % [item.color().to_html(false), rarity, dim, kind])
 		lines.append("")
 		lines.append("[i][color=#%s]%s[/color][/i]" % [dim, def["text"]])
@@ -40,7 +127,7 @@ static func describe(item: Item, player: Player) -> String:
 			lines.append("[color=#%s]You have %d.[/color]" % [dim, player.inventory.count_of(item.id)])
 		return "\n".join(lines)
 
-	var kind_name: String = "Two-handed" if def.get("two_handed", false) else ItemDB.SLOT_NAMES[item.slot()]
+	var kind_name: String = type_name(item) + "  -  " + ("Two-handed" if def.get("two_handed", false) else ItemDB.SLOT_NAMES[item.slot()])
 	if def.get("magic", false):
 		kind_name += ", magic"
 	lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s  -  item level %d[/color]" % [item.color().to_html(false), rarity, dim, kind_name, item.level])
