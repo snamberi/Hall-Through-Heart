@@ -176,3 +176,46 @@ func test_ego_rises_and_falls(t: TestContext) -> void:
 	player.ego.value = 0.0
 	player.ego.add(0.0)
 	t.equal(player.stats.get_stat("physical_damage"), damage, "damage with no ego")
+
+
+func test_root_tech_farms_and_walls_are_whole(t: TestContext) -> void:
+	for kind: String in RootMachine.KINDS:
+		t.check(Buildings.KINDS.values().any(func(data: Dictionary) -> bool: return data.get("machine", "") == kind), "root machine %s cannot be built" % kind)
+	for species: String in Livestock.SPECIES:
+		var data: Dictionary = Livestock.SPECIES[species]
+		for sheet: String in [species, data["baby"]]:
+			t.check(ResourceLoader.exists(EnemyDB.SHEETS % sheet), "%s has no sprite sheet" % sheet)
+		t.check(ItemDB.ITEMS.has(data["produce"]), "%s produces unknown %s" % [species, data["produce"]])
+		for food: String in data["food"]:
+			t.check(ItemDB.ITEMS.has(food), "%s eats unknown %s" % [species, food])
+	for id: String in ItemDB.ITEMS:
+		var style: String = ItemDB.ITEMS[id].get("wall", "")
+		if style != "":
+			t.check(StoneWall.STYLES.has(style), "%s builds unknown wall style %s" % [id, style])
+
+
+func test_root_machines_and_farms_work(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var buildings: Buildings = main.get_node("Buildings")
+	var at := player.global_position + Vector2(400, 300)
+	buildings.place("farmhouse", at)
+	await t.frames(3)
+	var farm: Dictionary = buildings.records[buildings.records.size() - 1]
+	t.equal(farm["kind"], "farmhouse", "the farmhouse was placed")
+	var sheep := Livestock.new().setup("sheep", {"baby": false, "age": 0.0}, farm)
+	(farm["animals"] as Array).append(sheep.state)
+	sheep.position = at + Vector2(0, 80)
+	buildings.add_child(sheep)
+	sheep.state["next"] = 0.0
+	await t.frames(3)
+	t.check((farm["items"] as Array).any(func(saved: Dictionary) -> bool: return saved["id"] == "wool"), "the sheep left no wool")
+	t.check(buildings.take_down_problem(farm) != "", "a farmhouse with animals can be packed up")
+	farm["last"] = Time.get_unix_time_from_system() - 7200.0
+	var before: int = (farm["items"] as Array)[0]["count"]
+	Livestock.catch_up(farm)
+	t.check(int((farm["items"] as Array)[0]["count"]) > before, "nothing was made while away")
+	sheep.queue_free()
+	(farm["animals"] as Array).clear()
+	(farm["items"] as Array).clear()
+	t.equal(buildings.take_down(farm), "", "packing up the empty farmhouse")

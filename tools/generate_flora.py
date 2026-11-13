@@ -1394,13 +1394,127 @@ def decor(kind):
         c.fill("line", (46, 48, 48, 46), C("6a5a44"), 1)
         for (x, y) in [(55, 57), (57, 56), (52, 59)]:
             c.put(x, y, C("e0c870"))
+    elif kind in ("root_cutter", "root_delver", "root_tender"):
+        # Root-tech: a living stump whose roots have learned to work. Roots
+        # spread into the soil, a knot of light beats in the bark, and a
+        # root arm rises from the top, shaped for its trade: a thorn blade
+        # for wood, a stone-gripping fist for ore, soft fingers and a bud
+        # for herbs and crops.
+        bark = ramp("7a5a3a", "54402a", "34261a")
+        glow = {"root_cutter": ramp("e0ffb8", "8ae070", "3a9a40"), "root_delver": ramp("fff0b0", "ffc050", "c07a20"),
+                "root_tender": ramp("ffe0f0", "f090c0", "a04880")}[kind]
+        for (x0, y0, x1, y1, w) in [(30, 56, 6, 61, 3), (34, 57, 58, 60, 3), (26, 57, 14, 63, 2), (38, 58, 48, 63, 2), (32, 58, 31, 63, 2)]:
+            c.shade("line", (x0, y0, x1, y1), bark, width=w, dither=False)
+        c.shade("poly", [(19, 59), (18, 44), (21, 35), (27, 31), (35, 31), (42, 35), (45, 44), (45, 59)], bark)
+        for x in (23, 29, 38, 42):
+            c.fill("line", (x, 36, x - 1, 57), C("3a2a1c"), 1)
+        c.fill("ellipse", (19, 30, 44, 37), C("9a7a52"))
+        for r_ in (3, 6, 9):
+            c.fill("ellipse", (31 - r_, 33 - r_ // 3, 32 + r_, 34 + r_ // 3), C("7a5a3a") if r_ % 2 else C("b8956a"))
+        # Sap-veins glowing through the bark, from the knot to the roots and up.
+        for vein in [[(28, 47), (24, 50), (22, 55), (19, 59)], [(35, 47), (39, 51), (41, 56), (44, 59)], [(31, 43), (30, 39), (32, 35)],
+                     [(33, 51), (33, 55), (35, 59)]]:
+            for (ax, ay), (bx, by) in zip(vein, vein[1:]):
+                c.fill("line", (ax, ay, bx, by), glow[1], 1)
+        c.fill("ellipse", (26, 42, 37, 52), C("2a1c12"))
+        c.shade("ellipse", (27, 43, 36, 51), glow)
+        c.fill("rect", (29, 45, 30, 46), C("ffffff"))
+        r = random.Random({"root_cutter": 21, "root_delver": 22, "root_tender": 23}[kind])
+        for _ in range(14):
+            x, y = r.randrange(19, 45), r.randrange(37, 58)
+            if (x, y) in c.filled and not (26 <= x <= 37 and 42 <= y <= 52):
+                c.put(x, y, C("5d7a3f") if r.random() < 0.7 else C("8aaa5a"))
+        if kind == "root_cutter":
+            c.shade("line", (36, 33, 42, 22), bark, width=4, dither=False)
+            c.shade("line", (42, 22, 50, 13), bark, width=3, dither=False)
+            c.fill("line", (37, 31, 46, 17), C("9a7a52"), 1)
+            c.shade("poly", [(47, 15), (52, 8), (61, 4), (59, 12), (54, 17)], ramp("f0e0b0", "c8b080", "8a7450"))
+            c.fill("line", (52, 9, 60, 5), C("ffffff"), 1)
+            for (x, y) in [(23, 30), (40, 28), (44, 20)]:
+                c.shade("ellipse", (x - 3, y - 2, x + 3, y + 2), ramp("a8e070", "6aae44", "3a7a2a"))
+        elif kind == "root_delver":
+            c.shade("line", (37, 34, 46, 30), bark, width=4, dither=False)
+            c.shade("line", (46, 30, 52, 40), bark, width=4, dither=False)
+            c.shade("ellipse", (46, 38, 60, 50), ramp("a8a4b0", "7e7a88", "56525e"))
+            for (x0, y0, x1, y1) in [(47, 40, 52, 50), (52, 38, 57, 49), (56, 41, 59, 48)]:
+                c.shade("line", (x0, y0, x1, y1), bark, width=2, dither=False)
+            c.shade("poly", [(50, 44), (53, 39), (56, 44), (53, 48)], ramp("fff0b0", "ffc050", "c07a20"))
+            c.fill("rect", (52, 41, 52, 42), C("ffffff"))
+            c.shade("ellipse", (8, 52, 16, 58), ramp("a8a4b0", "7e7a88", "56525e"))
+        else:
+            for (x0, y0, x1, y1) in [(25, 32, 17, 20), (32, 31, 32, 14), (39, 32, 47, 21)]:
+                c.shade("line", (x0, y0, x1, y1), bark, width=2, dither=False)
+            for (x, y) in [(17, 20), (47, 21)]:
+                c.shade("ellipse", (x - 3, y - 3, x + 3, y + 2), ramp("a8e070", "6aae44", "3a7a2a"))
+            c.shade("ellipse", (27, 6, 37, 16), ramp("ffd0e8", "f090c0", "a04880"))
+            c.fill("ellipse", (30, 9, 34, 13), C("fff0a0"))
+            c.shade("ellipse", (28, 14, 36, 18), ramp("a8e070", "6aae44", "3a7a2a"))
+    elif kind == "root_hollow":
+        # A great hollow stump the root-tech stores its harvest in: a dark
+        # opening glinting with what has been gathered, roots, moss and
+        # a ring of pale mushrooms.
+        bark = ramp("7a5a3a", "54402a", "34261a")
+        for (x0, y0, x1, y1, w) in [(14, 56, 3, 62, 3), (50, 56, 62, 61, 3), (24, 58, 18, 63, 2), (42, 58, 48, 63, 2)]:
+            c.shade("line", (x0, y0, x1, y1), bark, width=w, dither=False)
+        c.shade("poly", [(8, 60), (9, 34), (14, 22), (24, 17), (40, 17), (50, 22), (55, 34), (56, 60)], bark)
+        c.fill("ellipse", (12, 14, 52, 26), C("9a7a52"))
+        for r_ in (4, 8, 12, 16):
+            c.fill("ellipse", (32 - r_ - 2, 20 - r_ // 4, 32 + r_ + 2, 20 + r_ // 4), C("7a5a3a") if r_ % 8 else C("b8956a"))
+        c.fill("ellipse", (12, 13, 52, 18), C("5d7a3f"))
+        for x in (14, 22, 42, 50):
+            c.fill("line", (x, 28, x + 1, 58), C("3a2a1c"), 1)
+        c.fill("poly", [(21, 58), (21, 40), (26, 32), (32, 30), (38, 32), (43, 40), (43, 58)], C("140e0a"))
+        for (x, y, col) in [(26, 54, "f0c040"), (31, 52, "a8e070"), (36, 55, "c8c4d0"), (29, 56, "e0a050"), (34, 50, "f0c040")]:
+            c.fill("ellipse", (x - 2, y - 1, x + 2, y + 2), C(col))
+        c.put(27, 53, C("ffffff"))
+        c.fill("line", (21, 41, 26, 32), C("b8956a"), 1)
+        for (x, y) in [(10, 58), (52, 57), (47, 60), (15, 61)]:
+            c.fill("rect", (x, y - 3, x, y), C("e8e0c8"))
+            c.fill("ellipse", (x - 2, y - 5, x + 2, y - 2), C("d8b8a0"))
+        r = random.Random(24)
+        for _ in range(24):
+            x, y = r.randrange(9, 56), r.randrange(24, 60)
+            if (x, y) in c.filled and not (21 <= x <= 43 and 30 <= y <= 58):
+                c.put(x, y, C("5d7a3f") if r.random() < 0.7 else C("8aaa5a"))
+    elif kind == "farmhouse":
+        # A small red farmhouse barn: a pitched shingle roof, white-trimmed
+        # double doors braced with an X, a hay loft spilling straw, a
+        # lantern by the door and a water trough.
+        red = ramp("c85a48", "9a3a30", "6a2420")
+        roof = ramp("8a7a6a", "5e5248", "3e3630")
+        trim = ramp("f4efe2", "d8d0c0", "a8a090")
+        c.shade("poly", [(8, 60), (8, 30), (56, 30), (56, 60)], red)
+        for y in range(33, 60, 4):
+            c.fill("line", (9, y, 55, y), C("7a2a24"), 1)
+        c.shade("poly", [(4, 32), (32, 10), (60, 32), (56, 34), (32, 15), (8, 34)], roof)
+        c.shade("poly", [(10, 31), (32, 13), (54, 31)], red)
+        for y in range(16, 31, 3):
+            c.fill("line", (32 - (y - 13) * 22 // 18, y, 32 + (y - 13) * 22 // 18, y), C("7a2a24"), 1)
+        c.shade("poly", [(26, 28), (26, 20), (32, 16), (38, 20), (38, 28)], ramp("3a2a1c", "2a1e14", "1c140e"))
+        c.shade("poly", [(27, 28), (28, 24), (31, 25), (34, 22), (37, 26), (37, 28)], ramp("f0d878", "d0b050", "9a7a30"))
+        c.shade("rect", (21, 40, 43, 60), trim)
+        c.shade("rect", (23, 42, 31, 59), red)
+        c.shade("rect", (33, 42, 41, 59), red)
+        for (x0, x1) in ((23, 31), (33, 41)):
+            c.fill("line", (x0, 42, x1, 59), C("f4efe2"), 1)
+            c.fill("line", (x1, 42, x0, 59), C("f4efe2"), 1)
+        c.fill("rect", (31, 42, 33, 59), C("f4efe2"))
+        c.fill("rect", (17, 42, 18, 45), C("3a3036"))
+        c.fill("rect", (16, 45, 19, 49), C("ffd070"))
+        c.shade("rect", (46, 54, 60, 60), ramp("9a7a52", "6b4f36", "4a3626"))
+        c.fill("rect", (47, 55, 59, 56), C("6aa8d8"))
+        r = random.Random(25)
+        for _ in range(10):
+            x = r.randrange(24, 40)
+            c.fill("line", (x, 28, x + r.randrange(-2, 3), 30 + r.randrange(0, 3)), C("e8d070"), 1)
     c.outline()
     return c.img
 
 
 DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate", "barrel", "well", "fence", "lantern",
          "stall", "signpost", "rug", "shelf", "plant_pot", "table", "chair", "candles", "cage", "tent", "obelisk",
-         "palisade", "spike_trap", "ballista", "soil", "scarecrow", "torch", "fireplace", "waystone", "waystone_lit", "gravestone", "ruined_tower", "cart"]
+         "palisade", "spike_trap", "ballista", "soil", "scarecrow", "torch", "fireplace", "waystone", "waystone_lit", "gravestone", "ruined_tower", "cart",
+         "root_cutter", "root_delver", "root_tender", "root_hollow", "farmhouse"]
 
 
 def sheet(images, w, h):

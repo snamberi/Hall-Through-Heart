@@ -286,7 +286,8 @@ const ENEMIES := {
 }
 
 static func sheet(id: String) -> Texture2D:
-	return load(ENEMIES[id].get("sheet", SHEETS % id))
+	# Young farm animals have sheets of their own but are not monsters.
+	return load(ENEMIES[id].get("sheet", SHEETS % id) if ENEMIES.has(id) else SHEETS % id)
 
 
 ## Picks which enemy spawns on a tile at an area level, by weight, among

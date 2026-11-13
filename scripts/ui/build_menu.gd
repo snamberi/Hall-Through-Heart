@@ -11,7 +11,8 @@ const CATEGORIES := [
 	["ground", "Ground", ["ground", "floor"]],
 	["furniture", "Furniture", ["rug", "bookshelf", "potted_plant", "dining_table", "chair", "wall_banner", "barrel", "crate", "stone_statue"]],
 	["light", "Light", ["torch", "candles", "brazier", "fireplace", "lantern_post"]],
-	["farm", "Farm and defence", ["plot", "scarecrow", "spikes", "ballista"]],
+	["farm", "Farm and defence", ["farmhouse", "plot", "scarecrow", "spikes", "ballista"]],
+	["roots", "Root-tech", ["root_cutter", "root_delver", "root_tender", "root_hollow"]],
 ]
 const ROW := Vector2(420.0, 64.0)
 

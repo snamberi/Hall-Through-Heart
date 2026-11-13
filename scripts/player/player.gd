@@ -1210,6 +1210,38 @@ func nearest_npc() -> Npc:
 	return best
 
 
+## A farm animal (wild or your own) close enough to feed, or null.
+func nearest_farm_animal() -> Node2D:
+	var best: Node2D = null
+	var best_distance := 70.0
+	for node in get_tree().get_nodes_in_group("livestock") + get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy and (not Livestock.is_farm_animal(enemy.enemy_id) or enemy.state == Enemy.State.DEAD):
+			continue
+		var distance: float = node.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = node
+	return best
+
+
+## Feeds a farm animal; a wild one is won over and becomes livestock.
+func feed_animal(animal: Node2D) -> String:
+	var tame := animal as Livestock
+	if tame == null:
+		var wild := animal as Enemy
+		var food_ok := false
+		for id: String in Livestock.SPECIES[wild.enemy_id]["food"]:
+			food_ok = food_ok or inventory.count_of(id) > 0
+		if not food_ok:
+			return "It wants %s." % ItemDB.ITEMS[Livestock.SPECIES[wild.enemy_id]["food"][0]]["name"].to_lower()
+		tame = Livestock.new().setup(wild.enemy_id, {"baby": false, "age": 0.0})
+		tame.position = wild.global_position
+		get_parent().get_node("Buildings").add_child(tame)
+		wild.queue_free()
+	return tame.feed(self)
+
+
 ## Whether a crafting table is close enough to work at.
 func near_crafting_table() -> bool:
 	for table in get_tree().get_nodes_in_group("crafting_tables"):
@@ -1316,6 +1348,10 @@ func _try_interact(by_key: bool) -> bool:
 	if npc:
 		velocity = Vector2.ZERO
 		Events.npc_interacted.emit(npc)
+		return true
+	var animal := nearest_farm_animal()
+	if animal and (by_key or (animal.global_position + Vector2(0, -16)).distance_to(get_global_mouse_position()) < 40.0):
+		DamageNumber.spawn_text(get_parent(), animal.global_position + Vector2(0, -56), feed_animal(animal), Color(1.0, 0.85, 0.9), 12)
 		return true
 	if prop:
 		velocity = Vector2.ZERO

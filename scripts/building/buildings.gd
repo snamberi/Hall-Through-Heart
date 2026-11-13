@@ -31,6 +31,14 @@ const KINDS := {
 	"palisade": {"item": "palisade_wall", "decor": Prop.Decor.PALISADE, "solid": 24.0, "outdoors": true},
 	"spikes": {"item": "spike_trap", "decor": Prop.Decor.SPIKE_TRAP, "solid": 0.0, "flat": true, "outdoors": true},
 	"ballista": {"item": "ballista", "decor": Prop.Decor.BALLISTA, "solid": 14.0, "outdoors": true},
+	## Root-tech: living stumps that gather for you (see RootMachine), and
+	## the hollow stump they store the harvest in.
+	"root_cutter": {"item": "rootling_woodcutter", "decor": Prop.Decor.ROOT_CUTTER, "solid": 14.0, "outdoors": true, "machine": "cutter"},
+	"root_delver": {"item": "rootling_delver", "decor": Prop.Decor.ROOT_DELVER, "solid": 14.0, "outdoors": true, "machine": "delver"},
+	"root_tender": {"item": "rootling_tender", "decor": Prop.Decor.ROOT_TENDER, "solid": 14.0, "outdoors": true, "machine": "tender"},
+	"root_hollow": {"item": "root_hollow", "decor": Prop.Decor.ROOT_HOLLOW, "solid": 22.0, "outdoors": true},
+	## Where your farm animals live and leave their produce (see Livestock).
+	"farmhouse": {"item": "farmhouse_kit", "decor": Prop.Decor.FARMHOUSE, "solid": 30.0, "outdoors": true},
 	## One tile of floor inside a house; the record keeps the item and tile.
 	"floor": {"item": "", "solid": 0.0, "flat": true},
 	## One tile of laid ground outdoors (path, decking, turf, pond...); the
@@ -430,7 +438,9 @@ func record_at(point: Vector2, from: Vector2) -> Dictionary:
 ## Why something placed cannot be taken down now, or "".
 func take_down_problem(record: Dictionary) -> String:
 	if not (record["items"] as Array).is_empty():
-		return "Empty the chest first."
+		return "Empty it first." if record["kind"] != "chest" else "Empty the chest first."
+	if not (record.get("animals", []) as Array).is_empty():
+		return "Your animals live here."
 	if record["kind"] == "house" and not records.filter(func(r: Dictionary) -> bool: return r["where"] == "house:%d" % record["id"] and r["kind"] != "floor").is_empty():
 		return "Clear out the house first."
 	if not _player.inventory.has_room_for(Item.create(_item_of(record))):
@@ -641,6 +651,31 @@ func _spawn(record: Dictionary) -> void:
 			var view := CropView.new()
 			view.record = record
 			prop.add_child(view)
+		if kind.has("machine"):
+			var machine := RootMachine.new()
+			machine.kind = kind["machine"]
+			machine.record = record
+			machine.buildings = self
+			prop.add_child(machine)
+			prop.add_light(0.5, 0.6, machine.data()["color"])
+			prop.prompt_text = machine.prompt()
+			prop.on_interact = func(_player: Player) -> void:
+				record["take_only"] = true
+				Events.storage_opened.emit(record)
+			var refresh_prompt := func() -> void: prop.prompt_text = machine.prompt()
+			var timer := Timer.new()
+			timer.wait_time = 1.0
+			timer.autostart = true
+			timer.timeout.connect(refresh_prompt)
+			prop.add_child(timer)
+		if record["kind"] == "farmhouse":
+			_spawn_farm(prop, record)
+		if record["kind"] == "root_hollow":
+			prop.prompt_text = "Open the root hollow"
+			prop.on_interact = func(_player: Player) -> void: Events.storage_opened.emit(record)
+			prop.set_meta("record", record)
+			prop.add_to_group("root_hollows")
+			prop.add_light(0.35, 0.5, Color(0.7, 1.0, 0.6))
 		if kind.get("light", false):
 			prop.add_light()
 		if kind.get("flat", false):
@@ -668,6 +703,38 @@ func _spawn(record: Dictionary) -> void:
 		_room_props.append(prop)
 	else:
 		add_child(prop)
+
+
+## A farmhouse: bigger than other furniture, its produce kept like a
+## chest's, and its animals brought out to wander round it.
+func _spawn_farm(prop: Prop, record: Dictionary) -> void:
+	prop.sprite().scale = Vector2(1.8, 1.8)
+	prop.sprite().position.y *= 1.8
+	if not record.has("animals"):
+		record["animals"] = []
+	Livestock.catch_up(record)
+	prop.set_meta("record", record)
+	prop.add_to_group("farmhouses")
+	prop.reach = 110.0
+	var refresh := func() -> void:
+		var produce := 0
+		for saved: Dictionary in record["items"]:
+			produce += int(saved.get("count", 1))
+		prop.prompt_text = "Farmhouse: %d animal%s  -  %s" % [(record["animals"] as Array).size(), "" if (record["animals"] as Array).size() == 1 else "s",
+			"collect %d produce" % produce if produce > 0 else "open"]
+	refresh.call()
+	var timer := Timer.new()
+	timer.wait_time = 1.0
+	timer.autostart = true
+	timer.timeout.connect(refresh)
+	prop.add_child(timer)
+	prop.on_interact = func(_player: Player) -> void: Events.storage_opened.emit(record)
+	for animal: Dictionary in record["animals"]:
+		if not Livestock.SPECIES.has(animal.get("species", "")):
+			continue
+		var beast := Livestock.new().setup(animal["species"], animal, record)
+		beast.position = Vector2(animal.get("x", prop.position.x), animal.get("y", prop.position.y + 90.0))
+		add_child.call_deferred(beast)
 
 
 func _use(player: Player, record: Dictionary) -> void:

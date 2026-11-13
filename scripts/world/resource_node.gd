@@ -183,6 +183,15 @@ func harvest(player: Player) -> void:
 	queue_free()
 
 
+## Root-tech worked this: what it yields, and it goes until it regrows.
+func harvest_by_roots() -> Item:
+	var item := Item.create(_data["item"], randi_range(1, 2))
+	Gore.spray(get_parent(), global_position + Vector2(0, -14 if is_tall() else -6), "_wood" if kind() == "tree" else "_stone" if kind() == "ore" else "_leaf", Vector2(0, -1), 8, false)
+	harvested.emit(self)
+	queue_free()
+	return item
+
+
 func _roll_fish(skill: int) -> String:
 	var total := 0.0
 	for fish in GatherDB.FISH:

@@ -18,6 +18,14 @@ const STYLES := {
 	"ruin": {"face": Color("7d7986"), "light": Color("a09caa"), "dark": Color("4a4754"), "top": Color("b4b0bd"), "seam": Color("38353f"), "height": 30.0, "broken": true, "moss": Color("5d7a3f")},
 	"keep": {"face": Color("8a8794"), "light": Color("a8a5b2"), "dark": Color("55525e"), "top": Color("c0bdc9"), "seam": Color("3c3944"), "height": 34.0, "broken": false, "moss": Color("5d7a3f")},
 	"wood": {"face": Color("8a6238"), "light": Color("a87c4a"), "dark": Color("57391f"), "top": Color("c09a62"), "seam": Color("3a2412"), "height": 32.0, "broken": false, "moss": Color("5d7a3f")},
+	# Built walls with a pattern of their own (see _pattern and _dress).
+	"brick": {"face": Color("b45e44"), "light": Color("d8805e"), "dark": Color("74382a"), "top": Color("b8b0a8"), "seam": Color("d8ccb4"), "height": 32.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "brick"},
+	"mossy": {"face": Color("6e7a6a"), "light": Color("8e9a86"), "dark": Color("444c42"), "top": Color("9aa88a"), "seam": Color("2e342c"), "height": 32.0, "broken": false, "moss": Color("4f7a36"), "ivy": true},
+	"marble": {"face": Color("dcd8d0"), "light": Color("fbf8f2"), "dark": Color("a09a8e"), "top": Color("f2eee6"), "seam": Color("8a8478"), "height": 36.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "slabs", "trim": Color("d4a840")},
+	"timber": {"face": Color("e8dcc0"), "light": Color("f8f0dc"), "dark": Color("a8987a"), "top": Color("6a4428"), "seam": Color("4a2e18"), "height": 34.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "timber"},
+	"rootwood": {"face": Color("6a4a2e"), "light": Color("8e6a44"), "dark": Color("3a2818"), "top": Color("5d7a3f"), "seam": Color("2a1c10"), "height": 34.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "roots", "glow": Color("a8e070")},
+	"heartstone": {"face": Color("5a2430"), "light": Color("7a3442"), "dark": Color("3a1420"), "top": Color("8a4452"), "seam": Color("241018"), "height": 34.0, "broken": false, "moss": Color("5d7a3f"), "veins": Color("ff5a6a")},
+	"glass": {"face": Color("8a8794"), "light": Color("a8a5b2"), "dark": Color("55525e"), "top": Color("c0bdc9"), "seam": Color("2a2830"), "height": 34.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "glass"},
 }
 
 var style := "ruin"
@@ -52,6 +60,8 @@ static func build(cells: Array, at: Callable, wall_style: String = "ruin") -> Ar
 
 
 func _ready() -> void:
+	# Heartstone's veins pulse, so it redraws as it beats.
+	set_process(STYLES.get(style, {}).has("veins"))
 	var body := StaticBody2D.new()
 	for rect in _footprint():
 		var shape := CollisionShape2D.new()
@@ -61,6 +71,10 @@ func _ready() -> void:
 		shape.position = rect.get_center()
 		body.add_child(shape)
 	add_child(body)
+
+
+func _process(_delta: float) -> void:
+	queue_redraw()
 
 
 ## Whether the wall runs sideways here (a lone piece counts).
@@ -140,7 +154,7 @@ func _draw() -> void:
 		face.append(Vector2(to, face[face.size() - 1].y))
 		face.append(Vector2(to, 0))
 		draw_colored_polygon(face, look["face"])
-		_courses(Rect2(from, -height, to - from, height), look, random, 7.0, face)
+		_pattern(Rect2(from, -height, to - from, height), look, random, face)
 		# Capstones along the top edge, following the broken line.
 		for index in range(1, face.size() - 2, 2):
 			var a := face[index]
@@ -175,6 +189,7 @@ func _draw() -> void:
 					draw_rect(Rect2(bx, by, bw, 5.0), look["face"])
 					draw_rect(Rect2(bx, by, bw, 1.5), look["top"])
 					draw_rect(Rect2(bx, by, bw, 5.0), look["seam"], false, 1.0)
+		_dress(Rect2(from, -height, to - from, height), look, random)
 		# Shade under the cap and along the foot.
 		draw_rect(Rect2(from, -2.0, to - from, 2.0), Color(look["dark"], 0.8))
 		if style == "wood":
@@ -185,7 +200,7 @@ func _draw() -> void:
 				draw_line(Vector2(x + 7.0, -height), Vector2(x + 7.0, 0), look["seam"], 1.0)
 				x += 7.0
 			draw_rect(Rect2(from, -height * 0.62, to - from, 3.0), look["dark"])
-		elif random.randf() < 0.55:
+		elif not look.has("pattern") and random.randf() < 0.55:
 			# Moss creeping up from the ground, and a tuft on top.
 			var mx := random.randf_range(from + 4.0, to - 10.0)
 			draw_rect(Rect2(mx, -random.randf_range(5.0, 11.0), random.randf_range(5.0, 9.0), 11.0), Color(look["moss"], 0.85))
@@ -197,7 +212,7 @@ func _draw() -> void:
 			draw_rect(Rect2(bx, 2.0, 9.0, 2.0), look["top"])
 			draw_rect(Rect2(bx, 2.0, 9.0, 6.0), look["seam"], false, 1.0)
 
-	if style != "wood" and (north or south) and (east or west):
+	if not style in ["wood", "timber", "rootwood"] and (north or south) and (east or west):
 		_pier(look, random, height)
 
 
@@ -227,6 +242,162 @@ func _pier(look: Dictionary, random: RandomNumberGenerator, height: float) -> vo
 		draw_colored_polygon(PackedVector2Array([Vector2(cap.end.x - 6.0, cap.position.y), cap.position + Vector2(cap.size.x, 0), Vector2(cap.end.x, cap.position.y + 4.0)]), look["face"])
 	draw_rect(cap, look["seam"], false, 1.0)
 	draw_rect(rect, look["seam"], false, 1.0)
+
+
+## The face's own pattern: courses of stone, or brick, slabs, timber
+## framing, living roots, or leaded glass.
+func _pattern(rect: Rect2, look: Dictionary, random: RandomNumberGenerator, outline: PackedVector2Array) -> void:
+	match look.get("pattern", "courses"):
+		"brick":
+			# Small bricks in running bond, pale mortar, the odd scorched one.
+			var row := 0
+			var y := rect.end.y - 5.0
+			while y > rect.position.y - 1.0:
+				var x := rect.position.x - (5.0 if row % 2 else 0.0)
+				while x < rect.end.x:
+					var left := maxf(x, rect.position.x)
+					var right := minf(x + 10.0, rect.end.x)
+					if right - left > 1.0:
+						var tone := random.randf()
+						if tone < 0.2:
+							draw_rect(Rect2(left, y, right - left, 5.0), Color(look["dark"], 0.5))
+						elif tone > 0.85:
+							draw_rect(Rect2(left, y, right - left, 5.0), Color(look["light"], 0.45))
+						draw_line(Vector2(left, y + 1.0), Vector2(right - 1.0, y + 1.0), Color(look["light"], 0.5), 1.0)
+						draw_line(Vector2(right, y), Vector2(right, y + 5.0), look["seam"], 1.0)
+					x += 10.0
+				draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), look["seam"], 1.0)
+				y -= 5.0
+				row += 1
+		"slabs":
+			# Tall polished slabs with fine grey veining and a lit edge.
+			var x := rect.position.x
+			while x < rect.end.x:
+				var right := minf(x + 14.0, rect.end.x)
+				draw_line(Vector2(right, rect.position.y), Vector2(right, rect.end.y), look["seam"], 1.0)
+				draw_line(Vector2(x + 1.0, rect.position.y), Vector2(x + 1.0, rect.end.y), Color(look["light"], 0.8), 1.0)
+				var vy := rect.position.y + random.randf_range(6.0, 14.0)
+				var vx := x + random.randf_range(2.0, 10.0)
+				for k in 4:
+					var nx := clampf(vx + random.randf_range(-3.0, 3.0), x + 1.0, right - 1.0)
+					var ny := vy + random.randf_range(3.0, 6.0)
+					draw_line(Vector2(vx, vy), Vector2(nx, ny), Color(look["dark"], 0.45), 1.0)
+					vx = nx
+					vy = ny
+				x += 14.0
+			draw_line(Vector2(rect.position.x, rect.end.y - 6.0), Vector2(rect.end.x, rect.end.y - 6.0), look["seam"], 1.0)
+		"timber":
+			# Pale plaster panels in a dark timber frame, braced crosswise.
+			var beam: Color = look["top"]
+			draw_rect(Rect2(rect.position.x, rect.position.y, rect.size.x, 3.0), beam)
+			draw_rect(Rect2(rect.position.x, rect.end.y - 4.0, rect.size.x, 4.0), beam)
+			draw_rect(Rect2(rect.position.x, rect.position.y + rect.size.y * 0.5 - 1.5, rect.size.x, 3.0), beam)
+			var x := rect.position.x
+			while x <= rect.end.x - 2.0:
+				draw_rect(Rect2(x, rect.position.y, 3.0, rect.size.y), beam)
+				if x + 14.0 <= rect.end.x:
+					draw_line(Vector2(x + 3.0, rect.position.y + 3.0), Vector2(x + 14.0, rect.position.y + rect.size.y * 0.5 - 1.5), beam, 2.0)
+					draw_line(Vector2(x + 14.0, rect.position.y + rect.size.y * 0.5 + 1.5), Vector2(x + 3.0, rect.end.y - 4.0), beam, 2.0)
+				x += 14.0
+			for k in 3:
+				draw_rect(Rect2(random.randf_range(rect.position.x + 4.0, rect.end.x - 6.0), random.randf_range(rect.position.y + 5.0, rect.end.y - 8.0), 2.0, 1.0), Color(look["dark"], 0.5))
+		"roots":
+			# Living wood: twisted trunks grown into a wall, bark grain, a
+			# glowing sap knot, rootlets at the foot and leaves on top.
+			var x := rect.position.x
+			var index := 0
+			while x < rect.end.x:
+				var width := random.randf_range(7.0, 10.0)
+				var right := minf(x + width, rect.end.x)
+				var tone: Color = look["face"] if index % 2 == 0 else Color(look["face"]).lerp(look["dark"], 0.25)
+				draw_rect(Rect2(x, rect.position.y, right - x, rect.size.y), tone)
+				draw_line(Vector2(x + 1.0, rect.position.y), Vector2(x + 1.0, rect.end.y), Color(look["light"], 0.7), 1.0)
+				draw_line(Vector2(right, rect.position.y), Vector2(right, rect.end.y), look["seam"], 1.0)
+				for k in 3:
+					var gy := random.randf_range(rect.position.y + 3.0, rect.end.y - 6.0)
+					draw_line(Vector2(x + 3.0, gy), Vector2(x + 3.0 + random.randf_range(-1.0, 1.0), gy + 5.0), Color(look["dark"], 0.7), 1.0)
+				x += width
+				index += 1
+			var knot := Vector2(random.randf_range(rect.position.x + 6.0, rect.end.x - 6.0), random.randf_range(rect.position.y + 8.0, rect.end.y - 10.0))
+			draw_circle(knot, 3.0, look["seam"])
+			draw_circle(knot, 2.0, look["glow"])
+			draw_circle(knot, 6.0, Color(look["glow"], 0.15))
+			for k in 4:
+				var rx := random.randf_range(rect.position.x, rect.end.x)
+				draw_line(Vector2(rx, rect.end.y - 3.0), Vector2(rx + random.randf_range(-5.0, 5.0), rect.end.y + 3.0), look["dark"], 2.0)
+		"glass":
+			# A stone frame round leaded panes of coloured glass.
+			var inner := Rect2(rect.position.x + 4.0, rect.position.y + 5.0, rect.size.x - 8.0, rect.size.y - 12.0)
+			if inner.size.x < 6.0:
+				_courses(rect, look, random, 7.0, outline)
+				return
+			_courses(Rect2(rect.position.x, rect.end.y - 7.0, rect.size.x, 7.0), look, random, 7.0)
+			var colours := [Color("c8384a"), Color("3a6ad0"), Color("e8b830"), Color("3a9a5a"), Color("8a4ad0")]
+			var pane := 6.0
+			var y := inner.position.y
+			while y < inner.end.y - 0.5:
+				var x := inner.position.x
+				while x < inner.end.x - 0.5:
+					var c: Color = colours[random.randi() % colours.size()]
+					var cell := Rect2(x, y, minf(pane, inner.end.x - x), minf(pane, inner.end.y - y))
+					draw_rect(cell, c.darkened(0.15))
+					draw_rect(Rect2(cell.position, Vector2(cell.size.x, 1.0)), c.lightened(0.35))
+					x += pane
+				y += pane
+			var lead := Color("1c1a20")
+			var lx := inner.position.x
+			while lx <= inner.end.x:
+				draw_line(Vector2(lx, inner.position.y), Vector2(lx, inner.end.y), lead, 1.0)
+				lx += pane
+			var ly := inner.position.y
+			while ly <= inner.end.y:
+				draw_line(Vector2(inner.position.x, ly), Vector2(inner.end.x, ly), lead, 1.0)
+				ly += pane
+			draw_rect(inner, look["seam"], false, 2.0)
+			draw_line(inner.position + Vector2(2, 2), inner.position + Vector2(6, 6), Color(1, 1, 1, 0.5), 1.0)
+		_:
+			_courses(rect, look, random, 7.0, outline)
+
+
+## Touches a built wall's look adds over its face: ivy, a gilded band,
+## glowing veins.
+func _dress(rect: Rect2, look: Dictionary, random: RandomNumberGenerator) -> void:
+	if look.get("ivy", false):
+		# Ivy climbing the face in two or three runs, with leaves.
+		for run in random.randi_range(2, 3):
+			var at := Vector2(random.randf_range(rect.position.x + 3.0, rect.end.x - 3.0), rect.end.y)
+			for step in random.randi_range(5, 8):
+				var next := at + Vector2(random.randf_range(-3.0, 3.0), -random.randf_range(3.0, 5.0))
+				if next.y < rect.position.y + 2.0:
+					break
+				draw_line(at, next, Color("3a5a26"), 1.0)
+				var side := 2.5 if step % 2 else -2.5
+				draw_rect(Rect2(next.x + side - 1.0, next.y - 1.0, 3.0, 2.0), look["moss"].lightened(0.15 * (step % 3)))
+				at = next
+	if look.has("trim"):
+		var trim: Color = look["trim"]
+		draw_rect(Rect2(rect.position.x, rect.position.y + 3.0, rect.size.x, 2.0), trim)
+		draw_rect(Rect2(rect.position.x, rect.position.y + 3.0, rect.size.x, 1.0), trim.lightened(0.4))
+		draw_rect(Rect2(rect.position.x, rect.end.y - 8.0, rect.size.x, 2.0), trim.darkened(0.15))
+	if look.has("veins"):
+		# Cracks that glow from within, as if the stone had a pulse.
+		var vein: Color = look["veins"]
+		var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 600.0 + variation)
+		for k in 2:
+			var at := Vector2(random.randf_range(rect.position.x + 4.0, rect.end.x - 4.0), rect.end.y - 2.0)
+			for step in random.randi_range(4, 6):
+				var next := at + Vector2(random.randf_range(-4.0, 4.0), -random.randf_range(3.0, 6.0))
+				if next.y < rect.position.y + 2.0:
+					break
+				draw_line(at, next, Color(vein, 0.35 * pulse), 3.0)
+				draw_line(at, next, Color(vein.lightened(0.3), pulse), 1.0)
+				at = next
+	if look.get("pattern", "") == "roots":
+		# Leaves sprouting along the top.
+		var x := rect.position.x + 2.0
+		while x < rect.end.x - 2.0:
+			draw_rect(Rect2(x, rect.position.y - random.randf_range(4.0, 7.0), 4.0, 4.0), look["top"].lightened(random.randf_range(0.0, 0.25)))
+			x += random.randf_range(4.0, 8.0)
 
 
 ## The height of a wall's broken top line at x, as a y (negative is up).
