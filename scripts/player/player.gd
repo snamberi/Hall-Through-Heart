@@ -179,6 +179,9 @@ func _ready() -> void:
 	relics = Relics.new()
 	relics.name = "Relics"
 	add_child(relics)
+	var aura := EgoAura.new()
+	aura.setup(self)
+	add_child(aura)
 	_mount = Mount.new()
 	_mount.name = "Mount"
 	add_child(_mount)
@@ -495,6 +498,8 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 		dealt += enemy.take_damage(extra, Vector2.ZERO, critical, type, element)
 	Uniques.on_hit(self, enemy, damage)
 	# Hit-stop: a blink of stillness on solid blows gives them weight.
+	if critical:
+		FeelFX.crit(enemy.global_position)
 	if critical or multiplier >= 1.5:
 		hit_stop(0.06)
 	elif state == State.ATTACK:
@@ -1218,6 +1223,9 @@ func nearest_farm_animal() -> Node2D:
 		var enemy := node as Enemy
 		if enemy and (not Livestock.is_farm_animal(enemy.enemy_id) or enemy.state == Enemy.State.DEAD):
 			continue
+		var species: String = enemy.enemy_id if enemy else (node as Livestock).species
+		if not (Livestock.SPECIES[species]["food"] as Array).any(func(food: String) -> bool: return inventory.count_of(food) > 0):
+			continue
 		var distance: float = node.global_position.distance_to(global_position)
 		if distance < best_distance:
 			best_distance = distance
@@ -1350,6 +1358,10 @@ func _try_interact(by_key: bool) -> bool:
 		Events.npc_interacted.emit(npc)
 		return true
 	var animal := nearest_farm_animal()
+	# Feeding wins only with food in the bag, and over a building only when
+	# the animal is the nearer of the two.
+	if animal and prop and prop.global_position.distance_to(global_position) < animal.global_position.distance_to(global_position):
+		animal = null
 	if animal and (by_key or (animal.global_position + Vector2(0, -16)).distance_to(get_global_mouse_position()) < 40.0):
 		DamageNumber.spawn_text(get_parent(), animal.global_position + Vector2(0, -56), feed_animal(animal), Color(1.0, 0.85, 0.9), 12)
 		return true

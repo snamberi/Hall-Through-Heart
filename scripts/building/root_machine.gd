@@ -124,6 +124,11 @@ func _work(target: Node2D) -> void:
 	root.from = global_position + Vector2(8, -30)
 	root.to = to + Vector2(0, -8)
 	get_parent().get_parent().add_child(root)
+	# Packed up mid-reach: the root goes with it.
+	var cut_root := func() -> void:
+		if is_instance_valid(root):
+			root.queue_free()
+	tree_exiting.connect(cut_root)
 	await root.grow(1.1)
 	var item: Item = null
 	if plot.is_empty():
@@ -140,6 +145,7 @@ func _work(target: Node2D) -> void:
 	if item:
 		root.carry(item.icon(), item.tint())
 	await root.retract(0.9)
+	tree_exiting.disconnect(cut_root)
 	if item:
 		_keep(item)
 		record["yield"] = item.id

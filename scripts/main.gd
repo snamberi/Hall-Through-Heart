@@ -115,6 +115,9 @@ func _ready() -> void:
 	var ambience := Ambience.new()
 	ambience.name = "Ambience"
 	add_child(ambience)
+	var feel := FeelFX.new()
+	add_child(feel)
+	feel.setup(_player)
 	ambience.setup(_player, _world, _day_night)
 	var steps := Footsteps.new()
 	steps.name = "Footsteps"
