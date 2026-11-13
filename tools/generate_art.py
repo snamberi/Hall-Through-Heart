@@ -2682,7 +2682,13 @@ REDRAWN_AT = {
 }
 ICONS = [(name, REDRAWN_AT.get(index, parts)) for index, (name, parts) in enumerate(ICONS)]
 
-# Icons for the map and minimap: one row of 22px cells in assets/icons/map.png.
+# 138: coal.
+ICON_PALETTE.update({"coal": ["5a5866", "34323e", "1a1820"], "coal_shine": ["a8a6b8"] * 3})
+ICONS += [
+    ("coal", [("coal", "poly", [(3, 12), (6, 6), (12, 4), (17, 7), (19, 13), (15, 18), (8, 19)]), ("coal", "poly", [(10, 9), (14, 8), (16, 12), (12, 14)]),
+              ("coal_shine", "rect", (7, 8, 8, 9)), ("coal_shine", "rect", (13, 9, 13, 10)), ("coal_shine", "rect", (9, 15, 10, 15))]),
+]
+
 # The order is MapIcons.KINDS in the game.
 ICON_PALETTE.update({"roof": ["d86a5a", "b04a40", "7c3030"], "wall_w": ["f0e4c8", "cdbf9e", "9a8d70"], "stone_m": ["b4b0bd", "8a8794", "5c5966"],
                      "tent": ["d8b07a", "b08a54", "7c5e36"], "void_m": ["c8a0ff", "9a6cf0", "5e3aa8"], "coin": ["ffe27a", "f0b830", "b07c10"],

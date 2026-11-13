@@ -576,6 +576,9 @@ const ITEMS := {
 	"fur_cloak": {"name": "Fur Mantle", "icon": 100, "tint": Color("e8eef4"), "slot": "chest", "drop_weight": 0.0, "armor": 7.0,
 		"implicit": [{"stat": "frost_resist", "kind": "flat", "base": 0.2, "per_level": 0.0}]},
 	"crafting_table": {"name": "Crafting Table", "icon": 54, "material_rarity": 0, "place": "table", "value": 30, "text": "Stand beside one to craft. Use it from your bag to set it down."},
+	"furnace": {"name": "Furnace", "decor": Prop.Decor.FURNACE, "icon": 54, "material_rarity": 0, "place": "furnace", "value": 60,
+		"text": "Smelts ore into ingots, one ore to one ingot, slowly, as long as there is coal in it. Use it from your bag to set it down."},
+	"coal": {"name": "Coal", "icon": 138, "material_rarity": 0, "value": 4, "text": "Black and greasy. A furnace burns one lump for every eight ores it smelts. Mined from coal seams, or burned from wood."},
 	"farmhouse_kit": {"name": "Farmhouse", "decor": Prop.Decor.FARMHOUSE, "icon": 54, "material_rarity": 1, "place": "farmhouse", "value": 200,
 		"text": "A little red barn for a farm. Feed a sheep, cow or chicken wheat and it follows you; lead it here and it stays, leaving wool, milk or eggs inside. Feed two of a kind here and they raise young."},
 	"milk": {"name": "Milk", "icon": 134, "material_rarity": 0, "value": 6, "text": "A jug of milk from your own cows."},
@@ -836,6 +839,23 @@ static func tinted_icon(index: int, tint: Color) -> Texture2D:
 
 
 ## Item level at which the tier of `level` begins (1, 10, 20, ...).
+## Whether an item is a plain material (no slot, no use, nothing to place).
+static func is_material(item_id: String) -> bool:
+	var def: Dictionary = ITEMS.get(item_id, {})
+	return not def.is_empty() and not def.has("slot") and not def.has("use") and not def.has("place") and not def.has("tool") \
+		and not def.has("backpack") and not def.has("relic") and not def.has("belt") and not def.has("gem") and not def.get("currency", false) \
+		and not def.has("mount") and not def.has("boat") and not def.has("treasure_map")
+
+
+## A material's rarity as found: its usual one, sometimes one or two better
+## and very rarely three.
+static func roll_material_rarity(item_id: String) -> int:
+	var base := int(ITEMS[item_id].get("material_rarity", 0))
+	var roll := randf()
+	var step := 3 if roll < 0.008 else 2 if roll < 0.045 else 1 if roll < 0.2 else 0
+	return clampi(base + step, 0, RARITIES.size() - 1)
+
+
 static func tier_start(level: int) -> int:
 	for tier in TIERS:
 		if level >= tier[0]:

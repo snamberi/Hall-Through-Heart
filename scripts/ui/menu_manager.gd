@@ -33,7 +33,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options and saving", "side": true},
 ]
 ## Where a screen's Back button leads, when not to the wheel. "" closes.
-const BACK := {"settings": "pause", "teacher": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": ""}
+const BACK := {"settings": "pause", "teacher": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": ""}
 
 var _menus: Dictionary[String, GameMenu] = {}
 ## "" when closed, "wheel", or a screen id.
@@ -114,6 +114,7 @@ func setup(player: Player) -> void:
 	_add("pets", PetsMenu.new())
 	_add("relics", RelicsMenu.new())
 	_add("teacher", TeacherMenu.new())
+	_add("furnace", FurnaceMenu.new())
 	_add("magic", MagicMenu.new())
 	_add("evolution", EvolutionMenu.new())
 	_add("build", BuildMenu.new())
@@ -135,6 +136,10 @@ func setup(player: Player) -> void:
 		open("storage")
 	)
 	Events.npc_interacted.connect(_on_npc_interacted)
+	Events.furnace_opened.connect(func(record: Dictionary) -> void:
+		(_menus["furnace"] as FurnaceMenu).record = record
+		open("furnace")
+	)
 	_add("map", MapMenu.new())
 	_add("pause", PauseMenu.new())
 	_add("settings", SettingsMenu.new())

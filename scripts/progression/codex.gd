@@ -142,6 +142,10 @@ func setup(player: Player) -> void:
 		var recipe := RecipeDB.find(id)
 		if not recipe.is_empty():
 			count("crafted_" + recipe["profession"])
+		elif id.begins_with("smelt_"):
+			# Ingots from a furnace are the smith's work too.
+			count("crafted_blacksmithing")
+			count("smelted")
 		count("crafted")
 	)
 	Events.npc_interacted.connect(func(npc: Node) -> void:

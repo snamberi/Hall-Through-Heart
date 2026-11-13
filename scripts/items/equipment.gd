@@ -343,7 +343,7 @@ func set_progress() -> Dictionary:
 	for slot in ItemDB.SET_SLOTS:
 		var item := get_item(slot)
 		if item and item.definition().get("tiered", false):
-			var tier := ItemDB.tier_name(item.level)
+			var tier := ItemDB.tier_name(item.tier_level())
 			counts[tier] = counts.get(tier, 0) + 1
 	var best := {"tier": "", "count": 0}
 	for tier: String in counts:

@@ -37,6 +37,8 @@ const KINDS := {
 	"root_delver": {"item": "rootling_delver", "decor": Prop.Decor.ROOT_DELVER, "solid": 14.0, "outdoors": true, "machine": "delver"},
 	"root_tender": {"item": "rootling_tender", "decor": Prop.Decor.ROOT_TENDER, "solid": 14.0, "outdoors": true, "machine": "tender"},
 	"root_hollow": {"item": "root_hollow", "decor": Prop.Decor.ROOT_HOLLOW, "solid": 22.0, "outdoors": true},
+	## Smelts ore into ingots over time, burning coal (see Furnace).
+	"furnace": {"item": "furnace", "decor": Prop.Decor.FURNACE, "solid": 20.0},
 	## Where your farm animals live and leave their produce (see Livestock).
 	"farmhouse": {"item": "farmhouse_kit", "decor": Prop.Decor.FARMHOUSE, "solid": 30.0, "outdoors": true},
 	## One tile of floor inside a house; the record keeps the item and tile.
@@ -670,6 +672,13 @@ func _spawn(record: Dictionary) -> void:
 			prop.add_child(timer)
 		if record["kind"] == "farmhouse":
 			_spawn_farm(prop, record)
+		if record["kind"] == "furnace":
+			var worker := Furnace.new()
+			worker.record = record
+			prop.add_child(worker)
+			prop.add_light(0.55, 0.7, Color(1.0, 0.6, 0.3))
+			prop.prompt_text = "Use the furnace"
+			prop.on_interact = func(_player: Player) -> void: Events.furnace_opened.emit(record)
 		if record["kind"] == "root_hollow":
 			prop.prompt_text = "Open the root hollow"
 			prop.on_interact = func(_player: Player) -> void: Events.storage_opened.emit(record)

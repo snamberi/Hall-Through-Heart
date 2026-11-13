@@ -30,7 +30,7 @@ func free_slots() -> int:
 
 
 func has_room_for(item: Item) -> bool:
-	if item.is_stackable() and _find_stack(item.id) != null:
+	if item.is_stackable() and _find_stack(item.id, item.rarity) != null:
 		return true
 	return free_slots() > 0
 
@@ -47,7 +47,7 @@ func add(item: Item) -> bool:
 		Events.codex_event.emit("uniques", 1)
 	elif item.set_id != "":
 		Events.codex_event.emit("set_pieces", 1)
-	var stack := _find_stack(item.id) if item.is_stackable() else null
+	var stack := _find_stack(item.id, item.rarity) if item.is_stackable() else null
 	if stack:
 		stack.count = mini(stack.count + item.count, ItemDB.MAX_STACK)
 	else:
@@ -77,22 +77,33 @@ func count_of(item_id: String) -> int:
 	return total
 
 
-## Removes `amount` of a stackable item. Returns false (taking nothing) if
-## the bag holds fewer.
-func take(item_id: String, amount: int) -> bool:
+## Removes `amount` of a stackable item, the plainest first (or the finest
+## first with `best_first`). Returns false (taking nothing) if the bag holds
+## fewer. `last_rarity` keeps the average rarity of what was taken.
+func take(item_id: String, amount: int, best_first: bool = false) -> bool:
 	if count_of(item_id) < amount:
 		return false
-	for item: Item in items.duplicate():
-		if item.id != item_id or amount <= 0:
-			continue
+	var stacks: Array = items.filter(func(item: Item) -> bool: return item.id == item_id)
+	stacks.sort_custom(func(a: Item, b: Item) -> bool: return a.rarity > b.rarity if best_first else a.rarity < b.rarity)
+	var total := 0.0
+	var taken := amount
+	for item: Item in stacks:
+		if amount <= 0:
+			break
 		var used := mini(item.count, amount)
 		item.count -= used
 		amount -= used
+		total += used * item.rarity
 		if item.count <= 0:
 			items.erase(item)
+	last_rarity = total / maxf(taken, 1.0)
 	changed.emit()
 	SaveGame.request_save()
 	return true
+
+
+## Average rarity of the last thing taken (see take()).
+var last_rarity := 0.0
 
 
 ## The best tool of a kind in the bag ("pickaxe", "hatchet", "rod"), or null.
@@ -141,8 +152,8 @@ func load_data(data: Dictionary) -> void:
 				items.append(item)
 
 
-func _find_stack(item_id: String) -> Item:
+func _find_stack(item_id: String, rarity: int = -1) -> Item:
 	for item in items:
-		if item.id == item_id and item.count < ItemDB.MAX_STACK:
+		if item.id == item_id and item.count < ItemDB.MAX_STACK and (rarity < 0 or item.rarity == rarity):
 			return item
 	return null

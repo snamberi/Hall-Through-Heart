@@ -170,7 +170,7 @@ func _keep(item: Item) -> void:
 	var store := _store_record()
 	var items: Array = store["items"]
 	for saved: Dictionary in items:
-		if saved["id"] == item.id and item.is_stackable():
+		if saved["id"] == item.id and item.is_stackable() and Item.from_dict(saved).rarity == item.rarity:
 			saved["count"] = int(saved["count"]) + item.count
 			SaveGame.request_save()
 			return

@@ -20,6 +20,20 @@ var sockets: Array[String] = []
 var set_id := ""
 ## Materials worked into it, oldest first (see Infusions).
 var infusions: Array[String] = []
+## For forged gear: the tier of metal it was made from (its name and look
+## follow the metal, not its level) and how strong that and the materials'
+## rarity made it (1.0 is ordinary).
+var forged_tier := 0
+var quality := 1.0
+
+
+## A gathered or dropped material, which now and then comes out finer than
+## usual (see ItemDB.roll_material_rarity).
+static func create_rolled(item_id: String, p_count: int = 1) -> Item:
+	var item := create(item_id, p_count)
+	if item and ItemDB.is_material(item_id):
+		item.rarity = ItemDB.roll_material_rarity(item_id)
+	return item
 
 
 static func create(item_id: String, p_count: int = 1) -> Item:
@@ -53,6 +67,8 @@ static func from_dict(data: Dictionary) -> Item:
 		for gem: Variant in saved_sockets:
 			item.sockets.append(str(gem) if ItemDB.ITEMS.has(str(gem)) else "")
 	item.set_id = str(data.get("set", "")) if ItemDB.ITEM_SETS.has(str(data.get("set", ""))) else ""
+	item.forged_tier = maxi(int(data.get("forged", 0)), 0)
+	item.quality = clampf(float(data.get("quality", 1.0)), 0.3, 3.0)
 	var saved_infusions: Variant = data.get("infusions", [])
 	if saved_infusions is Array:
 		for material: Variant in saved_infusions:
@@ -84,7 +100,16 @@ func to_dict() -> Dictionary:
 		data["set"] = set_id
 	if not infusions.is_empty():
 		data["infusions"] = infusions.duplicate()
+	if forged_tier > 0:
+		data["forged"] = forged_tier
+	if not is_equal_approx(quality, 1.0):
+		data["quality"] = snappedf(quality, 0.001)
 	return data
+
+
+## The level its metal tier is named and coloured by.
+func tier_level() -> int:
+	return forged_tier if forged_tier > 0 else level
 
 
 func definition() -> Dictionary:
@@ -167,7 +192,7 @@ func display_name() -> String:
 	if set_id != "":
 		text = "%s %s" % [ItemDB.ITEM_SETS[set_id]["name"], text]
 	elif def.get("tiered", false):
-		text = "%s %s" % [ItemDB.tier_name(level), text]
+		text = "%s %s" % [ItemDB.tier_name(tier_level()), text]
 	return "%s +%d" % [text, upgrade] if upgrade > 0 else text
 
 
@@ -194,7 +219,7 @@ func icon() -> Texture2D:
 ## Base damage or armor at this item's level and rarity.
 func base_power(key: String) -> float:
 	var base: float = definition().get(key, 0.0)
-	var power: float = base * (1.0 + ItemDB.POWER_PER_LEVEL * (level - 1)) * ItemDB.RARITIES[rarity]["power"]
+	var power: float = base * (1.0 + ItemDB.POWER_PER_LEVEL * (level - 1)) * ItemDB.RARITIES[rarity]["power"] * quality
 	# Each upgrade is worth at least one point, so it shows on weak items too.
 	return roundf(maxf(power * (1.0 + ItemDB.UPGRADE_POWER * upgrade), roundf(power) + upgrade))
 

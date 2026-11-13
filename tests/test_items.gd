@@ -101,3 +101,54 @@ func test_every_item_names_its_type(t: TestContext) -> void:
 	t.equal(ItemText.type_name(LootGenerator.make_equipment(1, 0, "leather_cap")), "Leather helmet", "a leather cap's type")
 	t.equal(ItemText.type_name(Item.create("health_potion")), "Potion", "a health potion's type")
 	t.check(ItemText.describe(LootGenerator.make_equipment(1, 0, "sword"), null) != "" if false else true, "")
+
+
+func test_forged_gear_matches_the_smith_and_the_metal(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var buildings: Buildings = main.get_node("Buildings")
+	buildings.place("table", player.global_position + Vector2(50, 40), "crafting_table")
+	await t.frames(2)
+	var level := player.leveling.level
+	player.professions.levels["blacksmithing"] = 60
+	var made: Array[Item] = []
+	for recipe_id: String in ["sword_1", "sword_40"]:
+		var recipe := RecipeDB.find(recipe_id)
+		for input: String in recipe["inputs"]:
+			player.inventory.add(Item.create(input, recipe["inputs"][input]))
+		t.equal(Crafting.craft(player, recipe), "", "crafting %s" % recipe_id)
+		made.append(player.inventory.items[player.inventory.items.size() - 1])
+	t.equal(made[0].level, level, "a copper sword comes out at the smith's level")
+	t.equal(made[1].level, level, "a mithril sword comes out at the smith's level")
+	t.check(made[1].quality > made[0].quality, "mithril makes a stronger sword than copper")
+	t.check(made[0].display_name().begins_with("Copper"), "the copper sword is named for its metal: %s" % made[0].display_name())
+	t.check(absf(Item.from_dict(made[0].to_dict()).quality - made[0].quality) < 0.002, "quality after a save")
+	for item in made:
+		player.inventory.remove(item)
+
+
+func test_materials_stack_by_rarity(t: TestContext) -> void:
+	var bag := Inventory.new()
+	var plain := Item.create("iron_ore", 3)
+	var fine := Item.create("iron_ore", 2)
+	fine.rarity = 2
+	bag.add(plain)
+	bag.add(fine)
+	t.equal(bag.items.size(), 2, "iron ore of two rarities in two stacks")
+	t.equal(bag.count_of("iron_ore"), 5, "all the iron ore counted")
+	bag.take("iron_ore", 2, true)
+	t.equal(bag.last_rarity, 2.0, "the finest ore was taken first")
+	bag.free()
+
+
+func test_furnace_smelts_one_ore_into_one_ingot(t: TestContext) -> void:
+	var record := {"kind": "furnace", "items": [], "ore": {"id": "iron_ore", "rarity": 1, "count": 3}, "coal": 1, "burns": 0, "progress": 0.0,
+		"last": Time.get_unix_time_from_system() - 600.0}
+	var worker := Furnace.new()
+	worker.record = record
+	worker._ready()
+	t.equal(int(record["ore"]["count"]), 0, "all the ore smelted while away")
+	t.equal(int((record["items"] as Array)[0]["count"]), 3, "three ore made three ingots")
+	t.equal(Item.from_dict((record["items"] as Array)[0]).rarity, 1, "the ingots keep the ore's rarity")
+	t.equal(int(record["coal"]), 0, "the coal was burned")
+	worker.free()

@@ -157,6 +157,9 @@ static func describe(item: Item, player: Player) -> String:
 		lines.append("[color=#%s]%.2fs between %s %d[/color]" % [dim, weapon["cooldown"], action, roundi(weapon["range"])])
 	if def.has("armor"):
 		lines.append("[color=#%s]Armor[/color]  [font_size=20]%d[/font_size]%s" % [text, roundi(item.base_power("armor")), _delta(item, player, "armor")])
+	if item.forged_tier > 0 or not is_equal_approx(item.quality, 1.0):
+		var metal := ItemDB.tier_name(item.forged_tier) if item.forged_tier > 0 else "fine materials"
+		lines.append("[color=#%s]Forged from %s  -  %d%% strength[/color]" % [dim, metal, roundi(item.quality * 100.0)])
 	var level_ok := player.leveling.level >= item.level
 	lines.append("[i][color=#%s]Requires level %d[/color][/i]" % [UITheme.HEADING.to_html(false) if level_ok else UITheme.BAD.to_html(false), item.level])
 	var requirements := item.attribute_requirements()

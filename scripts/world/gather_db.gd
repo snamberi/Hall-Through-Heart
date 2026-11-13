@@ -22,6 +22,7 @@ const WOODED: Array[int] = [T.DARK_GRASS, T.DEAD_GRASS, T.FROSTPINE, T.THORN, T.
 const RESOURCES := {
 	"stone": {"kind": "ore", "item": "stone", "level": 1, "tier": 1, "tiles": ROCKY},
 	"copper": {"kind": "ore", "item": "copper_ore", "level": 1, "tier": 1, "tiles": ROCKY},
+	"coal": {"kind": "ore", "item": "coal", "level": 1, "tier": 1, "tiles": ROCKY},
 	"tin": {"kind": "ore", "item": "tin_ore", "level": 5, "tier": 1, "tiles": ROCKY},
 	"iron": {"kind": "ore", "item": "iron_ore", "level": 10, "tier": 2, "tiles": ROCKY},
 	"silver": {"kind": "ore", "item": "silver_ore", "level": 20, "tier": 2, "tiles": ROCKY},

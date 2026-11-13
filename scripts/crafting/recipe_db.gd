@@ -180,7 +180,9 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "storage_chest", "profession": "building", "level": 1, "inputs": {"oak_wood": 8, "copper_ingot": 1}, "item": "storage_chest", "count": 1, "xp": 25.0},
 	{"id": "bed", "profession": "building", "level": 1, "inputs": {"oak_wood": 10, "husk_fragment": 6}, "item": "bed", "count": 1, "xp": 30.0},
 	{"id": "house_kit", "profession": "building", "level": 2, "inputs": {"oak_wood": 30, "stone": 20, "copper_ingot": 4}, "item": "house_kit", "count": 1, "xp": 120.0},
-	{"id": "bronze_ingot", "profession": "blacksmithing", "level": 5, "inputs": {"copper_ore": 2, "tin_ore": 1}, "item": "bronze_ingot", "count": 1, "xp": 14.0},
+	{"id": "bronze_ingot", "profession": "blacksmithing", "level": 5, "inputs": {"copper_ingot": 2, "tin_ore": 1}, "item": "bronze_ingot", "count": 2, "xp": 14.0},
+	{"id": "furnace", "profession": "building", "level": 1, "inputs": {"stone": 24, "oak_wood": 6}, "item": "furnace", "count": 1, "xp": 30.0},
+	{"id": "charcoal", "profession": "building", "level": 1, "inputs": {"oak_wood": 3}, "item": "coal", "count": 1, "xp": 4.0},
 	{"id": "health_potion", "profession": "alchemy", "level": 1, "inputs": {"healing_herb": 2}, "item": "health_potion", "count": 1, "xp": 10.0},
 	{"id": "stamina_tonic", "profession": "alchemy", "level": 5, "inputs": {"healing_herb": 1, "poison_mushroom": 1}, "item": "stamina_tonic", "count": 1, "xp": 16.0},
 	{"id": "mana_potion", "profession": "alchemy", "level": 10, "inputs": {"mana_flower": 2}, "item": "mana_potion", "count": 1, "xp": 22.0},
@@ -233,12 +235,8 @@ static func _build() -> void:
 	for recipe in HAND_WRITTEN:
 		_recipes.append(recipe)
 	for tier_level: int in ItemDB.TIER_INGOTS:
+		# Ingots are smelted in a furnace (see Furnace), one ore to one ingot.
 		var ingot: String = ItemDB.TIER_INGOTS[tier_level]
-		var inputs := {ORES[ingot]: 3}
-		if tier_level >= 10:
-			inputs["stone"] = 1
-		_recipes.append({"id": ingot, "profession": "blacksmithing", "level": tier_level, "inputs": inputs,
-			"item": ingot, "count": 1, "xp": 10.0 + tier_level * 1.5})
 		for base: String in FORGEABLE:
 			var cost: Array = FORGEABLE[base]
 			var gear_inputs := {ingot: cost[0]}

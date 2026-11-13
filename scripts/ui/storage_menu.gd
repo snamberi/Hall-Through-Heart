@@ -86,7 +86,7 @@ func _store(item: Item) -> void:
 	# Stackables join a matching stack; everything else needs its own slot.
 	if item.is_stackable():
 		for saved: Dictionary in stored:
-			if saved["id"] == item.id:
+			if saved["id"] == item.id and Item.from_dict(saved).rarity == item.rarity:
 				saved["count"] = int(saved["count"]) + item.count
 				player.inventory.remove(item)
 				_changed()

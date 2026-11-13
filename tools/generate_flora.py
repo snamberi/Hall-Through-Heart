@@ -1476,6 +1476,27 @@ def decor(kind):
             x, y = r.randrange(9, 56), r.randrange(24, 60)
             if (x, y) in c.filled and not (21 <= x <= 43 and 30 <= y <= 58):
                 c.put(x, y, C("5d7a3f") if r.random() < 0.7 else C("8aaa5a"))
+    elif kind == "furnace":
+        # A squat stone furnace: courses of blocks, a chimney, an arched
+        # mouth glowing with coals, a little fire spilling light, and a
+        # heap of coal beside it.
+        stone = ramp("a8a4b0", "7e7a88", "54505e")
+        c.shade("poly", [(12, 60), (12, 26), (20, 18), (44, 18), (52, 26), (52, 60)], stone)
+        c.shade("rect", (36, 4, 46, 20), stone)
+        c.fill("rect", (35, 3, 47, 5), C("c4c0cc"))
+        for y in range(24, 60, 6):
+            c.fill("line", (13, y, 51, y), C("4a4654"), 1)
+            for x in range(14 + (y // 6 % 2) * 6, 51, 12):
+                c.fill("line", (x, y + 1, x, y + 5), C("4a4654"), 1)
+        c.fill("poly", [(22, 58), (22, 42), (26, 36), (32, 34), (38, 36), (42, 42), (42, 58)], C("1a1012"))
+        c.shade("ellipse", (24, 46, 40, 58), ramp("fff0a0", "ffa040", "c04a10"))
+        for (x, y) in [(27, 51), (31, 49), (35, 52), (29, 54), (34, 55)]:
+            c.fill("rect", (x, y, x + 1, y + 1), C("fff4c0"))
+        c.fill("line", (22, 42, 26, 36), C("c4c0cc"), 1)
+        c.fill("line", (26, 36, 32, 34), C("c4c0cc"), 1)
+        c.shade("ellipse", (2, 52, 13, 61), ramp("5a5866", "34323e", "1a1820"))
+        c.fill("rect", (5, 54, 6, 55), C("a8a6b8"))
+        c.fill("ellipse", (38, 0, 44, 4), C("6a6a70"))
     elif kind == "farmhouse":
         # A small red farmhouse barn: a pitched shingle roof, white-trimmed
         # double doors braced with an X, a hay loft spilling straw, a
@@ -1514,7 +1535,7 @@ def decor(kind):
 DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate", "barrel", "well", "fence", "lantern",
          "stall", "signpost", "rug", "shelf", "plant_pot", "table", "chair", "candles", "cage", "tent", "obelisk",
          "palisade", "spike_trap", "ballista", "soil", "scarecrow", "torch", "fireplace", "waystone", "waystone_lit", "gravestone", "ruined_tower", "cart",
-         "root_cutter", "root_delver", "root_tender", "root_hollow", "farmhouse"]
+         "root_cutter", "root_delver", "root_tender", "root_hollow", "farmhouse", "furnace"]
 
 
 def sheet(images, w, h):

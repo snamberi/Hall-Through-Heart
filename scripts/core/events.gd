@@ -41,5 +41,7 @@ signal recall_requested
 signal dismantle_requested
 ## Something went into or out of water here.
 signal splash(at: Vector2)
+## The player opened a furnace (its building record).
+signal furnace_opened(record: Dictionary)
 ## A loot chest was opened: {"items": [saved items], "title", "take_only"}.
 signal loot_opened(container: Dictionary)

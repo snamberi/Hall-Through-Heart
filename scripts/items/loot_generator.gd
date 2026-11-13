@@ -77,7 +77,7 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 	for entry: Dictionary in table["materials"]:
 		var chance: float = entry["chance"] * rank["materials"] * (1.0 + magic_find)
 		if randf() < chance:
-			items.append(Item.create(entry["id"], randi_range(entry["count"][0], entry["count"][1])))
+			items.append(Item.create_rolled(entry["id"], randi_range(entry["count"][0], entry["count"][1])))
 
 	if info["rank"] == "miniboss":
 		items.append(Item.create("heart_shard"))

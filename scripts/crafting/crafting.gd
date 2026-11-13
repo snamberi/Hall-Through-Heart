@@ -30,15 +30,27 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 	var reason := blocked_reason(player, recipe)
 	if reason != "":
 		return reason
+	# Gear takes the finest materials in the bag; everything else the plainest.
+	var forging := recipe.has("equipment")
+	var rarity_sum := 0.0
+	var units := 0
 	for item_id: String in recipe["inputs"]:
-		player.inventory.take(item_id, recipe["inputs"][item_id])
+		var amount: int = recipe["inputs"][item_id]
+		player.inventory.take(item_id, amount, forging)
+		rarity_sum += player.inventory.last_rarity * amount
+		units += amount
+	var material_rarity := rarity_sum / maxf(units, 1.0)
 	var skill := player.professions.level(recipe["profession"])
 	var made: Item
-	if recipe.has("equipment"):
-		# A better smith is likelier to turn out something special.
-		# Rarer materials make for rarer gear.
-		var rarity := LootGenerator.roll_rarity(player.stats.get_stat("magic_find"), skill / 20.0 + material_quality(recipe) * 1.5)
-		made = LootGenerator.make_equipment(recipe["item_level"], rarity, recipe["equipment"], skill / 100.0)
+	if forging:
+		# Gear comes out at the smith's own level. The metal sets how strong
+		# it is (copper is weak, heartstone mighty) and finer materials make
+		# it stronger still and likelier to be rare.
+		var rarity := LootGenerator.roll_rarity(player.stats.get_stat("magic_find"), skill / 20.0 + material_rarity * 1.5)
+		made = LootGenerator.make_equipment(player.leveling.level, rarity, recipe["equipment"], skill / 100.0)
+		if ItemDB.ITEMS[recipe["equipment"]].get("tiered", false):
+			made.forged_tier = recipe["item_level"]
+		made.quality = metal_quality(recipe["item_level"], ItemDB.ITEMS[recipe["equipment"]].get("tiered", false)) * (1.0 + MATERIAL_RARITY_BONUS * material_rarity)
 	else:
 		made = Item.create(recipe["item"], recipe["count"])
 		# A practised cook stretches a pot further: a chance of a spare serving.
@@ -49,6 +61,19 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 	player.professions.add_xp(recipe["profession"], recipe["xp"])
 	Events.item_crafted.emit(recipe["id"])
 	return ""
+
+
+## How strong forged gear is by its metal's tier (by the tier's first level).
+const METAL_QUALITY := {1: 0.7, 10: 0.8, 20: 0.9, 30: 1.0, 40: 1.1, 50: 1.2, 65: 1.35, 80: 1.5, 100: 1.7}
+## Extra strength for each step of rarity in the materials used.
+const MATERIAL_RARITY_BONUS := 0.06
+
+
+static func metal_quality(item_level: int, tiered: bool) -> float:
+	if not tiered:
+		# Special gear (heart arms and the like) is a fine metal of its own.
+		return 1.15
+	return float(METAL_QUALITY.get(ItemDB.tier_start(item_level), 1.0))
 
 
 ## How fine a recipe's materials are: their average rarity (0 = common).
@@ -66,7 +91,7 @@ static func material_quality(recipe: Dictionary) -> float:
 
 ## {"ingot": id, "ingots": n, "gold": n, "level": smithing level needed}.
 static func upgrade_cost(item: Item) -> Dictionary:
-	var tier := ItemDB.tier_start(item.level)
+	var tier := ItemDB.tier_start(item.tier_level())
 	return {
 		"ingot": ItemDB.tier_ingot(item.level),
 		"ingots": item.upgrade + 1,

@@ -526,7 +526,7 @@ func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true,
 	var material := sprite.material as ShaderMaterial
 	# Worn gear is drawn as part of the body: its own metal, a plain dark
 	# outline, no coloured edge or glow. Rarity shows in the aura underfoot.
-	material.set_shader_parameter("tint", ItemDB.tier_color(item.level) if tier_tint else tint)
+	material.set_shader_parameter("tint", ItemDB.tier_color(item.tier_level()) if tier_tint else tint)
 	material.set_shader_parameter("rarity_color", item.color())
 	material.set_shader_parameter("outline_mix", 0.0)
 	material.set_shader_parameter("glow", 0.0)

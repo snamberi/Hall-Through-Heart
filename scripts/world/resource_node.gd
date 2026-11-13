@@ -156,7 +156,7 @@ func harvest(player: Player) -> void:
 	if item_id != "":
 		if randf() < player.professions.double_chance(profession()):
 			count *= 2
-		var item := Item.create(item_id, count)
+		var item := Item.create_rolled(item_id, count)
 		var label := "%s x%d" % [item.display_name(), count] if count > 1 else item.display_name()
 		if player.inventory.add(item):
 			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -30), label, item.tint().lightened(0.3), 12)
@@ -185,7 +185,7 @@ func harvest(player: Player) -> void:
 
 ## Root-tech worked this: what it yields, and it goes until it regrows.
 func harvest_by_roots() -> Item:
-	var item := Item.create(_data["item"], randi_range(1, 2))
+	var item := Item.create_rolled(_data["item"], randi_range(1, 2))
 	Gore.spray(get_parent(), global_position + Vector2(0, -14 if is_tall() else -6), "_wood" if kind() == "tree" else "_stone" if kind() == "ore" else "_leaf", Vector2(0, -1), 8, false)
 	harvested.emit(self)
 	queue_free()

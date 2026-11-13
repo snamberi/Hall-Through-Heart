@@ -6,7 +6,7 @@ extends GameMenu
 ## crafting table, as ever) and "Place" puts it in hand to set down.
 
 const CATEGORIES := [
-	["structures", "Structures", ["house", "bed", "table", "chest"]],
+	["structures", "Structures", ["house", "bed", "table", "chest", "furnace"]],
 	["walls", "Walls and fences", ["wall", "fence", "palisade"]],
 	["ground", "Ground", ["ground", "floor"]],
 	["furniture", "Furniture", ["rug", "bookshelf", "potted_plant", "dining_table", "chair", "wall_banner", "barrel", "crate", "stone_statue"]],
