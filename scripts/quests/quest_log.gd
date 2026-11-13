@@ -166,10 +166,16 @@ func _complete(quest: Dictionary) -> void:
 		completed.append(quest["id"])
 	var rewards: Dictionary = quest["rewards"]
 	_player.inventory.add_gold(int(rewards.get("gold", 0)))
+	var given: Array = []
 	for entry: Array in rewards.get("items", []):
-		_player.inventory.add(Item.create(entry[0], int(entry[1])))
+		var item := Item.create(entry[0], int(entry[1]))
+		given.append(item)
+		_player.inventory.add(item)
 	if rewards.has("gear_rarity"):
-		_player.inventory.add(LootGenerator.make_equipment(_player.leveling.level, int(rewards["gear_rarity"]), "", 0.5))
+		var gear := LootGenerator.make_equipment(_player.leveling.level, int(rewards["gear_rarity"]), "", 0.5)
+		given.append(gear)
+		_player.inventory.add(gear)
+	Events.rewards_given.emit("JOB DONE", quest["title"], int(rewards.get("xp", 0)), int(rewards.get("gold", 0)), given)
 	if rewards.has("profession"):
 		_player.professions.add_xp(rewards["profession"][0], float(rewards["profession"][1]))
 	Events.quest_completed.emit(quest["title"], ", ".join(QuestDB.describe_rewards(rewards)))

@@ -183,3 +183,59 @@ func test_a_boss_falls_twice(t: TestContext) -> void:
 	await t.frames(2)
 	t.check(boss.state == Enemy.State.DEAD, "the second fall is the last")
 	t.equal(deaths[0], 1, "it dies once")
+
+
+func test_every_quest_pays_in_goods(t: TestContext) -> void:
+	for quest in QuestBookDB.all():
+		var items: Array = quest["rewards"]["items"]
+		t.check(not items.is_empty(), "%s pays no goods" % quest["id"])
+		for entry: Array in items:
+			t.check(entry[0] == QuestBookDB.GEAR or ItemDB.ITEMS.has(entry[0]), "%s pays an unknown item %s" % [quest["id"], entry[0]])
+		for need: String in quest["requires"]:
+			t.check(not QuestBookDB.find(need).is_empty(), "%s needs a quest that does not exist: %s" % [quest["id"], need])
+	t.check(QuestBookDB.all().any(func(q: Dictionary) -> bool: return q["chapter"] == "legends"), "the Legends chapter has quests")
+	t.check(QuestBookDB.all().any(func(q: Dictionary) -> bool: return q["chapter"] == "dead"), "the Restless Dead chapter has quests")
+
+
+func test_villagers_and_their_errands(t: TestContext) -> void:
+	var seen := {}
+	for index in 7:
+		var person := VillagerLife.make(Vector2i(40, -30), index, 12345)
+		t.check(VillagerLife.JOBS.has(person["job"]), "a villager with an unknown trade")
+		t.check(Appearance.RACES.has(person["look"]["race"]), "a villager of an unknown race")
+		t.check(not seen.has(person["name"]), "two villagers named %s" % person["name"])
+		seen[person["name"]] = true
+	t.equal(VillagerLife.make(Vector2i(40, -30), 0, 12345)["job"], "guard", "every village has a guard")
+	for job: String in VillagerLife.JOBS:
+		var data: Dictionary = VillagerLife.JOBS[job]
+		for entry: Array in data["fetch"] + data["pays"]:
+			t.check(entry[0] == "@gear" or ItemDB.ITEMS.has(entry[0]), "%s deals in an unknown item %s" % [job, entry[0]])
+		for day in 6:
+			var errand := Errands.make("villager:1,1:%s" % job, job, "Test", 10, day, 0)
+			t.check(errand["kind"] in ["fetch", "cull"], "%s asks for something odd" % job)
+			t.check(int(errand["need"]) > 0 and int(errand["gold"]) > 0, "%s's errand asks or pays nothing" % job)
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var errands: Errands = main.get_node("Errands")
+	var npc := Npc.create("villager", player.global_position + Vector2(30, 0))
+	var person := VillagerLife.make(Vector2i(3, 3), 2, 1)
+	npc.villager_name = person["name"]
+	npc.job = person["job"]
+	npc.look = person["look"]
+	npc.villager_key = person["key"]
+	main.add_child(npc)
+	await t.frames(2)
+	var errand := errands.offer_for(npc)
+	t.equal(errands.accept(npc), "", "an errand can be taken")
+	var gold := player.inventory.gold
+	if errand["kind"] == "fetch":
+		t.check(not errands.can_hand_over(npc), "nothing to hand over yet")
+		player.inventory.add(Item.create(errand["target"], int(errand["need"])))
+		t.equal(errands.hand_over(npc), "", "the things asked for are handed over")
+	else:
+		for i in int(errand["need"]):
+			Events.enemy_killed.emit({"id": errand["target"], "rank": "normal", "level": 1, "position": Vector2.ZERO})
+	t.check(player.inventory.gold > gold, "the errand pays")
+	t.equal(int(errands.helped.get(npc.villager_key, 0)), 1, "the villager remembers the help")
+	t.check(errands.offer_for(npc).is_empty(), "one errand a day")
+	npc.queue_free()

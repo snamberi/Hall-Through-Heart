@@ -66,6 +66,7 @@ func _raise_the_dead() -> void:
 	_stage = "risen"
 	var count := randi_range(4, 10)
 	Events.announcement.emit("THE DEAD STIR", "%d corpses claw out of their graves" % count)
+	Events.codex_event.emit("graveyards_woken", 1)
 	structures._player.shake_camera(5.0)
 	for i in count:
 		var at: Vector2 = graves[i % graves.size()] + Vector2(randf_range(-14, 14), 22.0) if not graves.is_empty() else structures._at(cell) + Vector2.from_angle(randf() * TAU) * 90.0

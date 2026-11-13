@@ -144,11 +144,25 @@ static func generate(player: Player) -> Dictionary:
 	var effort: float = 0.2 + 0.02 * objective["count"] * (4.0 if type == "elite" else 1.0)
 	rewards["xp"] = roundi(Leveling.xp_required(level) * effort)
 	rewards["gold"] = 15 * level + objective["count"] * 6
+	# Most jobs also pay in goods.
+	if randf() < 0.75:
+		var goods: Array = JOB_GOODS[type].filter(func(entry: Array) -> bool: return level >= int(entry[2]))
+		var pick: Array = goods.pick_random()
+		rewards["items"] = [[pick[0], int(pick[1]) + level / 15]]
 	return {
 		"id": "job_%d" % (randi() % 100000000), "title": title, "story": false,
 		"text": "Work posted by the wardens. " + describe_objective(objective) + ".",
 		"objective": objective, "rewards": rewards,
 	}
+
+
+## Goods a job may pay besides gold: [item, count, from level].
+const JOB_GOODS := {
+	"kill": [["health_potion", 2, 1], ["bandage", 3, 1], ["might_elixir", 1, 8], ["stamina_tonic", 2, 4], ["jerky", 3, 1], ["heart_shard", 1, 25]],
+	"elite": [["health_potion", 3, 1], ["might_elixir", 2, 1], ["dungeon_key", 1, 10], ["heart_shard", 1, 20]],
+	"collect": [["coal", 4, 1], ["copper_ingot", 2, 1], ["iron_ingot", 2, 10], ["silver_ingot", 1, 20], ["torch", 4, 1], ["bread", 3, 1]],
+	"craft": [["enchanted_dust", 2, 1], ["coal", 5, 1], ["mana_potion", 2, 1], ["emerald_1", 1, 5], ["ruby_2", 1, 20]],
+}
 
 
 static func _plural(name: String, count: int) -> String:

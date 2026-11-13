@@ -22,8 +22,32 @@ const CHAPTERS: Array[Dictionary] = [
 	{"id": "hunting", "name": "Hunting & Cooking", "icon": {"monster": "deer"}},
 	{"id": "exploration", "name": "Exploration", "icon": {"atlas": 9}},
 	{"id": "raids", "name": "Raids & Bosses", "icon": {"monster": "crimson_fiend"}},
+	{"id": "legends", "name": "Legends", "icon": {"item": "ninefold_blade"}},
+	{"id": "dead", "name": "The Restless Dead", "icon": {"monster": "rotten_corpse"}},
 	{"id": "side", "name": "Side Quests", "icon": {"atlas": 53}},
 ]
+
+## What a quest pays in goods when it names none itself, by chapter:
+## [item, count, from tier]. Gems climb a grade every four tiers.
+const GOODS := {
+	"main": [["health_potion", 2, 0], ["torch", 4, 0], ["bandage", 3, 0], ["stamina_tonic", 2, 3], ["heart_shard", 1, 8]],
+	"combat": [["health_potion", 2, 0], ["bandage", 3, 0], ["might_elixir", 1, 4], ["jerky", 3, 0], ["heart_shard", 1, 9], ["ruby", 1, 5]],
+	"magic": [["mana_potion", 2, 0], ["enchanted_dust", 2, 0], ["sages_infusion", 1, 4], ["amethyst", 1, 3], ["sapphire", 1, 6]],
+	"classes": [["might_elixir", 1, 0], ["stamina_tonic", 2, 0], ["essence", 3, 0], ["topaz", 1, 4]],
+	"equipment": [["copper_ingot", 3, 0], ["iron_ingot", 2, 4], ["silver_ingot", 2, 7], ["enchanted_dust", 3, 0], ["diamond", 1, 6], ["mithril_ingot", 1, 10]],
+	"crafting": [["oak_wood", 6, 0], ["coal", 5, 0], ["iron_ingot", 2, 4], ["enchanted_dust", 2, 2], ["gold_ingot", 1, 8]],
+	"mining": [["coal", 6, 0], ["copper_ingot", 3, 0], ["iron_ingot", 2, 3], ["silver_ingot", 2, 5], ["gold_ingot", 1, 7], ["mithril_ingot", 1, 10], ["emerald", 1, 4]],
+	"farming": [["wheat_seeds", 4, 0], ["carrot_seeds", 4, 0], ["potato_seeds", 3, 0], ["bread", 3, 0], ["pumpkin_seeds", 2, 3], ["sunroot_seeds", 2, 6], ["taming_treat", 2, 2]],
+	"fishing": [["grilled_minnow", 3, 0], ["trout_stew", 2, 2], ["salmon_steak", 2, 4], ["glowfin_soup", 1, 6], ["golden_platter", 1, 9]],
+	"hunting": [["jerky", 4, 0], ["leather", 3, 0], ["roast_venison", 2, 2], ["hunters_feast", 1, 6], ["bear_pelt", 1, 5]],
+	"exploration": [["torch", 5, 0], ["stamina_tonic", 2, 0], ["treasure_map", 1, 5], ["dungeon_key", 1, 7], ["swiftfoot_tea", 1, 3]],
+	"raids": [["health_potion", 3, 0], ["heart_shard", 1, 6], ["dungeon_key", 1, 5], ["might_elixir", 2, 3], ["garnet", 1, 5]],
+	"legends": [["heart_shard", 2, 0], ["diamond", 1, 0], ["might_elixir", 2, 0], ["void_tonic", 1, 8]],
+	"dead": [["bandage", 4, 0], ["bone", 6, 0], ["candles", 2, 0], ["health_potion", 2, 0], ["wraith_cloth", 2, 4], ["heart_shard", 1, 8]],
+	"side": [["sweet_roll", 3, 0], ["berry_tart", 2, 0], ["health_potion", 2, 0], ["treasure_map", 1, 6], ["topaz", 1, 4]],
+}
+## Gear paid for milestones is rolled at the player's level when it is won.
+const GEAR := "@gear"
 
 static var _quests: Array[Dictionary] = []
 static var _by_id: Dictionary = {}
@@ -51,6 +75,8 @@ static func chapter_name(id: String) -> String:
 
 ## A texture for an icon spec.
 static func icon_texture(spec: Dictionary) -> Texture2D:
+	if spec.has("ability"):
+		return AbilityDB.icon(spec["ability"])
 	if spec.has("atlas"):
 		return ItemDB.icon(spec["atlas"])
 	if spec.has("item"):
@@ -76,11 +102,40 @@ static func _rw(tier: float, items: Array = []) -> Dictionary:
 
 
 static func _q(id: String, title: String, text: String, icon: Dictionary, requires: Array, objectives: Array, tier: float, items: Array = [], big: bool = false) -> String:
+	if items.is_empty():
+		items = _goods(id, tier)
 	var quest := {"id": id, "chapter": _chapter, "title": title, "text": text, "icon": icon, "requires": requires,
 		"objectives": objectives, "rewards": _rw(tier, items), "big": big}
 	_quests.append(quest)
 	_by_id[id] = quest
 	return id
+
+
+## Goods for a quest that names none: one or two things from its
+## chapter's list, the same every time for the same quest.
+static func _goods(id: String, tier: float) -> Array:
+	var pool: Array = (GOODS.get(_chapter, GOODS["side"]) as Array).filter(func(entry: Array) -> bool: return tier >= float(entry[2]))
+	var picks := 1 if tier < 6.0 else 2
+	var result: Array = []
+	var index := absi(hash(id))
+	for i in mini(picks, pool.size()):
+		var entry: Array = pool[(index + i * 7) % pool.size()]
+		var item: String = entry[0]
+		if not ItemDB.ITEMS.has(item):
+			# A gem family: its grade climbs with the quest.
+			item = "%s_%d" % [item, clampi(1 + int(tier / 4.0), 1, 5)]
+		if not ItemDB.ITEMS.has(item) or result.any(func(r: Array) -> bool: return r[0] == item):
+			continue
+		result.append([item, maxi(roundi(float(entry[1]) * (1.0 + tier / 8.0)), 1)])
+	return result
+
+
+## Marks milestones: they also pay a piece of gear, finer the later they come.
+static func _mark_milestones() -> void:
+	for quest in _quests:
+		if quest["big"] and not (quest["rewards"]["items"] as Array).any(func(r: Array) -> bool: return r[0] == GEAR):
+			var tier := pow(float(quest["rewards"]["xp"]) / 30.0, 1.0 / 1.7)
+			(quest["rewards"]["items"] as Array).append([GEAR, clampi(1 + int(tier / 4.0), 1, 4)])
 
 
 ## A chain of quests, each needing the one before; the first needs `parent`.
@@ -117,7 +172,10 @@ static func _build() -> void:
 	_hunting()
 	_exploration()
 	_raids()
+	_legends()
+	_dead()
 	_side()
+	_mark_milestones()
 
 
 static func _main() -> void:
@@ -129,7 +187,7 @@ static func _main() -> void:
 	var husks := _chain(blade, [
 		["main_awakening", "Awakening", "The husks beyond the stones will not leave you be. Put three down.", {"monster": "husk"}, [_o("kill", {"monster": "husk", "count": 3})], 1.5],
 		["main_tools", "Tools of the Trade", "There is copper in the grey rocks. Mine some.", {"atlas": 49}, [_o("gather", {"resource": "copper", "count": 3})], 1.8],
-		["main_first_forge", "First Forge", "Smelt or forge something at the crafting table.", {"atlas": 46}, [_stat("crafted_blacksmithing", 1, "Craft at the forge")], 2.0],
+		["main_first_forge", "First Forge", "Smelt ore at a furnace, or forge something at the crafting table.", {"atlas": 46}, [_stat("crafted_blacksmithing", 1, "Craft at the forge")], 2.0],
 		["main_wild", "Into the Wild", "The land changes as you walk. See three kinds of country.", {"atlas": 9}, [_stat("biomes", 3, "Discover lands")], 2.4],
 	])
 	var village := _chain(husks, [
@@ -195,6 +253,23 @@ static func _combat() -> void:
 			["combat_%s_25" % weapon, "%s Expert" % name, "Train %s to mastery 25." % name.to_lower(), {"atlas": weapons[weapon]}, [_o("mastery", {"weapon": weapon, "level": 25})], 6.0],
 			["combat_%s_50" % weapon, "%s Master" % name, "Train %s to mastery 50." % name.to_lower(), {"atlas": weapons[weapon]}, [_o("mastery", {"weapon": weapon, "level": 50})], 10.0],
 		])
+	# Fighting styles: fists first, then the masters in their dojos.
+	var masters := _chain(root, [
+		["combat_fists", "Bare Knuckles", "Empty both weapon slots and fight with your fists.", {"ability": "st_fist_0"}, [_stat("kills", 3, "Defeat monsters")], 1.0],
+		["combat_style_1", "Seek a Master", "Masters of the old fighting styles live in dojos far out in the wilds. Find one and learn from them.", {"atlas": 6}, [_o("styles", {"count": 2})], 5.0],
+		["combat_style_3", "Three Ways to Fight", "Learn three fighting styles.", {"atlas": 6}, [_o("styles", {"count": 3})], 8.0],
+		["combat_style_all", "Grandmaster", "Learn every fighting style there is.", {"atlas": 26}, [_o("styles", {"count": CombatStyles.STYLES.size()})], 14.0],
+	])
+	for style: String in CombatStyles.STYLES:
+		if style == "fist":
+			continue
+		var data: Dictionary = CombatStyles.STYLES[style]
+		_q("combat_learn_" + style, data["name"], "%s. Learn it from a master." % data["text"], {"ability": "st_%s_0" % style}, ["combat_style_1"], [_o("style", {"style": style})], 6.0)
+	_chain(root, [
+		["combat_universal_1", "Tab to Switch", "Abilities that need no weapon come with your levels. Press Tab to switch to them.", {"ability": "u_flash_step"}, [_o("universal", {"count": 1})], 1.5],
+		["combat_universal_4", "Tricks of the Road", "Know four universal abilities.", {"ability": "u_blink"}, [_o("universal", {"count": 4})], 6.0],
+		["combat_universal_all", "Nothing in Hand", "Know every universal ability.", {"ability": "u_war_cry"}, [_o("universal", {"count": AbilityDB.UNIVERSAL.size()})], 11.0],
+	])
 	# Monster hunts by land.
 	var lands := {
 		"Fields and Forests": ["husk", "rot_hound", "carrion_bat", "thorn_stalker", "dire_boar", "treant"],
@@ -217,7 +292,7 @@ static func _combat() -> void:
 
 static func _magic() -> void:
 	_chapter = "magic"
-	var root := _q("magic_root", "The Spark", "Train staves to mastery 1 by casting a bolt.", {"atlas": 33}, ["main_tools"], [_o("mastery", {"weapon": "staves", "level": 1})], 1.0, [["mana_potion", 3]], true)
+	var root := _q("magic_root", "The Spark", "Take up a school of magic, hold it in your hand, and cast a bolt.", {"atlas": 33}, ["main_tools"], [_o("mastery", {"weapon": "staves", "level": 1})], 1.0, [["mana_potion", 3]], true)
 	_chain(root, [
 		["magic_staves_10", "Apprentice", "Train staves to mastery 10.", {"atlas": 33}, [_o("mastery", {"weapon": "staves", "level": 10})], 3.0],
 		["magic_staves_25", "Adept", "Train staves to mastery 25.", {"atlas": 34}, [_o("mastery", {"weapon": "staves", "level": 25})], 6.0],
@@ -398,6 +473,13 @@ static func _mining() -> void:
 			["mining_prof_%s_75" % profession, "%s 75" % name, "Reach %s 75." % name.to_lower(), {"atlas": Professions.ICONS[profession]}, [_o("profession", {"profession": profession, "level": 75})], 14.0],
 		])
 	_chain(root, [
+		["mining_coal", "Black Rock", "Mine coal from the dark seams in rocky ground.", {"item": "coal"}, [_o("gather", {"resource": "coal", "count": 5})], 1.5],
+		["mining_furnace", "Fire and Ore", "Build a furnace and set it down.", {"item": "furnace"}, [_o("place", {"kind": "furnace", "count": 1})], 2.0],
+		["mining_smelt_10", "Smelter", "Smelt 10 ingots in a furnace. Each ore makes one ingot; coal keeps the fire going.", {"item": "copper_ingot"}, [_stat("smelted", 10, "Smelt ingots")], 3.0],
+		["mining_smelt_100", "Foundry", "Smelt 100 ingots.", {"item": "iron_ingot"}, [_stat("smelted", 100, "Smelt ingots")], 7.0],
+		["mining_smelt_500", "Furnace Heart", "Smelt 500 ingots.", {"item": "gold_ingot"}, [_stat("smelted", 500, "Smelt ingots")], 12.0],
+	])
+	_chain(root, [
 		["mining_gem_1", "Something Glints", "Find a gem in an ore vein.", {"atlas": 59}, [_stat("gems_found", 1, "Find gems")], 3.0],
 		["mining_gem_25", "Prospector", "Find 25 gems in ore veins.", {"atlas": 59}, [_stat("gems_found", 25, "Find gems")], 8.0],
 	])
@@ -563,6 +645,54 @@ static func _raids() -> void:
 		var data: Dictionary = BossDB.BOSSES[boss]
 		var first := _q("raids_boss_" + boss, data["name"], "Defeat %s." % data["name"], {"monster": data["monster"]}, [bosses], [_o("boss", {"boss": boss, "count": 1})], 10.0)
 		_q("raids_boss_%s_5" % boss, data["name"] + ", Again", "Defeat %s five times." % data["name"], {"monster": data["monster"]}, [first], [_o("boss", {"boss": boss, "count": 5})], 13.0)
+
+
+static func _legends() -> void:
+	_chapter = "legends"
+	var root := _q("legends_root", "Twice-Fallen", "Some bosses do not stay down: beaten once, they rise again stronger. Put one down for good.",
+		{"atlas": 36}, ["main_kingslayer"], [_stat("risen_slain", 1, "Defeat a boss that rose again")], 10.0, [], true)
+	_chain(root, [
+		["legends_risen_5", "They Stay Down", "Defeat five bosses in their second form.", {"atlas": 36}, [_stat("risen_slain", 5, "Defeat risen bosses")], 12.0],
+		["legends_risen_25", "Breaker of Oaths", "Defeat twenty-five bosses in their second form.", {"atlas": 22}, [_stat("risen_slain", 25, "Defeat risen bosses")], 16.0],
+	])
+	_chain(root, [
+		["legends_keeper", "The Keeper's Vigil", "High in the mountains the Sword Keeper guards the heart of a blade. Defeat it.", {"monster": "heartsworn_knight"}, [_o("boss", {"boss": "sword_keeper", "count": 1})], 13.0],
+		["legends_keeper_5", "Keeper of Nothing", "Defeat the Sword Keeper five times.", {"monster": "heartsworn_knight"}, [_o("boss", {"boss": "sword_keeper", "count": 5})], 15.0],
+	])
+	# Nine pieces, one from each of nine bosses, forged into one blade.
+	var pieces: Array = []
+	for boss: String in BossDB.PIECES:
+		var piece: String = BossDB.PIECES[boss]
+		pieces.append(_q("legends_piece_" + piece, ItemDB.ITEMS[piece]["name"], "%s leaves this piece of the Ninefold Blade when it falls." % BossDB.BOSSES[boss]["name"],
+			{"item": piece}, [root], [_o("own", {"item": piece})], 11.0))
+	var forged := _q("legends_ninefold", "The Ninefold Blade", "Bring all nine pieces and five gold ingots to a crafting table and forge the Ninefold Blade. No other sword is like it.",
+		{"item": "ninefold_blade"}, pieces, [_o("craft", {"item": "ninefold_blade", "count": 1})], 18.0, [["heart_shard", 5]], true)
+	_q("legends_kingsfall", "Kingsfall", "Wield the Ninefold Blade and bring down a boss that rose again.", {"item": "ninefold_blade"}, [forged],
+		[_o("own", {"item": "ninefold_blade"}), _stat("risen_slain", 1, "Defeat a risen boss")], 18.0)
+
+
+static func _dead() -> void:
+	_chapter = "dead"
+	var root := _q("dead_root", "The Dead Stir", "Walk among the stones of a graveyard and wake what sleeps there.", {"atlas": 36},
+		["main_village"], [_stat("graveyards_woken", 1, "Wake a graveyard")], 3.0, [["bandage", 4], ["torch", 4]], true)
+	_chain(root, [
+		["dead_corpses_10", "Rot and Ruin", "Put down 10 rotten corpses.", {"monster": "rotten_corpse"}, [_o("kill", {"monster": "rotten_corpse", "count": 10})], 3.5],
+		["dead_corpses_50", "Gravedigger", "Put down 50 rotten corpses.", {"monster": "rotten_corpse"}, [_o("kill", {"monster": "rotten_corpse", "count": 50})], 6.0],
+		["dead_corpses_250", "Nothing Stays Buried", "Put down 250 rotten corpses.", {"monster": "rotten_corpse"}, [_o("kill", {"monster": "rotten_corpse", "count": 250})], 10.0],
+	])
+	_chain(root, [
+		["dead_roots", "The Corpse of Roots", "When the last corpse falls, the ground splits. Defeat what rises, and what rises after that.", {"monster": "rotten_corpse"}, [_o("boss", {"boss": "corpse_of_roots", "count": 1})], 6.0, [["heartwood", 3]]],
+		["dead_cleansed_3", "Rerooted", "Lay three graveyards to rest.", {"atlas": 43}, [_stat("graveyards_cleansed", 3, "Graveyards laid to rest")], 8.0],
+		["dead_cleansed_10", "Groundskeeper", "Lay ten graveyards to rest.", {"atlas": 43}, [_stat("graveyards_cleansed", 10, "Graveyards laid to rest")], 12.0],
+	])
+	_q("dead_wisp", "The Wispkeeper", "The Corpse of Roots guards a staff that keeps the wisps of the dead. Take it.", {"item": "wispkeeper"}, ["dead_roots"], [_o("own", {"item": "wispkeeper"})], 8.0)
+	_chain(root, [
+		["dead_ghost_1", "Lights Among the Stones", "At night ghosts drift through graveyards. Lay one to rest.", {"monster": "ghost"}, [_o("kill", {"monster": "ghost", "count": 1})], 3.0],
+		["dead_ghost_20", "Ghost Hunter", "Lay 20 ghosts to rest.", {"monster": "ghost"}, [_o("kill", {"monster": "ghost", "count": 20})], 6.0],
+		["dead_shade", "The Weeping Shade", "In ashen and snowy country a great ghost weeps over its arena. Defeat it.", {"monster": "ghost"}, [_o("boss", {"boss": "weeping_shade", "count": 1})], 10.0],
+		["dead_shade_3", "Dry Eyes", "Defeat the Weeping Shade three times.", {"monster": "ghost"}, [_o("boss", {"boss": "weeping_shade", "count": 3})], 12.0],
+	])
+	_q("dead_bones", "Bone Collector", "Carry 40 bones.", {"item": "bone"}, [root], [_o("have", {"item": "bone", "count": 40})], 4.0)
 
 
 static func _side() -> void:

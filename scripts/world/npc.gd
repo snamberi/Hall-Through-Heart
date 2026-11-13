@@ -37,9 +37,25 @@ var _stock_period := -1
 ## Villagers: what they might say, and where they wander from.
 var lines: Array[String] = []
 var home := Vector2.ZERO
+## Villagers: who they are (see VillagerLife.make), the door they sleep
+## behind, and the village square.
+var villager_name := ""
+var job := ""
+var villager_key := ""
+var look: Dictionary = {}
+var door := Vector2.ZERO
+var square := Vector2.ZERO
+## Whether the villager is out and about (false when gone indoors).
+var about := true
 var _sprite: AnimatedSprite2D
+var _figure: PersonFigure
 var _walk_to := Vector2.ZERO
 var _think := 0.0
+var _bubble: Label
+var _bubble_left := 0.0
+var _remark_in := 4.0
+var _fleeing := 0.0
+var _talking := 0.0
 
 
 static func create(p_kind: String, at: Vector2) -> Npc:
@@ -51,19 +67,36 @@ static func create(p_kind: String, at: Vector2) -> Npc:
 
 func _ready() -> void:
 	add_to_group("npcs")
-	var sprite := AnimatedSprite2D.new()
-	_sprite = sprite
-	sprite.sprite_frames = SheetAnimations.build(load(KINDS[kind]["sheet"]), 96, [{"name": "idle", "frames": 4, "fps": 5.0, "loop": true}])
-	sprite.position = Vector2(0, -23)
-	sprite.play("idle")
-	add_child(sprite)
-	SunShadow.follow(sprite)
-	if kind == "villager":
-		# Each villager dresses a little differently.
-		sprite.modulate = Color.from_hsv(randf(), 0.25, 1.0).lerp(Color.WHITE, 0.4)
+	var top := -66.0
+	if not look.is_empty():
+		# A person dressed like anyone else, with the tools of their trade.
+		_figure = PersonFigure.new()
+		_figure.dress(look, 0.72 if VillagerLife.JOBS.get(job, {}).get("small", false) else 1.0)
+		var carry: String = VillagerLife.JOBS.get(job, {}).get("carry", "")
+		if carry != "" and ItemDB.ITEMS.has(carry):
+			var item := Item.create(carry)
+			_figure.hold(item.icon(), item.icon_tint())
+		add_child(_figure)
+		top = -_figure.head_height() - 18.0
 		_walk_to = position
-	if tint != Color.WHITE:
-		sprite.modulate = tint
+		if title_text == "" and villager_name != "":
+			title_text = "%s the %s" % [villager_name, VillagerLife.JOBS[job]["title"]]
+		if prompt_text == "" and villager_name != "":
+			prompt_text = "Talk to %s" % villager_name
+	else:
+		var sprite := AnimatedSprite2D.new()
+		_sprite = sprite
+		sprite.sprite_frames = SheetAnimations.build(load(KINDS[kind]["sheet"]), 96, [{"name": "idle", "frames": 4, "fps": 5.0, "loop": true}])
+		sprite.position = Vector2(0, -23)
+		sprite.play("idle")
+		add_child(sprite)
+		SunShadow.follow(sprite)
+		if kind == "villager":
+			# Each villager dresses a little differently.
+			sprite.modulate = Color.from_hsv(randf(), 0.25, 1.0).lerp(Color.WHITE, 0.4)
+			_walk_to = position
+		if tint != Color.WHITE:
+			sprite.modulate = tint
 	if kind == "settler":
 		_walk_to = position
 
@@ -75,8 +108,29 @@ func _ready() -> void:
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	label.scale = Vector2.ONE / 2.0
-	label.position = Vector2(-label.get_minimum_size().x / 4.0, -66.0)
+	label.position = Vector2(-label.get_minimum_size().x / 4.0, top)
 	add_child(label)
+	if _figure:
+		# Words said aloud float over the head for a moment.
+		_bubble = Label.new()
+		_bubble.add_theme_font_override("font", UITheme.get_theme().default_font)
+		_bubble.add_theme_font_size_override("font_size", 14)
+		_bubble.add_theme_color_override("font_color", Color(0.12, 0.1, 0.14))
+		var box := StyleBoxFlat.new()
+		box.bg_color = Color(0.96, 0.93, 0.85)
+		box.border_color = Color(0.3, 0.24, 0.2)
+		box.set_border_width_all(2)
+		box.set_corner_radius_all(6)
+		box.content_margin_left = 8
+		box.content_margin_right = 8
+		box.content_margin_top = 3
+		box.content_margin_bottom = 3
+		_bubble.add_theme_stylebox_override("normal", box)
+		_bubble.scale = Vector2.ONE / 2.0
+		_bubble.z_index = 20
+		_bubble.visible = false
+		_bubble.position.y = top - 20.0
+		add_child(_bubble)
 
 	var body := StaticBody2D.new()
 	var shape := CollisionShape2D.new()
@@ -211,6 +265,9 @@ static func sell_price(item: Item) -> int:
 func _process(delta: float) -> void:
 	if kind != "villager" and kind != "settler":
 		return
+	if _figure:
+		_live(delta)
+		return
 	_think -= delta
 	if _think <= 0.0:
 		_think = randf_range(2.0, 6.0)
@@ -224,3 +281,109 @@ func _process(delta: float) -> void:
 ## A villager's passing remark.
 func say_something() -> String:
 	return lines.pick_random() if not lines.is_empty() else "..."
+
+
+## Says something aloud: a speech bubble over the head for a few seconds.
+func say(text: String, seconds: float = 3.5) -> void:
+	if _bubble == null:
+		return
+	_bubble.text = text
+	_bubble.reset_size()
+	_bubble.position.x = -_bubble.get_minimum_size().x / 4.0
+	_bubble.visible = true
+	_bubble_left = seconds
+
+
+## Turns to face someone and stops for a while (while being spoken to).
+func attend(to: Vector2) -> void:
+	_talking = 6.0
+	_walk_to = position
+	if _figure:
+		_figure.face(to.x - position.x)
+
+
+## A villager's day: out working and wandering by day, home behind their
+## door at night (the guard keeps watch instead), running for home when
+## monsters come close, and a word for anyone passing.
+func _live(delta: float) -> void:
+	if _bubble_left > 0.0:
+		_bubble_left -= delta
+		if _bubble_left <= 0.0:
+			_bubble.visible = false
+	var data: Dictionary = VillagerLife.JOBS.get(job, {})
+	var player: Player = get_tree().get_first_node_in_group("player")
+	var night: DayNight = player.get_parent().get_node_or_null("DayNight") if player else null
+	var dark := night != null and night.is_night() and not player.indoors
+	_talking = maxf(_talking - delta, 0.0)
+	_think -= delta
+	if _think <= 0.0:
+		_think = randf_range(2.5, 6.0)
+		_choose_way(data, dark, player)
+	if not about:
+		# Indoors: come back out with the morning.
+		if not dark:
+			about = true
+			visible = true
+			add_to_group("npcs")
+		return
+	if _talking > 0.0:
+		_figure.pose("idle")
+		return
+	var speed := 34.0
+	if data.get("slow", false):
+		speed = 22.0
+	if data.get("small", false):
+		speed = 52.0
+	if _fleeing > 0.0:
+		_fleeing -= delta
+		speed = 95.0
+	var step := _walk_to - position
+	if step.length() > 4.0:
+		position += step.normalized() * speed * delta
+		_figure.face(step.x)
+		_figure.pose("run" if speed > 60.0 else "walk", speed / 40.0 if speed <= 60.0 else 1.0)
+	else:
+		_figure.pose("idle")
+		if dark and not data.get("night_watch", false) and door != Vector2.ZERO and position.distance_to(door) < 10.0:
+			# In through the door for the night.
+			about = false
+			visible = false
+			remove_from_group("npcs")
+			return
+	# A word for the player passing by.
+	_remark_in -= delta
+	if player and _remark_in <= 0.0 and position.distance_to(player.global_position) < 120.0 and _bubble_left <= 0.0:
+		_remark_in = randf_range(9.0, 18.0)
+		var errands: Errands = player.get_parent().get_node_or_null("Errands")
+		var friend := errands != null and int(errands.helped.get(villager_key, 0)) > 0
+		say(VillagerLife.passing_remark(job, villager_name, friend))
+
+
+func _choose_way(data: Dictionary, dark: bool, player: Player) -> void:
+	# Monsters close by: run for the door.
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy and not enemy.is_wild() and enemy.state != Enemy.State.DEAD and enemy.global_position.distance_to(position) < 170.0:
+			if data.get("night_watch", false):
+				_walk_to = position
+				say("To arms!", 2.0)
+				return
+			_fleeing = 4.0
+			_walk_to = door if door != Vector2.ZERO else home
+			if _bubble_left <= 0.0:
+				say(["Monster!", "Help!", "Run!"].pick_random(), 2.0)
+			return
+	if dark and not data.get("night_watch", false) and door != Vector2.ZERO:
+		_walk_to = door
+		return
+	if dark:
+		# On watch: walk the lanterns round the square.
+		_walk_to = square + Vector2.from_angle(randf() * TAU) * randf_range(60.0, 200.0)
+		return
+	if job == "elder":
+		_walk_to = square + Vector2(randf_range(-50.0, 90.0), randf_range(40.0, 110.0))
+	elif job == "child" and player and randf() < 0.3 and player.global_position.distance_to(position) < 200.0:
+		# Children tag along after an adventurer.
+		_walk_to = player.global_position + Vector2.from_angle(randf() * TAU) * 40.0
+	else:
+		_walk_to = home + Vector2.from_angle(randf() * TAU) * randf_range(0.0, 150.0)

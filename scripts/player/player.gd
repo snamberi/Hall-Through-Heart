@@ -1242,6 +1242,8 @@ func nearest_npc() -> Npc:
 	var best: Npc = null
 	var best_distance := Npc.REACH
 	for node in get_tree().get_nodes_in_group("npcs"):
+		if not node.visible:
+			continue
 		var distance: float = node.global_position.distance_to(global_position)
 		if distance < best_distance:
 			best_distance = distance

@@ -26,6 +26,8 @@ signal item_crafted(recipe_id: String)
 ## The player pressed interact next to someone.
 signal npc_interacted(npc: Node)
 signal quest_completed(title: String, rewards: String)
+## Something paid the player for work done: shown as a reward card.
+signal rewards_given(heading: String, title: String, xp: int, gold: int, items: Array)
 signal biome_discovered(biome: String, xp: int)
 ## A big message for the middle of the screen (a wave starting, a place entered).
 signal announcement(title: String, detail: String)

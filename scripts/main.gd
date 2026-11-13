@@ -75,6 +75,10 @@ func _ready() -> void:
 	book.name = "QuestBook"
 	add_child(book)
 	book.setup(_player)
+	var errands := Errands.new()
+	errands.name = "Errands"
+	add_child(errands)
+	errands.setup(_player)
 	var settlers := Settlers.new()
 	settlers.name = "Settlers"
 	add_child(settlers)

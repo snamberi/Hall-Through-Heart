@@ -119,6 +119,7 @@ func _build(center: Vector2i) -> Array:
 	add.call(Prop.create_decor(Prop.Decor.BANNER, _at(center + Vector2i(2, -6)), 5.0))
 
 	# Houses in each quarter between the roads.
+	var doors: Array[Vector2] = []
 	for quarter: Vector2i in [Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
 		for house_index in random.randi_range(1, 2):
 			var spot := Vector2i(quarter.x * random.randi_range(8, 12), quarter.y * random.randi_range(3, 5) if house_index == 0 else quarter.y * random.randi_range(9, 12))
@@ -135,6 +136,7 @@ func _build(center: Vector2i) -> Array:
 					SaveGame.request_save()
 				)
 			)
+			doors.append(_at(center + spot, Vector2(0, 10)))
 			house.sprite().scale = Vector2(2.0, 2.0)
 			house.sprite().position.y = -50.0
 			HouseStyles.dress(house, tile)
@@ -144,10 +146,19 @@ func _build(center: Vector2i) -> Array:
 			add.call(Prop.create_decor(Prop.Decor.FENCE, _at(center + spot + Vector2i(2, 2)), 0.0))
 			add.call(Prop.create_decor(Prop.Decor.BARREL if random.randf() < 0.5 else Prop.Decor.PLANT_POT, _at(center + spot + Vector2i(2, 1)), 8.0))
 
-	# Villagers about the place.
-	for i in random.randi_range(3, 5):
+	# Villagers about the place, each with a name, a trade and a door.
+	for i in random.randi_range(5, 7):
+		var person := VillagerLife.make(center, i, _world.generator.world_seed)
 		var villager := Npc.create("villager", _at(center + Vector2i(random.randi_range(-6, 6), random.randi_range(-6, 6))))
 		villager.lines = LINES
-		villager.home = villager.position
+		villager.villager_name = person["name"]
+		villager.job = person["job"]
+		villager.look = person["look"]
+		villager.villager_key = person["key"]
+		villager.square = _at(center)
+		villager.door = doors[i % doors.size()] if not doors.is_empty() else Vector2.ZERO
+		villager.home = villager.door + Vector2(0, 30) if villager.door != Vector2.ZERO else villager.position
+		if person["job"] == "fisher" or person["job"] == "farmer":
+			villager.home = _at(center + Vector2i(random.randi_range(-9, 9), random.randi_range(6, 11)))
 		add.call(villager)
 	return placed

@@ -132,6 +132,46 @@ func site_for(chunk: Vector2i) -> Dictionary:
 	return site
 
 
+## What each kind of place is called on signs and in talk.
+const SITE_NAMES := {"ruin": "Ruins", "shrine": "Shrine", "cave": "Cave", "lair": "Lair", "portal": "Void Portal", "dungeon": "Sealed Crypt",
+	"boss": "Boss Arena", "camp": "Abandoned Camp", "waystone": "Waystone", "obelisk": "Obelisk", "merchant": "Merchant's Camp",
+	"watchtower": "Watchtower", "graveyard": "Graveyard", "henge": "Standing Stones", "farmstead": "Farmstead", "library": "Library",
+	"dojo": "Dojo", "shipwreck": "Shipwreck", "altar": "Altar of Magic", "village": "Village"}
+
+
+## The nearest places to a tile: up to `count` of {"kind", "name", "cell",
+## "distance"} (in tiles), nearest first, from the structures within
+## `reach` chunks and any villages close by.
+func nearest_sites(cell: Vector2i, count: int, reach: int = 6, skip: Array = []) -> Array:
+	var chunk := Vector2i((Vector2(cell) / World.CHUNK_SIZE).floor())
+	var found: Array = []
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			var site := site_for(chunk + Vector2i(dx, dy))
+			if site.is_empty() or site["kind"] in skip:
+				continue
+			var distance := Vector2(site["cell"] - cell).length()
+			if distance > 4.0:
+				found.append({"kind": site["kind"], "name": SITE_NAMES.get(site["kind"], str(site["kind"]).capitalize()), "cell": site["cell"], "distance": distance})
+	if not "village" in skip:
+		var region := Vector2i((Vector2(cell) / WorldGenerator.VILLAGE_REGION).floor())
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				var center: Variant = _world.generator.village_center(region + Vector2i(dx, dy))
+				if center != null:
+					var distance := Vector2(Vector2i(center) - cell).length()
+					if distance > WorldGenerator.VILLAGE_RADIUS:
+						found.append({"kind": "village", "name": "Village", "cell": center, "distance": distance})
+	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["distance"] < b["distance"])
+	return found.slice(0, count)
+
+
+## "north", "south-west"... for a step on the map (y grows southward).
+static func compass(step: Vector2) -> String:
+	var names: Array[String] = ["east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east"]
+	return names[posmod(roundi(step.angle() / (PI / 4.0)), 8)]
+
+
 ## Whether a tile lies on a structure's grounds (the temple counts).
 func is_reserved(cell: Vector2i) -> bool:
 	if Vector2(cell).length() < 10.0:

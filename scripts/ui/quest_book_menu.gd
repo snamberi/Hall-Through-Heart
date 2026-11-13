@@ -10,8 +10,8 @@ const BIG := 58.0
 const ZOOM_MIN := 0.25
 const ZOOM_MAX := 1.6
 ## Chapters laid out to the right and left of the Main Story, in order.
-const RIGHT: Array[String] = ["combat", "magic", "classes", "equipment", "raids", "side"]
-const LEFT: Array[String] = ["crafting", "mining", "farming", "fishing", "hunting", "exploration"]
+const RIGHT: Array[String] = ["combat", "magic", "classes", "equipment", "raids", "legends", "side"]
+const LEFT: Array[String] = ["crafting", "mining", "farming", "fishing", "hunting", "exploration", "dead"]
 const PURPLE := Color(0.62, 0.42, 0.98)
 const LOCKED := Color(0.32, 0.31, 0.38)
 
@@ -33,9 +33,15 @@ var _title: Label
 var _chapter_label: Label
 var _text: Label
 var _objectives: VBoxContainer
-var _rewards: HBoxContainer
+var _rewards: HFlowContainer
 var _status: Label
 var _track: Button
+
+var _list_scroll: ScrollContainer
+var _list: VBoxContainer
+var _view_buttons: Dictionary = {}
+## "map" shows the chapters as trees; "list" shows everything open now.
+var _view := "map"
 
 var _chapter := "main"
 var _selected := ""
@@ -61,11 +67,20 @@ func _build() -> void:
 	var title := UITheme.heading("QUEST BOOK", 22)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	left.add_child(title)
+	var views := HBoxContainer.new()
+	views.add_theme_constant_override("separation", 4)
+	left.add_child(views)
+	for view: Array in [["map", "Map"], ["list", "Open now"]]:
+		var view_button := UITheme.button(view[1], func() -> void: _set_view(view[0]), 94.0)
+		view_button.toggle_mode = true
+		view_button.custom_minimum_size = Vector2(94, 32)
+		views.add_child(view_button)
+		_view_buttons[view[0]] = view_button
 	for chapter in QuestBookDB.CHAPTERS:
 		var button := Button.new()
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_NONE
-		button.custom_minimum_size = Vector2(192, 37)
+		button.custom_minimum_size = Vector2(192, 31)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.icon = QuestBookDB.icon_texture(chapter["icon"])
 		button.expand_icon = false
@@ -91,6 +106,15 @@ func _build() -> void:
 		_canvas.queue_redraw()
 	)
 	map_frame.add_child(_canvas)
+	_list_scroll = ScrollContainer.new()
+	_list_scroll.custom_minimum_size = Vector2(660, 540)
+	_list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_list_scroll.visible = false
+	map_frame.add_child(_list_scroll)
+	_list = VBoxContainer.new()
+	_list.add_theme_constant_override("separation", 6)
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list_scroll.add_child(_list)
 
 	# Details.
 	var right := UITheme.inset_panel()
@@ -131,8 +155,10 @@ func _build() -> void:
 	_details.add_child(_objectives)
 	_details.add_child(_rule())
 	_details.add_child(_purple_heading("Rewards:"))
-	_rewards = HBoxContainer.new()
-	_rewards.add_theme_constant_override("separation", 10)
+	_rewards = HFlowContainer.new()
+	_rewards.add_theme_constant_override("h_separation", 10)
+	_rewards.add_theme_constant_override("v_separation", 4)
+	_rewards.custom_minimum_size = Vector2(256, 0)
 	_details.add_child(_rewards)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -167,10 +193,10 @@ func _build() -> void:
 		var button := Button.new()
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_NONE
-		button.custom_minimum_size = Vector2(36, 36)
+		button.custom_minimum_size = Vector2(32, 34)
 		button.icon = QuestBookDB.icon_texture(chapter["icon"])
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.add_theme_constant_override("icon_max_width", 24)
+		button.add_theme_constant_override("icon_max_width", 22)
 		button.tooltip_text = chapter["name"]
 		var id: String = chapter["id"]
 		button.pressed.connect(func() -> void: _focus_chapter(id))
@@ -181,13 +207,13 @@ func _build() -> void:
 	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_child(fill)
 	var progress_box := VBoxContainer.new()
-	progress_box.custom_minimum_size = Vector2(220, 0)
+	progress_box.custom_minimum_size = Vector2(170, 0)
 	bar.add_child(progress_box)
 	_progress_label = UITheme.label("", 15)
 	progress_box.add_child(_progress_label)
 	_progress_bar = ProgressBar.new()
 	_progress_bar.show_percentage = false
-	_progress_bar.custom_minimum_size = Vector2(220, 10)
+	_progress_bar.custom_minimum_size = Vector2(170, 10)
 	var fill_style := StyleBoxFlat.new()
 	fill_style.bg_color = PURPLE
 	fill_style.set_corner_radius_all(3)
@@ -221,7 +247,17 @@ func _small_button(text: String, tip: String, action: Callable) -> Button:
 	return button
 
 
+func _set_view(view: String) -> void:
+	_view = view
+	refresh()
+
+
 func refresh() -> void:
+	for view: String in _view_buttons:
+		(_view_buttons[view] as Button).set_pressed_no_signal(view == _view)
+	if _canvas:
+		_canvas.visible = _view == "map"
+		_list_scroll.visible = _view == "list"
 	if _book == null:
 		_book = player.get_parent().get_node("QuestBook")
 		_book.changed.connect(refresh_if_open)
@@ -237,7 +273,7 @@ func refresh() -> void:
 		button.add_theme_color_override("font_color", UITheme.HEADING if has_open else UITheme.DIM)
 	var done := _book.count_done()
 	var total := _book.count_all()
-	_progress_label.text = "Progress: %d%%        %d / %d" % [roundi(100.0 * done / maxf(total, 1)), done, total]
+	_progress_label.text = "Progress: %d%%     %d / %d" % [roundi(100.0 * done / maxf(total, 1)), done, total]
 	_progress_bar.max_value = total
 	_progress_bar.value = done
 	_zoom_label.text = "%d%%" % roundi(_zoom * 100.0)
@@ -245,6 +281,172 @@ func refresh() -> void:
 		_selected = _first_open_in(_chapter)
 	_show_details()
 	_canvas.queue_redraw()
+	if _view == "list":
+		_fill_list()
+
+
+# --- the list of everything open now
+
+func _fill_list() -> void:
+	for child in _list.get_children():
+		child.queue_free()
+	var open: Array[Dictionary] = []
+	for quest in QuestBookDB.all():
+		if _book.is_open(quest["id"]):
+			open.append(quest)
+	# Tracked first, then the closest to done, then the cheapest.
+	open.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var ta: bool = a["id"] in _book.tracked
+		var tb: bool = b["id"] in _book.tracked
+		if ta != tb:
+			return ta
+		var pa := _share_done(a)
+		var pb := _share_done(b)
+		if not is_equal_approx(pa, pb):
+			return pa > pb
+		return int(a["rewards"]["xp"]) < int(b["rewards"]["xp"])
+	)
+	_list.add_child(_section("Open quests  (%d)" % open.size(), "Every quest you can work on now. They complete by themselves."))
+	for quest in open:
+		_list.add_child(_quest_row(quest))
+	var jobs: Array = player.quests.active
+	var errands: Array = []
+	var board: Node = player.get_parent().get_node_or_null("Errands")
+	if board:
+		errands = board.active_list()
+	_list.add_child(_section("Jobs and errands  (%d)" % (jobs.size() + errands.size()), "Work taken from warden boards and from villagers."))
+	if jobs.is_empty() and errands.is_empty():
+		_list.add_child(UITheme.label("   Nothing taken on. Wardens post work on village boards, and villagers ask for help.", 13, UITheme.DIM))
+	for job: Dictionary in jobs:
+		var objective: Dictionary = job["objective"]
+		_list.add_child(_job_row(job["title"], "Warden's job", [[QuestDB.describe_objective(objective), int(job["progress"]), int(objective["count"])]], ", ".join(QuestDB.describe_rewards(job["rewards"]))))
+	for errand: Dictionary in errands:
+		_list.add_child(_job_row(errand["title"], errand["giver"], [[errand["goal_text"], int(errand["have"]), int(errand["need"])]], errand["reward_text"]))
+
+
+func _share_done(quest: Dictionary) -> float:
+	var have := 0.0
+	var need := 0.0
+	for objective: Dictionary in quest["objectives"]:
+		have += _book.progress(objective)
+		need += _book.goal(objective)
+	return have / maxf(need, 1.0)
+
+
+func _section(title: String, note: String) -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	var heading := _purple_heading(title)
+	box.add_child(heading)
+	box.add_child(UITheme.label(note, 13, UITheme.DIM))
+	return box
+
+
+func _row_panel(selected: bool) -> PanelContainer:
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.13, 0.1, 0.2) if selected else Color(0.08, 0.08, 0.12)
+	style.border_color = PURPLE if selected else Color(0.3, 0.26, 0.4)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	panel.add_theme_stylebox_override("panel", style)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return panel
+
+
+func _quest_row(quest: Dictionary) -> PanelContainer:
+	var id: String = quest["id"]
+	var panel := _row_panel(id == _selected)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_selected = id
+			_chapter = quest["chapter"]
+			refresh()
+	)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(row)
+	var icon := TextureRect.new()
+	icon.texture = _texture(quest["icon"])
+	icon.modulate = QuestBookDB.icon_tint(quest["icon"])
+	icon.custom_minimum_size = Vector2(40, 40)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	var middle := VBoxContainer.new()
+	middle.add_theme_constant_override("separation", 2)
+	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(middle)
+	var top := HBoxContainer.new()
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_child(top)
+	top.add_child(UITheme.heading(quest["title"], 15))
+	top.add_child(UITheme.label("   " + QuestBookDB.chapter_name(quest["chapter"]), 12, PURPLE.lightened(0.25)))
+	for objective: Dictionary in quest["objectives"]:
+		middle.add_child(_progress_line(_book.describe(objective), _book.progress(objective), _book.goal(objective)))
+	var rewards := HFlowContainer.new()
+	rewards.add_theme_constant_override("h_separation", 8)
+	rewards.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_child(rewards)
+	rewards.add_child(UITheme.label("+%d XP" % quest["rewards"]["xp"], 13, Color(0.8, 0.68, 1.0)))
+	rewards.add_child(_reward_chip(ItemDB.icon(17), "+%d" % quest["rewards"]["gold"], UITheme.GOLD))
+	for entry: Array in quest["rewards"].get("items", []):
+		rewards.add_child(_item_chip(entry))
+	var track := UITheme.button("Untrack" if id in _book.tracked else "Track", func() -> void:
+		_book.toggle_track(id)
+		refresh()
+	, 86.0)
+	track.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(track)
+	return panel
+
+
+func _job_row(title: String, giver: String, steps: Array, reward_text: String) -> PanelContainer:
+	var panel := _row_panel(false)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 2)
+	panel.add_child(column)
+	var top := HBoxContainer.new()
+	column.add_child(top)
+	top.add_child(UITheme.heading(title, 15))
+	top.add_child(UITheme.label("   " + giver, 12, UITheme.INFO))
+	for step: Array in steps:
+		column.add_child(_progress_line(step[0], step[1], step[2]))
+	column.add_child(UITheme.label("Reward: " + reward_text, 13, UITheme.GOOD))
+	return panel
+
+
+## "Gather Oak Wood   3 / 8" with a thin bar under it.
+func _progress_line(text: String, have: int, need: int) -> HBoxContainer:
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 8)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var done := have >= need
+	var label := UITheme.label(text, 13, UITheme.GOOD if done else UITheme.TEXT)
+	label.custom_minimum_size = Vector2(250, 0)
+	label.clip_text = true
+	line.add_child(label)
+	var bar := Control.new()
+	bar.custom_minimum_size = Vector2(150, 14)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var share := clampf(float(have) / maxf(need, 1.0), 0.0, 1.0)
+	bar.draw.connect(func() -> void:
+		bar.draw_rect(Rect2(0, 4, 150, 7), Color(0.05, 0.05, 0.08))
+		bar.draw_rect(Rect2(0, 4, 150 * share, 7), UITheme.GOOD if done else PURPLE)
+		bar.draw_rect(Rect2(0, 4, 150, 7), Color("8a683a"), false, 1.0)
+	)
+	line.add_child(bar)
+	line.add_child(UITheme.label("%d / %d" % [have, need], 13, UITheme.GOOD if done else UITheme.DIM))
+	return line
 
 
 func _first_open_chapter() -> String:
@@ -643,7 +845,7 @@ func _show_details() -> void:
 	_rewards.add_child(_xp_chip(rewards["xp"]))
 	_rewards.add_child(_reward_chip(ItemDB.icon(17), "+%d" % rewards["gold"], UITheme.GOLD))
 	for entry: Array in rewards.get("items", []):
-		_rewards.add_child(_reward_chip(Item.create(entry[0]).icon(), "x%d" % entry[1], UITheme.TEXT, Item.create(entry[0]).icon_tint()))
+		_rewards.add_child(_item_chip(entry))
 	match state:
 		"done":
 			_status.text = "Complete. Rewards received."
@@ -676,6 +878,21 @@ func _xp_chip(amount: int) -> HBoxContainer:
 	)
 	chip.add_child(badge)
 	chip.add_child(UITheme.label("+%d XP" % amount, 14, Color(0.8, 0.68, 1.0)))
+	return chip
+
+
+## One reward in goods: its picture and count, or a rarity-coloured piece
+## of gear that is rolled when the quest is won.
+func _item_chip(entry: Array) -> HBoxContainer:
+	if entry[0] == QuestBookDB.GEAR:
+		var rarity: Dictionary = ItemDB.RARITIES[int(entry[1])]
+		var chip := _reward_chip(ItemDB.icon(7), rarity["name"] + " gear", rarity["color"], rarity["color"].lightened(0.3))
+		chip.tooltip_text = "A piece of %s gear at your level, rolled when the quest is won." % str(rarity["name"]).to_lower()
+		return chip
+	var item := Item.create(entry[0])
+	var chip := _reward_chip(item.icon(), "x%d" % entry[1], UITheme.TEXT, item.icon_tint())
+	chip.tooltip_text = item.display_name()
+	chip.mouse_filter = Control.MOUSE_FILTER_PASS
 	return chip
 
 

@@ -8,6 +8,8 @@ extends Node
 
 signal changed
 signal completed(id: String)
+## A quest has paid out: what it gave, for the reward card.
+signal rewarded(quest: Dictionary, items: Array[Item])
 
 const MAX_TRACKED := 3
 
@@ -92,11 +94,9 @@ func _physics_process(delta: float) -> void:
 		_reward(quest)
 		tracked.erase(quest["id"])
 		completed.emit(quest["id"])
-	if finished.size() == 1:
-		Events.announcement.emit("QUEST COMPLETE", "%s  -  %s" % [finished[0]["title"], describe_rewards(finished[0]["rewards"])])
-	else:
+	# Each pays out on its own reward card; a burst of several also gets a banner.
+	if finished.size() > 1:
 		Events.announcement.emit("%d QUESTS COMPLETE" % finished.size(), "Open the Quest Book (J) to see them")
-	Audio.play("level_up", -6.0, 0.0)
 	Events.codex_event.emit("quests", finished.size())
 	changed.emit()
 	SaveGame.request_save()
@@ -115,7 +115,7 @@ func goal(objective: Dictionary) -> int:
 			return objective["level"]
 		"mastery", "profession", "upgrade", "gear_level":
 			return objective["level"]
-		"biome", "class", "home", "settler", "own", "own_any", "own_set", "equip_slot", "equip_rarity":
+		"biome", "class", "home", "settler", "own", "own_any", "own_set", "equip_slot", "equip_rarity", "style":
 			return 1
 	return int(objective.get("count", 1))
 
@@ -229,6 +229,12 @@ func _raw(objective: Dictionary) -> int:
 			return best
 		"gold":
 			return _player.inventory.gold
+		"styles":
+			return _player.styles.learned.size()
+		"style":
+			return 1 if objective["style"] in _player.styles.learned else 0
+		"universal":
+			return _player.abilities.known_universal().size()
 		"wardens":
 			return _player.quests.completed.filter(func(id: String) -> bool: return not QuestDB.STORY.has(id)).size()
 		"achievements":
@@ -320,6 +326,12 @@ func describe(objective: Dictionary) -> String:
 			return "Gold held"
 		"wardens":
 			return "Warden jobs done"
+		"styles":
+			return "Fighting styles known"
+		"style":
+			return "Learn %s" % CombatStyles.STYLES[objective["style"]]["name"]
+		"universal":
+			return "Universal abilities known"
 		"achievements":
 			return "Achievements earned"
 	return objective["type"]
@@ -328,16 +340,32 @@ func describe(objective: Dictionary) -> String:
 static func describe_rewards(rewards: Dictionary) -> String:
 	var parts: PackedStringArray = ["%d XP" % rewards["xp"], "%d gold" % rewards["gold"]]
 	for entry: Array in rewards.get("items", []):
-		parts.append("%s x%d" % [ItemDB.ITEMS[entry[0]]["name"], entry[1]])
+		parts.append(reward_name(entry))
 	return ", ".join(parts)
+
+
+## "Health Potion x2", or "Rare gear" for a piece rolled when won.
+static func reward_name(entry: Array) -> String:
+	if entry[0] == QuestBookDB.GEAR:
+		return "%s gear" % ItemDB.RARITIES[int(entry[1])]["name"]
+	return "%s x%d" % [ItemDB.ITEMS[entry[0]]["name"], entry[1]]
 
 
 func _reward(quest: Dictionary) -> void:
 	var rewards: Dictionary = quest["rewards"]
 	_player.leveling.add_xp(int(rewards["xp"]), "quest")
 	_player.inventory.add_gold(int(rewards["gold"]))
+	var given: Array[Item] = []
 	for entry: Array in rewards.get("items", []):
-		_player.inventory.add(Item.create(entry[0], entry[1]))
+		var item: Item
+		if entry[0] == QuestBookDB.GEAR:
+			item = LootGenerator.make_equipment(_player.leveling.level, int(entry[1]))
+		else:
+			item = Item.create(entry[0], entry[1])
+		given.append(item)
+		_player.inventory.add(item)
+	rewarded.emit(quest, given)
+	Events.rewards_given.emit("QUEST COMPLETE", quest["title"], int(rewards["xp"]), int(rewards["gold"]), given)
 
 
 func save_data() -> Dictionary:

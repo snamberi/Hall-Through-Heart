@@ -33,7 +33,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options and saving", "side": true},
 ]
 ## Where a screen's Back button leads, when not to the wheel. "" closes.
-const BACK := {"settings": "pause", "teacher": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": ""}
+const BACK := {"settings": "pause", "teacher": "", "villager": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": ""}
 
 var _menus: Dictionary[String, GameMenu] = {}
 ## "" when closed, "wheel", or a screen id.
@@ -114,6 +114,7 @@ func setup(player: Player) -> void:
 	_add("pets", PetsMenu.new())
 	_add("relics", RelicsMenu.new())
 	_add("teacher", TeacherMenu.new())
+	_add("villager", VillagerMenu.new())
 	_add("furnace", FurnaceMenu.new())
 	_add("magic", MagicMenu.new())
 	_add("evolution", EvolutionMenu.new())
@@ -322,7 +323,12 @@ func _on_npc_interacted(npc: Node) -> void:
 			(_player.get_parent().get_node("Settlers") as Settlers).talk(npc)
 		return
 	if npc.kind == "villager":
-		Events.announcement.emit("", "\"%s\"" % npc.say_something())
+		if npc.villager_name != "":
+			npc.attend(_player.global_position)
+			(_menus["villager"] as VillagerMenu).npc = npc
+			open("villager")
+		else:
+			Events.announcement.emit("", "\"%s\"" % npc.say_something())
 		return
 	if npc.kind == "merchant":
 		(_menus["shop"] as ShopMenu).npc = npc

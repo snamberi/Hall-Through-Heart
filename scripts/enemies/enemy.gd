@@ -914,6 +914,8 @@ func _on_died() -> void:
 	if brain and brain.can_revive():
 		brain.revive()
 		return
+	if brain and brain.revived:
+		Events.codex_event.emit("risen_slain", 1)
 	state = State.DEAD
 	_statuses.clear()
 	_refresh_status_tint()

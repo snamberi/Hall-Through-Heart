@@ -48,8 +48,12 @@ func setup(player: Player) -> void:
 	)
 	_gather.draw.connect(_draw_gather)
 	$QuestTracker.setup(player)
-	Events.quest_completed.connect(func(title: String, rewards: String) -> void:
-		_show_banner("QUEST COMPLETE", "%s  -  %s" % [title, rewards])
+	var card := RewardCard.new()
+	add_child(card)
+	Events.rewards_given.connect(func(heading: String, title: String, xp: int, gold: int, items: Array) -> void:
+		var screen := get_viewport().get_visible_rect().size
+		card.position.y = clampf(screen.y * 0.5, 300.0, screen.y - 260.0)
+		card.show_reward(heading, title, xp, gold, items)
 		Audio.play("level_up", -6.0, 0.0)
 	)
 	Events.announcement.connect(_show_banner)
