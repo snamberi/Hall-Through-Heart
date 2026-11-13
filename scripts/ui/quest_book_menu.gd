@@ -79,13 +79,12 @@ func _build() -> void:
 	for chapter in QuestBookDB.CHAPTERS:
 		var button := Button.new()
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(192, 31)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.icon = QuestBookDB.icon_texture(chapter["icon"])
 		button.expand_icon = false
 		button.add_theme_constant_override("icon_max_width", 22)
-		button.add_theme_font_size_override("font_size", 13)
+		UITheme.font_size(button, 13)
 		var id: String = chapter["id"]
 		button.pressed.connect(func() -> void: _focus_chapter(id))
 		left.add_child(button)
@@ -192,7 +191,6 @@ func _build() -> void:
 	for chapter in QuestBookDB.CHAPTERS:
 		var button := Button.new()
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(32, 34)
 		button.icon = QuestBookDB.icon_texture(chapter["icon"])
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER

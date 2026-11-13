@@ -45,7 +45,7 @@ func _build() -> void:
 	_details.bbcode_enabled = true
 	_details.scroll_active = false
 	_details.custom_minimum_size = Vector2(300, 540)
-	_details.add_theme_font_size_override("normal_font_size", 15)
+	UITheme.font_size(_details, 15, "normal_font_size")
 	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	side.add_child(_details)
 	player.talents.changed.connect(refresh_if_open)

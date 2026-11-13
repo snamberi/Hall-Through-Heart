@@ -122,7 +122,7 @@ func _build() -> void:
 	_details.fit_content = false
 	_details.scroll_active = true
 	_details.custom_minimum_size = Vector2(280.0, 250.0)
-	_details.add_theme_font_size_override("normal_font_size", 14)
+	UITheme.font_size(_details, 14, "normal_font_size")
 	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(_details)
 	_message = UITheme.label("", 13, UITheme.BAD)
@@ -173,7 +173,6 @@ func _card(entry: Dictionary) -> Button:
 	var price: int = entry["price"]
 	var chosen: bool = not _choice.is_empty() and not _choice["selling"] and _choice["entry"] == entry
 	var button := Button.new()
-	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(300.0, 68.0)
 	var style := UITheme.card("card_selected" if chosen else "card")
 	var hover := UITheme.card("card_selected" if chosen else "card_hover")

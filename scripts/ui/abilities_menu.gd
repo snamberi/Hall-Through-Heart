@@ -42,7 +42,6 @@ func _build() -> void:
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(60, 60)
 		button.expand_icon = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.pressed.connect(_on_slot.bind(index))
 		button.gui_input.connect(func(event: InputEvent) -> void:
 			var click := event as InputEventMouseButton
@@ -185,7 +184,6 @@ func _row(id: String, pickable: bool) -> Control:
 	button.icon = AbilityDB.icon(id)
 	button.expand_icon = false
 	button.custom_minimum_size = Vector2(300, 44)
-	button.focus_mode = Control.FOCUS_NONE
 	var state := ""
 	if rank == 0:
 		if ability.get("universal", false) or ability.has("class"):

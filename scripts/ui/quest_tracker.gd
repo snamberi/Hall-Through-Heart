@@ -51,16 +51,20 @@ func _lines() -> Array:
 func _draw() -> void:
 	if _player == null:
 		return
+	if GameSettings.tracker_mode == "off":
+		return
 	var entries := _lines().slice(0, 4)
 	if entries.is_empty():
 		return
+	# Compact: each quest is one line, its title and how many steps are done.
+	var compact := GameSettings.tracker_mode == "compact"
 	var font := UITheme.get_theme().default_font
 	var bold := UITheme.bold()
 	const WIDTH := 262.0
 	const LINE := 19.0
 	var height := 10.0
 	for entry: Array in entries:
-		height += 22.0 + (entry[1] as Array).size() * LINE + 6.0
+		height += 22.0 + (0.0 if compact else (entry[1] as Array).size() * LINE + 6.0)
 	var top := 202.0 if GameSettings.show_minimap else 14.0
 	var panel := Rect2(size.x - WIDTH, top, WIDTH, height)
 	draw_style_box(UITheme.tooltip_box(), panel)
@@ -71,7 +75,14 @@ func _draw() -> void:
 		draw_colored_polygon(diamond, UITheme.GOLD if entry[2] else Color(0.12, 0.13, 0.18))
 		draw_polyline(diamond + PackedVector2Array([diamond[0]]), UITheme.GOLD, 1.5)
 		draw_string_outline(bold, Vector2(panel.position.x + 26.0, y + 15.0), entry[0], HORIZONTAL_ALIGNMENT_LEFT, WIDTH - 34.0, 15, 3, Color(0, 0, 0, 0.7))
-		draw_string(bold, Vector2(panel.position.x + 26.0, y + 15.0), entry[0], HORIZONTAL_ALIGNMENT_LEFT, WIDTH - 34.0, 15, UITheme.HEADING)
+		draw_string(bold, Vector2(panel.position.x + 26.0, y + 15.0), entry[0], HORIZONTAL_ALIGNMENT_LEFT, WIDTH - (78.0 if compact else 34.0), 15, UITheme.HEADING)
+		if compact:
+			var met := (entry[1] as Array).filter(func(step: Array) -> bool: return step[1] >= step[2]).size()
+			var tally := "%d / %d" % [met, (entry[1] as Array).size()]
+			var tally_width := font.get_string_size(tally, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+			draw_string(font, Vector2(panel.end.x - 10.0 - tally_width, y + 15.0), tally, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.GOLD)
+			y += 22.0
+			continue
 		y += 22.0
 		for step: Array in entry[1]:
 			var done: bool = step[1] >= step[2]

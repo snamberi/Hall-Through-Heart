@@ -18,6 +18,14 @@ const DEFAULTS := {
 	"damage_numbers": true,
 	"last_slot": "",
 	"ui_scale": 1.0,
+	"text_scale": 1.0,
+	"hud_layout": "compact",
+	"show_worn": false,
+	"tracker_mode": "full",
+	"shake_strength": 1.0,
+	"damage_number_size": 1.0,
+	"high_contrast": false,
+	"reduce_flashes": false,
 	"controls_version": 0,
 }
 ## Raised whenever the default keys change, so old saved bindings are dropped
@@ -34,7 +42,11 @@ const REBINDABLE: Array[Array] = [
 	["hotbar_6", "Hotbar 6"], ["hotbar_7", "Hotbar 7"], ["hotbar_8", "Hotbar 8"], ["hotbar_9", "Hotbar 9"], ["hotbar_10", "Hotbar 10"],
 	["toggle_menu", "Menu wheel"], ["build_mode", "Build mode"], ["mount", "Mount / dismount"], ["recall_home", "Recall home"],
 	["relic_ability", "Relic power"],
+	["open_inventory", "Open inventory"], ["open_quests", "Open quest book"], ["open_map", "Open map"],
 ]
+## Actions the game adds itself when it starts (not in the project file):
+## action -> default physical key.
+const EXTRA_ACTIONS := {"open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N}
 
 var master_volume := 1.0
 var music_volume := 0.6
@@ -47,6 +59,22 @@ var damage_numbers := true
 var last_slot := ""
 ## Size of everything on screen that is not the world itself.
 var ui_scale := 1.0
+## Size of text alone, on top of the interface size (0.9 to 1.25).
+var text_scale := 1.0
+## Where the ability slots sit: "compact" (a dock by the hotbar) or
+## "classic" (a column on the left).
+var hud_layout := "compact"
+## Whether the hotbar also shows the armour worn.
+var show_worn := false
+## The quest tracker: "full" (objectives listed), "compact" (titles with a
+## count) or "off".
+var tracker_mode := "full"
+## Comfort: how hard the camera shakes (0 to 1.5), how large damage numbers
+## are, stronger interface contrast, and softer flashes.
+var shake_strength := 1.0
+var damage_number_size := 1.0
+var high_contrast := false
+var reduce_flashes := false
 var controls_version := 0
 ## action -> saved events, each {"key": physical keycode} or {"mouse": button}.
 var bindings: Dictionary = {}
@@ -61,6 +89,12 @@ func _ready() -> void:
 		if AudioServer.get_bus_index(bus) == -1:
 			AudioServer.add_bus()
 			AudioServer.set_bus_name(AudioServer.bus_count - 1, bus)
+	for action: String in EXTRA_ACTIONS:
+		if not InputMap.has_action(action):
+			InputMap.add_action(action)
+			var key := InputEventKey.new()
+			key.physical_keycode = EXTRA_ACTIONS[action]
+			InputMap.action_add_event(action, key)
 	for entry in REBINDABLE:
 		if InputMap.has_action(entry[0]):
 			_defaults[entry[0]] = _events_to_data(InputMap.action_get_events(entry[0]))
@@ -77,6 +111,13 @@ func _ready() -> void:
 			if saved is Dictionary:
 				bindings = saved
 	ui_scale = clampf(ui_scale, 0.7, 1.3)
+	text_scale = clampf(text_scale, 0.9, 1.25)
+	shake_strength = clampf(shake_strength, 0.0, 1.5)
+	damage_number_size = clampf(damage_number_size, 0.7, 1.6)
+	if not hud_layout in ["compact", "classic"]:
+		hud_layout = "compact"
+	if not tracker_mode in ["full", "compact", "off"]:
+		tracker_mode = "full"
 	if controls_version < CONTROLS_VERSION:
 		# The key layout changed: drop bindings saved for the old one.
 		bindings.clear()
@@ -162,6 +203,8 @@ func _apply() -> void:
 	if is_inside_tree():
 		# The world's camera divides this back out, so only the interface changes size.
 		get_tree().root.content_scale_factor = ui_scale
+		if not is_equal_approx(UITheme.text_scale, text_scale):
+			UITheme.set_text_scale(get_tree(), text_scale)
 	if not Engine.is_editor_hint() and DisplayServer.get_name() != "headless":
 		var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
 		if DisplayServer.window_get_mode() != mode:

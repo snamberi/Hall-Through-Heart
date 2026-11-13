@@ -22,16 +22,18 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "professions", "title": "Professions", "icon": 49, "text": "Mining, smithing,\ncooking and the rest"},
 	{"id": "journal", "title": "Quests", "icon": 41, "text": "The quest book:\nevery chapter and goal"},
 	{"id": "map", "title": "Map", "icon": 12, "text": "The land as far\nas you have walked"},
-	{"id": "attributes", "title": "Character", "icon": 38, "text": "Attribute points", "side": true},
-	{"id": "talents", "title": "Talents", "icon": 28, "text": "Passive gifts", "side": true},
-	{"id": "mastery", "title": "Mastery", "icon": 0, "text": "Weapon skill", "side": true},
-	{"id": "evolution", "title": "Evolution", "icon": 39, "text": "Your race's paths", "side": true},
-	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary and feats", "side": true},
-	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions, mounts", "side": true},
-	{"id": "relics", "title": "Relics", "icon": 102, "text": "Boss relics and powers", "side": true},
-	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours", "side": true},
-	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options and saving", "side": true},
+	{"id": "attributes", "title": "Character", "icon": 38, "text": "Attribute points", "side": true, "group": "Character"},
+	{"id": "talents", "title": "Talents", "icon": 28, "text": "Passive gifts", "side": true, "group": "Character"},
+	{"id": "mastery", "title": "Mastery", "icon": 0, "text": "Weapon skill", "side": true, "group": "Character"},
+	{"id": "evolution", "title": "Evolution", "icon": 39, "text": "Your race's paths", "side": true, "group": "Character"},
+	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary and feats", "side": true, "group": "Collection"},
+	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions, mounts", "side": true, "group": "Collection"},
+	{"id": "relics", "title": "Relics", "icon": 102, "text": "Boss relics and powers", "side": true, "group": "Collection"},
+	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours", "side": true, "group": "Collection"},
+	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options and saving", "side": true, "group": "System"},
 ]
+## Screens with a key of their own (rebindable): action -> screen id.
+const SHORTCUTS := {"open_inventory": "inventory", "open_quests": "journal", "open_map": "map"}
 ## Where a screen's Back button leads, when not to the wheel. "" closes.
 const BACK := {"settings": "pause", "teacher": "", "villager": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": ""}
 
@@ -88,7 +90,7 @@ func setup(player: Player) -> void:
 	_back = UITheme.button("<  Menu", _go_back, 118.0)
 	_back.position = Vector2(18.0, 16.0)
 	_back.custom_minimum_size.y = 38.0
-	_back.add_theme_font_size_override("font_size", 17)
+	UITheme.font_size(_back, 17)
 	_root.add_child(_back)
 
 	_hint = UITheme.label("", 14, UITheme.DIM)
@@ -174,6 +176,9 @@ func open_wheel() -> void:
 func close() -> void:
 	_open_id = ""
 	visible = false
+	var focused := get_viewport().gui_get_focus_owner()
+	if focused:
+		focused.release_focus()
 	get_tree().paused = false
 
 
@@ -188,7 +193,7 @@ func _show(id: String) -> void:
 		_menus[other].visible = other == id
 	_back.visible = id != "wheel"
 	_back.text = "<  Menu" if BACK.get(id, "wheel") == "wheel" else "<  Back" if BACK[id] != "" else "x  Close"
-	_hint.text = "%s  Close" % GameSettings.describe("toggle_menu").split(" / ")[0] if id == "wheel" else "Esc  Close"
+	_hint.text = "%s  Close      Tab  More list" % GameSettings.describe("toggle_menu").split(" / ")[0] if id == "wheel" else "Esc  Close"
 	visible = true
 	get_tree().paused = true
 	if id != "wheel" and changed:
@@ -241,29 +246,34 @@ func _make_side_panel() -> PanelContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	panel.add_child(box)
-	var title := UITheme.heading("More", 18)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
-	box.add_child(UITheme.divider(150.0))
+	var group := ""
 	for screen in SCREENS:
 		if not screen.get("side", false):
 			continue
+		if screen.get("group", "") != group:
+			# A quiet heading over each group, so nine rows scan as three.
+			group = screen["group"]
+			var heading := UITheme.heading(group, 15)
+			if box.get_child_count() > 0:
+				var gap := Control.new()
+				gap.custom_minimum_size = Vector2(0, 4)
+				box.add_child(gap)
+			box.add_child(heading)
 		var row := Button.new()
 		row.text = screen["title"]
 		row.icon = MenuIcons.icon(screen["id"])
 		row.expand_icon = false
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		row.focus_mode = Control.FOCUS_NONE
-		row.custom_minimum_size = Vector2(176.0, 38.0)
+		row.custom_minimum_size = Vector2(176.0, 34.0)
 		row.add_theme_constant_override("icon_max_width", 22)
-		row.add_theme_font_size_override("font_size", 16)
+		UITheme.font_size(row, 16)
 		row.tooltip_text = screen.get("text", "")
 		var id: String = screen["id"]
 		row.pressed.connect(func() -> void: open(id))
 		UITheme.sounds(row)
 		var badge := Label.new()
 		badge.add_theme_color_override("font_color", Color(1.0, 0.6, 0.5))
-		badge.add_theme_font_size_override("font_size", 15)
+		UITheme.font_size(badge, 15)
 		badge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 		badge.offset_left = -30.0
 		badge.offset_right = -8.0
@@ -346,12 +356,58 @@ func _input(event: InputEvent) -> void:
 		else:
 			open("pause")
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("toggle_menu"):
+	elif event.is_action_pressed("toggle_menu") and not get_viewport().gui_get_focus_owner() is LineEdit:
 		if _open_id == "wheel":
 			close()
 		else:
 			open_wheel()
 		get_viewport().set_input_as_handled()
+	elif _shortcut(event):
+		get_viewport().set_input_as_handled()
+	elif _open_id == "wheel" and event is InputEventKey and event.pressed and not event.echo and _wheel_key(event):
+		get_viewport().set_input_as_handled()
+	elif is_open() and event is InputEventKey and event.pressed and get_viewport().gui_get_focus_owner() == null:
+		# The first arrow or Tab press on a screen picks up its first control,
+		# so every screen can be worked from the keyboard.
+		for action: String in ["ui_focus_next", "ui_focus_prev", "ui_up", "ui_down", "ui_left", "ui_right"]:
+			if event.is_action_pressed(action, true):
+				var root: Control = _side if _open_id == "wheel" else _menus[_open_id]
+				if UITheme.focus_first(root):
+					get_viewport().set_input_as_handled()
+				break
+
+
+## A screen's own key: opens it, or closes it if it is the one showing.
+func _shortcut(event: InputEvent) -> bool:
+	if get_viewport().gui_get_focus_owner() is LineEdit:
+		return false
+	for action: String in SHORTCUTS:
+		if InputMap.has_action(action) and event.is_action_pressed(action):
+			if _open_id == SHORTCUTS[action]:
+				close()
+			elif not is_open() or _open_id == "wheel" or SHORTCUTS.values().has(_open_id):
+				open(SHORTCUTS[action])
+			return true
+	return false
+
+
+## The wheel from the keyboard: numbers open a wedge, the arrows step
+## round it and Enter opens the lit one.
+func _wheel_key(event: InputEventKey) -> bool:
+	if get_viewport().gui_get_focus_owner() != null:
+		return false
+	var number := event.keycode - KEY_0 if event.keycode >= KEY_1 and event.keycode <= KEY_8 else 0
+	if number > 0:
+		return _wheel.open_lit(number)
+	if event.is_action_pressed("ui_right") or event.is_action_pressed("ui_down"):
+		_wheel.step(1)
+		return true
+	if event.is_action_pressed("ui_left") or event.is_action_pressed("ui_up"):
+		_wheel.step(-1)
+		return true
+	if event.is_action_pressed("ui_accept"):
+		return _wheel.open_lit()
+	return false
 
 
 func _add(id: String, menu: GameMenu) -> void:

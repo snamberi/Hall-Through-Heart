@@ -103,7 +103,6 @@ func _build() -> void:
 		for id: String in group[1]:
 			var button := Button.new()
 			button.toggle_mode = true
-			button.focus_mode = Control.FOCUS_NONE
 			button.custom_minimum_size = Vector2(250.0, 42.0)
 			button.pressed.connect(_select.bind(id))
 			UITheme.sounds(button)
@@ -158,9 +157,8 @@ func _build() -> void:
 		var button := Button.new()
 		button.text = tab[1]
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(192.0, 34.0)
-		button.add_theme_font_size_override("font_size", 16)
+		UITheme.font_size(button, 16)
 		button.pressed.connect(func() -> void:
 			_tab = tab[0]
 			refresh()
@@ -172,7 +170,6 @@ func _build() -> void:
 	filters.add_theme_constant_override("separation", 6)
 	middle.add_child(filters)
 	_filter_pick = OptionButton.new()
-	_filter_pick.focus_mode = Control.FOCUS_NONE
 	_filter_pick.custom_minimum_size = Vector2(176.0, 32.0)
 	for words in FILTERS:
 		_filter_pick.add_item(words)
@@ -284,7 +281,7 @@ func _build() -> void:
 	right.add_child(buttons)
 	_craft = UITheme.button("Craft", func() -> void: _make(_quantity), 200.0)
 	_craft.custom_minimum_size.y = 42.0
-	_craft.add_theme_font_size_override("font_size", 18)
+	UITheme.font_size(_craft, 18)
 	_craft.expand_icon = false
 	buttons.add_child(_craft)
 	_craft_all = UITheme.button("Craft all", func() -> void: _make(_most()), 164.0)
@@ -394,7 +391,6 @@ func _recipe_row(recipe: Dictionary) -> Button:
 	var state := state_of(recipe)
 	var chosen: bool = not _recipe.is_empty() and recipe["id"] == _recipe["id"]
 	var button := Button.new()
-	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(370.0, ROW)
 	var style := UITheme.card("card_selected" if chosen else "card_dim" if state == "locked" else "card", 4)
 	var hover := UITheme.card("card_selected" if chosen else "card_hover", 4)
@@ -517,7 +513,7 @@ func _list_knowledge() -> void:
 	text.fit_content = true
 	text.scroll_active = false
 	text.custom_minimum_size = Vector2(366.0, 0.0)
-	text.add_theme_font_size_override("normal_font_size", 15)
+	UITheme.font_size(text, 15, "normal_font_size")
 	text.text = "\n".join(lines)
 	_list.add_child(text)
 

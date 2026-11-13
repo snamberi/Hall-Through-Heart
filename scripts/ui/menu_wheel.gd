@@ -1,10 +1,11 @@
 class_name MenuWheel
 extends Control
-## The radial menu: a riveted bronze ring of eight wedges (pixel art from
+## The radial menu: a slim bronze ring of eight wedges (pixel art from
 ## tools/generate_ui.py), one per main screen, each with its icon in a
-## socket. Hover to light a wedge gold, click to open. The hub shows what
-## the hovered screen is for, and wedges carry a badge when something there
-## is waiting (points to spend, say).
+## socket and its number key beside it. Point at a wedge (or step round
+## with the arrow keys) to light it gold; click, press Enter, or press its
+## number to open it. The hub names the lit screen and says what it is
+## for, and wedges carry a badge when something there is waiting.
 
 signal chosen(id: String)
 
@@ -49,6 +50,22 @@ func _process(delta: float) -> void:
 	for index in entries.size():
 		_lift[index] = move_toward(_lift[index], 1.0 if index == _hovered else 0.0, delta * 9.0)
 	queue_redraw()
+
+
+## Lights the next wedge round (or the one before): for the arrow keys.
+func step(by: int) -> void:
+	_hovered = posmod((_hovered if _hovered >= 0 else (-1 if by > 0 else 0)) + by, entries.size())
+	Audio.play("ui_hover", -16.0, 0.03)
+
+
+## Opens the lit wedge, or the wedge with that number (1 to 8).
+func open_lit(number: int = 0) -> bool:
+	var index := number - 1 if number > 0 else _hovered
+	if index < 0 or index >= entries.size():
+		return false
+	Audio.play("ui_click", -10.0, 0.05)
+	chosen.emit(entries[index]["id"])
+	return true
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -102,6 +119,12 @@ func _draw() -> void:
 		var title_font: Font = UITheme.bold() if lift > 0.5 else font
 		draw_string_outline(title_font, spot + Vector2(-70.0, 58.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 16, 4, Color(0, 0, 0, 0.9 * fade))
 		draw_string(title_font, spot + Vector2(-70.0, 58.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 16, Color(UITheme.TEXT.lerp(UITheme.GOLD, lift), fade))
+		# Its number key, on a small cap at the socket's shoulder.
+		var cap := Rect2((spot + Vector2(-34.0, -30.0)).floor(), Vector2(16, 17))
+		draw_rect(cap, Color(0.1, 0.125, 0.2, fade))
+		draw_rect(cap, Color(0.54, 0.56, 0.64, fade), false, 1.0)
+		draw_rect(Rect2(cap.position.x, cap.end.y - 2.0, cap.size.x, 2.0), Color(0.54, 0.56, 0.64, fade))
+		draw_string(UITheme.body_bold(), cap.position + Vector2(0, 13), str(index + 1), HORIZONTAL_ALIGNMENT_CENTER, cap.size.x, 13, Color(1, 1, 1, fade))
 		# Something waiting here.
 		var waiting: int = badge_for.call(entries[index]["id"]) if badge_for.is_valid() else 0
 		if waiting > 0:
@@ -118,12 +141,13 @@ func _draw() -> void:
 		draw_rect(Rect2(center + Vector2(-30, -6), Vector2(60, 2)), Color(0.54, 0.41, 0.23, fade))
 		draw_multiline_string(font, center + Vector2(-width / 2.0, 12.0), entry.get("text", ""), HORIZONTAL_ALIGNMENT_CENTER, width, 14, 3, Color(UITheme.DIM, fade))
 		var waiting: int = badge_for.call(entry["id"]) if badge_for.is_valid() else 0
-		if waiting > 0:
-			draw_string(font, center + Vector2(-width / 2.0, 58.0), "%d waiting" % waiting, HORIZONTAL_ALIGNMENT_CENTER, width, 14, Color(1.0, 0.55, 0.45, fade))
+		var hint := "%d waiting" % waiting if waiting > 0 else "Click, Enter or %d" % (_hovered + 1)
+		draw_string(font, center + Vector2(-width / 2.0, 60.0), hint, HORIZONTAL_ALIGNMENT_CENTER, width, 14, Color(Color(1.0, 0.55, 0.45) if waiting > 0 else Color(0.62, 0.64, 0.72), fade))
 	else:
 		var lines: Array = hub_text.call() if hub_text.is_valid() else ["Menu", ""]
-		draw_string(UITheme.bold(), center + Vector2(-width / 2.0, -6.0), lines[0], HORIZONTAL_ALIGNMENT_CENTER, width, 24, Color(UITheme.HEADING, fade))
-		draw_multiline_string(font, center + Vector2(-width / 2.0, 18.0), lines[1], HORIZONTAL_ALIGNMENT_CENTER, width, 14, 3, Color(UITheme.DIM, fade))
+		draw_string(UITheme.bold(), center + Vector2(-width / 2.0, -14.0), lines[0], HORIZONTAL_ALIGNMENT_CENTER, width, 24, Color(UITheme.HEADING, fade))
+		draw_multiline_string(font, center + Vector2(-width / 2.0, 10.0), lines[1], HORIZONTAL_ALIGNMENT_CENTER, width, 14, 3, Color(UITheme.DIM, fade))
+		draw_string(font, center + Vector2(-width / 2.0, 60.0), "Keys 1-8 or arrows", HORIZONTAL_ALIGNMENT_CENTER, width, 14, Color(0.62, 0.64, 0.72, fade))
 
 
 func _arc_line(center: Vector2, radius: float, from: float, to: float, color: Color, width: float) -> void:

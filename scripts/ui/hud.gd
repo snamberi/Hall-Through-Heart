@@ -22,17 +22,38 @@ var _banner_tween: Tween
 func setup(player: Player) -> void:
 	_player = player
 	UITheme.apply(self)
+	# The three pools, one under another and the same width, each named.
+	for entry: Array in [[_health_bar, 12.0, 22.0], [_mana_bar, 42.0, 20.0], [_stamina_bar, 70.0, 20.0]]:
+		(entry[0] as Control).position = Vector2(44.0, entry[1])
+		(entry[0] as Control).size = Vector2(280.0, entry[2])
+	_xp_bar.position = Vector2(44.0, 120.0)
+	_xp_bar.size = Vector2(210.0, 8.0)
+	_level_label.position = Vector2(336.0, 8.0)
 	_bind(_health_bar, Color(0.72, 0.13, 0.17), 35, func() -> float:
 		return player.health.current / player.health.max_health, func() -> String:
-		return "%d / %d" % [ceili(player.health.current), ceili(player.health.max_health)])
+		return "%d / %d" % [ceili(player.health.current), ceili(player.health.max_health)], "HP")
 	_bind(_xp_bar, Color(0.95, 0.76, 0.3), -1, func() -> float:
 		return float(player.leveling.xp) / player.leveling.xp_to_next())
 	_bind(_stamina_bar, Color(0.85, 0.7, 0.25), 37, func() -> float:
 		return player.stamina.current / player.stamina.max_value, func() -> String:
-		return "%d / %d" % [roundi(player.stamina.current), roundi(player.stamina.max_value)])
+		return "%d / %d" % [roundi(player.stamina.current), roundi(player.stamina.max_value)], "STA")
 	_bind(_mana_bar, Color(0.25, 0.5, 0.95), 36, func() -> float:
 		return player.mana.current / player.mana.max_value, func() -> String:
-		return "%d / %d" % [roundi(player.mana.current), roundi(player.mana.max_value)])
+		return "%d / %d" % [roundi(player.mana.current), roundi(player.mana.max_value)], "MP")
+	# Experience: named, with the numbers beside the slim bar.
+	_xp_text = Control.new()
+	_xp_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_xp_text.position = Vector2(4.0, 112.0)
+	_xp_text.size = Vector2(330.0, 22.0)
+	_xp_text.draw.connect(func() -> void:
+		var font := UITheme.get_theme().default_font
+		_xp_text.draw_string_outline(UITheme.body_bold(), Vector2(8, 17), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 3, Color(0, 0, 0, 0.8))
+		_xp_text.draw_string(UITheme.body_bold(), Vector2(8, 17), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.86, 0.5))
+		var numbers := "%d / %d" % [player.leveling.xp, player.leveling.xp_to_next()]
+		_xp_text.draw_string_outline(font, Vector2(256, 17), numbers, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 3, Color(0, 0, 0, 0.8))
+		_xp_text.draw_string(font, Vector2(256, 17), numbers, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.9, 0.86, 0.76))
+	)
+	add_child(_xp_text)
 	$Minimap.setup(player, player.get_parent().get_node("World"))
 	player.health.changed.connect(func(_c: float, _m: float) -> void: _health_bar.queue_redraw())
 	player.stamina.changed.connect(func(_c: float, _m: float) -> void: _stamina_bar.queue_redraw())
@@ -61,11 +82,12 @@ func setup(player: Player) -> void:
 	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
 		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
 	)
-	# Two framed bars: the abilities in a column on the middle-left, the
-	# hotbar in groups along the bottom.
+	# Two bars: the abilities (a dock by the hotbar, or the classic column
+	# on the left, as the player likes) and the hotbar along the bottom.
 	var tip := ItemTooltip.new()
 	_ability_bar = ActionBar.new()
 	_ability_bar.show_items = false
+	_ability_bar.dock = GameSettings.hud_layout == "compact"
 	_ability_bar.setup(player, tip)
 	add_child(_ability_bar)
 	_item_bar = ActionBar.new()
@@ -87,22 +109,23 @@ func setup(player: Player) -> void:
 	_buff_label.visible = false
 	var buff_bar := BuffBar.new()
 	buff_bar.setup(player)
-	buff_bar.position = Vector2(158.0, 126.0)
+	buff_bar.position = Vector2(166.0, 144.0)
 	add_child(buff_bar)
 	var menu_button := HudMenuButton.new()
 	menu_button.setup(player)
-	menu_button.position = Vector2(14.0, 124.0)
+	menu_button.position = Vector2(14.0, 142.0)
 	add_child(menu_button)
-	# Ego, under the experience bar.
+	# Ego, between the pools and the experience bar.
 	var ego_bar := EgoBar.new()
 	ego_bar.setup(player)
-	ego_bar.position = Vector2(4.0, 104.0)
+	ego_bar.position = Vector2(4.0, 96.0)
 	add_child(ego_bar)
 	_death_message.visible = false
 	_banner.visible = false
 	_refresh()
 
 
+var _xp_text: Control
 var _palette: BuildPalette
 ## What build mode hides, and what it was showing before.
 var _hidden_for_build: Dictionary = {}
@@ -117,9 +140,19 @@ func _place_bars() -> void:
 	if _ability_bar == null:
 		return
 	var room := get_viewport().get_visible_rect().size
-	_ability_bar.position = Vector2(14.0, (room.y - _ability_bar.size.y) / 2.0 + 20.0)
-	_item_bar.position = Vector2((room.x - _item_bar.size.x) / 2.0, room.y - _item_bar.size.y - 8.0)
-	_relic_slot.position = _ability_bar.position + Vector2(4.0, _ability_bar.size.y + 4.0)
+	_ability_bar.set_dock(GameSettings.hud_layout == "compact")
+	_item_bar.set_show_worn(GameSettings.show_worn)
+	_item_bar.position = Vector2(roundf((room.x - _item_bar.size.x) / 2.0), room.y - _item_bar.size.y - 10.0)
+	if _ability_bar.dock:
+		# In the bottom-left corner, level with the hotbar; lifted above it
+		# when the window is too narrow for both side by side.
+		var beside := _item_bar.position.x - 12.0 >= 14.0 + _ability_bar.size.x
+		var bottom := room.y - 10.0 if beside else _item_bar.position.y - 12.0
+		_ability_bar.position = Vector2(14.0, bottom - _ability_bar.size.y)
+		_relic_slot.position = Vector2(14.0, _ability_bar.position.y - _relic_slot.size.y - 8.0)
+	else:
+		_ability_bar.position = Vector2(14.0, (room.y - _ability_bar.size.y) / 2.0 + 30.0)
+		_relic_slot.position = _ability_bar.position + Vector2(4.0, _ability_bar.size.y + 10.0)
 
 
 ## Build mode: everything but the health bar and a boss's bar steps aside,
@@ -187,10 +220,11 @@ func _refresh() -> void:
 		notes.append("%d talent points" % _player.leveling.talent_points)
 	if _player.class_id == "adventurer" and _player.leveling.level >= HeroClasses.CHOICE_LEVEL:
 		notes.append("a class to choose")
-	_points_label.visible = not notes.is_empty()
-	_points_label.text = "to spend: " + ", ".join(notes)
-	_points_label.position = Vector2(158.0, 114.0)
+	_points_label.visible = false
+	HudMenuButton.waiting_note = "" if notes.is_empty() else "Waiting for you: " + ", ".join(notes) + "."
 	_xp_bar.queue_redraw()
+	if _xp_text:
+		_xp_text.queue_redraw()
 
 
 func _on_level_up(level: int) -> void:
@@ -285,7 +319,7 @@ static func _open_frame() -> StyleBoxTexture:
 	return box
 
 
-func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Callable = Callable()) -> void:
+func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Callable = Callable(), title: String = "") -> void:
 	var trail := {"value": 1.0}
 	bar.draw.connect(func() -> void:
 		var size := bar.size
@@ -321,12 +355,19 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 				bar.draw_circle(medal, radius + 3.0 + 4.0 * Heartbeat.pulse, Color(0.9, 0.15, 0.15, 0.3 * Heartbeat.pulse))
 			bar.draw_texture_rect(ItemDB.icon(icon), Rect2(medal - Vector2(beat, beat), Vector2(beat, beat) * 2.0), false)
 		if values.is_valid() and size.y >= 14.0:
-			var font := UITheme.get_theme().default_font
+			# The pool's name on the left and its numbers beside it, so no
+			# bar has to be told apart by colour alone.
+			var font := UITheme.body_bold()
 			var text: String = values.call()
-			var font_size := int(clampf(size.y - 6.0, 10.0, 15.0))
-			var y := size.y / 2.0 + font_size * 0.36
-			bar.draw_string_outline(font, Vector2(0, y), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, font_size, 3, Color.BLACK)
-			bar.draw_string(font, Vector2(0, y), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, font_size, Color(1, 0.97, 0.9))
+			var font_size := int(clampf(size.y - 5.0, 12.0, 15.0))
+			var y := size.y / 2.0 + font_size * 0.34
+			var x := 8.0
+			if title != "":
+				bar.draw_string_outline(font, Vector2(x, y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color(0, 0, 0, 0.85))
+				bar.draw_string(font, Vector2(x, y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 0.97, 0.9))
+				x += font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 8.0
+			bar.draw_string_outline(font, Vector2(x, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color(0, 0, 0, 0.85))
+			bar.draw_string(font, Vector2(x, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 0.97, 0.9))
 	)
 
 

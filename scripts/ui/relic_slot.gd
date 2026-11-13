@@ -4,7 +4,7 @@ extends Control
 ## frame, the relic key, and its cooldown sweeping down. Click to open the
 ## relic bag. Hidden until a relic is worn.
 
-const SIZE := 52.0
+const SIZE := 48.0
 
 var _player: Player
 var _font: Font
@@ -13,7 +13,7 @@ var _font: Font
 func setup(player: Player) -> void:
 	_player = player
 	_font = UITheme.bold()
-	custom_minimum_size = Vector2(SIZE + 70.0, SIZE + 4.0)
+	custom_minimum_size = Vector2(SIZE + 104.0, SIZE + 12.0)
 	size = custom_minimum_size
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	player.relics.changed.connect(_refresh)
@@ -45,12 +45,16 @@ func _draw() -> void:
 	var item := _player.relics.focused()
 	if item == null:
 		return
-	var rect := Rect2(2, 2, SIZE, SIZE)
-	var frame := UITheme.rarity_slot(item.rarity)
-	draw_style_box(frame, rect)
+	# The same light plate and dark slot as the ability dock, edged in the
+	# relic's rarity colour.
+	draw_style_box(ActionBar._make_light_plate(), Rect2(Vector2.ZERO, size))
+	var rect := Rect2(6, 6, SIZE, SIZE)
+	draw_style_box(UITheme.slot("slot"), rect.grow(3.0))
+	draw_rect(rect, Color(0.05, 0.06, 0.1))
+	draw_rect(rect, Color(item.color(), 0.9), false, 2.0)
 	var icon := item.icon()
 	if icon:
-		draw_texture_rect(icon, rect.grow(-8.0), false, item.icon_tint())
+		draw_texture_rect(icon, rect.grow(-6.0), false, item.icon_tint())
 	var left := _player.relics.cooldown_left(item)
 	var ability := _player.relics.ability_of(item)
 	if left > 0.0:
@@ -60,12 +64,15 @@ func _draw() -> void:
 		draw_string_outline(_font, rect.position + Vector2(0, 33), seconds, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 17, 4, Color.BLACK)
 		draw_string(_font, rect.position + Vector2(0, 33), seconds, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 17, Color.WHITE)
 	# The key, in the corner.
-	draw_rect(Rect2(rect.position.x - 1, rect.position.y - 1, 15, 15), Color(0.05, 0.05, 0.08, 0.9))
-	draw_string(_font, rect.position + Vector2(2, 11), "G", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.GOLD)
-	# Its name and the other relics' count beside it.
-	var x := rect.end.x + 6.0
-	draw_string_outline(_font, Vector2(x, 22), str(ability["name"]), HORIZONTAL_ALIGNMENT_LEFT, 90, 12, 3, Color.BLACK)
-	draw_string(_font, Vector2(x, 22), str(ability["name"]), HORIZONTAL_ALIGNMENT_LEFT, 90, 12, item.color())
-	var state := "ready" if left <= 0.0 else "%ds" % ceili(left)
-	draw_string_outline(_font, Vector2(x, 38), state, HORIZONTAL_ALIGNMENT_LEFT, 90, 11, 3, Color.BLACK)
-	draw_string(_font, Vector2(x, 38), state, HORIZONTAL_ALIGNMENT_LEFT, 90, 11, UITheme.GOOD if left <= 0.0 else UITheme.DIM)
+	var key := GameSettings.describe("relic_ability").split(" / ")[0]
+	var body := UITheme.get_theme().default_font
+	var key_width := maxf(body.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 6.0, 14.0)
+	var cap := Rect2(rect.position + Vector2(-2, -2), Vector2(key_width, 15))
+	draw_rect(cap, Color(0.04, 0.045, 0.07, 0.95))
+	draw_rect(cap, Color("8a683a"), false, 1.0)
+	draw_string(body, cap.position + Vector2(3, 12), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADING)
+	# Its power's name, and whether it is ready.
+	var x := rect.end.x + 9.0
+	draw_string(UITheme.body_bold(), Vector2(x, 26), str(ability["name"]), HORIZONTAL_ALIGNMENT_LEFT, size.x - x - 6.0, 14, UITheme.TEXT)
+	var state := "Ready" if left <= 0.0 else "%ds" % ceili(left)
+	draw_string(body, Vector2(x, 45), state, HORIZONTAL_ALIGNMENT_LEFT, size.x - x - 6.0, 14, UITheme.GOOD if left <= 0.0 else UITheme.DIM)

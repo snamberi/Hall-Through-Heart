@@ -26,6 +26,10 @@ def C(h, a=255):
 BRONZE = {"out": C("120c08"), "dark": C("4a3218"), "mid": C("8a6234"), "light": C("c89a52"), "hi": C("f0d088")}
 GOLD = {"out": C("1a1206"), "dark": C("7a5418"), "mid": C("c8902e"), "light": C("f2c14e"), "hi": C("fff0b0")}
 IRON = {"out": C("0c0d12"), "dark": C("2c303c"), "mid": C("4a5062"), "light": C("6e7488"), "hi": C("9aa0b4")}
+# Ordinary cards and buttons wear this quiet blue steel, so that gold only
+# ever means "chosen".
+STEEL = {"out": C("080a10"), "dark": C("222838"), "mid": C("39415a"), "light": C("4e5876"), "hi": C("6a7494")}
+RED = {"out": C("14060a"), "dark": C("5a1c24"), "mid": C("8e2c36"), "light": C("c0444e"), "hi": C("e8747c")}
 
 
 def save(img, name):
@@ -111,8 +115,8 @@ def panel():
     w = h = 44
     t = 7
     img = Image.new("RGBA", (w, h))
-    fill(img, 0, 0, w, h, C("141a2a"), 1, 0.1, C("1a2236"), C("0f1420"),
-         pattern=lambda x, y: (x + y) % 6 == 0 and (x // 3 + y // 3) % 2 == 0)
+    # The cloth is nearly flat: a few faint threads, so text reads cleanly.
+    fill(img, 0, 0, w, h, C("131929"), 1, 0.025, C("161d30"), C("111624"))
     frame(img, t, BRONZE, C("06080c"))
     for k in range(t + 6, w - t - 6, 6):
         rivet(img, k, 3, BRONZE)
@@ -128,7 +132,8 @@ def inset():
     # little light along the bottom and right.
     w = h = 20
     img = Image.new("RGBA", (w, h))
-    fill(img, 0, 0, w, h, C("0d111b"), 2, 0.06, C("131929"), C("0a0d15"))
+    # A flat reading surface.
+    fill(img, 0, 0, w, h, C("0c101a"), 2, 0.012, C("0e131f"), C("0b0e17"))
     for x in range(w):
         img.putpixel((x, 0), C("05070b"))
         img.putpixel((x, 1), C("080a10"))
@@ -148,7 +153,7 @@ def card(name, metal, base, light, dark, gem=None):
     w = h = 24
     t = 4
     img = Image.new("RGBA", (w, h))
-    fill(img, 0, 0, w, h, base, zlib.crc32(name.encode()) & 0xff, 0.08, light, dark)
+    fill(img, 0, 0, w, h, base, zlib.crc32(name.encode()) & 0xff, 0.015, light, dark)
     frame(img, t, metal, C("06080c"))
     if gem:
         corner_piece(img, t - 1, metal, gem)
@@ -233,7 +238,7 @@ def button(name, face, metal, edge_lit, edge_dark):
     # A stone button with a bevel and a metal rim.
     w, h = 20, 16
     img = Image.new("RGBA", (w, h))
-    fill(img, 0, 0, w, h, face, 11, 0.07, edge_lit, edge_dark)
+    fill(img, 0, 0, w, h, face, 11, 0.0, edge_lit, edge_dark)
     frame(img, 2, metal)
     for x in range(2, w - 2):
         img.putpixel((x, 2), edge_lit)
@@ -244,10 +249,99 @@ def button(name, face, metal, edge_lit, edge_dark):
     save(img, name)
 
 
+def focus_ring():
+    # Keyboard focus: a bright double line round a control, clear in the
+    # middle so it can be laid over anything.
+    w = h = 16
+    img = Image.new("RGBA", (w, h))
+    for x in range(w):
+        for y in range(h):
+            edge = min(x, y, w - 1 - x, h - 1 - y)
+            if edge == 0:
+                img.putpixel((x, y), C("fff6d0"))
+            elif edge == 1:
+                img.putpixel((x, y), C("f2c14e"))
+            elif edge == 2:
+                img.putpixel((x, y), C("06080c", 200))
+    for p in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+        img.putpixel(p, C("000000", 0))
+    save(img, "focus")
+
+
+def check(name, on, lit=False):
+    # A tick box: a dark well with a clear lip; ticked, it holds a gold mark.
+    w = h = 12
+    img = Image.new("RGBA", (w, h))
+    rim = GOLD if lit else STEEL
+    for x in range(w):
+        for y in range(h):
+            edge = min(x, y, w - 1 - x, h - 1 - y)
+            if edge == 0:
+                img.putpixel((x, y), rim["out"])
+            elif edge == 1:
+                img.putpixel((x, y), rim["hi"] if (x == 1 or y == 1) else rim["light"])
+            else:
+                img.putpixel((x, y), C("0a0d15"))
+    if on:
+        for x, y in ((3, 6), (4, 7), (5, 8), (6, 7), (7, 6), (8, 5), (9, 4), (3, 7), (4, 8), (5, 9), (6, 8), (7, 7), (8, 6), (9, 5)):
+            img.putpixel((x, y), GOLD["light"] if y < 8 else GOLD["mid"])
+    save(img, name)
+
+
+def grabber(name, metal):
+    # The handle of a slider: a tall stud, big enough to catch.
+    w, h = 8, 12
+    img = Image.new("RGBA", (w, h))
+    for x in range(w):
+        for y in range(h):
+            edge = min(x, y, w - 1 - x, h - 1 - y)
+            c = metal["out"] if edge == 0 else (metal["hi"] if (x == 1 or y == 1) else metal["mid"] if edge == 1 else metal["light"])
+            img.putpixel((x, y), c)
+    for y in range(4, 8):
+        img.putpixel((3, y), metal["dark"])
+        img.putpixel((4, y), metal["hi"])
+    for p in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+        img.putpixel(p, C("000000", 0))
+    save(img, name)
+
+
+def lock_icon():
+    # A small padlock for locked things.
+    w = h = 12
+    img = Image.new("RGBA", (w, h))
+    body, lit, dark = C("8a90a4"), C("c0c6d8"), C("3a4052")
+    for x in range(2, 10):
+        for y in range(5, 11):
+            img.putpixel((x, y), dark if x in (2, 9) or y in (5, 10) else body)
+    for x in range(3, 9):
+        img.putpixel((x, 6), lit)
+    for x, y in ((4, 4), (4, 3), (4, 2), (5, 1), (6, 1), (7, 2), (7, 3), (7, 4)):
+        img.putpixel((x, y), body)
+    for x, y in ((3, 4), (3, 3), (3, 2), (4, 1), (5, 0), (6, 0), (7, 1), (8, 2), (8, 3), (8, 4)):
+        img.putpixel((x, y), dark)
+    img.putpixel((5, 7), C("0a0d15"))
+    img.putpixel((6, 7), C("0a0d15"))
+    img.putpixel((5, 8), C("0a0d15"))
+    img.putpixel((6, 8), C("0a0d15"))
+    save(img, "lock")
+
+
+def tick_icon():
+    # A green tick in a ring, for done and owned things.
+    w = h = 12
+    img = Image.new("RGBA", (w, h))
+    for x, y in ((2, 6), (3, 7), (4, 8), (5, 7), (6, 6), (7, 5), (8, 4), (9, 3)):
+        img.putpixel((x, y), C("a8f080"))
+        img.putpixel((x, y + 1), C("5fb040"))
+        if y + 2 < h:
+            img.putpixel((x, y + 2), C("1a2a14"))
+    save(img, "tick")
+
+
 def tooltip():
     w = h = 20
     img = Image.new("RGBA", (w, h))
-    fill(img, 0, 0, w, h, C("0e1220", 245), 13, 0.06, C("151b2e", 245), C("0a0d16", 245))
+    fill(img, 0, 0, w, h, C("0e1220", 248), 13, 0.012, C("111627", 248), C("0c0f1a", 248))
     frame(img, 3, BRONZE)
     for p in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2)):
         img.putpixel(p, BRONZE["hi"])
@@ -274,7 +368,8 @@ def wheel():
     more per wedge lit gold for when it is pointed at."""
     size = 280
     c = size / 2.0
-    outer, rim, inner, hub = 134, 124, 52, 46
+    # A slim rim: the wedges and the one that is lit carry the weight.
+    outer, rim, inner, hub = 134, 129, 52, 48
     sockets = 88
     r = random.Random(5)
     noise = [[r.random() for _ in range(size)] for _ in range(size)]
@@ -303,12 +398,10 @@ def wheel():
                         col = BRONZE["out"]
                     elif band < 1:
                         col = BRONZE["out"]
-                    elif band < 2.5:
-                        col = BRONZE["hi"] if lit else BRONZE["dark"]
                     else:
-                        col = BRONZE["light"] if lit else BRONZE["mid"]
+                        col = BRONZE["mid"] if lit else BRONZE["dark"]
                     if lit_index is not None:
-                        col = GOLD["light"] if lit else GOLD["mid"]
+                        col = GOLD["hi"] if band > 1 and band < outer - rim - 1 else GOLD["mid"]
                 elif d > inner:
                     # Wedge bodies, split by bronze spokes.
                     spoke = abs(((a + math.pi / 8.0) % (math.pi / 4.0)) - 0) * d
@@ -319,13 +412,13 @@ def wheel():
                         col = BRONZE["mid"]
                     else:
                         if lit_index is None:
-                            base = (C("1a2034") if n > 0.12 else C("141a2a"))
-                            if d > rim - 10:
-                                base = C("232a40") if n > 0.15 else C("1c2236")
+                            base = C("161c2e")
+                            if d > rim - 6:
+                                base = C("1c2338")
                         else:
-                            base = (C("4a3a1e") if n > 0.12 else C("3c2e16"))
-                            if d > rim - 10:
-                                base = C("6a5226") if n > 0.15 else C("5a4420")
+                            base = C("4e3c1c")
+                            if d > rim - 6:
+                                base = C("7a5c26")
                         col = base
                         if d < inner + 3:
                             col = C("0a0d16")
@@ -364,11 +457,6 @@ def wheel():
                         else:
                             col = C("0a0e18") if lit_index is None else C("2a2210")
                         img.putpixel((x, y), col)
-        # Rivets on the rim between wedges.
-        if lit_index is None:
-            for index in range(8):
-                a = -math.pi / 2.0 + (index + 0.5) * math.pi / 4.0
-                rivet(img, int(c + math.cos(a) * (rim + 5)) - 1, int(c + math.sin(a) * (rim + 5)) - 1, BRONZE)
         return img
 
     img = draw(None)
@@ -383,8 +471,8 @@ def main():
     os.makedirs(ROOT, exist_ok=True)
     panel()
     inset()
-    card("card", BRONZE, C("161c2c"), C("1c2438"), C("111624"))
-    card("card_hover", BRONZE, C("1e2640"), C("26304e"), C("182032"))
+    card("card", STEEL, C("151b2b"), C("182033"), C("121725"))
+    card("card_hover", BRONZE, C("1c2338"), C("20283f"), C("181e30"))
     card("card_selected", GOLD, C("2a2414"), C("352d18"), C("221d10"), C("ffd860"))
     card("card_dim", IRON, C("0e1119"), C("121621"), C("0b0d14"))
     slot("slot", IRON, C("0b0e16"))
@@ -392,7 +480,21 @@ def main():
     slot("slot_active", GOLD, C("1e1a10"))
     for index in range(len(RARITY_SLOTS)):
         rarity_slot(index)
-    button("button", C("262c3e"), BRONZE, C("3a4258"), C("181c28"))
+    button("button", C("242a3c"), STEEL, C("343c52"), C("171b27"))
+    button("button_primary", C("c8902e"), GOLD, C("f2c14e"), C("8a6220"))
+    button("button_primary_hover", C("dca43a"), GOLD, C("ffe08a"), C("9a6e24"))
+    button("button_primary_pressed", C("a8761f"), GOLD, C("c8902e"), C("6e4c14"))
+    button("button_danger", C("2e1c22"), RED, C("46262e"), C("1c1014"))
+    button("button_danger_hover", C("46222a"), RED, C("68323c"), C("281418"))
+    focus_ring()
+    check("check_off", False)
+    check("check_on", True)
+    check("check_off_hover", False, True)
+    check("check_on_hover", True, True)
+    grabber("grabber", BRONZE)
+    grabber("grabber_hover", GOLD)
+    lock_icon()
+    tick_icon()
     button("button_hover", C("323a52"), GOLD, C("4a5470"), C("1e2232"))
     button("button_pressed", C("4a3a20"), GOLD, C("5e4a28"), C("2e2414"))
     button("button_disabled", C("181b24"), IRON, C("20242e"), C("12141a"))

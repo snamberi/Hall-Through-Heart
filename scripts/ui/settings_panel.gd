@@ -28,7 +28,6 @@ func _ready() -> void:
 		var button := Button.new()
 		button.text = tab
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(140.0, 38.0)
 		button.pressed.connect(show_tab.bind(tab))
 		tabs.add_child(button)
@@ -110,7 +109,6 @@ func _slider(page: Control, setting: String, title: String, low: float = 0.0, hi
 	slider.value = GameSettings.get(setting)
 	slider.custom_minimum_size = Vector2(320.0, 24.0)
 	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	slider.focus_mode = Control.FOCUS_NONE
 	var percent := UITheme.label("%d%%" % roundi(slider.value * 100.0), 17, UITheme.GOLD)
 	slider.value_changed.connect(func(value: float) -> void:
 		percent.text = "%d%%" % roundi(value * 100.0)
@@ -131,8 +129,7 @@ func _slider(page: Control, setting: String, title: String, low: float = 0.0, hi
 func _check(page: Control, setting: String, title: String) -> void:
 	var box := CheckBox.new()
 	box.text = title
-	box.focus_mode = Control.FOCUS_NONE
-	box.add_theme_font_size_override("font_size", 17)
+	UITheme.font_size(box, 17)
 	box.button_pressed = GameSettings.get(setting)
 	box.toggled.connect(func(on: bool) -> void: GameSettings.set_value(setting, on))
 	page.add_child(box)
@@ -159,9 +156,8 @@ func _controls_page(holder: Control) -> Control:
 		label.custom_minimum_size.x = 300.0
 		grid.add_child(label)
 		var button := Button.new()
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(240.0, 30.0)
-		button.add_theme_font_size_override("font_size", 14)
+		UITheme.font_size(button, 14)
 		button.pressed.connect(func() -> void:
 			_listening = action
 			_refresh_bindings()

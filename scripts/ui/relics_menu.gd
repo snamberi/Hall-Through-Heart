@@ -55,7 +55,6 @@ func _build() -> void:
 		worn_box.add_child(row)
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(BIG_SLOT, BIG_SLOT)
-		button.focus_mode = Control.FOCUS_NONE
 		button.expand_icon = true
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

@@ -14,7 +14,6 @@ static func create(colors: Array, selected: int) -> Swatches:
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(34, 30)
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color(colors[index][0])
 		style.border_color = Color(colors[index][2])

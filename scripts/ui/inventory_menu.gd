@@ -109,10 +109,9 @@ func _build() -> void:
 	for recipe_id in RecipeDB.NO_TABLE:
 		var recipe := RecipeDB.find(recipe_id)
 		var button := Button.new()
-		button.focus_mode = Control.FOCUS_NONE
 		# Icon on top, the name beneath, so five fit across the bag.
 		button.custom_minimum_size = Vector2(82.0, 64.0)
-		button.add_theme_font_size_override("font_size", 12)
+		UITheme.font_size(button, 12)
 		button.text = RecipeDB.display_name(recipe)
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD
 		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -222,7 +221,7 @@ func _build() -> void:
 	_details.scroll_active = true
 	_details.custom_minimum_size = Vector2(310.0, 256.0)
 	_details.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_details.add_theme_font_size_override("normal_font_size", 14)
+	UITheme.font_size(_details, 14, "normal_font_size")
 	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(_details)
 	var spacer := Control.new()
@@ -630,7 +629,6 @@ func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 func _item_button(side: float) -> Button:
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(side, side)
-	button.focus_mode = Control.FOCUS_NONE
 	button.expand_icon = true
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

@@ -37,7 +37,6 @@ func _build() -> void:
 	tabs.add_child(UITheme.label("   Title:", 15, UITheme.DIM))
 	_title_pick = OptionButton.new()
 	_title_pick.custom_minimum_size = Vector2(200, 34)
-	_title_pick.focus_mode = Control.FOCUS_NONE
 	_title_pick.item_selected.connect(func(index: int) -> void:
 		_codex().title = "" if index == 0 else _title_pick.get_item_text(index)
 		SaveGame.request_save()
@@ -104,7 +103,7 @@ func _say(bbcode: String) -> void:
 	text.fit_content = true
 	text.scroll_active = false
 	text.custom_minimum_size = Vector2(384, 0)
-	text.add_theme_font_size_override("normal_font_size", 14)
+	UITheme.font_size(text, 14, "normal_font_size")
 	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text.text = bbcode
 	_right.add_child(text)
@@ -138,7 +137,6 @@ func _creature_tile(codex: Codex, id: String) -> Button:
 	var kills := codex.kills_of(id)
 	var marked := kills >= int(Codex.REVEAL["mark"])
 	var button := Button.new()
-	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = TILE
 	var style := UITheme.card("card_selected" if id == _picked or marked else "card", 4)
 	var hover := UITheme.card("card_selected" if id == _picked else "card_hover", 4)

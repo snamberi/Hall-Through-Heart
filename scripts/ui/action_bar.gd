@@ -1,11 +1,11 @@
 class_name ActionBar
 extends Control
-## A framed bar of slots. The HUD uses two: the four abilities the keys use
-## now, in a column down the middle of the left side with the other set
-## small beside them, and the hotbar along the bottom in labelled groups
-## (the quick item, weapons with the off hand beside them, tools,
-## supplies) and what is worn. Hover anything for what it is; click a
-## hotbar slot to use it.
+## A bar of slots. The HUD uses two: the four abilities the keys use now
+## (a short dock by the hotbar, or the classic column down the left side,
+## as the player chooses), and the hotbar along the bottom in lightly
+## divided groups: the quick item, arms with the off hand beside them,
+## tools and supplies. What is worn can be shown too, if wanted. Hover
+## anything for what it is; click a hotbar slot to use it.
 ##
 ## Abilities show at a glance whether they can be used: bright and edged in
 ## gold when ready (with a flash the moment a cooldown ends), a clock-hand
@@ -26,9 +26,15 @@ const PAD := 12.0
 const ARMOUR: Array[String] = ["helmet", "chest", "legs", "boots"]
 const ARMOUR_ICONS := {"helmet": 6, "chest": 7, "legs": 8, "boots": 9}
 
+## The dock: four slots in a row, with the set named above them.
+const DOCK_SLOT := 48.0
+const DOCK_GAP := 6.0
+
 ## What this bar holds; set before setup().
 var show_abilities := true
 var show_items := true
+## Abilities only: a row by the hotbar (true) or the classic column (false).
+var dock := false
 
 var _player: Player
 var _tip: ItemTooltip
@@ -46,7 +52,33 @@ var _press_flash: Array[float] = []
 ## Pixel-art frames (see tools/generate_ui.py).
 var _plate_style: StyleBox = UITheme._frame("panel", 20, 0)
 var _group_style: StyleBox = UITheme._frame("inset", 6, 0)
+## The lighter plate the dock and the hotbar sit on.
+var _light_plate: StyleBoxFlat = _make_light_plate()
+var _show_worn := false
 var _slot_styles := {"slot": UITheme.slot("slot"), "slot_hover": UITheme.slot("slot_hover"), "slot_active": UITheme.slot("slot_active")}
+
+
+static func _make_light_plate() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.035, 0.045, 0.08, 0.86)
+	box.border_color = Color("4a3a24")
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(3)
+	return box
+
+
+## Switches the ability slots between the dock and the classic column.
+func set_dock(on: bool) -> void:
+	if dock != on:
+		dock = on
+		_layout()
+
+
+## Shows or hides the small "worn armour" group on the hotbar.
+func set_show_worn(on: bool) -> void:
+	if _show_worn != on:
+		_show_worn = on
+		_layout()
 
 
 func setup(player: Player, tip: ItemTooltip) -> void:
@@ -68,6 +100,16 @@ func _layout() -> void:
 	var top := PAD + TITLE
 	var x := PAD
 	var start := x
+	_hover = -1
+	if show_abilities and not show_items and dock:
+		# A short row: the set named above, four slots beneath.
+		for index in AbilityDB.SET_SIZE:
+			_spots.append([Rect2(10.0 + index * (DOCK_SLOT + DOCK_GAP), 30.0, DOCK_SLOT, DOCK_SLOT), "ability", index])
+		custom_minimum_size = Vector2(20.0 + AbilityDB.SET_SIZE * (DOCK_SLOT + DOCK_GAP) - DOCK_GAP, 30.0 + DOCK_SLOT + 10.0)
+		size = custom_minimum_size
+		_press_flash.resize(Hotbar.SIZE)
+		_press_flash.fill(0.0)
+		return
 	if show_abilities and not show_items:
 		# A column: four big slots, top to bottom.
 		for index in AbilityDB.SET_SIZE:
@@ -102,13 +144,14 @@ func _layout() -> void:
 				x += MINI + GAP
 			_groups.append([group[0], Rect2(start - 4.0, y - TITLE, x - GAP - start + 8.0, SLOT + TITLE + 4.0)])
 			x += GROUP - GAP
-		# What is worn.
-		start = x
-		for index in ARMOUR.size():
-			_spots.append([Rect2(x + (index % 2) * (MINI + 2.0), y + (index / 2) * (MINI + 2.0) - 2.0, MINI, MINI), "armour", index])
-		x += MINI * 2.0 + 2.0
-		_groups.append(["Worn", Rect2(start - 4.0, y - TITLE, x - start + 8.0, SLOT + TITLE + 4.0)])
-		x += GROUP
+		# What is worn, for those who want it in view.
+		if _show_worn:
+			start = x
+			for index in ARMOUR.size():
+				_spots.append([Rect2(x + (index % 2) * (MINI + 2.0), y + (index / 2) * (MINI + 2.0) - 2.0, MINI, MINI), "armour", index])
+			x += MINI * 2.0 + 2.0
+			_groups.append(["Worn", Rect2(start - 4.0, y - TITLE, x - start + 8.0, SLOT + TITLE + 4.0)])
+			x += GROUP
 	custom_minimum_size = Vector2(x - GROUP + PAD, top + (ABILITY if show_abilities else SLOT) + PAD)
 	size = custom_minimum_size
 	_press_flash.resize(Hotbar.SIZE)
@@ -242,13 +285,27 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if _player == null:
 		return
-	# The frame: a riveted bronze plate, each group sunk into it.
-	draw_style_box(_plate_style, Rect2(Vector2(-8, -8), size + Vector2(16, 16)))
-	for group: Array in _groups:
-		var rect: Rect2 = group[1]
-		draw_style_box(_group_style, rect)
-		draw_string_outline(_font, rect.position + Vector2(6, 14), group[0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, 3, Color(0, 0, 0, 0.8))
-		draw_string(_font, rect.position + Vector2(6, 14), group[0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, Color("c8b07a"))
+	if show_abilities and not show_items and dock:
+		_draw_dock()
+		return
+	if show_items:
+		# The hotbar: one light plate, the groups told apart by a quiet
+		# label and a thin divider, so the weapon in hand is what stands out.
+		draw_style_box(_light_plate, Rect2(Vector2(-2, -2), size + Vector2(4, 4)))
+		for index in _groups.size():
+			var rect: Rect2 = _groups[index][1]
+			draw_string(_font, rect.position + Vector2(5, 13), _groups[index][0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, Color("9a927c"))
+			if index > 0:
+				var x := rect.position.x - (GROUP - 8.0) / 2.0
+				draw_line(Vector2(x, rect.position.y + 4.0), Vector2(x, rect.end.y - 2.0), Color(1, 1, 1, 0.12), 1.0)
+	else:
+		# The classic column keeps its riveted bronze plate.
+		draw_style_box(_plate_style, Rect2(Vector2(-8, -8), size + Vector2(16, 16)))
+		for group: Array in _groups:
+			var rect: Rect2 = group[1]
+			draw_style_box(_group_style, rect)
+			draw_string_outline(_font, rect.position + Vector2(6, 14), group[0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, 3, Color(0, 0, 0, 0.8))
+			draw_string(_font, rect.position + Vector2(6, 14), group[0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, Color("c8b07a"))
 	# The column: the other set small beside each slot, the set below.
 	if show_abilities and not show_items:
 		var abilities := _player.abilities
@@ -312,6 +369,63 @@ func _draw() -> void:
 				_mini(rect, off, 5, weapon != null and weapon.definition().get("two_handed", false), hovered)
 			"armour":
 				_mini(rect, _player.equipment.get_item(ARMOUR[spot[2]]), ARMOUR_ICONS[ARMOUR[spot[2]]], false, hovered)
+
+
+## The dock: which set the keys use and how to switch, then the four slots.
+func _draw_dock() -> void:
+	draw_style_box(_light_plate, Rect2(Vector2(-2, -2), size + Vector2(4, 4)))
+	var abilities := _player.abilities
+	var name := _set_name(abilities)
+	draw_string(UITheme.body_bold(), Vector2(10, 19), name, HORIZONTAL_ALIGNMENT_LEFT, size.x - 96.0, 14, UITheme.HEADING)
+	# The switch key on a cap, and the other set's pictures small beside it.
+	var key := _key("ability_swap")
+	var key_width := maxf(_font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 10.0, 20.0)
+	var others := abilities.other_slots()
+	var x := size.x - 10.0 - 4.0 * 13.0
+	for index in AbilityDB.SET_SIZE:
+		var other_id: String = others[index] if index < others.size() else ""
+		var mini_rect := Rect2(x + index * 13.0, 9.0, 11.0, 11.0)
+		draw_rect(mini_rect, Color(0.08, 0.09, 0.13))
+		if other_id != "":
+			draw_texture_rect(AbilityDB.icon(other_id), mini_rect, false, Color(0.72, 0.72, 0.78))
+	var cap := Rect2(x - key_width - 6.0, 6.0, key_width, 17.0)
+	draw_rect(cap, Color("1a2032"))
+	draw_rect(cap, Color("8a90a4"), false, 1.0)
+	draw_rect(Rect2(cap.position.x, cap.end.y - 2.0, cap.size.x, 2.0), Color("8a90a4"))
+	draw_string(UITheme.body_bold(), cap.position + Vector2(0, 13), key, HORIZONTAL_ALIGNMENT_CENTER, cap.size.x, 13, Color.WHITE)
+	for index in _spots.size():
+		_draw_ability(_spots[index][0], _spots[index][2], index == _hover)
+		# Why a slot cannot be used, in a word, when pointed at.
+		if index == _hover:
+			var id := _ability_id(_spots[index][2])
+			var why := _short_reason(id)
+			if why != "":
+				var width := _font.get_string_size(why, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 12.0
+				var tag := Rect2((_spots[index][0] as Rect2).get_center().x - width / 2.0, -22.0, width, 18.0)
+				draw_rect(tag, Color(0.04, 0.045, 0.07, 0.95))
+				draw_rect(tag, Color("8a683a"), false, 1.0)
+				draw_string(_font, tag.position + Vector2(0, 13), why, HORIZONTAL_ALIGNMENT_CENTER, tag.size.x, 13, Color("e8a070"))
+
+
+## Why an ability cannot be used right now, in two or three words.
+func _short_reason(id: String) -> String:
+	if id == "":
+		return ""
+	var ability: Dictionary = AbilityDB.ABILITIES[id]
+	match _player.abilities.blocked_reason(id):
+		"locked":
+			return "Mastery %d needed" % ability["mastery"] if ability.has("mastery") else "Level %d needed" % ability.get("level", 1)
+		"weapon":
+			return "%s required" % str(WeaponMastery.NAMES.get(ability.get("weapon", ""), "Weapon")).trim_suffix("s")
+		"mana":
+			return "Not enough mana"
+		"stamina":
+			return "Not enough stamina"
+		"cooldown":
+			return "Cooling down"
+		"":
+			return ""
+	return "Not usable now"
 
 
 func _draw_ability(rect: Rect2, index: int, hovered: bool) -> void:

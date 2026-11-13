@@ -7,6 +7,8 @@ extends Control
 ## True while the mouse is over any clickable piece of the HUD, so a click
 ## there is not also a sword swing.
 static var hovered := false
+## What waits in the menu, in words: shown when the button is pointed at.
+static var waiting_note := ""
 
 var _player: Player
 var _over := false
@@ -45,6 +47,7 @@ func _process(delta: float) -> void:
 		_check = 0.4
 		var menus: Node = _player.get_parent().get_node_or_null("Menus") if _player else null
 		_waiting = menus.badge_total() if menus else 0
+		tooltip_text = "Open the menu wheel: inventory, quests, map and everything else" + ("\n" + waiting_note if waiting_note != "" else "")
 	queue_redraw()
 
 

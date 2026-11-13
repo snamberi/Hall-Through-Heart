@@ -56,7 +56,6 @@ func _build() -> void:
 	, 120.0))
 	_minimap = CheckBox.new()
 	_minimap.text = "Minimap"
-	_minimap.focus_mode = Control.FOCUS_NONE
 	_minimap.toggled.connect(func(on: bool) -> void: GameSettings.set_value("show_minimap", on))
 	bar.add_child(_minimap)
 

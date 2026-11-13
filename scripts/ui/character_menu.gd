@@ -106,7 +106,6 @@ func _spend_button(text: String, id: String, amount: int) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size = Vector2(44.0, 30.0)
-	button.focus_mode = Control.FOCUS_NONE
 	button.pressed.connect(func() -> void: player.attributes.spend(id, amount))
 	_buttons.append(button)
 	return button

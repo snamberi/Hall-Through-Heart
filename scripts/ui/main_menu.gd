@@ -199,10 +199,9 @@ func _new_page() -> Control:
 		var step: Array = STEPS[index]
 		var button := Button.new()
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(108.0, 70.0)
 		button.text = "%d\n%s" % [index + 1, step[1]]
-		button.add_theme_font_size_override("font_size", 15)
+		UITheme.font_size(button, 15)
 		button.tooltip_text = step[2]
 		button.pressed.connect(_show_step.bind(step[0]))
 		UITheme.sounds(button)
@@ -234,7 +233,6 @@ func _new_page() -> Control:
 	for race: String in Appearance.RACES:
 		var button := Button.new()
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(92.0, 92.0)
 		var picture := TextureRect.new()
 		picture.texture = AppearanceEditor.race_portrait(race)
@@ -262,7 +260,7 @@ func _new_page() -> Control:
 	_race_info.fit_content = true
 	_race_info.scroll_active = false
 	_race_info.custom_minimum_size = Vector2(300.0, 150.0)
-	_race_info.add_theme_font_size_override("normal_font_size", 14)
+	UITheme.font_size(_race_info, 14, "normal_font_size")
 	_race_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	races_box.add_child(_race_info)
 	# The figure: turn it, roll a new one, see it move.
@@ -328,9 +326,8 @@ func _new_page() -> Control:
 		button.icon = ItemDB.icon(data["icon"])
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(240.0, 52.0)
-		button.add_theme_font_size_override("font_size", 16)
+		UITheme.font_size(button, 16)
 		button.add_theme_constant_override("icon_max_width", 30)
 		button.pressed.connect(_choose_class.bind(id))
 		UITheme.sounds(button)
@@ -349,7 +346,7 @@ func _new_page() -> Control:
 	_class_text.fit_content = true
 	_class_text.scroll_active = false
 	_class_text.custom_minimum_size = Vector2(300.0, 180.0)
-	_class_text.add_theme_font_size_override("normal_font_size", 14)
+	UITheme.font_size(_class_text, 14, "normal_font_size")
 	_class_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	detail_box.add_child(_class_text)
 
@@ -380,9 +377,8 @@ func _new_page() -> Control:
 		var button := Button.new()
 		button.text = Difficulty.display_name(level)
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(106.0, 36.0)
-		button.add_theme_font_size_override("font_size", 15)
+		UITheme.font_size(button, 15)
 		button.pressed.connect(_choose_difficulty.bind(level))
 		UITheme.sounds(button)
 		row.add_child(button)
@@ -393,8 +389,7 @@ func _new_page() -> Control:
 	left.add_child(_difficulty_text)
 	_hardcore = CheckBox.new()
 	_hardcore.text = "Hardcore: one life, always Insane. Dying deletes the world."
-	_hardcore.focus_mode = Control.FOCUS_NONE
-	_hardcore.add_theme_font_size_override("font_size", 15)
+	UITheme.font_size(_hardcore, 15)
 	_hardcore.toggled.connect(func(on: bool) -> void:
 		for level in _difficulty_buttons:
 			_difficulty_buttons[level].disabled = on
@@ -406,7 +401,7 @@ func _new_page() -> Control:
 	_summary.fit_content = true
 	_summary.scroll_active = false
 	_summary.custom_minimum_size = Vector2(560.0, 80.0)
-	_summary.add_theme_font_size_override("normal_font_size", 15)
+	UITheme.font_size(_summary, 15, "normal_font_size")
 	_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.add_child(_summary)
 

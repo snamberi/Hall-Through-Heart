@@ -54,9 +54,8 @@ func _ready() -> void:
 		var button := Button.new()
 		button.text = title
 		button.toggle_mode = true
-		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = Vector2(width / (TABS.size() - (0 if allow_race else 1)) - 4.0, 34.0)
-		button.add_theme_font_size_override("font_size", 15)
+		UITheme.font_size(button, 15)
 		button.pressed.connect(show_tab.bind(title))
 		UITheme.sounds(button)
 		tabs.add_child(button)
@@ -118,7 +117,7 @@ func _build_races(page: VBoxContainer) -> void:
 	_race_text.fit_content = true
 	_race_text.scroll_active = false
 	_race_text.custom_minimum_size = Vector2(width - 16.0, 120.0)
-	_race_text.add_theme_font_size_override("normal_font_size", 14)
+	UITheme.font_size(_race_text, 14, "normal_font_size")
 	_race_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(_race_text)
 
@@ -139,7 +138,6 @@ func choose_race(race: String) -> void:
 func _picture_button(picture: Texture2D, title: String, named: bool = true) -> Button:
 	var button := Button.new()
 	button.toggle_mode = true
-	button.focus_mode = Control.FOCUS_NONE
 	button.tooltip_text = title
 	button.custom_minimum_size = Vector2(THUMB, THUMB + (16.0 if named else 0.0))
 	var image := TextureRect.new()
@@ -185,7 +183,6 @@ func _build_row(page: VBoxContainer, key: String) -> void:
 		if row[3] == "colour":
 			button = Button.new()
 			button.toggle_mode = true
-			button.focus_mode = Control.FOCUS_NONE
 			button.tooltip_text = title
 			button.custom_minimum_size = Vector2(34.0, 30.0)
 			var style := StyleBoxFlat.new()
@@ -209,10 +206,9 @@ func _build_row(page: VBoxContainer, key: String) -> void:
 		else:
 			button = Button.new()
 			button.toggle_mode = true
-			button.focus_mode = Control.FOCUS_NONE
 			button.text = title
 			button.custom_minimum_size = Vector2(88.0, 32.0)
-			button.add_theme_font_size_override("font_size", 14)
+			UITheme.font_size(button, 14)
 			UITheme.sounds(button)
 		button.pressed.connect(func() -> void:
 			appearance[key] = index

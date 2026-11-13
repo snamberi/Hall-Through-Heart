@@ -60,7 +60,6 @@ func _add_slot() -> void:
 	var index := _buttons.size()
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(SLOT, SLOT)
-	button.focus_mode = Control.FOCUS_NONE
 	button.expand_icon = true
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

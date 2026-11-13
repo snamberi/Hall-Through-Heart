@@ -65,10 +65,9 @@ func _build() -> void:
 		row.icon = ItemDB.icon(data["icon"])
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row.toggle_mode = true
-		row.focus_mode = Control.FOCUS_NONE
 		row.custom_minimum_size = Vector2(220.0, 34.0)
 		row.add_theme_constant_override("icon_max_width", 22)
-		row.add_theme_font_size_override("font_size", 15)
+		UITheme.font_size(row, 15)
 		row.tooltip_text = data["text"]
 		_left.add_child(row)
 	_portrait = LookPreview.new()
@@ -128,7 +127,7 @@ func _build() -> void:
 	_details.fit_content = true
 	_details.scroll_active = false
 	_details.custom_minimum_size = Vector2(216, 0)
-	_details.add_theme_font_size_override("normal_font_size", 15)
+	UITheme.font_size(_details, 15, "normal_font_size")
 	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(_details)
 	_ranks = RichTextLabel.new()
@@ -136,7 +135,7 @@ func _build() -> void:
 	_ranks.fit_content = true
 	_ranks.scroll_active = false
 	_ranks.custom_minimum_size = Vector2(290, 260)
-	_ranks.add_theme_font_size_override("normal_font_size", 15)
+	UITheme.font_size(_ranks, 15, "normal_font_size")
 	_ranks.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_box.add_child(_ranks)
 	_learn = UITheme.button("Learn", func() -> void:
@@ -205,7 +204,6 @@ func _fill_tree(column: String, entries: Array) -> void:
 		var open := problem == "" and rank < max_rank
 		var at: Vector2 = LAYOUT[mini(index, LAYOUT.size() - 1)] * canvas.custom_minimum_size - Vector2(NODE, NODE) / 2.0
 		var node := Button.new()
-		node.focus_mode = Control.FOCUS_NONE
 		node.position = at
 		node.size = Vector2(NODE, NODE)
 		node.custom_minimum_size = Vector2(NODE, NODE)
