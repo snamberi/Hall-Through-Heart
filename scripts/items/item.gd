@@ -25,6 +25,9 @@ var infusions: Array[String] = []
 ## rarity made it (1.0 is ordinary).
 var forged_tier := 0
 var quality := 1.0
+## A keeper: the player has locked this piece so that bulk selling, marking,
+## salvaging and discarding leave it alone. Gear only.
+var locked := false
 
 
 ## A gathered or dropped material, which now and then comes out finer than
@@ -69,6 +72,7 @@ static func from_dict(data: Dictionary) -> Item:
 	item.set_id = str(data.get("set", "")) if ItemDB.ITEM_SETS.has(str(data.get("set", ""))) else ""
 	item.forged_tier = maxi(int(data.get("forged", 0)), 0)
 	item.quality = clampf(float(data.get("quality", 1.0)), 0.3, 3.0)
+	item.locked = bool(data.get("locked", false))
 	var saved_infusions: Variant = data.get("infusions", [])
 	if saved_infusions is Array:
 		for material: Variant in saved_infusions:
@@ -104,6 +108,8 @@ func to_dict() -> Dictionary:
 		data["forged"] = forged_tier
 	if not is_equal_approx(quality, 1.0):
 		data["quality"] = snappedf(quality, 0.001)
+	if locked:
+		data["locked"] = true
 	return data
 
 

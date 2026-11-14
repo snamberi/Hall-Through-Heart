@@ -234,7 +234,7 @@ static func search_box(hint: String, width: float, on_change: Callable) -> LineE
 	var box := LineEdit.new()
 	box.placeholder_text = hint
 	box.clear_button_enabled = true
-	box.custom_minimum_size = Vector2(width, 34.0)
+	box.custom_minimum_size = Vector2(width, 32.0)
 	font_size(box, BODY)
 	box.text_changed.connect(func(_text: String) -> void: on_change.call())
 	return box
@@ -441,8 +441,12 @@ static func _build() -> Theme:
 	theme.set_icon("grabber_disabled", "HSlider", load("res://assets/ui/grabber.png"))
 
 	# Text boxes.
-	var field := _flat(Color("0a0d15"), Color("4e5876"), 1, 8)
-	var field_focus := _flat(Color("0c1019"), GOLD, 2, 7)
+	var field := _flat(Color("0a0d15"), Color("4e5876"), 1, 5)
+	field.content_margin_left = 9
+	field.content_margin_right = 9
+	var field_focus := _flat(Color("0c1019"), GOLD, 2, 4)
+	field_focus.content_margin_left = 8
+	field_focus.content_margin_right = 8
 	theme.set_stylebox("normal", "LineEdit", field)
 	theme.set_stylebox("focus", "LineEdit", field_focus)
 	theme.set_stylebox("read_only", "LineEdit", field)

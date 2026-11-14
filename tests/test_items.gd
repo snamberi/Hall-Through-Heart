@@ -152,3 +152,43 @@ func test_furnace_smelts_one_ore_into_one_ingot(t: TestContext) -> void:
 	t.equal(Item.from_dict((record["items"] as Array)[0]).rarity, 1, "the ingots keep the ore's rarity")
 	t.equal(int(record["coal"]), 0, "the coal was burned")
 	worker.free()
+
+
+func test_locked_gear_is_kept_safe(t: TestContext) -> void:
+	var sword := LootGenerator.make_equipment(5, 0, "sword")
+	sword.locked = true
+	var back := Item.from_dict(sword.to_dict())
+	t.check(back.locked, "a lock is kept after a save")
+	t.check(not Item.from_dict(LootGenerator.make_equipment(5, 0, "sword").to_dict()).locked, "gear is unlocked unless locked")
+	t.equal(InventoryMenu.category(sword), "gear", "a sword is gear")
+	t.equal(InventoryMenu.category(Item.create("oak_wood")), "materials", "wood is a material")
+	t.equal(InventoryMenu.category(Item.create("health_potion")), "supplies", "a potion is a supply")
+	t.equal(InventoryMenu._thousands(2840), "2,840", "thousands are grouped")
+	t.equal(InventoryMenu._thousands(1234567), "1,234,567", "millions are grouped")
+
+
+func test_chests_take_whole_half_or_one(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var menu: StorageMenu = main.get_node("Menus").get_menu("storage")
+	var chest := {"kind": "chest", "title": "Test chest", "items": []}
+	menu.chest = chest
+	var wood := Item.create("oak_wood", 10)
+	var before := player.inventory.count_of("oak_wood")
+	player.inventory.add(wood)
+	var stack: Item = null
+	for item in player.inventory.items:
+		if item and item.id == "oak_wood":
+			stack = item
+	t.check(menu._store(stack, 1), "one goes in")
+	t.equal(int(chest["items"][0]["count"]), 1, "the chest holds one")
+	t.check(menu._store(stack, 4), "four more join the same stack")
+	t.equal(int(chest["items"][0]["count"]), 5, "the chest holds five in one slot")
+	t.equal((chest["items"] as Array).size(), 1, "still one slot")
+	t.equal(player.inventory.count_of("oak_wood"), before + 5, "five stay in the bag")
+	t.check(menu._take(chest["items"][0], 2), "two come back")
+	t.equal(int(chest["items"][0]["count"]), 3, "three are left inside")
+	t.check(menu._take(chest["items"][0], 99), "the rest come back")
+	t.equal((chest["items"] as Array).size(), 0, "the chest is empty")
+	t.equal(player.inventory.count_of("oak_wood"), before + 10, "all ten are in the bag again")
+	player.inventory.take("oak_wood", 10)

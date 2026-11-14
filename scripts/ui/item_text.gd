@@ -108,17 +108,21 @@ static func type_name(item: Item) -> String:
 
 ## BBCode description of an item, as shown in the inventory's details panel
 ## and in the tooltip that follows the mouse everywhere items appear.
-static func describe(item: Item, player: Player) -> String:
+## `bare` leaves out the name, the kind line and the headline numbers, for
+## screens that lay those out themselves (see headline and numbers).
+static func describe(item: Item, player: Player, bare: bool = false) -> String:
 	var dim := UITheme.DIM.to_html(false)
 	var text := UITheme.TEXT.to_html(false)
 	var lines: PackedStringArray = []
 	var def := item.definition()
-	lines.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [item.color().to_html(false), item.display_name()])
+	if not bare:
+		lines.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [item.color().to_html(false), item.display_name()])
 	var rarity: String = ItemDB.RARITIES[item.rarity]["name"]
 	if not item.is_equipment():
 		var kind := type_name(item)
-		lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s[/color]" % [item.color().to_html(false), rarity, dim, kind])
-		lines.append("")
+		if not bare:
+			lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s[/color]" % [item.color().to_html(false), rarity, dim, kind])
+			lines.append("")
 		lines.append("[i][color=#%s]%s[/color][/i]" % [dim, def["text"]])
 		if item.is_backpack():
 			lines.append("")
@@ -148,14 +152,15 @@ static func describe(item: Item, player: Player) -> String:
 	var kind_name: String = type_name(item) + "  -  " + ("Two-handed" if def.get("two_handed", false) else ItemDB.SLOT_NAMES[item.slot()])
 	if def.get("magic", false):
 		kind_name += ", magic"
-	lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s  -  item level %d[/color]" % [item.color().to_html(false), rarity, dim, kind_name, item.level])
-	lines.append("")
-	if def.has("damage"):
+	if not bare:
+		lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s  -  item level %d[/color]" % [item.color().to_html(false), rarity, dim, kind_name, item.level])
+		lines.append("")
+	if def.has("damage") and not bare:
 		var weapon: Dictionary = def["weapon"]
 		lines.append("[color=#%s]Damage[/color]  [font_size=20]%d[/font_size]%s%s" % [text, roundi(item.base_power("damage")), _delta(item, player, "damage"), "  [color=#%s](magic)[/color]" % dim if def.get("magic", false) else ""])
 		var action := "shots, range" if weapon.has("projectile") else "swings, reach"
 		lines.append("[color=#%s]%.2fs between %s %d[/color]" % [dim, weapon["cooldown"], action, roundi(weapon["range"])])
-	if def.has("armor"):
+	if def.has("armor") and not bare:
 		lines.append("[color=#%s]Armor[/color]  [font_size=20]%d[/font_size]%s" % [text, roundi(item.base_power("armor")), _delta(item, player, "armor")])
 	if item.forged_tier > 0 or not is_equal_approx(item.quality, 1.0):
 		var metal := ItemDB.tier_name(item.forged_tier) if item.forged_tier > 0 else "fine materials"
@@ -214,6 +219,54 @@ static func describe(item: Item, player: Player) -> String:
 		lines.append("")
 		lines.append(comparison)
 	return "\n".join(lines)
+
+
+## The line under an item's name: "Epic  ·  Sword  ·  Level 20".
+static func headline(item: Item) -> String:
+	var rarity: String = ItemDB.RARITIES[item.rarity]["name"]
+	if not item.is_equipment():
+		return "%s  ·  %s" % [rarity, type_name(item)]
+	var def := item.definition()
+	var kind := type_name(item)
+	if def.get("two_handed", false):
+		kind += ", two-handed"
+	return "%s  ·  %s  ·  Level %d" % [rarity, kind, item.level]
+
+
+## An item's headline numbers, for a row of cells: [[label, value, note,
+## better]] where note is how it differs from what is worn ("+6", "-3" or
+## "") and better says which way that goes.
+static func numbers(item: Item, player: Player) -> Array:
+	var cells: Array = []
+	var def := item.definition()
+	if not item.is_equipment():
+		if item.is_stackable():
+			cells.append(["In bag", str(player.inventory.count_of(item.id)), "", true])
+		if item.value() > 0:
+			cells.append(["Worth", "%d g" % item.value(), "", true])
+		return cells
+	var worn := rival(item, player)
+	var mine := worn == item or player.equipment.slot_of(item) != ""
+	for key: String in ["damage", "armor"]:
+		if not def.has(key):
+			continue
+		var note := ""
+		var better := true
+		if not mine:
+			var change := item.base_power(key) - (worn.base_power(key) if worn and worn.definition().has(key) else 0.0)
+			if absf(change) >= 0.5:
+				note = "%s%d" % ["+" if change > 0.0 else "-", roundi(absf(change))]
+				better = change > 0.0
+		cells.append(["Damage" if key == "damage" else "Armor", str(roundi(item.base_power(key))), note, better])
+	if def.has("weapon"):
+		var weapon: Dictionary = def["weapon"]
+		cells.append(["Shot" if weapon.has("projectile") else "Swing", "%.2fs" % weapon["cooldown"], "", true])
+		cells.append(["Range" if weapon.has("projectile") else "Reach", str(roundi(weapon["range"])), "", true])
+	if cells.size() < 3 and item.upgrade > 0:
+		cells.append(["Upgrade", "+%d" % item.upgrade, "", true])
+	if cells.size() < 3:
+		cells.append(["Worth", "%d g" % item.value(), "", true])
+	return cells
 
 
 ## "Used to make: A, B, C and 4 more", or "" if nothing needs it.

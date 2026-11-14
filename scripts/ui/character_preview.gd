@@ -16,13 +16,20 @@ func setup(player: Player) -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
+## Where the figure's feet stand: placed so the figure, about 160 pixels
+## tall, sits in the middle of the area with even room above and below.
+func _feet() -> Vector2:
+	return Vector2(size.x / 2.0, roundf(size.y / 2.0 + 84.0))
+
+
 func _draw() -> void:
 	# A stone niche and a plinth for the figure to stand on.
-	var center := size / 2.0
-	draw_rect(Rect2(center.x - 78.0, 26.0, 156.0, size.y - 84.0), Color("0b0e17"))
-	draw_circle(Vector2(center.x, 104.0), 78.0, Color("0b0e17"))
-	draw_arc(Vector2(center.x, 104.0), 78.0, PI, TAU, 32, Color("403020"), 3.0)
-	draw_set_transform(Vector2(center.x, size.y - 64.0), 0.0, Vector2(1.0, 0.32))
+	var feet := _feet()
+	var top := feet.y - 118.0
+	draw_rect(Rect2(feet.x - 78.0, top, 156.0, feet.y - top), Color("0b0e17"))
+	draw_circle(Vector2(feet.x, top), 78.0, Color("0b0e17"))
+	draw_arc(Vector2(feet.x, top), 78.0, PI, TAU, 32, Color("403020"), 3.0)
+	draw_set_transform(feet + Vector2(0, 6), 0.0, Vector2(1.0, 0.32))
 	draw_circle(Vector2.ZERO, 92.0, Color("2a2c36"))
 	draw_circle(Vector2.ZERO, 76.0, Color("3a3c48"))
 	draw_set_transform(Vector2.ZERO)
@@ -49,7 +56,7 @@ func _process(_delta: float) -> void:
 		add_child(sprite)
 		_sprites.append(sprite)
 	var frame := int(Time.get_ticks_msec() / 1000.0 * IDLE_FPS) % 4
-	var feet := Vector2(size.x / 2.0, size.y - 70.0)
+	var feet := _feet()
 	for index in _sprites.size():
 		var sprite := _sprites[index]
 		sprite.visible = index < sources.size()

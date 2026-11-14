@@ -26,6 +26,7 @@ var _grid: GridContainer
 var _buttons: Array[Button] = []
 var _counts: Array[Label] = []
 var _marks: Array[MarkOverlay] = []
+var _locks: Array[TextureRect] = []
 var _items: Array = []
 
 
@@ -54,6 +55,7 @@ func set_items(items: Array, capacity: int) -> void:
 		style_slot(button, item, item != null and item == selected)
 		_counts[index].text = str(item.count) if item and item.count > 1 else ""
 		_marks[index].visible = item != null and item in marked
+		_locks[index].visible = item != null and item.locked
 
 
 func _add_slot() -> void:
@@ -86,15 +88,27 @@ func _add_slot() -> void:
 		if tooltip:
 			tooltip.hide_tip()
 	)
-	var count := UITheme.label("", 13)
+	var count := UITheme.label("", 14)
+	count.add_theme_font_override("font", UITheme.body_bold())
 	count.add_theme_color_override("font_outline_color", Color.BLACK)
-	count.add_theme_constant_override("outline_size", 4)
+	count.add_theme_constant_override("outline_size", 5)
 	count.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	count.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	count.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	count.position -= Vector2(4, 1)
+	count.position -= Vector2(4, 0)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(count)
+	# A small padlock on pieces the player has locked.
+	var lock := TextureRect.new()
+	lock.texture = UITheme.lock_texture()
+	lock.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	lock.position = Vector2(1, 1)
+	lock.size = Vector2(14, 14)
+	lock.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lock.visible = false
+	button.add_child(lock)
+	_locks.append(lock)
 	_marks.append(MarkOverlay.attach(button))
 	_grid.add_child(button)
 	_buttons.append(button)
