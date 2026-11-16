@@ -414,6 +414,97 @@ func enter_dungeon(dungeon_seed: int, level: int, boss_id: String, on_cleared: C
 		dungeon.rooms.append(info)
 
 
+## A Heart Rift: the dungeon's line of rooms, but open (no keys or doors),
+## more crowded, every monster carrying the week's affixes, and the week's
+## boss in the last room. A RiftRun keeps the clock.
+func enter_rift(rift_seed: int, level: int, boss_id: String, affixes: Array[String], rifts: HeartRift) -> void:
+	var random := RandomNumberGenerator.new()
+	random.seed = rift_seed
+	_choose_origin()
+	var rift := Room.new()
+	rift.wall_style = "stone"
+	rift.gloom = 0.9
+	rift.title = "Heart Rift, depth %d" % rifts.depth
+	var count := random.randi_range(4, 5)
+	var grid: Array[Vector2i] = [Vector2i.ZERO]
+	var steps: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN, Vector2i.RIGHT]
+	while grid.size() < count:
+		var next: Vector2i = grid[-1] + steps[random.randi_range(0, steps.size() - 1)]
+		if not next in grid:
+			grid.append(next)
+	var rects: Array[Rect2i] = []
+	for index in grid.size():
+		var size := DUNGEON_BOSS_ROOM if index == grid.size() - 1 else DUNGEON_ROOM
+		rects.append(Rect2i(grid[index] * DUNGEON_SPACING - size / 2, size))
+	var floor_cells := {}
+	for rect in rects:
+		for y in range(rect.position.y, rect.end.y):
+			for x in range(rect.position.x, rect.end.x):
+				floor_cells[Vector2i(x, y)] = T.VOIDSCAR if random.randf() < 0.12 else T.CAVE_FLOOR
+	for index in grid.size() - 1:
+		var a := rects[index].get_center()
+		var b := rects[index + 1].get_center()
+		var at := a
+		while at != b:
+			at += Vector2i(signi(b.x - at.x), 0) if at.x != b.x else Vector2i(0, signi(b.y - at.y))
+			for k in range(-1, 2):
+				var wide := at + (Vector2i(0, k) if b.x != a.x else Vector2i(k, 0))
+				if not floor_cells.has(wide):
+					floor_cells[wide] = T.PATH
+	for cell: Vector2i in floor_cells.keys():
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if not floor_cells.has(cell + Vector2i(dx, dy)):
+					rift.cells[cell + Vector2i(dx, dy)] = T.WALL
+	for cell: Vector2i in floor_cells:
+		rift.cells[cell] = floor_cells[cell]
+	rift.entry = rects[0].get_center() + Vector2i(0, 3)
+	rift.build(_world.tile_set())
+	enter(rift)
+	rift.add_prop(Prop.create(Prop.Art.PORTAL, rift.cell_position(rift.entry) + Vector2(0, -30), 0.0, "Give up and leave the rift", func(_p: Player) -> void: leave()))
+	var monsters: Array[String] = []
+	for affix in affixes:
+		if not HeartRift.PLAYER_AFFIXES.has(affix):
+			monsters.append(affix)
+	_spawner.forced_modifiers = monsters
+	var run := RiftRun.new()
+	run.setup(rift, _player, self, rifts)
+	run.level = level
+	run.affixes = affixes
+	run.limit = HeartRift.time_limit(rects.size())
+	var options := CAVE_MONSTERS.filter(func(id: String) -> bool: return EnemyDB.ENEMIES[id]["min_level"] <= level + 3)
+	for index in rects.size():
+		var rect := rects[index]
+		var info := {"rect": rect, "enemies": []}
+		var inner := Rect2i(rect.position + Vector2i(2, 2), rect.size - Vector2i(4, 4))
+		if index == rects.size() - 1:
+			var boss: Enemy = _spawner.enemy_scene.instantiate()
+			boss.boss_id = boss_id
+			boss.position = rift.cell_position(rect.get_center() + Vector2i(0, -2))
+			boss.target = _player
+			boss.extra_modifiers = monsters.duplicate()
+			boss.configure(level + 2, Enemy.Rank.BOSS, BossDB.BOSSES[boss_id]["monster"])
+			_spawner.add_child(boss)
+			info["enemies"].append(boss)
+			rift.enemies.append(boss)
+			run.boss = boss
+		elif index > 0:
+			for i in random.randi_range(6, 8):
+				var cell := inner.position + Vector2i(random.randi_range(0, inner.size.x - 1), random.randi_range(0, inner.size.y - 1))
+				var rank := Enemy.Rank.ELITE if random.randf() < 0.25 else Enemy.Rank.NORMAL
+				var enemy := _spawner.spawn_at(rift.cell_position(cell), level, rank, options[random.randi_range(0, options.size() - 1)])
+				info["enemies"].append(enemy)
+				rift.enemies.append(enemy)
+		for i in random.randi_range(2, 4):
+			var crystal := Prop.create_decor(Prop.Decor.OBELISK, rift.cell_position(rect.position + Vector2i(random.randi_range(1, rect.size.x - 2), 1 if random.randf() < 0.5 else rect.size.y - 2)), 10.0)
+			crystal.sprite().modulate = Color(1.0, 0.45, 0.55)
+			crystal.add_light(0.7, 1.3, Color(1.0, 0.35, 0.45))
+			rift.add_prop(crystal)
+		run.rooms.append(info)
+	rift.add_child(run)
+	Events.announcement.emit("HEART RIFT", "Depth %d  ·  %s  ·  %s to close it" % [rifts.depth, ", ".join(affixes.map(func(a: String) -> String: return HeartRift.affix_name(a))), RaceCourse.clock_text(run.limit)])
+
+
 func _trap(kind: String, at: Vector2, damage: float, level: int) -> Trap:
 	return Trap.create(kind, at, _player, damage, level)
 

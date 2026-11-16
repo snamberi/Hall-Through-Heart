@@ -5,6 +5,8 @@ extends Node2D
 ## Nothing spawns near the world origin, so the starting area stays safe.
 
 @export var enemy_scene: PackedScene
+## Modifiers every new enemy gets while they are set (a Heart Rift's affixes).
+var forced_modifiers: Array[String] = []
 @export var max_alive := 8
 ## Seconds between spawn attempts.
 @export var spawn_interval := 1.0
@@ -44,6 +46,7 @@ func spawn_at(
 	enemy.position = world_position
 	enemy.target = _player
 	enemy.is_fragment = fragment
+	enemy.extra_modifiers = forced_modifiers.duplicate()
 	enemy.configure(level, rank, enemy_id)
 	enemy.died.connect(_on_enemy_died)
 	enemy.wants_minion.connect(_on_wants_minion)

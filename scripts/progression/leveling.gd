@@ -40,6 +40,10 @@ func is_max_level() -> bool:
 func add_xp(amount: int, source: String = "") -> void:
 	if amount <= 0 or is_max_level():
 		return
+	# Being well rested (an inn) adds a share on top.
+	var holder := get_parent()
+	if holder is Player and (holder as Player).stats:
+		amount = roundi(amount * (1.0 + maxf((holder as Player).stats.get_stat("xp_gain"), 0.0)))
 	xp += amount
 	Events.xp_gained.emit(amount, source)
 	while not is_max_level() and xp >= xp_to_next():

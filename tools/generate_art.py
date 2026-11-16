@@ -2815,6 +2815,9 @@ ICONS += [
     ("barding", [("metal", "poly", [(3, 4), (19, 4), (20, 11), (15, 18), (7, 18), (2, 11)]), ("gold", "line", [(3, 4), (19, 4)], 2),
                  ("steel", "line", [(11, 5), (11, 17)], 1), ("ink", "rect", (5, 8, 5, 8)), ("ink", "rect", (17, 8, 17, 8)),
                  ("red", "rect", (9, 18, 13, 21))]),
+    # 154: a shard of a closed Heart Rift.
+    ("rift_shard", [("heart_d", "poly", [(11, 1), (17, 9), (14, 20), (8, 20), (5, 9)]), ("heart", "poly", [(11, 3), (15, 9), (12, 18), (9, 18), (7, 9)]),
+                    ("artery", "line", [(11, 4), (10, 17)], 1), ("shine_w", "rect", (9, 7, 9, 9))]),
 ]
 
 # Icons for the map and minimap: one row of 22px cells in assets/icons/map.png.

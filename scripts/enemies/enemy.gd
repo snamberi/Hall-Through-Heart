@@ -86,6 +86,8 @@ var lunge_time := 0.22
 var is_fragment := false
 ## Ids from MODIFIERS. Rolled for Elites and Champions unless set beforehand.
 var modifiers: Array[String] = []
+## Modifiers forced on by where the enemy is (a Heart Rift's affixes).
+var extra_modifiers: Array[String] = []
 ## Mini-bosses guard a spot and walk back to it rather than chase forever.
 var lair_home := Vector2.INF
 ## Set before adding to the tree to make this a world boss (BossDB id).
@@ -185,6 +187,9 @@ func _ready() -> void:
 		pool.shuffle()
 		for index in rolls:
 			modifiers.append(pool[index])
+	for extra in extra_modifiers:
+		if not extra in modifiers and not EnemyDB.ENEMIES.get(enemy_id, {}).has("wild"):
+			modifiers.append(extra)
 	for modifier in modifiers:
 		_traits.append_array(MODIFIERS[modifier].get("traits", []))
 	windup_time = _attack["windup"] * (0.75 if "swift" in modifiers else 1.0)

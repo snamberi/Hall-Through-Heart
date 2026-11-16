@@ -267,3 +267,85 @@ func test_roads_lead_out_of_the_sanctuary(t: TestContext) -> void:
 		t.check(float(site["distance"]) > 14.0, "a sign does not point at what stands beside it")
 	t.equal(Structures.compass(Vector2(0, -5)), "north", "north is up the map")
 	t.equal(Structures.compass(Vector2(5, 5)), "south-east", "south-east is down and right")
+
+
+func test_heart_rift_turns_weekly(t: TestContext) -> void:
+	var week := HeartRift.week()
+	var affixes := HeartRift.affixes(week)
+	t.equal(affixes.size(), 3, "three affixes a week")
+	t.equal(affixes, HeartRift.affixes(week), "the same all week")
+	t.check(HeartRift.PLAYER_AFFIXES.has(affixes[2]), "the last is on the player")
+	for affix in affixes.slice(0, 2):
+		t.check(Enemy.MODIFIERS.has(affix), "%s is a real monster modifier" % affix)
+	t.check(BossDB.BOSSES.has(HeartRift.boss(week)), "the week's boss is real")
+	var differs := false
+	for other in range(week + 1, week + 6):
+		if HeartRift.affixes(other) != affixes:
+			differs = true
+	t.check(differs, "the affixes change from week to week")
+
+
+func test_heart_rift_run(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var rifts: HeartRift = main.get_node("HeartRift")
+	var instances: Instances = main.get_node("Instances")
+	rifts.depth = 1
+	var week := HeartRift.week()
+	instances.enter_rift(1234, 10, HeartRift.boss(week), HeartRift.affixes(week), rifts)
+	await t.frames(3)
+	t.check(instances.is_inside(), "the rift is entered")
+	var run: RiftRun = instances.room.find_children("*", "RiftRun", true, false)[0]
+	t.check(run != null and run.boss != null, "a run with a boss")
+	var monster_affix: String = HeartRift.affixes(week)[0]
+	var marked := 0
+	for info: Dictionary in run.rooms:
+		for enemy: Enemy in info["enemies"]:
+			if monster_affix in enemy.modifiers:
+				marked += 1
+	t.check(marked > 3, "monsters carry the week's affix (%d)" % marked)
+	t.check(player.stats._modifiers.has("rift"), "the affix on the player holds inside")
+	run.boss.health.take_damage(run.boss.health.max_health * 2.0)
+	await t.frames(3)
+	t.equal(rifts.depth, 2, "a timed clear goes a depth deeper")
+	t.check(player.inventory.count_of("rift_shard") == 0, "shards wait in the hoard")
+	instances.leave()
+	await t.frames(2)
+	t.check(not player.stats._modifiers.has("rift"), "the affix lifts on leaving")
+	t.check((main.get_node("Enemies") as EnemySpawner).forced_modifiers.is_empty(), "monsters outside are plain again")
+	t.equal(rifts.depth, 2, "leaving after a clear keeps the depth")
+	rifts.fall_back()
+	t.equal(rifts.depth, 1, "a failed rift drops a depth")
+	rifts.fall_back()
+	t.equal(rifts.depth, 1, "never below the first")
+
+
+func test_village_projects(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var projects: VillageProjects = main.get_node("VillageProjects")
+	var center := Vector2i(190, 0)
+	var first := projects.current(center)
+	t.check(first != "", "a village asks for something")
+	t.equal(projects.tier_name(center), "Hamlet", "it starts a hamlet")
+	var data: Dictionary = VillageProjects.PROJECTS[first]
+	for item_id: String in data["needs"]:
+		player.inventory.add(Item.create(item_id, int(data["needs"][item_id])))
+	player.inventory.add_gold(int(data["gold"]) + 50)
+	for item_id: String in data["needs"]:
+		t.equal(projects.give(center, player, item_id), int(data["needs"][item_id]), "%s is given" % item_id)
+	t.check(not projects.has(center, first), "not built until the gold is in")
+	t.equal(projects.give_gold(center, player), int(data["gold"]), "the gold is given")
+	t.check(projects.has(center, first), "the %s is built" % first)
+	t.equal(projects.tier_name(center), "Village", "the hamlet grows")
+	t.check(projects.current(center) != first and projects.current(center) != "", "the next project is asked for")
+	t.equal(projects.give(center, player, "nothing_at_all"), 0, "nothing to give, nothing given")
+	var herbs := projects.harvest_garden(center, player, 7)
+	t.check(not herbs.is_empty(), "a garden gives herbs")
+	t.check(projects.harvest_garden(center, player, 7).is_empty(), "but only once a day")
+	# Well rested: more experience.
+	var xp := player.leveling.xp
+	var level := player.leveling.level
+	player.buffs.add("well_rested", "Well Rested", 60.0, {"xp_gain": {"flat": 0.1}})
+	player.leveling.add_xp(10)
+	t.check(player.leveling.level > level or player.leveling.xp - xp == 11, "well rested gives a tenth more experience")

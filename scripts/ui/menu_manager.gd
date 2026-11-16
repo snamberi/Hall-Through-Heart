@@ -35,7 +35,7 @@ const SCREENS: Array[Dictionary] = [
 ## Screens with a key of their own (rebindable): action -> screen id.
 const SHORTCUTS := {"open_inventory": "inventory", "open_quests": "journal", "open_map": "map"}
 ## Where a screen's Back button leads, when not to the wheel. "" closes.
-const BACK := {"settings": "pause", "teacher": "", "villager": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": "", "trophies": ""}
+const BACK := {"settings": "pause", "teacher": "", "villager": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": "", "trophies": "", "projects": "", "rift": ""}
 
 var _menus: Dictionary[String, GameMenu] = {}
 ## "" when closed, "wheel", or a screen id.
@@ -124,6 +124,12 @@ func setup(player: Player) -> void:
 	_add("wardrobe", WardrobeMenu.new())
 	_add("storage", StorageMenu.new())
 	_add("trophies", TrophyMenu.new())
+	_add("projects", ProjectsMenu.new())
+	_add("rift", RiftMenu.new())
+	Events.project_board_opened.connect(func(center: Vector2i) -> void:
+		(_menus["projects"] as ProjectsMenu).center = center
+		open("projects")
+	)
 	Events.trophy_stand_opened.connect(func(record: Dictionary) -> void:
 		(_menus["trophies"] as TrophyMenu).stand = record
 		open("trophies")

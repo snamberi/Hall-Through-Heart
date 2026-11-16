@@ -274,6 +274,13 @@ func _build_temple(placed: Array) -> void:
 	_decor(placed, Prop.Decor.BANNER, Vector2i(5, 1), 4.0)
 	placed.append(_rest_spot(Prop.Art.ALTAR, Vector2i(0, -3), "the Sanctuary"))
 	placed.append(_waystones().make_stone("sanctuary", "The Sanctuary", Vector2i(3, 4)))
+	# The Heart Rift: a red tear beside the way out, opened anew each week.
+	var rift := Prop.create(Prop.Art.PORTAL, _at(Vector2i(-3, 4)), 0.0, "Look into the Heart Rift", func(_p: Player) -> void:
+		Events.screen_requested.emit("rift")
+	)
+	rift.sprite().modulate = Color(1.0, 0.45, 0.5)
+	rift.add_light(0.9, 1.6, Color(1.0, 0.3, 0.4))
+	placed.append(rift)
 	# A first weapon for the taking, so nobody has to fight bare-handed for long.
 	if not used.has("temple:sword"):
 		placed.append(_chest(Vector2i(0, -5), "temple:sword", 1, 0.0, [LootGenerator.make_equipment(1, 0, "sword").to_dict(), Item.create("bandage", 3).to_dict(), Item.create("torch", 4).to_dict()]))

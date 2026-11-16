@@ -51,5 +51,7 @@ signal splash(at: Vector2)
 signal furnace_opened(record: Dictionary)
 ## A trophy stand was used: choose the trophy shown on it.
 signal trophy_stand_opened(record: Dictionary)
+## A village's project board was read (see VillageProjects).
+signal project_board_opened(center: Vector2i)
 ## A loot chest was opened: {"items": [saved items], "title", "take_only"}.
 signal loot_opened(container: Dictionary)

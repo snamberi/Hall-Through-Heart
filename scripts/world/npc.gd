@@ -24,6 +24,9 @@ const SELL_SHARE := 0.30
 var kind := "merchant"
 ## A wandering merchant sells rarer things.
 var wandering := false
+## A village's market hall: one more ware on the shelf, and a little off.
+var extra_shelf := 0
+var discount := 0.0
 ## Settlers and recruits: their trade, name, prompt, wares and colouring.
 var role := ""
 var title_text := ""
@@ -182,7 +185,7 @@ func restock_if_due(player: Player) -> void:
 	# The loot tables roll with the global dice; pin them for this shelf.
 	seed(hash(_shelf_key()))
 	var sold := _sold_here()
-	var shelf: int = Trade.TIERS[standing]["shelf"] if player.trade else SHELF
+	var shelf: int = (Trade.TIERS[standing]["shelf"] if player.trade else SHELF) + extra_shelf
 	_rarity_bonus = float(Trade.TIERS[standing]["rarity"]) if player.trade else 0.0
 	for slot in shelf:
 		if pool.is_empty():
@@ -205,6 +208,8 @@ func restock_if_due(player: Player) -> void:
 		offer_entry["base_price"] = offer_entry["price"]
 		if player.trade:
 			offer_entry["price"] = player.trade.buy_price(int(offer_entry["price"]))
+		if discount > 0.0:
+			offer_entry["price"] = maxi(roundi(int(offer_entry["price"]) * (1.0 - discount)), 1)
 		if not sold.has(slot):
 			stock.append(offer_entry)
 	randomize()

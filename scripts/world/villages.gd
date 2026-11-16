@@ -28,6 +28,27 @@ func setup(world: World) -> void:
 	_world = world
 	world.chunk_built.connect(_on_chunk_built)
 	world.chunk_freed.connect(_on_chunk_freed)
+	var projects := _projects()
+	if projects:
+		projects.changed.connect(func(key: String) -> void:
+			var parts := key.split(",")
+			rebuild(Vector2i(int(parts[0]), int(parts[1])))
+		)
+
+
+func _projects() -> VillageProjects:
+	return get_parent().get_node_or_null("VillageProjects")
+
+
+## Builds a village again (after a project is finished), if it stands now.
+func rebuild(center: Vector2i) -> void:
+	if not _built.has(center):
+		return
+	var chunk: Vector2i = _built[center]
+	for node: Variant in _by_chunk.get(chunk, []):
+		if is_instance_valid(node):
+			node.queue_free()
+	_by_chunk[chunk] = _build(center)
 
 
 ## Whether a tile is part of a village (so nothing grows there).
@@ -96,6 +117,113 @@ func _place_road_signs(chunk: Vector2i) -> void:
 		_signs[chunk] = placed
 
 
+## Where finished projects may stand, from the centre, nearest first.
+const PROJECT_SPOTS: Array[Vector2i] = [Vector2i(5, -10), Vector2i(-5, 10), Vector2i(5, 10), Vector2i(-5, -11), Vector2i(6, -13), Vector2i(-6, 13),
+	Vector2i(6, 13), Vector2i(-6, -13), Vector2i(0, -17), Vector2i(0, 17),
+	Vector2i(-17, 0), Vector2i(17, 0), Vector2i(14, -14), Vector2i(-14, 14), Vector2i(14, 14), Vector2i(-14, -14), Vector2i(20, 6), Vector2i(-20, -6)]
+## The plot each built project stands on: "village key:project" -> cell.
+var _plots: Dictionary = {}
+
+
+## The cell a built project stands on, if its village is standing.
+func plot_of(center: Vector2i, project: String) -> Variant:
+	return _plots.get(VillageProjects.key_of(center) + ":" + project)
+
+
+## The first project spot clear of everything placed and of other plots,
+## on dry ground: a project takes about five tiles by three.
+func _free_plot(center: Vector2i, placed: Array, taken: Array[Vector2i]) -> Vector2i:
+	for spot in PROJECT_SPOTS:
+		var plot := center + spot
+		if plot in taken:
+			continue
+		var clear := true
+		for dy in range(-2, 3):
+			for dx in range(-3, 4):
+				if not _world.generator.is_dry_land(plot + Vector2i(dx, dy)):
+					clear = false
+		var middle := _at(plot)
+		for node: Variant in placed:
+			if not clear or not is_instance_valid(node) or not node is Node2D or node is Npc:
+				continue
+			# Houses keep a wide berth; lanterns and barrels a small one.
+			var house: bool = node is Prop and (node as Prop).sprite().texture == Prop.SHEET and (node as Prop).sprite().frame == Prop.Art.HOUSE
+			if (node as Node2D).position.distance_to(middle) < (6.0 if house else 3.2) * TerrainTiles.TILE_SIZE:
+				clear = false
+		for other in taken:
+			if Vector2(other - plot).length() < 7.0:
+				clear = false
+		if clear:
+			return plot
+	return center + PROJECT_SPOTS[taken.size() % PROJECT_SPOTS.size()]
+
+
+func _build_project(project: String, plot: Vector2i, center: Vector2i, add: Callable) -> void:
+	var tile := _world.generator.tile_type_at(center + Vector2i(3, 3))
+	match project:
+		"smithy":
+			var forge := Prop.create_decor(Prop.Decor.FURNACE, _at(plot), 20.0)
+			forge.add_light(0.6, 0.8, Color(1.0, 0.6, 0.3))
+			add.call(forge)
+			add.call(Prop.create_decor(Prop.Decor.STALL, _at(plot + Vector2i(-3, 0)), 18.0))
+			var smith := Npc.create("settler", _at(plot + Vector2i(-3, 1), Vector2(0, 16)))
+			smith.title_text = "Village Smith"
+			smith.prompt_text = "Trade with the smith"
+			smith.stock_kind = "smith"
+			smith.tint = Color(0.8, 0.8, 0.9)
+			smith.home = _at(plot + Vector2i(-3, 1))
+			add.call(smith)
+		"inn":
+			var inn := Prop.create(Prop.Art.HOUSE, _at(plot), 34.0, "Rest at the inn", func(player: Player) -> void:
+				player.health.heal_full()
+				player.stamina.fill()
+				player.mana.fill()
+				player.buffs.add("well_rested", "Well Rested", 1200.0, {"xp_gain": {"flat": 0.1}})
+				Events.announcement.emit("WELL RESTED", "+10% experience for 20 minutes")
+			)
+			inn.sprite().scale = Vector2(2.0, 2.0)
+			inn.sprite().position.y = -50.0
+			HouseStyles.dress(inn, tile)
+			add.call(inn)
+			var sign := Prop.create_decor(Prop.Decor.BANNER, _at(plot + Vector2i(3, 1)), 5.0)
+			sign.sprite().modulate = Color(0.9, 0.75, 0.5)
+			add.call(sign)
+		"chapel":
+			var shrine := Prop.create_decor(Prop.Decor.STATUE, _at(plot), 14.0, "Pray at the shrine", func(player: Player) -> void:
+				player.health.heal_full()
+				player.buffs.add("blessed", "Blessed", 1200.0, {"max_health": {"percent": 0.06}})
+				RingBurst.spawn(get_parent(), player.global_position + Vector2(0, -14), Color(1.0, 0.95, 0.7), 60.0)
+				Events.announcement.emit("BLESSED", "+6% maximum health for 20 minutes")
+			)
+			shrine.add_light(0.8, 1.4, Color(1.0, 0.92, 0.7))
+			add.call(shrine)
+			for side: int in [-2, 2]:
+				var candles := Prop.create_decor(Prop.Decor.CANDLES, _at(plot + Vector2i(side, 1)), 0.0)
+				candles.add_light(0.6, 1.0)
+				add.call(candles)
+			add.call(Prop.create_decor(Prop.Decor.OBELISK, _at(plot + Vector2i(0, -2)), 10.0))
+		"market":
+			for offset: Vector2i in [Vector2i(-2, 0), Vector2i(2, 0)]:
+				add.call(Prop.create_decor(Prop.Decor.STALL, _at(plot + offset), 18.0))
+			add.call(Prop.create_decor(Prop.Decor.CRATE, _at(plot + Vector2i(0, 1)), 10.0))
+			add.call(Prop.create_decor(Prop.Decor.BARREL, _at(plot + Vector2i(4, 1)), 10.0))
+		"garden":
+			for offset: Vector2i in [Vector2i(-1, 0), Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
+				var soil := Prop.create_decor(Prop.Decor.SOIL, _at(plot + offset), 0.0)
+				soil.z_index = -5
+				soil.set_meta("flat", true)
+				add.call(soil)
+			var pot := Prop.create_decor(Prop.Decor.PLANT_POT, _at(plot + Vector2i(0, -1)), 8.0, "Gather from the herb garden", func(player: Player) -> void:
+				var day_night: DayNight = get_parent().get_node("DayNight")
+				var found := _projects().harvest_garden(center, player, day_night.day)
+				if found.is_empty():
+					DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -40), "Picked clean today", UITheme.DIM, 12)
+				for pair: Array in found:
+					Events.pickup_noted.emit(ItemDB.ITEMS[pair[0]]["name"], pair[1], UITheme.GOOD)
+			)
+			add.call(pot)
+
+
 ## A tile just off the side of a road, partway along it.
 func _beside_road(road: Array, t: float) -> Vector2i:
 	var direction := ((road[1] as Vector2) - (road[0] as Vector2)).normalized()
@@ -131,7 +259,11 @@ func _build(center: Vector2i) -> Array:
 	)
 	fire.add_light(1.0, 2.2)
 	add.call(fire)
-	add.call(Npc.create("merchant", _at(center + Vector2i(-3, -2), Vector2(0, 16))))
+	var merchant := Npc.create("merchant", _at(center + Vector2i(-3, -2), Vector2(0, 16)))
+	if _projects() and _projects().has(center, "market"):
+		merchant.extra_shelf = 1
+		merchant.discount = 0.05
+	add.call(merchant)
 	add.call(Npc.create("warden", _at(center + Vector2i(-3, 3))))
 	var board := Prop.create_decor(Prop.Decor.SIGNPOST, _at(center + Vector2i(-5, 3)), 6.0, "Read the bounty board", func(_player: Player) -> void:
 		Events.screen_requested.emit("bounty_board")
@@ -183,6 +315,15 @@ func _build(center: Vector2i) -> Array:
 	race_post.sprite().modulate = Color(1.0, 0.86, 0.45)
 	race_post.set_meta("race_course", course_key)
 	add.call(race_post)
+	# The project board, and whatever the village has built with your help.
+	var projects := _projects()
+	var asking := projects.current(center) if projects else ""
+	var project_board := Prop.create_decor(Prop.Decor.SIGNPOST, _at(center + Vector2i(-7, 3)), 6.0,
+		("Village project: %s" % VillageProjects.PROJECTS[asking]["name"]) if asking != "" else "Read the village's story", func(_player: Player) -> void:
+			Events.project_board_opened.emit(center)
+	)
+	project_board.sprite().modulate = Color(0.8, 0.9, 1.0)
+	add.call(project_board)
 
 	# Houses in each quarter between the roads.
 	var doors: Array[Vector2] = []
@@ -227,4 +368,12 @@ func _build(center: Vector2i) -> Array:
 		if person["job"] == "fisher" or person["job"] == "farmer":
 			villager.home = _at(center + Vector2i(random.randi_range(-9, 9), random.randi_range(6, 11)))
 		add.call(villager)
+	# What the village has built with your help, each on the first free plot.
+	if projects:
+		var taken: Array[Vector2i] = []
+		for project: String in projects.done(center):
+			var plot := _free_plot(center, placed, taken)
+			taken.append(plot)
+			_plots[VillageProjects.key_of(center) + ":" + project] = plot
+			_build_project(project, plot, center, add)
 	return placed

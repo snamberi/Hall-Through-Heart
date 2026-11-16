@@ -639,6 +639,8 @@ const ITEMS := {
 		"text": "Plates over the chest and flanks. +20% armour while riding, and blows no longer throw you from the saddle."},
 	"heartsteel_barding": {"name": "Heartsteel Barding", "icon": 153, "tint": Color("e0606a"), "material_rarity": 3, "tack": "barding", "tack_armour": 0.3, "tack_speed": 0.04, "steady": true, "value": 1400,
 		"text": "Dark red steel, light as leather. +30% armour while riding, 4% faster, and you cannot be thrown."},
+	"rift_shard": {"name": "Rift Shard", "icon": 154, "material_rarity": 3, "value": 120,
+		"text": "A splinter of a closed Heart Rift, still beating faintly. Runes are bound with it."},
 	"trophy_stand": {"name": "Trophy Stand", "decor": Prop.Decor.TROPHY_STAND, "icon": 149, "material_rarity": 1, "place": "trophy_stand", "value": 120,
 		"text": "A stand for a beaten boss's trophy. Set it inside a house, then choose a trophy for it: each one on show gives a small lasting bonus."},
 	"storage_chest": {"name": "Storage Chest", "icon": 55, "material_rarity": 0, "place": "chest", "value": 50, "text": "Holds 24 stacks. Use it from your bag to set it down."},

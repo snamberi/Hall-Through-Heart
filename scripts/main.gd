@@ -107,6 +107,12 @@ func _ready() -> void:
 	bounties.name = "Bounties"
 	add_child(bounties)
 	bounties.setup(_world, _player, _spawner)
+	var rifts := HeartRift.new()
+	rifts.name = "HeartRift"
+	add_child(rifts)
+	var projects := VillageProjects.new()
+	projects.name = "VillageProjects"
+	add_child(projects)
 	$Villages.setup(_world)
 	$Exploration.setup(_player, _world)
 	_resources.setup(_world)
