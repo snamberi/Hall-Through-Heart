@@ -1,16 +1,31 @@
 class_name MagicMenu
 extends GameMenu
-## The schools of magic: one card each, with its colour, what it is, and
-## its four spells with the level each opens at. At the Altar of Magic the
-## player takes up a school (or changes to one already learned); elsewhere
-## the screen says where the altar lies.
+## The schools of magic. On the left, one row per school with its colour
+## and a one-line role, to compare at a glance. On the right, the chosen
+## school: what it is and its four spells in a table (opens at, mana,
+## cooldown). At the Altar of Magic the player takes up a school (or changes
+## to one already learned); elsewhere the screen says where the altar lies
+## and offers to show it on the map.
 
-const CARD := Vector2(232.0, 370.0)
+const ROW := Vector2(400.0, 66.0)
+const DETAIL_WIDTH := 680.0
 ## How near the altar counts as standing at it, in pixels.
 const ALTAR_REACH := 160.0
+## Spell table columns: name, opens at, mana, cooldown.
+const COLUMNS: Array[float] = [380.0, 84.0, 70.0, 96.0]
 
+var _selected := ""
 var _status: Label
-var _cards: Dictionary[String, PanelContainer] = {}
+var _list: VBoxContainer
+var _icon: TextureRect
+var _name: Label
+var _mine: Control
+var _role: Label
+var _text: Label
+var _spells: VBoxContainer
+var _action: Button
+var _where: Label
+var _map: Button
 
 
 func _build() -> void:
@@ -20,66 +35,198 @@ func _build() -> void:
 	_status = UITheme.label("", 15, UITheme.TEXT)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_status.custom_minimum_size.x = 820.0
+	_status.custom_minimum_size.x = ROW.x + DETAIL_WIDTH
 	content.add_child(_status)
-	var grid := GridContainer.new()
-	grid.name = "Grid"
-	grid.columns = 5
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
-	content.add_child(grid)
+
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 16)
+	content.add_child(columns)
+	_list = VBoxContainer.new()
+	_list.add_theme_constant_override("separation", 6)
+	columns.add_child(_list)
+
+	var right := PanelContainer.new()
+	right.add_theme_stylebox_override("panel", UITheme.card("card", 14))
+	right.custom_minimum_size = Vector2(DETAIL_WIDTH, 0.0)
+	columns.add_child(right)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	right.add_child(box)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	box.add_child(head)
+	_icon = _picture(48.0)
+	head.add_child(_icon)
+	var words := VBoxContainer.new()
+	words.add_theme_constant_override("separation", 0)
+	head.add_child(words)
+	var name_row := HBoxContainer.new()
+	name_row.add_theme_constant_override("separation", 10)
+	words.add_child(name_row)
+	_name = UITheme.heading("", 24)
+	name_row.add_child(_name)
+	_mine = UITheme.badge("Your magic", "gold")
+	_mine.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	name_row.add_child(_mine)
+	_role = UITheme.label("", 15, UITheme.DIM)
+	words.add_child(_role)
+	_text = UITheme.paragraph("", DETAIL_WIDTH - 30.0, 15, UITheme.TEXT)
+	box.add_child(_text)
+	box.add_child(UITheme.rule())
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 0)
+	box.add_child(header)
+	for index in COLUMNS.size():
+		var cell := UITheme.label(["Spell", "Opens at", "Mana", "Cooldown"][index], 14, UITheme.DIM)
+		cell.custom_minimum_size.x = COLUMNS[index]
+		if index > 0:
+			cell.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		header.add_child(cell)
+	_spells = VBoxContainer.new()
+	_spells.add_theme_constant_override("separation", 6)
+	box.add_child(_spells)
+
+	var fill := Control.new()
+	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(fill)
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 12)
+	box.add_child(foot)
+	_where = UITheme.label("", 14, UITheme.DIM)
+	_where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_where.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_where.autowrap_mode = TextServer.AUTOWRAP_WORD
+	foot.add_child(_where)
+	_map = UITheme.button("Show altar on map", _show_altar, 190.0)
+	foot.add_child(_map)
+	_action = UITheme.primary_button("", func() -> void: _take_up(_selected), 220.0)
+	foot.add_child(_action)
+	visibility_changed.connect(func() -> void:
+		if not visible:
+			_selected = ""
+	)
+
+
+func refresh() -> void:
+	if _selected == "":
+		_selected = player.magic_school if player.magic_school != "" else MagicDB.SCHOOLS.keys()[0]
+	var at_altar := _at_altar()
+	var world: World = player.get_parent().get_node_or_null("World")
+	var where := ""
+	if world:
+		var offset := world.cell_to_world(world.generator.magic_altar_cell()) - player.global_position
+		where = "The Altar of Magic is about %d tiles to the %s." % [roundi(offset.length() / TerrainTiles.TILE_SIZE), _compass(offset)]
+	if at_altar:
+		_status.text = "The altar hums. Choose the magic you will carry." if player.magic_school == "" else "The altar hums. Change to any magic; you can come back at any time."
+	elif player.magic_school == "":
+		_status.text = "You have no magic yet. Take up a school at the Altar of Magic."
+	else:
+		_status.text = "Your magic: %s. Hold a magic weapon in slot 1 to cast its spells with the ability keys." % MagicDB.SCHOOLS[player.magic_school]["name"]
+	for child in _list.get_children():
+		child.queue_free()
 	for school: String in MagicDB.SCHOOLS:
-		var data: Dictionary = MagicDB.SCHOOLS[school]
-		var card := PanelContainer.new()
-		card.custom_minimum_size = CARD
-		var box := VBoxContainer.new()
-		box.add_theme_constant_override("separation", 5)
-		card.add_child(box)
-		var top := HBoxContainer.new()
-		top.add_theme_constant_override("separation", 8)
-		box.add_child(top)
-		var icon := TextureRect.new()
-		icon.texture = AbilityDB.icon(data["spells"][0])
-		icon.custom_minimum_size = Vector2(40, 40)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		top.add_child(icon)
-		var names := VBoxContainer.new()
-		names.add_theme_constant_override("separation", 0)
-		top.add_child(names)
-		var heading := UITheme.heading(data["name"], 20)
-		heading.add_theme_color_override("font_color", data["color"])
-		names.add_child(heading)
-		names.add_child(UITheme.label("%s magic" % data["short"], 13, UITheme.DIM))
-		var text := UITheme.label(data["text"], 14, UITheme.TEXT)
-		text.autowrap_mode = TextServer.AUTOWRAP_WORD
-		text.custom_minimum_size = Vector2(CARD.x - 24.0, 40.0)
-		box.add_child(text)
-		for spell: String in data["spells"]:
-			var ability: Dictionary = AbilityDB.ABILITIES[spell]
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 6)
-			row.tooltip_text = "%s\n%s\nMana %d, cooldown %ss" % [ability["name"], ability["text"], roundi(ability.get("mana", 0.0)), str(ability["cooldown"])]
-			var spell_icon := TextureRect.new()
-			spell_icon.texture = AbilityDB.icon(spell)
-			spell_icon.custom_minimum_size = Vector2(26, 26)
-			spell_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			spell_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			row.add_child(spell_icon)
-			var words := VBoxContainer.new()
-			words.add_theme_constant_override("separation", -2)
-			words.add_child(UITheme.label(ability["name"], 14, UITheme.HEADING))
-			words.add_child(UITheme.label("Lv %d  -  %d mana  -  %ss" % [ability.get("level", 1), roundi(ability.get("mana", 0.0)), str(ability["cooldown"])], 13, UITheme.DIM))
-			row.add_child(words)
-			box.add_child(row)
-		var spacer := Control.new()
-		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		box.add_child(spacer)
-		var button := UITheme.button("Take up", func() -> void: _take_up(school), CARD.x - 24.0)
-		button.name = "Choose"
-		box.add_child(button)
-		grid.add_child(card)
-		_cards[school] = card
+		_list.add_child(_row(school))
+	_show(_selected, at_altar, where)
+
+
+func _row(school: String) -> Button:
+	var data: Dictionary = MagicDB.SCHOOLS[school]
+	var chosen := school == _selected
+	var button := Button.new()
+	button.custom_minimum_size = ROW
+	for state: String in ["normal", "pressed"]:
+		button.add_theme_stylebox_override(state, UITheme.card("card_selected" if chosen else "card", 6))
+	button.add_theme_stylebox_override("hover", UITheme.card("card_selected" if chosen else "card_hover", 6))
+	button.pressed.connect(func() -> void:
+		_selected = school
+		refresh()
+	)
+	UITheme.sounds(button)
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(row)
+	var icon := _picture(40.0)
+	icon.texture = AbilityDB.icon(data["spells"][0])
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	var words := VBoxContainer.new()
+	words.add_theme_constant_override("separation", 0)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(words)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.add_child(top)
+	var name_label := UITheme.strong(data["name"], 17, data["color"])
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(name_label)
+	if school == player.magic_school:
+		var badge := UITheme.badge("Yours", "gold")
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		top.add_child(badge)
+	var role := UITheme.label(data["role"], 14, UITheme.DIM)
+	role.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.add_child(role)
+	return button
+
+
+func _show(school: String, at_altar: bool, where: String) -> void:
+	var data: Dictionary = MagicDB.SCHOOLS[school]
+	var current := school == player.magic_school
+	_icon.texture = AbilityDB.icon(data["spells"][0])
+	_name.text = data["name"]
+	_name.add_theme_color_override("font_color", data["color"])
+	_mine.visible = current
+	_role.text = "%s magic  ·  %s" % [data["short"], data["role"]]
+	_text.text = data["text"]
+	for child in _spells.get_children():
+		child.queue_free()
+	var level := player.leveling.level
+	for spell: String in data["spells"]:
+		var ability: Dictionary = AbilityDB.ABILITIES[spell]
+		var opens := int(ability.get("level", 1))
+		var open := level >= opens
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 0)
+		row.tooltip_text = "%s\n%s" % [ability["name"], ability["text"]]
+		var name_cell := HBoxContainer.new()
+		name_cell.add_theme_constant_override("separation", 8)
+		name_cell.custom_minimum_size.x = COLUMNS[0]
+		row.add_child(name_cell)
+		var icon := _picture(30.0)
+		icon.texture = AbilityDB.icon(spell)
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		name_cell.add_child(icon)
+		var words := VBoxContainer.new()
+		words.add_theme_constant_override("separation", -2)
+		name_cell.add_child(words)
+		words.add_child(UITheme.strong(ability["name"], 15, UITheme.HEADING))
+		var text := UITheme.label(ability["text"], 14, UITheme.DIM)
+		text.custom_minimum_size.x = COLUMNS[0] - 42.0
+		text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		text.clip_text = true
+		words.add_child(text)
+		var cells := ["Lv %d" % opens, "%d" % roundi(ability.get("mana", 0.0)), "%ss" % str(ability["cooldown"])]
+		for index in cells.size():
+			var cell := UITheme.strong(cells[index], 15, (UITheme.GOOD if open else UITheme.TEXT) if index == 0 else UITheme.TEXT)
+			cell.custom_minimum_size.x = COLUMNS[index + 1]
+			cell.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(cell)
+		_spells.add_child(row)
+	# The action: take it up here, or find the altar.
+	_action.visible = at_altar
+	_map.visible = not at_altar
+	if at_altar:
+		_where.text = "Your current magic." if current else "You can change back at any time."
+		_action.text = "Your magic" if current else ("Take up %s" % data["name"] if player.magic_school == "" else "Change to %s" % data["name"])
+		_action.disabled = current
+	else:
+		_where.text = "%s Take up a school there." % where if not current else "Change school at the Altar of Magic. %s" % where
 
 
 func _take_up(school: String) -> void:
@@ -93,6 +240,15 @@ func _take_up(school: String) -> void:
 	refresh()
 
 
+## Opens the map on the altar, marked.
+func _show_altar() -> void:
+	var world: World = player.get_parent().get_node_or_null("World")
+	if world == null:
+		return
+	MapMenu.focus_on(world.cell_to_world(world.generator.magic_altar_cell()), "Altar of Magic")
+	Events.screen_requested.emit("map")
+
+
 func _at_altar() -> bool:
 	var world: World = player.get_parent().get_node_or_null("World")
 	if world == null:
@@ -100,30 +256,14 @@ func _at_altar() -> bool:
 	return player.global_position.distance_to(world.cell_to_world(world.generator.magic_altar_cell())) < ALTAR_REACH
 
 
-func refresh() -> void:
-	(content.get_node("Grid") as GridContainer).columns = columns_for(CARD + Vector2(10.0, 10.0), MagicDB.SCHOOLS.size(), 2, 5)
-	var at_altar := _at_altar()
-	var world: World = player.get_parent().get_node_or_null("World")
-	if at_altar:
-		_status.text = "The altar hums. Choose the magic you will carry." if player.magic_school == "" else "The altar hums. Change to any magic you choose; you can come back at any time."
-	elif world:
-		var altar := world.cell_to_world(world.generator.magic_altar_cell())
-		var offset := altar - player.global_position
-		var tiles := roundi(offset.length() / TerrainTiles.TILE_SIZE)
-		var where := "The Altar of Magic stands about %d tiles to the %s (it is on your map)." % [tiles, _compass(offset)]
-		if player.magic_school == "":
-			_status.text = "You have no magic yet. %s Go there to take up a school." % where
-		else:
-			_status.text = "Your magic: %s. %s Hold a magic weapon in slot 1 to cast its spells with the ability keys." % [MagicDB.SCHOOLS[player.magic_school]["name"], where]
-	for school: String in _cards:
-		var card := _cards[school]
-		var current := school == player.magic_school
-		var color: Color = MagicDB.SCHOOLS[school]["color"]
-		var style := UITheme.card("card_selected" if current else "card", 12)
-		card.add_theme_stylebox_override("panel", style)
-		var button := card.find_child("Choose", true, false) as Button
-		button.text = "Your magic" if current else ("Take up" if at_altar else "Visit the altar")
-		button.disabled = current or not at_altar
+static func _picture(side: float) -> TextureRect:
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(side, side)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return icon
 
 
 static func _compass(offset: Vector2) -> String:

@@ -1,13 +1,19 @@
 class_name TalentMenu
 extends GameMenu
-## The talent tree on a canvas: drag to look around, scroll to zoom, hover a
-## talent to read it, click to learn a rank.
+## The talent tree on a canvas: drag to look around, scroll to zoom. Click
+## a talent to choose it; the panel on the right says what it gives, what
+## it needs and what it costs, and only its Learn button spends a point,
+## so no drag or stray click can spend one.
 
 const RADIUS := {"minor": 15.0, "major": 20.0, "keystone": 24.0, "milestone": 26.0}
 
 var _points: Label
 var _canvas: Control
 var _details: RichTextLabel
+var _learn: Button
+var _reason: Label
+var _zoom_label: Label
+var _selected := ""
 var _offset := Vector2.ZERO
 var _zoom := 0.7
 var _dragging := false
@@ -19,21 +25,37 @@ var _icons: Dictionary = {}
 
 func _build() -> void:
 	_font = UITheme.get_theme().default_font
+	content.add_theme_constant_override("separation", 8)
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 28)
+	top.add_theme_constant_override("separation", 20)
 	content.add_child(top)
-	top.add_child(UITheme.heading("TALENTS", 30))
-	_points = UITheme.label("", 18, UITheme.GOLD)
-	_points.size_flags_vertical = Control.SIZE_SHRINK_END
+	top.add_child(UITheme.heading("TALENTS", 28))
+	_points = UITheme.strong("", 17, UITheme.GOLD)
+	_points.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_points.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(_points)
-	top.add_child(UITheme.label("Drag to look around   Scroll to zoom   Click to learn", 14, UITheme.DIM))
+	var fit := UITheme.button("Fit tree", _fit_tree, 96.0)
+	fit.tooltip_text = "Pull back until the whole tree is in view."
+	top.add_child(fit)
+	top.add_child(UITheme.button("Centre heart", func() -> void:
+		_offset = Vector2.ZERO
+		_zoom = 0.8
+		refresh()
+	, 120.0))
+	top.add_child(UITheme.button("−", func() -> void: _set_zoom(_zoom * 0.85), 36.0))
+	_zoom_label = UITheme.label("", 15)
+	_zoom_label.custom_minimum_size.x = 50.0
+	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_zoom_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(_zoom_label)
+	top.add_child(UITheme.button("+", func() -> void: _set_zoom(_zoom * 1.18), 36.0))
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 12)
 	content.add_child(columns)
 	var frame := UITheme.inset_panel()
 	columns.add_child(frame)
 	_canvas = Control.new()
-	_canvas.custom_minimum_size = Vector2(840, 540)
+	_canvas.custom_minimum_size = Vector2(820, 520)
 	_canvas.clip_contents = true
 	_canvas.mouse_filter = Control.MOUSE_FILTER_STOP
 	_canvas.draw.connect(_draw_tree)
@@ -41,20 +63,77 @@ func _build() -> void:
 	frame.add_child(_canvas)
 	var side := UITheme.inset_panel()
 	columns.add_child(side)
+	var side_box := VBoxContainer.new()
+	side_box.add_theme_constant_override("separation", 8)
+	side.add_child(side_box)
 	_details = RichTextLabel.new()
 	_details.bbcode_enabled = true
-	_details.scroll_active = false
-	_details.custom_minimum_size = Vector2(300, 540)
+	_details.scroll_active = true
+	_details.custom_minimum_size = Vector2(300, 400)
+	_details.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	UITheme.font_size(_details, 15, "normal_font_size")
 	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	side.add_child(_details)
+	side_box.add_child(_details)
+	_reason = UITheme.reason("", 300.0)
+	side_box.add_child(_reason)
+	_learn = UITheme.primary_button("Learn", _learn_selected, 300.0)
+	side_box.add_child(_learn)
+	side_box.add_child(UITheme.label("Drag to look round  ·  scroll to zoom", 14, UITheme.DIM))
 	player.talents.changed.connect(refresh_if_open)
 
 
 func refresh() -> void:
-	_points.text = "Points: %d      Spent: %d" % [player.leveling.talent_points, player.talents.spent_points()]
-	_describe(_hovered)
+	_points.text = "%d point%s to spend  ·  %d spent" % [player.leveling.talent_points, "" if player.leveling.talent_points == 1 else "s", player.talents.spent_points()]
+	_points.add_theme_color_override("font_color", UITheme.GOLD if player.leveling.talent_points > 0 else UITheme.DIM)
+	_zoom_label.text = "%d%%" % roundi(_zoom * 100.0)
+	_describe(_hovered if _hovered != "" else _selected)
+	_refresh_learn()
 	_canvas.queue_redraw()
+
+
+func _set_zoom(value: float) -> void:
+	_zoom = clampf(value, 0.3, 1.6)
+	refresh()
+
+
+## Pulls back and centres until every talent is in view.
+func _fit_tree() -> void:
+	var bounds := Rect2()
+	var first := true
+	for id: String in TalentDB.NODES:
+		var at := TalentDB.position(id)
+		bounds = Rect2(at, Vector2.ZERO) if first else bounds.expand(at)
+		first = false
+	bounds = bounds.grow(40.0)
+	var room := _canvas.size if _canvas.size.x > 10.0 else _canvas.custom_minimum_size
+	_zoom = clampf(minf(room.x / bounds.size.x, (room.y - 40.0) / bounds.size.y), 0.3, 1.6)
+	_offset = -bounds.get_center()
+	refresh()
+
+
+func _refresh_learn() -> void:
+	if _selected == "":
+		_learn.disabled = true
+		_learn.text = "Learn"
+		_reason.text = "Click a talent to choose it."
+		_reason.add_theme_color_override("font_color", UITheme.DIM)
+		return
+	var node: Dictionary = TalentDB.NODES[_selected]
+	var rank := player.talents.rank(_selected)
+	var reason := player.talents.blocked_reason(_selected)
+	_learn.disabled = reason != ""
+	if rank >= int(node["max"]):
+		_learn.text = "Learned in full"
+	else:
+		_learn.text = "Learn rank %d  ·  1 point" % (rank + 1) if node["max"] > 1 else "Learn  ·  1 point"
+	_reason.text = reason
+	_reason.add_theme_color_override("font_color", Color("e8a070"))
+
+
+func _learn_selected() -> void:
+	if _selected != "" and player.talents.learn(_selected):
+		Audio.play("level_up", -12.0, 0.1)
+	refresh()
 
 
 func _to_screen(id: String) -> Vector2:
@@ -77,13 +156,16 @@ func _on_input(event: InputEvent) -> void:
 				_dragged = 0.0
 			else:
 				_dragging = false
-				# A click that did not drag learns the talent under the mouse.
+				# A click that did not drag chooses the talent; it never spends.
 				if _dragged < 6.0:
 					var id := _node_at(event.position)
-					if id != "" and player.talents.learn(id):
-						Audio.play("level_up", -12.0, 0.1)
+					if id != "":
+						_selected = id
+						Audio.play("ui_click", -10.0, 0.05)
+						refresh()
 		elif event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 			_zoom = clampf(_zoom * (1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.89), 0.3, 1.6)
+			_zoom_label.text = "%d%%" % roundi(_zoom * 100.0)
 			_canvas.queue_redraw()
 	elif event is InputEventMouseMotion:
 		if _dragging:
@@ -93,7 +175,7 @@ func _on_input(event: InputEvent) -> void:
 		var id := _node_at(event.position)
 		if id != _hovered:
 			_hovered = id
-			_describe(id)
+			_describe(id if id != "" else _selected)
 			_canvas.queue_redraw()
 
 
@@ -133,6 +215,10 @@ func _draw_node(id: String) -> void:
 		rim = rim.darkened(0.6)
 	if id == _hovered:
 		_canvas.draw_circle(at, radius + 7.0 * _zoom, Color(tint, 0.25))
+	# Can be learned now: a breathing ring in the branch's colour.
+	if rank < int(node["max"]) and reachable and player.leveling.talent_points > 0:
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 260.0)
+		_canvas.draw_arc(at, radius + 6.0 * _zoom, 0.0, TAU, 32, Color(tint.lightened(0.3), 0.45 + 0.4 * pulse), 2.0)
 	if node["kind"] == "keystone":
 		var diamond := PackedVector2Array([at + Vector2(0, -radius - 4), at + Vector2(radius + 4, 0), at + Vector2(0, radius + 4), at + Vector2(-radius - 4, 0)])
 		_canvas.draw_colored_polygon(diamond, rim)
@@ -146,15 +232,25 @@ func _draw_node(id: String) -> void:
 	var size := radius * 1.3
 	var shade := Color.WHITE if rank > 0 else Color(0.75, 0.75, 0.8) if reachable else Color(0.35, 0.35, 0.4)
 	_canvas.draw_texture_rect(icon, Rect2(at - Vector2(size, size) / 2.0, Vector2(size, size)), false, shade)
+	# Out of reach for now: a small padlock.
+	if rank == 0 and not reachable and _zoom >= 0.9:
+		var lock_size := 12.0
+		_canvas.draw_texture_rect(UITheme.lock_texture(), Rect2(at + Vector2(radius * 0.45, radius * 0.25), Vector2(lock_size, lock_size)), false, Color(0.8, 0.8, 0.86, 0.9))
+	# Learned in full: a gold tick.
+	if rank >= int(node["max"]):
+		_canvas.draw_texture_rect(UITheme.tick_texture(), Rect2(at + Vector2(radius * 0.4, -radius - 4.0), Vector2(14, 14)), false)
+	if id == _selected:
+		_canvas.draw_arc(at, radius + 10.0 * _zoom + 2.0, 0.0, TAU, 40, Color.WHITE, 2.0)
 	if node["max"] > 1:
 		var label := "%d/%d" % [rank, node["max"]]
-		_canvas.draw_string_outline(_font, at + Vector2(-20, radius + 14.0 * _zoom), label, HORIZONTAL_ALIGNMENT_CENTER, 40, 13, 4, Color.BLACK)
-		_canvas.draw_string(_font, at + Vector2(-20, radius + 14.0 * _zoom), label, HORIZONTAL_ALIGNMENT_CENTER, 40, 13, UITheme.GOLD if rank >= node["max"] else UITheme.TEXT)
+		var ink := UITheme.body_bold()
+		_canvas.draw_string_outline(ink, at + Vector2(-22, radius + 16.0 * _zoom + 4.0), label, HORIZONTAL_ALIGNMENT_CENTER, 44, 14, 4, Color.BLACK)
+		_canvas.draw_string(ink, at + Vector2(-22, radius + 16.0 * _zoom + 4.0), label, HORIZONTAL_ALIGNMENT_CENTER, 44, 14, UITheme.GOLD if rank >= node["max"] else UITheme.TEXT)
 
 
 func _describe(id: String) -> void:
 	if id == "":
-		_details.text = "[color=#%s]Every path starts at the Awakened Heart in the middle. Learn a talent and its neighbours open up.\n\nGold-rimmed milestones are big. They open after 10, 20, 30, and 40 points are spent in the tree.\n\nYou earn a talent point every two levels.[/color]" % UITheme.DIM.to_html(false)
+		_details.text = "[color=#%s]Click a talent to choose it, then press Learn.\n\nEvery path starts at the Awakened Heart in the middle. Learn a talent and its neighbours open up. A breathing ring marks what can be learned now; a padlock what is out of reach.\n\nGold-rimmed milestones are big. They open after 10, 20, 30, and 40 points are spent in the tree.\n\nYou earn a talent point every two levels.[/color]" % UITheme.DIM.to_html(false)
 		return
 	var node: Dictionary = TalentDB.NODES[id]
 	var rank := player.talents.rank(id)
@@ -173,8 +269,19 @@ func _describe(id: String) -> void:
 		lines.append("[color=#%s]%s[/color]" % [UITheme.DIM.to_html(false), "Next rank:" if rank > 0 else "Gives:"])
 		for line in TalentDB.describe(id, rank + 1):
 			lines.append(line)
-		var reason := player.talents.blocked_reason(id)
-		if reason != "":
+		var needs: PackedStringArray = []
+		for other: String in TalentDB.neighbours(id):
+			if player.talents.has(other):
+				needs.clear()
+				break
+			needs.append(TalentDB.NODES[other]["name"])
+		if rank == 0 and not needs.is_empty() and not player.talents.reachable(id):
 			lines.append("")
-			lines.append("[color=#%s]%s[/color]" % [UITheme.BAD.to_html(false), reason])
+			lines.append("[color=#%s]Needs a learned neighbour: %s[/color]" % [UITheme.DIM.to_html(false), " or ".join(needs.slice(0, 3))])
 	_details.text = "\n".join(lines)
+
+
+func _process(_delta: float) -> void:
+	# The rings round what can be learned breathe while the tree is open.
+	if is_visible_in_tree() and player.leveling.talent_points > 0:
+		_canvas.queue_redraw()

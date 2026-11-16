@@ -115,6 +115,21 @@ func preview_changes(attribute_id: String, amount: int) -> Array[Dictionary]:
 	return changes
 
 
+## Every shown statistic, before and after some planned points: id ->
+## [before, after], formatted.
+func preview_plan(plan: Dictionary) -> Dictionary:
+	var before: Dictionary = {}
+	for entry in DISPLAY:
+		before[entry["id"]] = get_stat(entry["id"])
+	_preview = plan.duplicate()
+	var result: Dictionary = {}
+	for entry in DISPLAY:
+		var after := get_stat(entry["id"])
+		result[entry["id"]] = [format_value(entry["format"], before[entry["id"]]), format_value(entry["format"], after), not is_equal_approx(after, before[entry["id"]])]
+	_preview = {}
+	return result
+
+
 static func format_value(format: String, value: float) -> String:
 	match format:
 		"per_second":

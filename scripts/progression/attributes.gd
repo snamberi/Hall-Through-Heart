@@ -16,6 +16,16 @@ const NAMES := {
 	"endurance": "Endurance",
 }
 
+## What each attribute is for, in a line.
+const TEXT := {
+	"strength": "Hits harder with weapons and fists.",
+	"vitality": "More health, and it comes back faster.",
+	"agility": "Strikes and moves faster; dodges cost less.",
+	"luck": "Critical hits, and finer loot and gold.",
+	"intelligence": "Stronger magic and more mana.",
+	"endurance": "More stamina, armour and staying power.",
+}
+
 var unspent := 0
 var points: Dictionary[String, int] = {}
 

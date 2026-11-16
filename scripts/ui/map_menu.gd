@@ -31,6 +31,17 @@ var _texture: ImageTexture
 var _dirty := true
 var _icons: Array = []
 var _colors: Dictionary = {}
+## A place another screen asked to see: [tile, name], drawn ringed.
+var _marker: Array = []
+
+## Waiting for the map's next opening: [world position, name], or empty.
+static var _focus: Array = []
+
+
+## Asks the map to open on a place, marked with its name (the Magic screen
+## uses this for the Altar of Magic).
+static func focus_on(world_position: Vector2, place: String) -> void:
+	_focus = [world_position, place]
 
 
 func _build() -> void:
@@ -66,6 +77,12 @@ func refresh() -> void:
 		_exploration = player.get_parent().get_node("Exploration")
 	_minimap.set_pressed_no_signal(GameSettings.show_minimap)
 	_center_on_player()
+	_marker = []
+	if not _focus.is_empty():
+		var tile := _world.world_to_cell(_focus[0])
+		_marker = [tile, _focus[1]]
+		_center = Vector2(tile) / Exploration.CELL
+		_focus = []
 	_dirty = true
 	_view.queue_redraw()
 
@@ -145,6 +162,15 @@ func _draw_view() -> void:
 		if player.pets and player.pets.active >= 0:
 			MapIcons.draw(_view, to_map.call(player.pets.global_position), "pet", 13.0)
 	MapIcons.draw_player(_view, at, player.facing, 22.0)
+	if not _marker.is_empty():
+		var spot := (Vector2(_marker[0]) / Exploration.CELL - _center) * scale + _view.size / 2.0
+		_view.draw_arc(spot, 20.0, 0.0, TAU, 32, Color(0, 0, 0, 0.6), 5.0)
+		_view.draw_arc(spot, 20.0, 0.0, TAU, 32, UITheme.GOLD, 2.5)
+		var font := UITheme.body_bold()
+		var words: String = _marker[1]
+		var width := font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+		_view.draw_rect(Rect2(spot + Vector2(-width / 2.0 - 6.0, -50.0), Vector2(width + 12.0, 24.0)), Color(0.04, 0.05, 0.08, 0.85))
+		_view.draw_string(font, spot + Vector2(-width / 2.0, -32.0), words, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UITheme.GOLD)
 	# A frame around the map.
 	_view.draw_rect(Rect2(Vector2.ZERO, _view.size), Color("402f1c"), false, 4.0)
 	_view.draw_rect(Rect2(Vector2(2, 2), _view.size - Vector2(4, 4)), Color("8a683a"), false, 1.5)

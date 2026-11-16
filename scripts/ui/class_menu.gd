@@ -1,7 +1,8 @@
 class_name ClassMenu
 extends GameMenu
 ## Before level 10: what the classes are. At level 10: choosing one, for
-## good. After that: the class's own tree of abilities and passives.
+## good, with a confirmation that says so. After that: the class's own tree
+## of abilities and passives, with the free points by the heading.
 
 var _title: Label
 var _note: Label
@@ -29,6 +30,9 @@ var _picked_ability := false
 var _picked_entry: Array = []
 var _detail_icon: TextureRect
 var _learn: Button
+var _to_abilities: Button
+## The class a card was chosen for, waiting on Confirm in the pop-up.
+var _pending := ""
 
 
 func _build() -> void:
@@ -40,11 +44,17 @@ func _build() -> void:
 	content.add_child(_note)
 	_choose_box = GridContainer.new()
 	_choose_box.columns = 3
-	_choose_box.add_theme_constant_override("h_separation", 14)
-	_choose_box.add_theme_constant_override("v_separation", 14)
+	_choose_box.add_theme_constant_override("h_separation", 12)
+	_choose_box.add_theme_constant_override("v_separation", 10)
 	content.add_child(_choose_box)
 	for id in HeroClasses.CHOICES:
 		_choose_box.add_child(_card(id))
+	# A question left open closes with the screen.
+	visibility_changed.connect(func() -> void:
+		if not visible:
+			for popup in find_children("*", "PopupPanel", false, false):
+				(popup as PopupPanel).hide()
+	)
 	_tree_box = HBoxContainer.new()
 	_tree_box.add_theme_constant_override("separation", 12)
 	content.add_child(_tree_box)
@@ -54,24 +64,10 @@ func _build() -> void:
 	_tree_box.add_child(left_panel)
 	_left = VBoxContainer.new()
 	_left.add_theme_constant_override("separation", 6)
-	_left.custom_minimum_size.x = 220.0
+	_left.custom_minimum_size.x = 210.0
 	left_panel.add_child(_left)
-	_left.add_child(UITheme.heading("Classes", 17))
-	for id: String in HeroClasses.CHOICES:
-		var data: Dictionary = HeroClasses.CLASSES[id]
-		var row := Button.new()
-		row.name = id
-		row.text = "  " + data["name"]
-		row.icon = ItemDB.icon(data["icon"])
-		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		row.toggle_mode = true
-		row.custom_minimum_size = Vector2(220.0, 34.0)
-		row.add_theme_constant_override("icon_max_width", 22)
-		UITheme.font_size(row, 15)
-		row.tooltip_text = data["text"]
-		_left.add_child(row)
 	_portrait = LookPreview.new()
-	_portrait.custom_minimum_size = Vector2(220.0, 150.0)
+	_portrait.custom_minimum_size = Vector2(210.0, 190.0)
 	_portrait.zoom = 2.4
 	_portrait.framed = false
 	_left.add_child(_portrait)
@@ -81,12 +77,20 @@ func _build() -> void:
 	_class_text = UITheme.label("", 14, UITheme.DIM)
 	_class_text.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_class_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_class_text.custom_minimum_size.x = 220.0
+	_class_text.custom_minimum_size.x = 210.0
 	_left.add_child(_class_text)
-	_points = UITheme.label("", 15, UITheme.GOLD)
+	_points = UITheme.strong("", 16, UITheme.GOLD)
 	_points.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_points.custom_minimum_size.x = 220.0
+	_points.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_points.custom_minimum_size.x = 210.0
 	_left.add_child(_points)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_left.add_child(spacer)
+	# The other classes, out of the way: a list in a pop-up.
+	var others := UITheme.button("Other classes...", _show_other_classes, 210.0)
+	others.tooltip_text = "See what the other classes were. Your class is for life."
+	_left.add_child(others)
 
 	# --- middle: the two trees
 	for column: Array in [["abilities", "Active Abilities", "Skills for the bar, each opening the next."], ["passives", "Passives", "Lasting gifts that shape your build."]]:
@@ -98,11 +102,11 @@ func _build() -> void:
 		var head := UITheme.heading(column[1], 19)
 		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(head)
-		var sub := UITheme.label(column[2], 13, UITheme.DIM)
+		var sub := UITheme.label(column[2], 14, UITheme.DIM)
 		sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(sub)
 		var canvas := Control.new()
-		canvas.custom_minimum_size = Vector2(250.0, 390.0)
+		canvas.custom_minimum_size = Vector2(276.0, 420.0)
 		canvas.draw.connect(_draw_links.bind(canvas, column[0]))
 		box.add_child(canvas)
 		_trees[column[0]] = canvas
@@ -134,19 +138,24 @@ func _build() -> void:
 	_ranks.bbcode_enabled = true
 	_ranks.fit_content = true
 	_ranks.scroll_active = false
-	_ranks.custom_minimum_size = Vector2(290, 260)
+	_ranks.custom_minimum_size = Vector2(290, 200)
 	UITheme.font_size(_ranks, 15, "normal_font_size")
 	_ranks.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_box.add_child(_ranks)
-	_learn = UITheme.button("Learn", func() -> void:
+	var fill := Control.new()
+	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_box.add_child(fill)
+	_message = UITheme.reason("", 290.0)
+	right_box.add_child(_message)
+	_learn = UITheme.primary_button("Learn", func() -> void:
 		if _picked != "":
 			_message.text = "" if player.learn_class_node(_picked) else player.class_node_problem(_picked)
 			refresh()
 	, 290.0)
-	_learn.custom_minimum_size.y = 40.0
 	right_box.add_child(_learn)
-	_message = UITheme.label("", 14, UITheme.BAD)
-	right_box.add_child(_message)
+	# Learning an active skill does not put it on a key: this goes to where that is done.
+	_to_abilities = UITheme.button("Go to Abilities to assign it", func() -> void: Events.screen_requested.emit("abilities"), 290.0)
+	right_box.add_child(_to_abilities)
 	player.class_changed.connect(refresh_if_open)
 
 
@@ -163,22 +172,21 @@ func refresh() -> void:
 		if level < HeroClasses.CHOICE_LEVEL:
 			_note.text = "Reach level %d to choose a class. You are level %d." % [HeroClasses.CHOICE_LEVEL, level]
 		else:
-			_note.text = "Choose your path. This choice is permanent."
+			_note.text = "Choose your path. This choice is for life: it cannot be changed later."
 		for card in _choose_box.get_children():
-			(card.find_child("Choose", true, false) as Button).disabled = level < HeroClasses.CHOICE_LEVEL
+			var button := card.find_child("Choose", true, false) as Button
+			button.disabled = level < HeroClasses.CHOICE_LEVEL
+			button.tooltip_text = "Reach level %d first." % HeroClasses.CHOICE_LEVEL if button.disabled else ""
+			(card as PanelContainer).add_theme_stylebox_override("panel", UITheme.card("card_selected" if card.name == _pending else "card", 10))
 		return
 	var data: Dictionary = HeroClasses.CLASSES[player.class_id]
-	_note.text = ",   ".join(HeroClasses.describe_bonuses(player.class_id))
-	for id: String in HeroClasses.CHOICES:
-		var row := _left.get_node(id) as Button
-		row.set_pressed_no_signal(id == player.class_id)
-		row.disabled = id != player.class_id
+	var next_level := player.class_chosen_at + (player.class_points_total()) * HeroClasses.CLASS_POINT_LEVELS
+	_note.text = "%d class point%s free  ·  next at level %d      %s" % [player.class_points_free(), "" if player.class_points_free() == 1 else "s", next_level, ",  ".join(HeroClasses.describe_bonuses(player.class_id))]
 	_portrait.show_look(player.appearance)
 	_portrait.play("attack")
 	_class_name.text = data["name"]
 	_class_text.text = data["text"]
-	var next_point := player.class_chosen_at + (player.class_points_total()) * HeroClasses.CLASS_POINT_LEVELS
-	_points.text = "Class points  %d free\n%d earned; next at level %d" % [player.class_points_free(), player.class_points_total(), next_point]
+	_points.text = "%d class point%s free" % [player.class_points_free(), "" if player.class_points_free() == 1 else "s"]
 	var tree: Dictionary = HeroClasses.TREES[player.class_id]
 	_fill_tree("abilities", tree["abilities"])
 	_fill_tree("passives", tree["passives"])
@@ -207,9 +215,9 @@ func _fill_tree(column: String, entries: Array) -> void:
 		node.position = at
 		node.size = Vector2(NODE, NODE)
 		node.custom_minimum_size = Vector2(NODE, NODE)
-		var style := UITheme.slot("slot_active" if learned or id == _picked else "slot_hover" if open else "slot")
-		if id == _picked and not learned:
-			style.modulate_color = Color(1.2, 1.2, 1.2)
+		# Learned is gold; can be learned now is lit; chosen is a white ring
+		# round whichever it is, so the three never look alike.
+		var style := UITheme.slot("slot_active" if learned else "slot_hover" if open else "slot")
 		var hover := UITheme.slot("slot_active" if learned else "slot_hover")
 		node.add_theme_stylebox_override("normal", style)
 		node.add_theme_stylebox_override("hover", hover)
@@ -222,7 +230,8 @@ func _fill_tree(column: String, entries: Array) -> void:
 		picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		node.add_child(picture)
-		var badge := UITheme.label("%d / %d" % [rank, max_rank], 13, UITheme.GOLD if learned else UITheme.TEXT)
+		var badge := UITheme.label("%d / %d" % [rank, max_rank], 14, UITheme.GOLD if learned else UITheme.TEXT)
+		badge.add_theme_font_override("font", UITheme.body_bold())
 		badge.add_theme_color_override("font_outline_color", Color.BLACK)
 		badge.add_theme_constant_override("outline_size", 4)
 		badge.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -232,10 +241,28 @@ func _fill_tree(column: String, entries: Array) -> void:
 		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		node.add_child(badge)
+		if id == _picked:
+			var ring := ReferenceRect.new()
+			ring.border_color = Color.WHITE
+			ring.border_width = 2.0
+			ring.editor_only = false
+			ring.position = at - Vector2(5, 5)
+			ring.size = Vector2(NODE + 10.0, NODE + 10.0)
+			ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			canvas.add_child(ring)
+		if not learned and not open and rank < max_rank:
+			var lock := TextureRect.new()
+			lock.texture = UITheme.lock_texture()
+			lock.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			lock.position = Vector2(4, 4)
+			lock.size = Vector2(16, 16)
+			lock.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			node.add_child(lock)
 		var title: String = AbilityDB.ABILITIES[id]["name"] if abilities else entry[1]
-		var caption := UITheme.label(title, 13, UITheme.TEXT if learned or open else UITheme.DIM)
-		caption.position = at + Vector2(-38.0, NODE + 3.0)
-		caption.size = Vector2(NODE + 76.0, 16.0)
+		var caption := UITheme.label(title, 14, UITheme.TEXT if learned or open else UITheme.DIM)
+		caption.position = at + Vector2(-46.0, NODE + 4.0)
+		caption.size = Vector2(NODE + 92.0, 18.0)
 		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		canvas.add_child(caption)
@@ -294,7 +321,7 @@ func _pick(id: String, ability: bool, entry: Array) -> void:
 			costs.append("%d mana" % roundi(data["mana"]))
 		ranks.append("[color=#%s]Cooldown %ss   Costs %s[/color]" % [UITheme.INFO.to_html(false), str(data["cooldown"]), " and ".join(costs) if not costs.is_empty() else "nothing"])
 		ranks.append("")
-		ranks.append("[color=#%s]Once learned, put it on the bar from the Abilities screen.[/color]" % UITheme.DIM.to_html(false))
+		ranks.append("[color=#%s]Learning it does not put it on a key: assign it on the Abilities screen.[/color]" % UITheme.DIM.to_html(false))
 	else:
 		_detail_icon.texture = ItemDB.icon(entry[4])
 		head.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [UITheme.HEADING.to_html(false), entry[1]])
@@ -311,18 +338,21 @@ func _pick(id: String, ability: bool, entry: Array) -> void:
 			ranks.append("[color=#%s]Rank %d[/color]   [color=#%s]%s[/color]" % [(UITheme.GOLD if reached else UITheme.DIM).to_html(false), step,
 				(UITheme.GOOD if reached else UITheme.TEXT).to_html(false), ", ".join(parts)])
 	var problem := player.class_node_problem(id)
-	if problem != "" and problem != "Fully learned.":
-		ranks.append("")
-		ranks.append("[color=#%s]%s[/color]" % [UITheme.BAD.to_html(false), problem])
+	_message.text = ""
 	_details.text = "\n".join(head)
 	_ranks.text = "\n".join(ranks)
 	_learn.disabled = problem != ""
-	_learn.text = "Fully learned" if rank >= max_rank else "Learn  (1 class point)" if rank == 0 else "Learn rank %d  (1 class point)" % (rank + 1)
+	_learn.text = "Fully learned" if rank >= max_rank else "Learn  ·  1 class point" if rank == 0 else "Learn rank %d  ·  1 class point" % (rank + 1)
+	_to_abilities.visible = ability and rank > 0
+	if problem != "" and problem != "Fully learned.":
+		_message.text = problem
 
 
 func _card(id: String) -> Control:
 	var data: Dictionary = HeroClasses.CLASSES[id]
-	var card := UITheme.inset_panel()
+	var card := PanelContainer.new()
+	card.name = id
+	card.add_theme_stylebox_override("panel", UITheme.card("card", 10))
 	card.custom_minimum_size = Vector2(340.0, 0.0)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 5)
@@ -336,22 +366,109 @@ func _card(id: String) -> Control:
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD
 	text.custom_minimum_size = Vector2(300.0, 36.0)
 	box.add_child(text)
-	var bonuses := UITheme.label(",  ".join(HeroClasses.describe_bonuses(id)), 13, UITheme.GOOD)
+	var bonuses := UITheme.label(",  ".join(HeroClasses.describe_bonuses(id)), 14, UITheme.GOOD)
 	bonuses.autowrap_mode = TextServer.AUTOWRAP_WORD
 	bonuses.custom_minimum_size = Vector2(300.0, 58.0)
 	box.add_child(bonuses)
 	var names: PackedStringArray = []
 	for entry: Array in HeroClasses.TREES[id]["abilities"]:
 		names.append(AbilityDB.ABILITIES[entry[0]]["name"])
-	var abilities := UITheme.label("Abilities: " + ", ".join(names), 13, UITheme.INFO)
+	var abilities := UITheme.label("Abilities: " + ", ".join(names), 14, UITheme.INFO)
 	abilities.autowrap_mode = TextServer.AUTOWRAP_WORD
 	abilities.custom_minimum_size = Vector2(300.0, 36.0)
 	box.add_child(abilities)
-	var button := UITheme.button("Choose", func() -> void:
-		_message.text = player.choose_class(id)
-		refresh()
-	, 120.0)
+	var button := UITheme.button("Choose %s" % data["name"], _ask.bind(id), 200.0)
 	button.name = "Choose"
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	box.add_child(button)
 	return card
+
+
+## The other classes, for reference: a pop-up list with what each was.
+func _show_other_classes() -> void:
+	var popup := PopupPanel.new()
+	popup.add_theme_stylebox_override("panel", UITheme.get_theme().get_stylebox("panel", "PanelContainer"))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	popup.add_child(box)
+	box.add_child(UITheme.heading("The other classes", 20))
+	for id: String in HeroClasses.CHOICES:
+		if id == player.class_id:
+			continue
+		var data: Dictionary = HeroClasses.CLASSES[id]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		row.add_child(UITheme.icon(data["icon"], 26.0))
+		var words := VBoxContainer.new()
+		words.add_child(UITheme.strong(data["name"], 16))
+		words.add_child(UITheme.paragraph(data["text"], 420.0, 14, UITheme.DIM))
+		row.add_child(words)
+		box.add_child(row)
+	box.add_child(UITheme.label("Your class is for life.", 14, UITheme.DIM))
+	box.add_child(UITheme.button("Close", popup.hide, 460.0))
+	add_child(popup)
+	popup.popup_centered()
+	popup.popup_hide.connect(popup.queue_free)
+
+
+## Choosing is for life, so it asks first: the class's role, strengths and
+## abilities once more, and the word "permanent" by the button.
+func _ask(id: String) -> void:
+	_pending = id
+	refresh()
+	var data: Dictionary = HeroClasses.CLASSES[id]
+	var popup := PopupPanel.new()
+	popup.add_theme_stylebox_override("panel", UITheme.get_theme().get_stylebox("panel", "PanelContainer"))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	popup.add_child(box)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	box.add_child(top)
+	top.add_child(UITheme.icon(data["icon"], 32.0))
+	top.add_child(UITheme.heading("Become a %s?" % data["name"], 24))
+	box.add_child(UITheme.paragraph(data["text"], 480.0, 16, UITheme.TEXT))
+	box.add_child(UITheme.label("Strengths", 15, UITheme.HEADING))
+	box.add_child(UITheme.paragraph(",  ".join(HeroClasses.describe_bonuses(id)), 480.0, 15, UITheme.GOOD))
+	box.add_child(UITheme.label("Abilities", 15, UITheme.HEADING))
+	var abilities := HBoxContainer.new()
+	abilities.add_theme_constant_override("separation", 12)
+	box.add_child(abilities)
+	for entry: Array in HeroClasses.TREES[id]["abilities"]:
+		var cell := VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 2)
+		cell.custom_minimum_size.x = 110.0
+		var picture := TextureRect.new()
+		picture.texture = AbilityDB.icon(entry[0])
+		picture.custom_minimum_size = Vector2(36, 36)
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		picture.tooltip_text = AbilityDB.ABILITIES[entry[0]]["text"]
+		cell.add_child(picture)
+		var name_label := UITheme.label(AbilityDB.ABILITIES[entry[0]]["name"], 14, UITheme.INFO)
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cell.add_child(name_label)
+		abilities.add_child(cell)
+	box.add_child(UITheme.rule())
+	box.add_child(UITheme.strong("This is permanent: your class cannot be changed later.", 16, Color("e8a070")))
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 12)
+	buttons.alignment = BoxContainer.ALIGNMENT_END
+	box.add_child(buttons)
+	buttons.add_child(UITheme.button("Cancel", popup.hide, 130.0))
+	buttons.add_child(UITheme.primary_button("Become a %s" % data["name"], func() -> void:
+		_pending = ""
+		_message.text = player.choose_class(id)
+		popup.hide()
+		refresh()
+	, 220.0))
+	add_child(popup)
+	popup.popup_hide.connect(func() -> void:
+		_pending = ""
+		popup.queue_free()
+		if is_inside_tree():
+			refresh()
+	)
+	popup.popup_centered()
+	UITheme.focus_first(buttons)
