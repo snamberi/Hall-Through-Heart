@@ -349,3 +349,11 @@ func test_village_projects(t: TestContext) -> void:
 	player.buffs.add("well_rested", "Well Rested", 60.0, {"xp_gain": {"flat": 0.1}})
 	player.leveling.add_xp(10)
 	t.check(player.leveling.level > level or player.leveling.xp - xp == 11, "well rested gives a tenth more experience")
+
+
+func test_every_creature_has_its_own_sounds(t: TestContext) -> void:
+	for id: String in EnemyDB.ENEMIES:
+		for kind: String in ["idle", "hurt", "death", "step"]:
+			t.check(Audio.creature_stream(id, kind) != null, "%s has a %s sound" % [id, kind])
+		t.check(Footsteps.CREATURE_FEET.has(id), "%s's feet are known" % id)
+	t.check(Audio.creature_stream("husk", "idle") != Audio.creature_stream("rotten_corpse", "idle"), "kin sound different")

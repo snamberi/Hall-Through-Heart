@@ -79,6 +79,11 @@ var target: Player
 var state := State.WANDER
 ## Roughly how wide the enemy is; used for hits and for spacing from others.
 var body_radius := 13.0
+## Its own sounds (see Audio.play_creature): when it next calls out, how
+## far it has walked since its last footfall, and a short gap between hurts.
+var _call_in := randf_range(2.0, 9.0)
+var _stride := 0.0
+var _hurt_quiet := 0.0
 ## Shorter names for the animator.
 var windup_time := 0.45
 var lunge_time := 0.22
@@ -264,6 +269,7 @@ func _physics_process(delta: float) -> void:
 	_update_statuses(delta)
 	if state == State.DEAD:
 		return
+	_sound_life(delta)
 	if shield_max > 0.0 and _since_hurt > SHIELD_REGEN_DELAY and shield < shield_max:
 		shield = minf(shield + shield_max * 0.25 * delta, shield_max)
 		queue_redraw()
@@ -517,6 +523,9 @@ func take_damage(
 	_animator.scale = Vector2(1.18, 0.84)
 	if health.is_dead():
 		return dealt
+	if _hurt_quiet <= 0.0:
+		_hurt_quiet = 0.18
+		_voice("hurt", -4.0)
 	# Poise: a blow only interrupts an enemy that is not mid-attack and has
 	# not just been staggered, and big or armoured enemies shrug off most of
 	# the shove. Without this, quick swings could lock an enemy in place.
@@ -845,6 +854,35 @@ func _update_modifiers(delta: float) -> void:
 
 
 ## What some modifiers leave behind when the enemy dies.
+## Plays one of this creature's own sounds where it stands. Bosses and the
+## bigger ranks sound deeper.
+func _voice(kind: String, volume_db: float) -> void:
+	var deeper := 0.72 if boss_id != "" else (0.85 if rank >= Rank.CHAMPION else (0.93 if rank == Rank.ELITE else 1.0))
+	Audio.play_creature(enemy_id, kind, global_position, volume_db + (3.0 if boss_id != "" else 0.0), deeper)
+
+
+## Calls out now and then, and its feet fall as it walks, near the player
+## only. On soft ground (snow, sand, mud, ash) it leaves prints.
+func _sound_life(delta: float) -> void:
+	_hurt_quiet = maxf(_hurt_quiet - delta, 0.0)
+	var near := target != null and is_instance_valid(target) and global_position.distance_squared_to(target.global_position) < 700.0 * 700.0
+	if not near:
+		return
+	_call_in -= delta
+	if _call_in <= 0.0:
+		var wild := has_trait("wild") or _data.has("wild")
+		_call_in = randf_range(6.0, 14.0) if wild else randf_range(4.0, 10.0)
+		_voice("idle", -9.0)
+	var moved := velocity.length() * delta
+	if moved > 0.4:
+		_stride += moved
+		var stride_length := 30.0 * maxf(_visual.scale.x, 0.6) * (1.6 if rank >= Rank.MINIBOSS else 1.0)
+		if _stride >= stride_length:
+			_stride = 0.0
+			_voice("step", -17.0 if rank < Rank.MINIBOSS else -9.0)
+			Footsteps.print_for(enemy_id, global_position, velocity)
+
+
 func _death_effects() -> void:
 	if "explosive" in modifiers:
 		var color: Color = MODIFIERS["explosive"]["color"]
@@ -983,6 +1021,7 @@ func _on_died() -> void:
 	velocity = Vector2.ZERO
 	queue_redraw()
 	$Collision.set_deferred("disabled", true)
+	_voice("death", -1.0)
 	_death_effects()
 	var xp := xp_value()
 	DamageNumber.spawn_text(
