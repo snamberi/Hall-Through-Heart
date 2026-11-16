@@ -315,19 +315,39 @@ func _creature_page(codex: Codex, id: String) -> void:
 		_right.add_child(_element_row(id))
 	else:
 		_say("[color=#%s]Weaknesses: slay %d to learn.[/color]" % [UITheme.DIM.to_html(false), Codex.REVEAL["weakness"]])
-	if kills >= int(Codex.REVEAL["drops"]):
-		_right.add_child(UITheme.heading("Leaves behind", 15))
-		var drops := HFlowContainer.new()
-		drops.add_theme_constant_override("h_separation", 6)
-		drops.add_theme_constant_override("v_separation", 6)
-		drops.custom_minimum_size.x = 384.0
-		_right.add_child(drops)
-		for entry: Dictionary in (ItemDB.LOOT_TABLES.get(id, {}) as Dictionary).get("materials", []):
-			drops.add_child(_item_chip(entry["id"], "%d%%" % roundi(entry["chance"] * 100.0)))
-	else:
-		_say("[color=#%s]What it leaves behind: slay %d to learn.[/color]" % [UITheme.DIM.to_html(false), Codex.REVEAL["drops"]])
+	_drops(id, kills >= int(Codex.REVEAL["drops"]))
 	if kills >= goal:
 		_say("[color=#%s]Hunter's Mark: you deal 5%% more damage to this kind.[/color]" % UITheme.GOLD.to_html(false))
+
+
+## What a creature leaves behind: every material and piece of gear it can
+## drop and its gold. The chances show once enough have been slain.
+func _drops(id: String, exact: bool) -> void:
+	var table: Dictionary = ItemDB.LOOT_TABLES.get(id, {})
+	var head := HBoxContainer.new()
+	_right.add_child(head)
+	var title := UITheme.heading("Drops", 15)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var gold: Array = table.get("gold", [0, 0])
+	head.add_child(UITheme.label("%d-%d gold a level" % [gold[0], gold[1]] if int(gold[1]) > 0 else "no gold", 13, UITheme.GOLD))
+	var drops := HFlowContainer.new()
+	drops.add_theme_constant_override("h_separation", 6)
+	drops.add_theme_constant_override("v_separation", 6)
+	drops.custom_minimum_size.x = 384.0
+	_right.add_child(drops)
+	for entry: Dictionary in table.get("materials", []):
+		if ItemDB.ITEMS.has(entry["id"]):
+			drops.add_child(_item_chip(entry["id"], "%d%%" % roundi(entry["chance"] * 100.0) if exact else "?%"))
+	for entry: Array in table.get("gear", []):
+		if ItemDB.ITEMS.has(entry[0]):
+			drops.add_child(_item_chip(entry[0], ("%.1f%%" % (float(entry[1]) * 100.0)) if exact else "?%"))
+	if drops.get_child_count() == 0:
+		drops.add_child(UITheme.label("Nothing but what it carries in gold.", 13, UITheme.DIM))
+	var wild: bool = EnemyDB.ENEMIES[id].has("wild")
+	if not wild:
+		_say("[color=#%s]Elites and stronger of its kind drop far more gear, and now and then gems and runes.%s[/color]" % [UITheme.DIM.to_html(false),
+			"" if exact else " Exact chances: slay %d." % Codex.REVEAL["drops"]])
 
 
 ## What each kill count reveals: [kills, what].

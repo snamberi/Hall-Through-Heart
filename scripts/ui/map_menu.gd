@@ -18,7 +18,13 @@ const ICONS := {
 	"temple": [Color("ffe8a0"), "The Sanctuary"], "home": [Color("8fd66a"), "Home"], "checkpoint": [Color("ffb060"), "Resting place"],
 	"watchtower": [Color("b0acb8"), "Ruined watchtower"], "graveyard": [Color("a0a8b8"), "Graveyard"], "henge": [Color("9ad0c0"), "Standing stones"],
 	"farmstead": [Color("d8b070"), "Abandoned farmstead"], "library": [Color("c8a070"), "Ruined library"],
+	"dojo": [Color("e8a060"), "Dojo"],
 }
+
+## A marker kind's name, for any kind (unknown ones are named from their id).
+static func marker_name(kind: String) -> String:
+	return str(ICONS[kind][1]) if ICONS.has(kind) else kind.capitalize()
+
 
 ## Marker kinds by group, for the legend and its filters.
 const GROUPS := [
@@ -26,7 +32,7 @@ const GROUPS := [
 	["travel", "Travel", ["waystone", "portal", "checkpoint"]],
 	["danger", "Danger", ["lair", "boss", "bounty", "dungeon", "graveyard"]],
 	["treasure", "Treasure and trade", ["treasure", "shipwreck", "merchant", "altar"]],
-	["sights", "Ruins and sights", ["ruin", "shrine", "cave", "camp", "obelisk", "watchtower", "henge", "library"]],
+	["sights", "Ruins and sights", ["ruin", "shrine", "cave", "camp", "obelisk", "watchtower", "henge", "library", "dojo"]],
 	["life", "Creatures and people", ["monster", "animal", "npc", "pet"]],
 ]
 const VIEW := Vector2(870.0, 492.0)
@@ -322,7 +328,7 @@ func _select_at(point: Vector2) -> void:
 			best_distance = distance
 			best = icon
 	if not best.is_empty():
-		_picked = {"tile": best[2], "name": ICONS[best[1]][1], "kind": best[1]}
+		_picked = {"tile": best[2], "name": marker_name(best[1]), "kind": best[1]}
 	else:
 		var tile := Vector2i((_map_at(point) * Exploration.CELL).floor())
 		_picked = {"tile": tile, "name": TerrainTiles.display_name(_world.generator.tile_type_at(tile)) if _exploration.is_tile_seen(tile) else "Unexplored", "kind": ""}
@@ -344,7 +350,7 @@ func _describe(point: Vector2) -> void:
 	var text := "%s   -   area level %d   -   %d, %d" % [TerrainTiles.display_name(_world.generator.tile_type_at(tile)), _world.generator.enemy_level_at(tile), tile.x, tile.y]
 	for icon: Array in _icons:
 		if (icon[0] as Vector2).distance_to(point) < 12.0:
-			text = "%s   -   %s" % [ICONS[icon[1]][1], text]
+			text = "%s   -   %s" % [marker_name(icon[1]), text]
 	_hover.text = text
 
 

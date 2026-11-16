@@ -30,9 +30,16 @@ func free_slots() -> int:
 
 
 func has_room_for(item: Item) -> bool:
-	if item.is_stackable() and _find_stack(item.id, item.rarity) != null:
+	if item.definition().get("currency", false):
 		return true
-	return free_slots() > 0
+	if not item.is_stackable():
+		return free_slots() > 0
+	# Room left on stacks of it, and in empty slots, must hold all of it.
+	var room := free_slots() * ItemDB.MAX_STACK
+	for stack in items:
+		if stack.id == item.id and stack.rarity == item.rarity:
+			room += maxi(ItemDB.MAX_STACK - stack.count, 0)
+	return room >= item.count
 
 
 ## Adds an item, merging stackables. Returns false if the bag is full.
@@ -50,9 +57,25 @@ func add(item: Item, arriving: bool = true) -> bool:
 		Events.codex_event.emit("uniques", 1)
 	elif item.set_id != "":
 		Events.codex_event.emit("set_pieces", 1)
-	var stack := _find_stack(item.id, item.rarity) if item.is_stackable() else null
-	if stack:
-		stack.count = mini(stack.count + item.count, ItemDB.MAX_STACK)
+	if item.is_stackable():
+		# Top up the stacks already here, then start new ones of up to
+		# MAX_STACK each, so nothing past a full stack is lost.
+		var left := item.count
+		for stack in items:
+			if left <= 0:
+				break
+			if stack.id == item.id and stack.rarity == item.rarity and stack.count < ItemDB.MAX_STACK:
+				var moved := mini(ItemDB.MAX_STACK - stack.count, left)
+				stack.count += moved
+				left -= moved
+		var first := true
+		while left > 0:
+			var piece := item if first else Item.from_dict(item.to_dict())
+			first = false
+			piece.count = mini(left, ItemDB.MAX_STACK)
+			piece.fresh = arriving
+			items.append(piece)
+			left -= piece.count
 	else:
 		item.fresh = arriving
 		items.append(item)

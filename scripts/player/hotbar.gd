@@ -6,8 +6,9 @@ extends Node
 ##   2        your school of magic (taken up at an Altar of Magic)
 ##   3, 4     two weapons (staves too)
 ##   5, 6, 7  pickaxe, hatchet, fishing rod
-##   8, 9     potions (or anything else that can be used or set down)
-##   0        food
+##   8, 9     supplies: potions, salves, bandages, scrolls, torches and the
+##            like (never food, blocks or furniture)
+##   0        food: meals, drinks, treats and anything eaten
 ##
 ## Slots 1 to 7 are the belt (see Equipment): pressing the key takes that
 ## style, magic, weapon or tool in hand. Slots 8 to 10 remember an item id and use
@@ -19,7 +20,9 @@ signal changed
 const SIZE := 10
 const BELT_SIZE := 7
 ## What each slot is for, shown in empty slots and in hints.
-const LABELS: Array[String] = ["Combat", "Magic", "Weapon", "Weapon", "Pickaxe", "Hatchet", "Rod", "Potion", "Potion", "Food"]
+const LABELS: Array[String] = ["Combat", "Magic", "Weapon", "Weapon", "Pickaxe", "Hatchet", "Rod", "Supply", "Supply", "Food"]
+## The slot index that only takes food.
+const FOOD_SLOT := 9
 ## Icon shown faintly in an empty slot.
 const GHOST_ICONS: Array[int] = [38, 33, 0, 0, 49, 50, 51, 44, 44, 66]
 
@@ -57,8 +60,9 @@ func assign(index: int, item: Item) -> String:
 		if _player.equipment.slot_of(item) == slot:
 			return ""
 		return _player.equipment.equip(item, slot)
-	if not (item.is_consumable() or item.is_placeable()):
-		return "Slot %d is for things you can use: potions, food, torches." % (index + 1)
+	var problem := slot_problem(index, item.id)
+	if problem != "":
+		return problem
 	# An item sits in one slot only.
 	for other in slots.size():
 		if slots[other] == item.id:
@@ -67,6 +71,33 @@ func assign(index: int, item: Item) -> String:
 	changed.emit()
 	SaveGame.request_save()
 	return ""
+
+
+## Food: anything eaten or drunk (cooked meals, drinks, treats, berries,
+## raw fish and meat).
+static func is_food(item_id: String) -> bool:
+	if ItemDB.course_of(item_id) != "":
+		return true
+	var item := Item.create(item_id)
+	return item.is_consumable() and ItemText.type_name(item) in ["Food", "Raw food"]
+
+
+## Supplies: what is used up from the bag that is not food (potions,
+## salves, bandages, scrolls, treats for pets, whistles), and torches.
+static func is_supply(item_id: String) -> bool:
+	if not ItemDB.ITEMS.has(item_id) or is_food(item_id):
+		return false
+	var item := Item.create(item_id)
+	if item.is_placeable():
+		return item_id == "torch"
+	return item.is_consumable() and Crops.by_seed(item_id) == ""
+
+
+## Why an item cannot go in an item slot (7..9), or "".
+static func slot_problem(index: int, item_id: String) -> String:
+	if index == FOOD_SLOT:
+		return "" if is_food(item_id) else "Slot 0 is for food: meals, drinks and treats."
+	return "" if is_supply(item_id) else ("Food goes in slot 0." if is_food(item_id) else "Slots 8 and 9 are for supplies: potions, bandages, scrolls, torches.")
 
 
 func set_quick(item: Item) -> String:
@@ -205,7 +236,9 @@ func load_data(data: Dictionary) -> void:
 	var saved: Variant = data.get("items")
 	if saved is Array:
 		for index in mini(saved.size(), 3):
-			slots[index] = str(saved[index]) if usable.call(str(saved[index])) else ""
+			var id := str(saved[index])
+			# Anything saved in a slot that no longer takes it is let go.
+			slots[index] = id if usable.call(id) and slot_problem(index + BELT_SIZE, id) == "" else ""
 	elif data.get("slots") is Array:
 		# The old five-slot bar: keep its first three usable things.
 		var next := 0

@@ -149,20 +149,27 @@ func _store(item: Item, amount: int) -> bool:
 	var stored: Array = chest["items"]
 	amount = clampi(amount, 1, item.count)
 	_say("")
-	# Stackables join a matching stack; everything else needs its own slot.
-	var joined := false
+	# Stackables top up matching stacks to MAX_STACK, then take new slots;
+	# everything else needs its own slot. All of it fits, or none moves.
+	var room := (Buildings.CHEST_SLOTS - stored.size()) * (ItemDB.MAX_STACK if item.is_stackable() else 1)
 	if item.is_stackable():
 		for saved: Dictionary in stored:
 			if saved["id"] == item.id and Item.from_dict(saved).rarity == item.rarity:
-				saved["count"] = int(saved["count"]) + amount
-				joined = true
-				break
-	if not joined:
-		if stored.size() >= Buildings.CHEST_SLOTS:
-			_say("The chest is full: all %d slots hold something. Take things out, or add to a stack it already has." % Buildings.CHEST_SLOTS)
-			return false
+				room += maxi(ItemDB.MAX_STACK - int(saved.get("count", 1)), 0)
+	if room < amount:
+		_say("The chest has no room for that: all %d slots are full, or the stacks are at %d." % [Buildings.CHEST_SLOTS, ItemDB.MAX_STACK])
+		return false
+	var left := amount
+	if item.is_stackable():
+		for saved: Dictionary in stored:
+			if left > 0 and saved["id"] == item.id and Item.from_dict(saved).rarity == item.rarity and int(saved["count"]) < ItemDB.MAX_STACK:
+				var moved := mini(ItemDB.MAX_STACK - int(saved["count"]), left)
+				saved["count"] = int(saved["count"]) + moved
+				left -= moved
+	while left > 0:
 		var record := item.to_dict()
-		record["count"] = amount
+		record["count"] = mini(left, ItemDB.MAX_STACK) if item.is_stackable() else left
+		left -= int(record["count"])
 		stored.append(record)
 	if amount >= item.count:
 		player.inventory.remove(item)

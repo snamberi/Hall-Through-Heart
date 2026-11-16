@@ -9,7 +9,8 @@ const ICONS: Texture2D = preload("res://assets/icons/items.png")
 const ICON_SIZE := 22
 const ICON_COLUMNS := 8
 const GOLD_ICON := 17
-const MAX_STACK := 999
+## The most of one thing a single bag or chest slot holds.
+const MAX_STACK := 128
 
 ## Index is the rarity number stored on items.
 ## "mods": random modifiers rolled. "power": multiplier on base damage/armor.

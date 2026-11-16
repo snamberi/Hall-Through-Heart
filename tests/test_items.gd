@@ -426,3 +426,35 @@ func test_rune_binding(t: TestContext) -> void:
 	t.check("fire_damage" in stats, "the sword now burns")
 	var copy := Item.from_dict(sword.to_dict())
 	t.equal(copy.runeword, "wildfire", "a runeword survives saving")
+
+
+func test_stacks_stop_at_128_and_overflow(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	t.equal(ItemDB.MAX_STACK, 128, "a stack holds 128")
+	var before := player.inventory.count_of("stone")
+	var slots := player.inventory.items.size()
+	t.check(player.inventory.add(Item.create("stone", 300)), "300 stone fit")
+	t.equal(player.inventory.count_of("stone"), before + 300, "none of it is lost")
+	for item in player.inventory.items:
+		t.check(item.count <= ItemDB.MAX_STACK, "no stack over the cap")
+	t.check(player.inventory.items.size() >= slots + 2, "it spread over new stacks")
+	player.inventory.take("stone", player.inventory.count_of("stone"))
+
+
+func test_food_and_supply_slots(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var potion := Item.create("health_potion")
+	var pie := Item.create("pumpkin_bread")
+	var wall := Item.create("wooden_wall")
+	player.inventory.add(potion)
+	player.inventory.add(pie)
+	player.inventory.add(wall)
+	t.equal(player.hotbar.assign(7, potion), "", "a potion goes in a supply slot")
+	t.check(player.hotbar.assign(7, pie) != "", "food does not go in a supply slot")
+	t.check(player.hotbar.assign(Hotbar.FOOD_SLOT, potion) != "", "a potion does not go in the food slot")
+	t.equal(player.hotbar.assign(Hotbar.FOOD_SLOT, pie), "", "food goes in the food slot")
+	t.check(player.hotbar.assign(8, wall) != "", "a wall goes in neither")
+	t.check(Hotbar.is_supply("torch"), "torches are supplies")
+	t.check(Hotbar.is_food("wild_berries"), "berries are food")

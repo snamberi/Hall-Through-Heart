@@ -574,7 +574,7 @@ func _refresh_details() -> void:
 	if precious and not _confirming:
 		_discard.text = "Discard" + (" %d" % _marked.size() if not _marked.is_empty() else "")
 	_discard.tooltip_text = "Locked: unlock it first." if keeper else ("Rare or better: hold the button down to throw it away for good." if precious else "Throws the item away for good. Asks twice.")
-	_secondary.visible = item != null and (item.is_consumable() or item.is_placeable() or (item.is_equipment() and item.is_upgradable()))
+	_secondary.visible = item != null and (Hotbar.is_food(item.id) or Hotbar.is_supply(item.id) or (item.is_equipment() and item.is_upgradable()))
 	if _secondary.visible:
 		if item.is_equipment():
 			var problem := Crafting.level_up_problem(player, item)
@@ -842,8 +842,8 @@ func _mark_common() -> void:
 ## Which hotbar slot a usable item goes in: food in 9, potions and other
 ## usable things in 7 or 8 (whichever is free, or already holds it).
 func _hotbar_spot(item: Item) -> int:
-	if ItemDB.course_of(item.id) != "":
-		return 9
+	if Hotbar.is_food(item.id):
+		return Hotbar.FOOD_SLOT
 	for spot: int in [7, 8]:
 		if player.hotbar.id_in(spot) == item.id:
 			return spot
