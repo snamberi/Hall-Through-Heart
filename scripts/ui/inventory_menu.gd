@@ -572,7 +572,7 @@ func _refresh_details() -> void:
 	_discard.text = ("Really? (%d)" % _marked.size() if _confirming else "Discard %d" % _marked.size()) if not _marked.is_empty() else ("Really?" if _confirming else "Discard")
 	var precious := _precious(_marked if not _marked.is_empty() else [item])
 	if precious and not _confirming:
-		_discard.text = "Hold: discard" + (" %d" % _marked.size() if not _marked.is_empty() else "")
+		_discard.text = "Discard" + (" %d" % _marked.size() if not _marked.is_empty() else "")
 	_discard.tooltip_text = "Locked: unlock it first." if keeper else ("Rare or better: hold the button down to throw it away for good." if precious else "Throws the item away for good. Asks twice.")
 	_secondary.visible = item != null and (item.is_consumable() or item.is_placeable() or (item.is_equipment() and item.is_upgradable()))
 	if _secondary.visible:
@@ -597,7 +597,9 @@ func _refresh_details() -> void:
 	_socket.tooltip_text = "" if not _socket.disabled else ("Only gear has sockets." if not gear else "This piece has no sockets.")
 	_salvage.disabled = not in_bag or not gear or keeper
 	_salvage.tooltip_text = "Locked: unlock it first." if keeper else ("Breaks the piece down into materials. It is gone for good." if gear and in_bag else "Only gear in the bag can be salvaged.")
-	_salvage.text = "Hold: salvage" if gear and item.rarity >= HOLD_FROM_RARITY else "Salvage"
+	# Rare pieces need the button held; the hint says so rather than a longer
+	# label, so the row keeps its width.
+	_salvage.text = "Salvage"
 	if gear and item.rarity >= HOLD_FROM_RARITY and in_bag and not keeper:
 		_salvage.tooltip_text = "Rare or better: hold the button down to break it into materials."
 	_lock.disabled = item == null or category(item) != "gear" or item.is_stackable()

@@ -287,7 +287,9 @@ func _show(id: String) -> void:
 func milestones(id: String) -> Array[Dictionary]:
 	var level := player.mastery.level_of(id)
 	var steps: Array[Dictionary] = []
-	var moves: Array[String] = AbilityDB.moves_for(id) if WeaponMoves.MOVES.has(id) else []
+	var moves: Array[String] = []
+	if WeaponMoves.MOVES.has(id):
+		moves = AbilityDB.moves_for(id)
 	if id == "unarmed" and player.styles:
 		moves = AbilityDB.style_moves(player.styles.equipped)
 	for ability_id in moves:
