@@ -39,6 +39,8 @@ var _track: Button
 
 var _list_scroll: ScrollContainer
 var _list: VBoxContainer
+var _crumb: Label
+var _quest_search: LineEdit
 var _view_buttons: Dictionary = {}
 ## "map" shows the chapters as trees; "list" shows everything open now.
 var _view := "map"
@@ -61,10 +63,10 @@ func _build() -> void:
 
 	# Chapters.
 	var left := VBoxContainer.new()
-	left.add_theme_constant_override("separation", 4)
-	left.custom_minimum_size = Vector2(192, 0)
+	left.add_theme_constant_override("separation", 3)
+	left.custom_minimum_size = Vector2(204, 0)
 	row.add_child(left)
-	var title := UITheme.heading("QUEST BOOK", 22)
+	var title := UITheme.heading("QUEST BOOK", 21)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	left.add_child(title)
 	var views := HBoxContainer.new()
@@ -76,25 +78,57 @@ func _build() -> void:
 		view_button.custom_minimum_size = Vector2(94, 32)
 		views.add_child(view_button)
 		_view_buttons[view[0]] = view_button
+	_quest_search = UITheme.search_box("Search quests...", 192.0, func() -> void:
+		_view = "list" if _quest_search.text.strip_edges() != "" else "map"
+		refresh()
+	)
+	left.add_child(_quest_search)
+	# Fifteen chapters and counting: the list scrolls rather than squeeze.
+	var chapter_scroll := ScrollContainer.new()
+	chapter_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	chapter_scroll.custom_minimum_size = Vector2(204, 300)
+	chapter_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(chapter_scroll)
+	var chapter_list := VBoxContainer.new()
+	chapter_list.add_theme_constant_override("separation", 3)
+	chapter_scroll.add_child(chapter_list)
 	for chapter in QuestBookDB.CHAPTERS:
 		var button := Button.new()
 		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(192, 31)
+		button.custom_minimum_size = Vector2(192, 26)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.icon = QuestBookDB.icon_texture(chapter["icon"])
 		button.expand_icon = false
 		button.add_theme_constant_override("icon_max_width", 22)
-		UITheme.font_size(button, 13)
+		UITheme.font_size(button, 14)
+		button.add_theme_constant_override("icon_max_width", 18)
 		var id: String = chapter["id"]
 		button.pressed.connect(func() -> void: _focus_chapter(id))
-		left.add_child(button)
+		chapter_list.add_child(button)
 		_chapter_buttons[id] = button
 
-	# The map.
+	# The map, under a line that says where you are and what the marks mean.
 	var map_frame := UITheme.inset_panel()
 	row.add_child(map_frame)
+	var map_box := VBoxContainer.new()
+	map_box.add_theme_constant_override("separation", 6)
+	map_frame.add_child(map_box)
+	var where := HBoxContainer.new()
+	where.add_theme_constant_override("separation", 14)
+	map_box.add_child(where)
+	_crumb = UITheme.strong("", 15, PURPLE.lightened(0.35))
+	_crumb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_crumb.clip_text = true
+	where.add_child(_crumb)
+	for entry: Array in [["open", "Current path"], ["done", "Completed"], ["locked", "Locked"]]:
+		where.add_child(_legend(entry[0], entry[1]))
+	var map_stack := Control.new()
+	map_stack.custom_minimum_size = Vector2(640, 488)
+	map_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_box.add_child(map_stack)
 	_canvas = Control.new()
-	_canvas.custom_minimum_size = Vector2(660, 540)
+	_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_canvas.custom_minimum_size = Vector2(640, 488)
 	_canvas.clip_contents = true
 	_canvas.mouse_filter = Control.MOUSE_FILTER_STOP
 	_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -104,12 +138,13 @@ func _build() -> void:
 		_hover = ""
 		_canvas.queue_redraw()
 	)
-	map_frame.add_child(_canvas)
+	map_stack.add_child(_canvas)
 	_list_scroll = ScrollContainer.new()
-	_list_scroll.custom_minimum_size = Vector2(660, 540)
+	_list_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_list_scroll.custom_minimum_size = Vector2(640, 488)
 	_list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_list_scroll.visible = false
-	map_frame.add_child(_list_scroll)
+	map_stack.add_child(_list_scroll)
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 6)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -166,52 +201,44 @@ func _build() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_status.custom_minimum_size = Vector2(256, 0)
 	_details.add_child(_status)
-	_track = UITheme.button("Track on screen", func() -> void:
+	_track = UITheme.primary_button("Track quest", func() -> void:
 		if _selected != "":
 			_book.toggle_track(_selected)
 			_show_details()
 	, 256.0)
 	_details.add_child(_track)
 
-	# The bar along the bottom.
+	# The bar along the bottom: where to look, how close, and how far along.
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 6)
 	content.add_child(bar)
-	bar.add_child(_small_button("◎", "Centre on the open quests", _recentre))
+	var focus := UITheme.button("Focus active", _recentre, 120.0)
+	focus.tooltip_text = "Centre on the quest you can work on now, close enough to read."
+	bar.add_child(focus)
+	var fit := UITheme.button("Fit chapter", func() -> void: _fit_chapter(), 110.0)
+	fit.tooltip_text = "Pull back until the whole chapter is in view."
+	bar.add_child(fit)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(14, 0)
+	bar.add_child(gap)
 	bar.add_child(_small_button("−", "Zoom out", func() -> void: _set_zoom(_zoom / 1.25, _canvas.size / 2.0)))
 	_zoom_label = UITheme.label("", 15)
 	_zoom_label.custom_minimum_size = Vector2(56, 0)
 	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bar.add_child(_zoom_label)
 	bar.add_child(_small_button("+", "Zoom in", func() -> void: _set_zoom(_zoom * 1.25, _canvas.size / 2.0)))
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(24, 0)
-	bar.add_child(gap)
-	bar.add_child(_small_button("<", "Previous chapter", func() -> void: _step_chapter(-1)))
-	for chapter in QuestBookDB.CHAPTERS:
-		var button := Button.new()
-		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(32, 34)
-		button.icon = QuestBookDB.icon_texture(chapter["icon"])
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.add_theme_constant_override("icon_max_width", 22)
-		button.tooltip_text = chapter["name"]
-		var id: String = chapter["id"]
-		button.pressed.connect(func() -> void: _focus_chapter(id))
-		bar.add_child(button)
-		_strip_buttons[id] = button
-	bar.add_child(_small_button(">", "Next chapter", func() -> void: _step_chapter(1)))
+	bar.add_child(UITheme.label("   Drag to move, scroll to zoom, click a quest to read it", 14, UITheme.DIM))
 	var fill := Control.new()
 	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_child(fill)
 	var progress_box := VBoxContainer.new()
-	progress_box.custom_minimum_size = Vector2(170, 0)
+	progress_box.custom_minimum_size = Vector2(240, 0)
 	bar.add_child(progress_box)
 	_progress_label = UITheme.label("", 15)
 	progress_box.add_child(_progress_label)
 	_progress_bar = ProgressBar.new()
 	_progress_bar.show_percentage = false
-	_progress_bar.custom_minimum_size = Vector2(170, 10)
+	_progress_bar.custom_minimum_size = Vector2(240, 10)
 	var fill_style := StyleBoxFlat.new()
 	fill_style.bg_color = PURPLE
 	fill_style.set_corner_radius_all(3)
@@ -238,6 +265,26 @@ func _purple_heading(text: String) -> Label:
 	return label
 
 
+## One entry of the key above the map: a small sample of a state and its name.
+func _legend(state: String, text: String) -> HBoxContainer:
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	var sample := Control.new()
+	sample.custom_minimum_size = Vector2(18, 18)
+	sample.draw.connect(func() -> void:
+		var rect := Rect2(2, 2, 14, 14)
+		sample.draw_rect(rect, Color(0.17, 0.13, 0.26) if state == "open" else Color(0.18, 0.15, 0.1) if state == "done" else Color(0.11, 0.11, 0.15))
+		sample.draw_rect(rect, PURPLE.lightened(0.3) if state == "open" else Color(0.98, 0.8, 0.38) if state == "done" else Color(0.44, 0.42, 0.52), false, 2.0)
+		if state == "done":
+			sample.draw_polyline(PackedVector2Array([Vector2(5, 9), Vector2(8, 12), Vector2(13, 5)]), Color(0.75, 1.0, 0.65), 2.0)
+		elif state == "locked":
+			sample.draw_texture_rect(UITheme.lock_texture(), Rect2(3, 3, 12, 12), false, Color(0.8, 0.8, 0.86))
+	)
+	box.add_child(sample)
+	box.add_child(UITheme.label(text, 14, UITheme.DIM))
+	return box
+
+
 func _small_button(text: String, tip: String, action: Callable) -> Button:
 	var button := UITheme.button(text, action, 38.0)
 	button.custom_minimum_size = Vector2(38, 38)
@@ -260,13 +307,15 @@ func refresh() -> void:
 		_book = player.get_parent().get_node("QuestBook")
 		_book.changed.connect(refresh_if_open)
 		_ensure_layout()
-		_focus_chapter(_first_open_chapter(), false)
+		# Open close in on what can be worked on now, not on the whole tree.
+		_chapter = _first_open_chapter()
+		_selected = _book.tracked[0] if not _book.tracked.is_empty() and _book.is_open(_book.tracked[0]) else _first_open_in(_chapter)
+		_focus_quest(_selected)
 	for chapter in QuestBookDB.CHAPTERS:
 		var id: String = chapter["id"]
 		var button: Button = _chapter_buttons[id]
 		button.text = "  %s   %d/%d" % [chapter["name"], _book.count_done(id), _book.count_all(id)]
 		button.set_pressed_no_signal(id == _chapter)
-		_strip_buttons[id].set_pressed_no_signal(id == _chapter)
 		var has_open := QuestBookDB.all().any(func(q: Dictionary) -> bool: return q["chapter"] == id and _book.is_open(q["id"]))
 		button.add_theme_color_override("font_color", UITheme.HEADING if has_open else UITheme.DIM)
 	var done := _book.count_done()
@@ -277,10 +326,65 @@ func refresh() -> void:
 	_zoom_label.text = "%d%%" % roundi(_zoom * 100.0)
 	if _selected == "" or QuestBookDB.find(_selected).is_empty():
 		_selected = _first_open_in(_chapter)
+	var chosen := QuestBookDB.find(_selected)
+	_crumb.text = "%s  /  %s" % [QuestBookDB.chapter_name(_chapter), chosen["title"]] if not chosen.is_empty() else QuestBookDB.chapter_name(_chapter)
 	_show_details()
 	_canvas.queue_redraw()
 	if _view == "list":
-		_fill_list()
+		if _quest_search.text.strip_edges() != "":
+			_fill_search()
+		else:
+			_fill_list()
+
+
+# --- what a search finds
+
+func _fill_search() -> void:
+	for child in _list.get_children():
+		child.queue_free()
+	var words := _quest_search.text.strip_edges().to_lower()
+	var found: Array[Dictionary] = []
+	for quest in QuestBookDB.all():
+		if str(quest["title"]).to_lower().contains(words) or str(quest["text"]).to_lower().contains(words):
+			found.append(quest)
+	# Open first, then done, then locked.
+	var order := {"open": 0, "done": 1, "locked": 2}
+	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return order[_book.state(a["id"])] < order[_book.state(b["id"])])
+	_list.add_child(_section("Search: %d found" % found.size(), "Click a quest to find it on the map."))
+	for quest in found.slice(0, 40):
+		var id: String = quest["id"]
+		var state := _book.state(id)
+		var panel := _row_panel(id == _selected)
+		panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		panel.gui_input.connect(func(event: InputEvent) -> void:
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				_selected = id
+				_chapter = quest["chapter"]
+				_quest_search.text = ""
+				_view = "map"
+				_focus_quest(id)
+				refresh()
+		)
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 10)
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_child(line)
+		var icon := TextureRect.new()
+		icon.texture = _texture(quest["icon"])
+		icon.modulate = QuestBookDB.icon_tint(quest["icon"])
+		icon.custom_minimum_size = Vector2(28, 28)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		line.add_child(icon)
+		var title := UITheme.strong(quest["title"], 15, UITheme.TEXT if state != "locked" else UITheme.DIM)
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(title)
+		line.add_child(UITheme.label(QuestBookDB.chapter_name(quest["chapter"]), 14, PURPLE.lightened(0.25)))
+		line.add_child(UITheme.badge("Available" if state == "open" else ("Completed" if state == "done" else "Locked"), "gold" if state == "open" else ("good" if state == "done" else "plain")))
+		_list.add_child(panel)
+	if found.size() > 40:
+		_list.add_child(UITheme.label("   ...and %d more. Type more to narrow it." % (found.size() - 40), 14, UITheme.DIM))
 
 
 # --- the list of everything open now
@@ -566,16 +670,41 @@ func _set_zoom(value: float, around: Vector2) -> void:
 	_canvas.queue_redraw()
 
 
+## Close enough to read: a quest, what it needs and what it leads to.
+const READING_ZOOM := 1.0
+
+
+## Centres on one quest at a readable size.
+func _focus_quest(id: String) -> void:
+	if not _layout.has(id):
+		return
+	_center = _layout[id]
+	_zoom = READING_ZOOM
+	if _zoom_label:
+		_zoom_label.text = "%d%%" % roundi(_zoom * 100.0)
+
+
+## Choosing a chapter goes to what is open in it, close in.
 func _focus_chapter(chapter: String, select: bool = true) -> void:
 	_chapter = chapter
-	var bounds: Rect2 = _bounds.get(chapter, Rect2())
-	_center = bounds.get_center()
-	var fit := minf(_canvas.custom_minimum_size.x / maxf(bounds.size.x + 160.0, 1.0), _canvas.custom_minimum_size.y / maxf(bounds.size.y + 160.0, 1.0))
-	_zoom = clampf(fit, 0.5, 0.95)
+	_view = "map"
+	if _quest_search:
+		_quest_search.text = ""
 	if select:
 		_selected = _first_open_in(chapter)
+	_focus_quest(_selected if select else _first_open_in(chapter))
 	if _book:
 		refresh()
+
+
+## Pulls back until the whole chapter shows.
+func _fit_chapter() -> void:
+	var bounds: Rect2 = _bounds.get(_chapter, Rect2())
+	_center = bounds.get_center()
+	var room := _canvas.size if _canvas.size.x > 10.0 else _canvas.custom_minimum_size
+	var fit := minf(room.x / maxf(bounds.size.x + 160.0, 1.0), room.y / maxf(bounds.size.y + 160.0, 1.0))
+	_zoom = clampf(fit, ZOOM_MIN, 1.0)
+	refresh()
 
 
 func _step_chapter(step: int) -> void:
@@ -584,11 +713,12 @@ func _step_chapter(step: int) -> void:
 
 
 func _recentre() -> void:
-	var open := _first_open_in(_chapter)
+	_view = "map"
+	var open: String = _book.tracked[0] if not _book.tracked.is_empty() and _book.is_open(_book.tracked[0]) else _first_open_in(_first_open_chapter())
 	if open != "":
 		_selected = open
-		_center = _layout[open]
-		_zoom = maxf(_zoom, 0.7)
+		_chapter = QuestBookDB.find(open)["chapter"]
+		_focus_quest(open)
 		refresh()
 
 
@@ -685,11 +815,18 @@ func _draw_map() -> void:
 			var color := Color(0.95, 0.78, 0.45, 0.95) if state == "done" else Color(PURPLE, 0.9) if state == "open" else Color(0.42, 0.38, 0.55, 0.85)
 			if quest["chapter"] != _chapter:
 				color.a *= 0.4
+			# Three kinds of line: done is solid gold, the path to what can be
+			# done now is solid and bright, what is still locked is dashed.
+			var points := PackedVector2Array([from, to])
 			if first and absf(from.x - to.x) > 1.0:
 				var mid := from.y + (to.y - from.y) * 0.5
-				_canvas.draw_polyline(PackedVector2Array([from, Vector2(from.x, mid), Vector2(to.x, mid), to]), color, line_width)
+				points = PackedVector2Array([from, Vector2(from.x, mid), Vector2(to.x, mid), to])
+			var width := line_width if first else line_width * 0.6
+			if state == "locked":
+				for index in points.size() - 1:
+					_canvas.draw_dashed_line(points[index], points[index + 1], color, maxf(width * 0.8, 1.0), maxf(7.0 * _zoom, 3.0))
 			else:
-				_canvas.draw_line(from, to, color, line_width if first else line_width * 0.6)
+				_canvas.draw_polyline(points, color, width * (1.25 if state == "open" else 1.0))
 			first = false
 	# The quests themselves.
 	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 300.0)
@@ -760,6 +897,52 @@ func _draw_map() -> void:
 			mark.set_border_width_all(1)
 			mark.set_corner_radius_all(int(9.0 * _zoom) + 1)
 			_canvas.draw_style_box(mark, rect.grow(3.0))
+	# Names under the chosen quest, what it needs, what it leads to, and
+	# everything that can be worked on now: readable once close enough.
+	if _zoom >= 0.8:
+		var near := {}
+		if _selected != "":
+			near[_selected] = true
+			for need: String in QuestBookDB.find(_selected).get("requires", []):
+				near[need] = true
+		for quest in QuestBookDB.all():
+			if quest["chapter"] != _chapter:
+				continue
+			var id: String = quest["id"]
+			if _selected in quest["requires"] or _book.is_open(id):
+				near[id] = true
+		for id: String in near:
+			var quest := QuestBookDB.find(id)
+			if quest.is_empty() or not _layout.has(id):
+				continue
+			var at := _to_screen(_layout[id])
+			if at.x < -80.0 or at.y < -40.0 or at.x > size.x + 80.0 or at.y > size.y + 20.0:
+				continue
+			var state := _book.state(id)
+			var text: String = quest["title"]
+			if state == "open":
+				var have := 0
+				var need_total := 0
+				for objective: Dictionary in quest["objectives"]:
+					have += _book.progress(objective)
+					need_total += _book.goal(objective)
+				text += "  %d/%d" % [have, need_total]
+			# Neighbours stand close together: every other name sits a line lower.
+			var column := roundi(_layout[id].x / STEP.x)
+			var drop := 15.0 if posmod(column, 2) == 1 else 0.0
+			if id in _roots.values():
+				# Clear of the chapter's own banner under its first quest.
+				drop = 24.0
+			var half := (BIG if quest["big"] else NODE) * _zoom / 2.0
+			var max_width := STEP.x * _zoom * 2.0 - 10.0
+			var width := minf(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x, max_width) + 10.0
+			var pill := Rect2(at + Vector2(-width / 2.0, half + 5.0 + drop), Vector2(width, 18))
+			_canvas.draw_rect(pill, Color(0.05, 0.05, 0.09, 0.92))
+			if id == _selected:
+				_canvas.draw_rect(pill, Color(1, 1, 1, 0.7), false, 1.0)
+			var color := Color.WHITE if id == _selected else (UITheme.TEXT if state == "open" else Color(0.98, 0.84, 0.5) if state == "done" else UITheme.DIM)
+			_canvas.draw_string(font, pill.position + Vector2(5, 14), text, HORIZONTAL_ALIGNMENT_LEFT, max_width, 14, color)
+	_draw_overview(size)
 	# Chapter names on little banners by their roots.
 	for chapter in QuestBookDB.CHAPTERS:
 		var root: String = _roots.get(chapter["id"], "")
@@ -790,6 +973,29 @@ func _draw_map() -> void:
 	# A soft dark edge.
 	for i in 4:
 		_canvas.draw_rect(Rect2(Vector2(i * 3, i * 3), size - Vector2(i * 6, i * 6)), Color(0, 0, 0, 0.12), false, 3.0)
+
+
+## A small picture of the whole chapter in the corner: every quest a dot
+## in its state's colour, and a frame round what the map shows now.
+func _draw_overview(size: Vector2) -> void:
+	var bounds: Rect2 = (_bounds.get(_chapter, Rect2()) as Rect2).grow(60.0)
+	if bounds.size.x < 1.0 or bounds.size.y < 1.0:
+		return
+	var box := Rect2(size - Vector2(150, 92), Vector2(140, 82))
+	_canvas.draw_rect(box, Color(0.03, 0.03, 0.06, 0.92))
+	_canvas.draw_rect(box, Color(0.4, 0.36, 0.52), false, 1.0)
+	var scale := minf((box.size.x - 8.0) / bounds.size.x, (box.size.y - 8.0) / bounds.size.y)
+	var origin := box.get_center() - bounds.get_center() * scale
+	for quest in QuestBookDB.all():
+		if quest["chapter"] != _chapter:
+			continue
+		var state := _book.state(quest["id"])
+		var dot: Vector2 = origin + (_layout[quest["id"]] as Vector2) * scale
+		var color := Color(0.98, 0.8, 0.38) if state == "done" else PURPLE.lightened(0.3) if state == "open" else Color(0.4, 0.4, 0.48)
+		_canvas.draw_rect(Rect2(dot - Vector2(1.5, 1.5), Vector2(3, 3)), Color.WHITE if quest["id"] == _selected else color)
+	var view := Rect2(origin + _to_map(Vector2.ZERO) * scale, size / _zoom * scale).intersection(box)
+	if view.size.x > 2.0 and view.size.y > 2.0:
+		_canvas.draw_rect(view, Color(1, 1, 1, 0.75), false, 1.0)
 
 
 func _visible_segment(a: Vector2, b: Vector2, size: Vector2) -> bool:
@@ -849,7 +1055,7 @@ func _show_details() -> void:
 			_status.text = "Complete. Rewards received."
 			_status.add_theme_color_override("font_color", UITheme.GOOD)
 		"open":
-			_status.text = "Open: it completes by itself when every objective is met."
+			_status.text = "Completes by itself when all %d objective%s are met." % [(quest["objectives"] as Array).size(), "" if (quest["objectives"] as Array).size() == 1 else "s"]
 			_status.add_theme_color_override("font_color", PURPLE.lightened(0.3))
 		_:
 			var needs: PackedStringArray = []
@@ -859,7 +1065,7 @@ func _show_details() -> void:
 			_status.text = "Locked. First finish: " + ", ".join(needs)
 			_status.add_theme_color_override("font_color", UITheme.DIM)
 	_track.visible = state == "open"
-	_track.text = "Stop tracking" if _selected in _book.tracked else "Track on screen"
+	_track.text = "Stop tracking" if _selected in _book.tracked else "Track quest"
 
 
 ## A round purple "XP" badge and the amount.

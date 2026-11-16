@@ -7,7 +7,8 @@ extends GameMenu
 ## the chosen recipe: a large picture, what it does, every ingredient with
 ## how many you hold, and how many to make.
 
-const FILTERS: Array[String] = ["All recipes", "Can make now", "Missing materials", "Locked"]
+const FILTERS: Array[String] = ["All", "Can make", "Missing", "Locked"]
+const FILTER_STATES: Array[String] = ["", "ready", "missing", "locked"]
 const ROW := 44.0
 
 var _rows: Dictionary[String, Dictionary] = {}
@@ -25,8 +26,15 @@ var _name: Label
 var _level: Label
 var _xp_bar: Control
 var _tabs: Dictionary[String, Button] = {}
-var _filter_pick: OptionButton
+var _filter_buttons: Array[Button] = []
+var _filter_row: HBoxContainer
 var _search_field: LineEdit
+var _station: HBoxContainer
+var _station_icon: TextureRect
+var _station_name: Label
+var _xp_gain: Label
+## The last recipe looked at in each profession, to come back to.
+var _last: Dictionary = {}
 var _list: VBoxContainer
 # Right.
 var _picture: TextureRect
@@ -157,7 +165,7 @@ func _build() -> void:
 		var button := Button.new()
 		button.text = tab[1]
 		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(192.0, 34.0)
+		button.custom_minimum_size = Vector2(192.0, 32.0)
 		UITheme.font_size(button, 16)
 		button.pressed.connect(func() -> void:
 			_tab = tab[0]
@@ -166,29 +174,25 @@ func _build() -> void:
 		UITheme.sounds(button)
 		tabs.add_child(button)
 		_tabs[tab[0]] = button
-	var filters := HBoxContainer.new()
-	filters.add_theme_constant_override("separation", 6)
-	middle.add_child(filters)
-	_filter_pick = OptionButton.new()
-	_filter_pick.custom_minimum_size = Vector2(176.0, 32.0)
-	for words in FILTERS:
-		_filter_pick.add_item(words)
-	_filter_pick.item_selected.connect(func(index: int) -> void:
-		_filter = index
+	_search_field = UITheme.search_box("Search recipes...", 390.0, func() -> void:
+		_search = _search_field.text.strip_edges().to_lower()
 		refresh()
 	)
-	filters.add_child(_filter_pick)
-	_search_field = LineEdit.new()
-	_search_field.placeholder_text = "Search recipes..."
-	_search_field.custom_minimum_size = Vector2(208.0, 32.0)
-	_search_field.clear_button_enabled = true
-	_search_field.text_changed.connect(func(text: String) -> void:
-		_search = text.strip_edges().to_lower()
-		refresh()
-	)
-	filters.add_child(_search_field)
+	middle.add_child(_search_field)
+	_filter_row = HBoxContainer.new()
+	_filter_row.add_theme_constant_override("separation", 4)
+	middle.add_child(_filter_row)
+	for index in FILTERS.size():
+		var button := UITheme.button(FILTERS[index], func() -> void:
+			_filter = index
+			refresh()
+		, 94.0)
+		button.toggle_mode = true
+		button.custom_minimum_size.y = 30.0
+		_filter_row.add_child(button)
+		_filter_buttons.append(button)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(390.0, 318.0)
+	scroll.custom_minimum_size = Vector2(390.0, 300.0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	middle.add_child(scroll)
 	_list = VBoxContainer.new()
@@ -253,7 +257,23 @@ func _build() -> void:
 	_needs = VBoxContainer.new()
 	_needs.add_theme_constant_override("separation", 3)
 	_detail.add_child(_needs)
-	_detail.add_child(UITheme.heading("Produces", 16))
+	# Where it is made: a table, or nothing at all.
+	_station = HBoxContainer.new()
+	_station.add_theme_constant_override("separation", 8)
+	_detail.add_child(_station)
+	_station_icon = UITheme.icon(54, 26.0)
+	_station.add_child(_station_icon)
+	_station_name = UITheme.label("", 15)
+	_station_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_station.add_child(_station_name)
+	_detail.add_child(UITheme.rule())
+	var produce_head := HBoxContainer.new()
+	_detail.add_child(produce_head)
+	var produce_title := UITheme.heading("Result", 16)
+	produce_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	produce_head.add_child(produce_title)
+	_xp_gain = UITheme.label("", 14, Color(0.8, 0.68, 1.0))
+	produce_head.add_child(_xp_gain)
 	var produce := HBoxContainer.new()
 	produce.add_theme_constant_override("separation", 8)
 	_detail.add_child(produce)
@@ -269,22 +289,20 @@ func _build() -> void:
 	_amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	produce.add_child(_amount)
 	produce.add_child(UITheme.button("+", func() -> void: _step(1), 34.0))
-	_message = UITheme.label("", 14, UITheme.BAD)
-	_message.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_message.custom_minimum_size = Vector2(372.0, 20.0)
-	right.add_child(_message)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(spacer)
+	_message = UITheme.reason("", 372.0)
+	_message.custom_minimum_size.y = 20.0
+	right.add_child(_message)
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 8)
 	right.add_child(buttons)
-	_craft = UITheme.button("Craft", func() -> void: _make(_quantity), 200.0)
+	_craft = UITheme.primary_button("Craft", func() -> void: _make(_quantity), 210.0)
 	_craft.custom_minimum_size.y = 42.0
-	UITheme.font_size(_craft, 18)
 	_craft.expand_icon = false
 	buttons.add_child(_craft)
-	_craft_all = UITheme.button("Craft all", func() -> void: _make(_most()), 164.0)
+	_craft_all = UITheme.button("Craft all", func() -> void: _make(_most()), 154.0)
 	_craft_all.custom_minimum_size.y = 42.0
 	buttons.add_child(_craft_all)
 
@@ -310,11 +328,40 @@ func refresh() -> void:
 	_tabs["recipes"].text = "Gathers" if gathering else "Recipes"
 	for id in _tabs:
 		_tabs[id].set_pressed_no_signal(id == _tab)
-	_filter_pick.get_parent().visible = _tab == "recipes" and not gathering
+	_filter_row.visible = _tab == "recipes" and not gathering
+	_search_field.visible = _filter_row.visible
+	if not gathering:
+		var counts := [0, 0, 0, 0]
+		var level := professions.level(_selected)
+		for recipe in RecipeDB.for_profession(_selected):
+			if recipe["level"] > level + 15:
+				continue
+			counts[0] += 1
+			counts[FILTER_STATES.find(state_of(recipe))] += 1
+		for index in _filter_buttons.size():
+			_filter_buttons[index].text = "%s (%d)" % [FILTERS[index], counts[index]]
+			_filter_buttons[index].set_pressed_no_signal(index == _filter)
 	for child in _list.get_children():
 		child.queue_free()
 	if _recipe.is_empty() or _recipe["profession"] != _selected:
 		_recipe = {}
+	# Open on something: the last recipe looked at here, or the first that
+	# can be made, or the first at all.
+	if _recipe.is_empty() and not gathering:
+		var known := RecipeDB.for_profession(_selected).filter(func(r: Dictionary) -> bool: return r["level"] <= professions.level(_selected))
+		var back: String = _last.get(_selected, "")
+		for recipe: Dictionary in known:
+			if recipe["id"] == back:
+				_recipe = recipe
+		if _recipe.is_empty():
+			for recipe: Dictionary in known:
+				if state_of(recipe) == "ready":
+					_recipe = recipe
+					break
+		if _recipe.is_empty() and not known.is_empty():
+			_recipe = known[0]
+	if not _recipe.is_empty():
+		_last[_selected] = _recipe["id"]
 	if _tab == "knowledge":
 		_list_knowledge()
 	elif gathering:
@@ -367,7 +414,7 @@ func _list_recipes() -> void:
 		if _search != "" and not RecipeDB.display_name(recipe).to_lower().contains(_search):
 			continue
 		var state := state_of(recipe)
-		if (_filter == 1 and state != "ready") or (_filter == 2 and state != "missing") or (_filter == 3 and state != "locked"):
+		if _filter > 0 and state != FILTER_STATES[_filter]:
 			continue
 		var group := section(recipe)
 		if not groups.has(group):
@@ -414,12 +461,18 @@ func _recipe_row(recipe: Dictionary) -> Button:
 	name_label.clip_text = true
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(name_label)
-	var level_label := UITheme.label("Lv %d" % recipe["level"], 14, UITheme.DIM if state != "locked" else UITheme.BAD)
-	level_label.position = Vector2(286, 12)
-	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(level_label)
+	name_label.size = Vector2(200, 22)
+	# Its state in words beside a mark: what can be made, what lacks
+	# something, and what needs more skill (and how much).
+	var words: String = {"ready": "Can make", "missing": "Missing"}.get(state, "Lv %d" % recipe["level"])
+	var state_label := UITheme.label(words, 14, UITheme.GOOD if state == "ready" else Color("e8a070") if state == "missing" else UITheme.DIM)
+	state_label.position = Vector2(252, 12)
+	state_label.size = Vector2(86, 20)
+	state_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	state_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(state_label)
 	var mark := StateMark.make(state, 18.0)
-	mark.position = Vector2(340, 13)
+	mark.position = Vector2(344, 13)
 	button.add_child(mark)
 	button.pressed.connect(func() -> void:
 		_recipe = recipe
@@ -521,6 +574,7 @@ func _list_knowledge() -> void:
 func _select(id: String) -> void:
 	_selected = id
 	_recipe = {}
+	_filter = 0
 	_quantity = 1
 	_message.text = ""
 	if id in Professions.GATHERING:
@@ -619,6 +673,16 @@ func _show_recipe() -> void:
 		row.mouse_entered.connect(func() -> void: _tip.show_item(part, player))
 		row.mouse_exited.connect(func() -> void: _tip.hide_tip())
 		_needs.add_child(row)
+	var needs_table: bool = not _recipe["id"] in RecipeDB.NO_TABLE
+	var at_table := player.near_crafting_table()
+	_station_icon.modulate = Color.WHITE if not needs_table or at_table else Color(0.6, 0.6, 0.66)
+	if needs_table:
+		_station_name.text = "Crafting table:  %s" % ("you are at one" if at_table else "stand next to one")
+		_station_name.add_theme_color_override("font_color", UITheme.GOOD if at_table else Color("e8a070"))
+	else:
+		_station_name.text = "Made by hand: no table needed"
+		_station_name.add_theme_color_override("font_color", UITheme.GOOD)
+	_xp_gain.text = "+%d %s XP" % [roundi(float(_recipe.get("xp", 0.0)) * _quantity), Professions.NAMES[_recipe["profession"]]]
 	_produce_icon.texture = made.icon()
 	_produce_icon.modulate = made.icon_tint()
 	_produce_name.text = "%s  x%d" % [_title.text, count * _quantity]
@@ -628,9 +692,12 @@ func _show_recipe() -> void:
 	_craft.text = "Craft" if _quantity == 1 else "Craft x%d" % _quantity
 	_craft_all.disabled = problem != "" or _most() < 2
 	_craft_all.text = "Craft all (%d)" % _most() if _most() > 1 else "Craft all"
-	if problem != "" and _message.text == "":
-		_message.add_theme_color_override("font_color", UITheme.BAD)
+	_craft.tooltip_text = problem
+	if problem != "" and (_message.text == "" or not _message.text.begins_with("Made")):
+		_message.add_theme_color_override("font_color", Color("e8a070"))
 		_message.text = problem
+	elif problem == "" and not _message.text.begins_with("Made"):
+		_message.text = ""
 
 
 func _small_icon(texture: Texture2D) -> TextureRect:
