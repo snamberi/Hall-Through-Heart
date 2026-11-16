@@ -18,6 +18,8 @@ const DETAIL_WIDTH := 380.0
 const MOUNTS_WIDTH := 410.0
 
 var _selected := -1
+## The chosen pet's page: "about", or "talents" for talents and gear.
+var _pet_tab := "about"
 var _list: VBoxContainer
 var _detail: VBoxContainer
 var _mounts: VBoxContainer
@@ -53,7 +55,7 @@ func _build() -> void:
 func _column(parent: Control, width: float) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UITheme.card("card", 10))
-	panel.custom_minimum_size = Vector2(width, 470)
+	panel.custom_minimum_size = Vector2(width, 500)
 	parent.add_child(panel)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -232,6 +234,21 @@ func _inspector(index: int) -> void:
 	words.add_child(name_field)
 	words.add_child(UITheme.label("%s  ·  level %d of %d" % [_species(pet), pet["level"], Pets.MAX_LEVEL], 15, UITheme.TEXT))
 	words.add_child(UITheme.badge("Following you" if following else "At home", "good" if following else "plain"))
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 6)
+	_detail.add_child(tabs)
+	var points := pets.points_left(pet)
+	for tab: Array in [["about", "About"], ["talents", "Talents & gear" + ("  (%d)" % points if points > 0 else "")]]:
+		var chosen: bool = _pet_tab == tab[0]
+		var tab_button := UITheme.button(tab[1], func() -> void:
+			_pet_tab = tab[0]
+			refresh()
+		, 172.0)
+		tab_button.add_theme_stylebox_override("normal", UITheme.card("card_selected" if chosen else "card", 4))
+		tabs.add_child(tab_button)
+	if _pet_tab == "talents":
+		_talents_page(index)
+		return
 	# Growth.
 	var bar := ProgressBar.new()
 	bar.show_percentage = false
@@ -259,6 +276,136 @@ func _inspector(index: int) -> void:
 	row.add_child(UITheme.danger_button("Release", func() -> void: _confirm_release(index), 170.0))
 
 
+## The chosen pet's talents and gear: a collar and a charm to put on from
+## the bag, then a row per talent with its ranks and a button to learn one.
+func _talents_page(index: int) -> void:
+	var pets := player.pets
+	var pet: Dictionary = pets.pets[index]
+	var gear_row := HBoxContainer.new()
+	gear_row.add_theme_constant_override("separation", 8)
+	_detail.add_child(gear_row)
+	for slot: String in Pets.GEAR_SLOTS:
+		gear_row.add_child(_gear_slot(pets.gear(pet, slot), "No " + slot, slot.capitalize(),
+			func() -> void: _pick_from_bag(func(item: Item) -> bool: return str(item.definition().get("pet_gear", "")) == slot,
+				func(item: Item) -> void: _message.text = pets.put_on(index, item),
+				"No pet %ss in your bag. %s" % [slot, "Make a Leather Collar (Building 3) or buy one from a general store." if slot == "collar" else "Charms are made at an enchanting table (Enchanting 10)."]),
+			func() -> void: _message.text = pets.take_off(index, slot), 172.0))
+	var points := pets.points_left(pet)
+	var head := HBoxContainer.new()
+	_detail.add_child(head)
+	var title := UITheme.label("Talents", 16, UITheme.HEADING)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	head.add_child(UITheme.label("%d point%s to spend  ·  one every %d levels" % [points, "" if points == 1 else "s", Pets.LEVELS_PER_POINT], 14, UITheme.GOLD if points > 0 else UITheme.DIM))
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 0)
+	_detail.add_child(list)
+	for talent: String in pets.talents_for(pet):
+		var data: Dictionary = Pets.TALENTS[talent]
+		var have := pets.rank(pet, talent)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		list.add_child(row)
+		var name_label := UITheme.strong(data["name"], 15, UITheme.GOLD if have > 0 else UITheme.TEXT)
+		name_label.custom_minimum_size.x = 92.0
+		row.add_child(name_label)
+		var ranks := UITheme.label("%d/%d" % [have, data["ranks"]], 14, UITheme.GOOD if have >= int(data["ranks"]) else UITheme.DIM)
+		ranks.custom_minimum_size.x = 30.0
+		row.add_child(ranks)
+		var text := UITheme.label(data["text"] + " a rank", 13, UITheme.DIM)
+		text.clip_text = true
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text.tooltip_text = data["text"] + " a rank"
+		text.mouse_filter = Control.MOUSE_FILTER_PASS
+		row.add_child(text)
+		var learn := UITheme.button("+", func() -> void:
+			_message.text = pets.learn(index, talent)
+			refresh()
+		, 34.0)
+		learn.custom_minimum_size.y = 28.0
+		learn.disabled = points <= 0 or have >= int(data["ranks"])
+		learn.tooltip_text = "Learn a rank of %s" % data["name"]
+		row.add_child(learn)
+	var fill := Control.new()
+	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_detail.add_child(fill)
+	var reset := UITheme.button("Forget talents", func() -> void:
+		pets.unlearn(index)
+		refresh()
+	, DETAIL_WIDTH - 30.0)
+	reset.disabled = pets.points_left(pet) == pets.talent_points(pet)
+	_detail.add_child(reset)
+
+
+## A gear slot: what is worn (icon and name) or that it is empty. Click to
+## choose from the bag; right-click to take it off.
+func _gear_slot(item: Item, empty_text: String, slot_name: String, pick: Callable, remove: Callable, width: float) -> Button:
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(width, 48.0)
+	for state: String in ["normal", "pressed"]:
+		button.add_theme_stylebox_override(state, UITheme.card("card" if item else "card_dim", 6))
+	button.add_theme_stylebox_override("hover", UITheme.card("card_hover", 6))
+	button.tooltip_text = "Click to choose from your bag." + ("\nRight-click to take it off." if item else "")
+	button.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT and item:
+			remove.call()
+			refresh()
+	)
+	button.pressed.connect(pick)
+	UITheme.sounds(button)
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(row)
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel", UITheme.slot("slot"))
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(frame)
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(32, 32)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if item:
+		icon.texture = item.icon()
+		icon.modulate = item.icon_tint()
+	frame.add_child(icon)
+	var words := VBoxContainer.new()
+	words.add_theme_constant_override("separation", -2)
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(words)
+	words.add_child(UITheme.label(slot_name, 13, UITheme.DIM))
+	var name_label := UITheme.strong(item.display_name() if item else empty_text, 14, item.color() if item else UITheme.DIM)
+	name_label.clip_text = true
+	name_label.custom_minimum_size.x = width - 60.0
+	words.add_child(name_label)
+	for control: Control in words.get_children():
+		control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return button
+
+
+## A small list of matching things in the bag to choose one from.
+func _pick_from_bag(fits: Callable, chosen: Callable, none_text: String) -> void:
+	var found: Array[Item] = []
+	for item: Item in player.inventory.items:
+		if item and fits.call(item):
+			found.append(item)
+	if found.is_empty():
+		_message.text = none_text
+		return
+	var menu := PopupMenu.new()
+	for index in found.size():
+		menu.add_icon_item(found[index].icon(), found[index].display_name(), index)
+	menu.id_pressed.connect(func(id: int) -> void:
+		chosen.call(found[id])
+		refresh()
+	)
+	menu.popup_hide.connect(menu.queue_free)
+	add_child(menu)
+	menu.popup(Rect2i(Vector2i(get_global_mouse_position()), Vector2i.ZERO))
+
+
 func _confirm_release(index: int) -> void:
 	var pet: Dictionary = player.pets.pets[index]
 	var popup := ConfirmationDialog.new()
@@ -279,7 +426,28 @@ func _confirm_release(index: int) -> void:
 
 
 func _fill_mounts() -> void:
-	_mounts.add_child(UITheme.heading("Mounts", 18))
+	var stable := player.stable
+	var heading_row := HBoxContainer.new()
+	_mounts.add_child(heading_row)
+	var heading := UITheme.heading("Mounts", 18)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading_row.add_child(heading)
+	var races := UITheme.label("Races: %d gold · %d silver · %d bronze" % [
+		stable.medal_count(3), stable.medal_count(2) - stable.medal_count(3), stable.medal_count(1) - stable.medal_count(2)], 13, UITheme.DIM)
+	races.tooltip_text = "Every village has a race post. Ride its course against the clock for medals and gold."
+	races.mouse_filter = Control.MOUSE_FILTER_PASS
+	heading_row.add_child(races)
+	# Tack, shared by every mount, and race medals.
+	var tack := HBoxContainer.new()
+	tack.add_theme_constant_override("separation", 8)
+	_mounts.add_child(tack)
+	for slot: String in Stable.SLOTS:
+		tack.add_child(_gear_slot(stable.tack[slot], "No " + slot, slot.capitalize(),
+			func() -> void: _pick_from_bag(func(item: Item) -> bool: return Stable.slot_of(item) == slot,
+				func(item: Item) -> void: _message.text = stable.put_on(item),
+				"No %s in your bag. %s" % [slot, "Make a Riding Saddle (Building 5) or buy one from a general store." if slot == "saddle" else "Make Padded Barding (Building 8) or Iron Barding (Blacksmithing 15)."]),
+			func() -> void: _message.text = stable.take_off(slot), 186.0))
+
 	var owned := {}
 	for item in player.inventory.items:
 		if item and item.definition().has("mount"):
@@ -315,19 +483,21 @@ func _mount_card(id: String, owned: bool) -> Control:
 	top.add_theme_constant_override("separation", 6)
 	words.add_child(top)
 	top.add_child(UITheme.strong(data["name"], 16, UITheme.TEXT if owned else UITheme.DIM))
-	top.add_child(UITheme.badge("+%d%% speed" % roundi((float(data["speed"]) - 1.0) * 100.0), "info" if owned else "plain"))
+	top.add_child(UITheme.badge("+%d%% speed" % roundi((float(data["speed"]) * (1.0 + player.stable.speed_bonus()) - 1.0) * 100.0), "info" if owned else "plain"))
 	var ground := "Snow" if data.get("snow", false) else "Sand" if data.get("sand", false) else "Steady" if data.get("steady", false) else ""
 	if ground != "":
 		top.add_child(UITheme.badge(ground, "good" if owned else "plain"))
 	if owned:
 		words.add_child(UITheme.label("Owned" + ("  ·  riding" if riding else ""), 14, UITheme.GOOD))
-		words.add_child(UITheme.button("Dismount" if riding else "Ride", func() -> void:
+		var ride_button := UITheme.button("Dismount" if riding else "Ride", func() -> void:
 			if riding:
 				player.dismount()
 			else:
 				_message.text = player.ride(id)
 			refresh()
-		, 110.0))
+		, 96.0)
+		ride_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(ride_button)
 	else:
 		var how := HBoxContainer.new()
 		how.add_theme_constant_override("separation", 6)

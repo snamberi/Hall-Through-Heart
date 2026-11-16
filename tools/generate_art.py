@@ -2800,6 +2800,23 @@ ICONS += [
 ICONS += [("ninefold_blade", None)]
 ICONS += [('pommel_hollow', [('bone', 'ellipse', (6, 6, 16, 16)), ('gold', 'ring', (5, 5, 17, 17), 1), ('gold', 'rect', (10, 1, 12, 6))]), ('guard_cinder', [('gold', 'poly', [(1, 9), (21, 9), (18, 14), (4, 14)]), ('flame', 'poly', [(4, 10), (18, 10), (16, 13), (6, 13)]), ('red', 'ellipse', (9, 9, 13, 14))]), ('edge_frost', [('ice', 'poly', [(3, 18), (16, 3), (19, 4), (7, 19)]), ('shine_w', 'line', [(5, 17), (17, 4)], 1)]), ('grip_pale', [('silver', 'rect', (9, 3, 13, 19)), ('leather', 'line', [(9, 5), (13, 8)], 1), ('leather', 'line', [(9, 10), (13, 13)], 1), ('leather', 'line', [(9, 15), (13, 18)], 1), ('gold', 'rect', (8, 2, 14, 4)), ('gold', 'rect', (8, 18, 14, 20))]), ('wrap_briar', [('leather', 'rect', (8, 3, 14, 19)), ('vine', 'line', [(7, 4), (15, 8), (7, 12), (15, 16), (8, 19)], 2), ('bone', 'rect', (11, 6, 11, 7))]), ('fuller_dune', [('metal', 'poly', [(4, 17), (15, 3), (19, 6), (8, 20)]), ('idol', 'line', [(7, 16), (16, 5)], 2)]), ('core_molten', [('dark', 'ellipse', (4, 4, 18, 18)), ('hearth_glow', 'ellipse', (6, 6, 16, 16)), ('shine_w', 'rect', (8, 8, 9, 9))]), ('gem_eye', [('gold', 'poly', [(11, 1), (19, 8), (11, 21), (3, 8)]), ('void_g', 'poly', [(11, 3), (17, 8), (11, 19), (5, 8)]), ('shine_w', 'rect', (9, 6, 10, 7))]), ('heart_blade', [('heart', 'ellipse', (3, 4, 12, 13)), ('heart', 'ellipse', (10, 4, 19, 13)), ('heart', 'poly', [(4, 10), (18, 10), (11, 19)]), ('gold', 'rect', (10, 1, 12, 5)), ('shine_w', 'rect', (6, 6, 7, 7))])]
 
+# Trophies, pet tack and mount tack (149-153).
+ICONS += [
+    ("trophy_stand", [("wood", "rect", (5, 13, 16, 20)), ("wood", "rect", (3, 12, 18, 13)), ("gold", "rect", (8, 15, 13, 17)),
+                      ("skull", "ellipse", (6, 2, 15, 10)), ("skull", "rect", (8, 8, 13, 11)), ("ink", "rect", (8, 5, 9, 6)), ("ink", "rect", (12, 5, 13, 6)),
+                      ("ink", "rect", (10, 9, 11, 9))]),
+    ("pet_collar", [("leather", "ring", (3, 3, 18, 16), 3), ("gold", "rect", (8, 13, 12, 16)), ("ink", "rect", (10, 14, 10, 15)),
+                    ("metal", "ellipse", (8, 16, 12, 20))]),
+    ("pet_charm", [("rope", "line", [(4, 1), (11, 9), (18, 1)], 1), ("gold", "poly", [(11, 7), (17, 13), (11, 20), (5, 13)]),
+                   ("heart", "ellipse", (9, 11, 13, 15))]),
+    ("saddle", [("leather", "poly", [(1, 9), (5, 7), (11, 10), (16, 6), (20, 8), (18, 14), (3, 14)]), ("leather", "rect", (16, 3, 18, 7)),
+                ("leather", "poly", [(7, 13), (14, 13), (13, 18), (8, 18)]), ("metal", "ring", (8, 16, 13, 21), 1),
+                ("gold", "line", [(2, 10), (10, 12), (19, 9)], 1)]),
+    ("barding", [("metal", "poly", [(3, 4), (19, 4), (20, 11), (15, 18), (7, 18), (2, 11)]), ("gold", "line", [(3, 4), (19, 4)], 2),
+                 ("steel", "line", [(11, 5), (11, 17)], 1), ("ink", "rect", (5, 8, 5, 8)), ("ink", "rect", (17, 8, 17, 8)),
+                 ("red", "rect", (9, 18, 13, 21))]),
+]
+
 # Icons for the map and minimap: one row of 22px cells in assets/icons/map.png.
 # The order is MapIcons.KINDS in the game.
 ICON_PALETTE.update({"roof": ["d86a5a", "b04a40", "7c3030"], "wall_w": ["f0e4c8", "cdbf9e", "9a8d70"], "stone_m": ["b4b0bd", "8a8794", "5c5966"],

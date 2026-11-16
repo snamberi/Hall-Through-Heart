@@ -41,6 +41,9 @@ const KINDS := {
 	"furnace": {"item": "furnace", "decor": Prop.Decor.FURNACE, "solid": 20.0},
 	## Where your farm animals live and leave their produce (see Livestock).
 	"farmhouse": {"item": "farmhouse_kit", "decor": Prop.Decor.FARMHOUSE, "solid": 30.0, "outdoors": true},
+	## A stand in a house for a boss's trophy (see Trophies); the record
+	## keeps the boss id in "trophy".
+	"trophy_stand": {"item": "trophy_stand", "decor": Prop.Decor.TROPHY_STAND, "solid": 12.0, "indoors": true},
 	## One tile of floor inside a house; the record keeps the item and tile.
 	"floor": {"item": "", "solid": 0.0, "flat": true},
 	## One tile of laid ground outdoors (path, decking, turf, pond...); the
@@ -87,6 +90,7 @@ func setup(player: Player, instances: Instances) -> void:
 	_player = player
 	_instances = instances
 	instances.left.connect(func() -> void: _room_props.clear())
+	apply_trophies()
 	var laid: Array = []
 	for record in records:
 		if record["kind"] == "ground":
@@ -281,6 +285,8 @@ func placement_problem(kind: String, at: Vector2) -> String:
 			return "" if at.distance_to(_player.global_position) <= 5.0 * TerrainTiles.TILE_SIZE else "Too far away"
 	elif kind == "floor":
 		return "Floors go inside a house"
+	elif KINDS[kind].get("indoors", false):
+		return "This goes inside a house"
 	else:
 		var world: World = get_parent().get_node("World")
 		var reach := 1 if kind == "house" else 0
@@ -491,9 +497,41 @@ func take_down(record: Dictionary) -> String:
 		_props[record["id"]].queue_free()
 	_props.erase(record["id"])
 	records.erase(record)
+	if record["kind"] == "trophy_stand":
+		apply_trophies()
 	Audio.play("pickup", -6.0, 0.1)
 	SaveGame.request_save()
 	return ""
+
+
+## Boss ids on trophy stands, in the order they were set up.
+func shown_trophies() -> Array:
+	var shown: Array = []
+	for record in records:
+		if record["kind"] == "trophy_stand" and record.get("trophy", "") != "":
+			shown.append(record["trophy"])
+	return shown
+
+
+## Sets (or with "", clears) the trophy on a stand. A trophy already shown on
+## another stand moves here.
+func set_trophy(record: Dictionary, boss_id: String) -> void:
+	if boss_id != "":
+		for other in records:
+			if other != record and other["kind"] == "trophy_stand" and other.get("trophy", "") == boss_id:
+				other["trophy"] = ""
+	record["trophy"] = boss_id
+	get_tree().call_group("trophy_views", "refresh")
+	apply_trophies()
+	if boss_id != "":
+		Events.codex_event.emit("trophies_shown", 1)
+	SaveGame.request_save()
+
+
+## Gives the player the bonuses of every trophy on show.
+func apply_trophies() -> void:
+	if _player:
+		_player.stats.set_modifiers("trophies", Trophies.bonus(shown_trophies()))
 
 
 ## Sends the player home after a short wait, if the cooldown allows.
@@ -542,6 +580,7 @@ func load_data(data: Dictionary) -> void:
 				record["items"] = []
 			records.append(record)
 			_next_id = maxi(_next_id, record["id"] + 1)
+	apply_trophies()
 
 
 ## Builds a house's inside and takes the player in.
@@ -679,6 +718,18 @@ func _spawn(record: Dictionary) -> void:
 			prop.add_light(0.55, 0.7, Color(1.0, 0.6, 0.3))
 			prop.prompt_text = "Use the furnace"
 			prop.on_interact = func(_player: Player) -> void: Events.furnace_opened.emit(record)
+		if record["kind"] == "trophy_stand":
+			var view := TrophyView.new()
+			view.record = record
+			view.position = prop.sprite().position + Vector2(0, -2)
+			prop.add_child(view)
+			var name_of := func() -> String:
+				var shown: String = record.get("trophy", "")
+				return "Change the trophy (%s)" % Trophies.TROPHIES[shown]["name"] if Trophies.TROPHIES.has(shown) else "Set a trophy here"
+			prop.prompt_text = name_of.call()
+			prop.on_interact = func(_player: Player) -> void:
+				Events.trophy_stand_opened.emit(record)
+			view.changed.connect(func() -> void: prop.prompt_text = name_of.call())
 		if record["kind"] == "root_hollow":
 			prop.prompt_text = "Open the root hollow"
 			prop.on_interact = func(_player: Player) -> void: Events.storage_opened.emit(record)

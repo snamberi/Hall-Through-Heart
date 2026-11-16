@@ -49,5 +49,7 @@ signal dismantle_requested
 signal splash(at: Vector2)
 ## The player opened a furnace (its building record).
 signal furnace_opened(record: Dictionary)
+## A trophy stand was used: choose the trophy shown on it.
+signal trophy_stand_opened(record: Dictionary)
 ## A loot chest was opened: {"items": [saved items], "title", "take_only"}.
 signal loot_opened(container: Dictionary)

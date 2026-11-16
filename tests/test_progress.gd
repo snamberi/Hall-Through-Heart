@@ -304,3 +304,94 @@ func test_map_waypoint_and_filters_are_saved(t: TestContext) -> void:
 	menu.free()
 	MapMenu.waypoint = null
 	MapMenu.hidden_groups = {}
+
+
+func test_trophy_hall_gives_bonuses(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var buildings: Buildings = main.get_node("Buildings")
+	var codex: Codex = main.get_node("Codex")
+	codex.boss_kills["hollow_king"] = 1
+	t.check("hollow_king" in Trophies.earned(codex), "a beaten boss's trophy is earned")
+	t.check(not "frostwarden" in Trophies.earned(codex), "an unbeaten one is not")
+	for boss: String in Trophies.TROPHIES:
+		t.check(BossDB.BOSSES.has(boss), "%s is a real boss" % boss)
+		var rows: Array = Trophies.SHAPES[Trophies.TROPHIES[boss]["shape"]]
+		for row: String in rows:
+			t.equal(row.length(), String(rows[0]).length(), "%s's trophy rows are even" % boss)
+	var before := player.stats.get_stat("physical_damage")
+	var first := {"id": 9001, "kind": "trophy_stand", "where": "house:1", "x": 2, "y": 2, "items": []}
+	var second := {"id": 9002, "kind": "trophy_stand", "where": "house:1", "x": 4, "y": 2, "items": []}
+	buildings.records.append(first)
+	buildings.records.append(second)
+	buildings.set_trophy(first, "hollow_king")
+	t.check(player.stats.get_stat("physical_damage") > before, "a trophy on show gives its bonus")
+	buildings.set_trophy(second, "hollow_king")
+	t.equal(first.get("trophy", ""), "", "a trophy moves rather than showing twice")
+	t.equal(buildings.shown_trophies().size(), 1, "one trophy on show")
+	buildings.take_down(second)
+	t.equal(buildings.shown_trophies().size(), 0, "taking the stand down takes the trophy off show")
+	t.check(is_equal_approx(player.stats.get_stat("physical_damage"), before), "and its bonus goes")
+	buildings.records.erase(first)
+
+
+func test_pet_talents_and_gear(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var pets := player.pets
+	pets._adopt("husk", "monster", "Gristle")
+	var index := pets.pets.size() - 1
+	var pet: Dictionary = pets.pets[index]
+	pet["level"] = 10
+	t.equal(pets.points_left(pet), 2, "a talent point every five levels")
+	var plain := pets.damage(pet)
+	t.equal(pets.learn(index, "ferocity"), "", "ferocity can be learned")
+	t.check(pets.damage(pet) > plain, "ferocity makes it hit harder")
+	t.check(pets.learn(index, "nonsense") == "", "an unknown talent is ignored")
+	pets._adopt("rabbit", "critter", "Bun")
+	var bunny: Dictionary = pets.pets[pets.pets.size() - 1]
+	t.check(not "ferocity" in pets.talents_for(bunny), "a critter cannot learn to fight")
+	var collar := Item.create("spiked_collar")
+	player.inventory.add(collar)
+	var harder := pets.damage(pet)
+	t.equal(pets.put_on(index, collar), "", "a collar goes on")
+	t.check(pets.damage(pet) > harder, "the collar makes it hit harder")
+	t.equal(player.inventory.count_of("spiked_collar"), 0, "the collar left the bag")
+	var charm := Item.create("lucky_charm")
+	player.inventory.add(charm)
+	pets.put_on(index, charm)
+	pets.set_active(index)
+	t.check(pets.owner_mods(pet).has("magic_find"), "a lucky charm helps its owner")
+	t.equal(pets.take_off(index, "collar"), "", "the collar comes off")
+	t.equal(player.inventory.count_of("spiked_collar"), 1, "back in the bag")
+	pets.unlearn(index)
+	t.equal(pets.points_left(pet), 2, "talents can be forgotten")
+
+
+func test_mount_tack_and_races(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var stable := player.stable
+	player.inventory.add(Item.create("racing_saddle"))
+	player.inventory.add(Item.create("iron_barding"))
+	for item: Item in player.inventory.items.duplicate():
+		if Stable.slot_of(item) != "":
+			t.equal(stable.put_on(item), "", "%s goes on" % item.display_name())
+	t.check(is_equal_approx(stable.speed_bonus(), 0.12), "a racing saddle is 12% faster")
+	t.check(stable.steady(), "iron barding keeps you in the saddle")
+	var times := RaceCourse.par_times(Vector2.ZERO, [Vector2(1000, 0), Vector2(1000, 1000), Vector2.ZERO] as Array[Vector2])
+	t.check(times[0] > times[1] and times[1] > times[2], "bronze is slower than silver, silver than gold")
+	var first := stable.record_race("race:test", 40.0, 1)
+	t.check(first["new_medal"] and first["new_best"], "a first finish is a new best and a medal")
+	var again := stable.record_race("race:test", 45.0, 1)
+	t.check(not again["new_medal"] and not again["new_best"], "a slower run changes nothing")
+	stable.record_race("race:test", 30.0, 3)
+	t.equal(stable.medal_count(3), 1, "a gold is kept")
+	t.equal(stable.take_off("saddle"), "", "the saddle comes off")
+	t.equal(stable.speed_bonus(), 0.0, "and the speed with it")
+	# A village course is laid on dry ground and ends at the post.
+	var world: World = main.get_node("World")
+	var post := world.cell_to_world(Vector2i(4, 4))
+	var gates := RaceCourse.plan(world, Vector2i.ZERO, post)
+	t.check(gates.size() >= 4, "a course has gates (%d)" % gates.size())
+	t.equal(gates[-1], post, "the course ends at the post")

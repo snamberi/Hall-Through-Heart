@@ -19,6 +19,20 @@ const TAME_HEALTH := 0.3
 const FETCH_REACH := 180.0
 ## How much stronger a critter's gift is at the top level.
 const GIFT_GROWTH := 1.5
+## A talent point every this many levels.
+const LEVELS_PER_POINT := 5
+## Pet talents: name, ranks, what a rank does, and which pets can learn it
+## ("monster", "critter" or both).
+const TALENTS := {
+	"ferocity": {"name": "Ferocity", "ranks": 5, "text": "+12% damage", "for": ["monster"]},
+	"quickness": {"name": "Quickness", "ranks": 3, "text": "8% faster blows", "for": ["monster"]},
+	"bond": {"name": "Bond", "ranks": 3, "text": "its blows heal you 1%; a critter's gift +15%", "for": ["monster", "critter"]},
+	"guardian": {"name": "Guardian", "ranks": 3, "text": "you take 2% less damage", "for": ["monster", "critter"]},
+	"scavenger": {"name": "Scavenger", "ranks": 3, "text": "fetches further, +3% gold", "for": ["monster", "critter"]},
+	"lucky": {"name": "Lucky Find", "ranks": 3, "text": "+2% magic find", "for": ["monster", "critter"]},
+}
+## What gear a pet can wear: a collar and a charm.
+const GEAR_SLOTS := ["collar", "charm"]
 
 signal changed
 
@@ -148,7 +162,150 @@ func release(index: int) -> void:
 
 
 func damage(pet: Dictionary) -> float:
-	return (6.0 + 2.5 * int(pet["level"])) * (1.0 + 0.04 * _player.leveling.level)
+	var base := (6.0 + 2.5 * int(pet["level"])) * (1.0 + 0.04 * _player.leveling.level)
+	return base * (1.0 + 0.12 * rank(pet, "ferocity") + gear_value(pet, "damage"))
+
+
+## Seconds between a fighting pet's blows.
+func strike_gap(pet: Dictionary) -> float:
+	var gap := 1.3 - 0.5 * int(pet["level"]) / float(MAX_LEVEL)
+	return gap / (1.0 + 0.08 * rank(pet, "quickness") + gear_value(pet, "speed"))
+
+
+# --- talents
+
+func rank(pet: Dictionary, talent: String) -> int:
+	return int(pet.get("talents", {}).get(talent, 0))
+
+
+func talent_points(pet: Dictionary) -> int:
+	return int(pet["level"]) / LEVELS_PER_POINT
+
+
+func points_left(pet: Dictionary) -> int:
+	var spent := 0
+	for talent: String in pet.get("talents", {}):
+		spent += int(pet["talents"][talent])
+	return talent_points(pet) - spent
+
+
+## Talents this kind of pet can learn, in order.
+func talents_for(pet: Dictionary) -> Array[String]:
+	var result: Array[String] = []
+	for talent: String in TALENTS:
+		if pet["kind"] in TALENTS[talent]["for"]:
+			result.append(talent)
+	return result
+
+
+## Learns a rank of a talent. Returns "" or why not.
+func learn(index: int, talent: String) -> String:
+	if index < 0 or index >= pets.size() or not TALENTS.has(talent):
+		return ""
+	var pet: Dictionary = pets[index]
+	if not talent in talents_for(pet):
+		return "%s cannot learn that." % pet["name"]
+	if points_left(pet) <= 0:
+		return "No talent points left: one comes every %d levels." % LEVELS_PER_POINT
+	if rank(pet, talent) >= int(TALENTS[talent]["ranks"]):
+		return "%s is already as good at that as it can be." % pet["name"]
+	if not pet.has("talents"):
+		pet["talents"] = {}
+	pet["talents"][talent] = rank(pet, talent) + 1
+	_refresh_look()
+	changed.emit()
+	SaveGame.request_save()
+	return ""
+
+
+## Forgets every talent so the points can be spent again.
+func unlearn(index: int) -> void:
+	if index >= 0 and index < pets.size():
+		pets[index]["talents"] = {}
+		_refresh_look()
+		changed.emit()
+		SaveGame.request_save()
+
+
+# --- gear
+
+## The item a pet wears in a slot, or null.
+func gear(pet: Dictionary, slot: String) -> Item:
+	var saved: Variant = pet.get(slot)
+	return Item.from_dict(saved) if saved is Dictionary else null
+
+
+## A pet's own number from its gear ("damage", "speed", "heal", "reach").
+func gear_value(pet: Dictionary, key: String) -> float:
+	var total := 0.0
+	for slot: String in GEAR_SLOTS:
+		var saved: Variant = pet.get(slot)
+		if saved is Dictionary and ItemDB.ITEMS.has(saved.get("id", "")):
+			total += float(ItemDB.ITEMS[saved["id"]].get("pet", {}).get(key, 0.0))
+	return total
+
+
+## Puts gear from the bag on a pet; what it wore goes back in the bag.
+func put_on(index: int, item: Item) -> String:
+	if index < 0 or index >= pets.size() or item == null:
+		return ""
+	var slot := str(item.definition().get("pet_gear", ""))
+	if slot == "":
+		return "Pets cannot wear that."
+	var pet: Dictionary = pets[index]
+	var old := gear(pet, slot)
+	pet[slot] = Stable.take_one(_player.inventory, item).to_dict()
+	if old:
+		_player.inventory.add(old, false)
+	_refresh_look()
+	changed.emit()
+	SaveGame.request_save()
+	return ""
+
+
+func take_off(index: int, slot: String) -> String:
+	if index < 0 or index >= pets.size():
+		return ""
+	var item := gear(pets[index], slot)
+	if item == null:
+		return ""
+	if not _player.inventory.has_room_for(item):
+		return "Your bag is full."
+	pets[index].erase(slot)
+	_player.inventory.add(item, false)
+	_refresh_look()
+	changed.emit()
+	SaveGame.request_save()
+	return ""
+
+
+## What the following pet gives its owner: a critter's gift, talents and
+## the owner's side of its gear.
+func owner_mods(pet: Dictionary) -> Dictionary:
+	var total := {}
+	var add := func(stat: String, kind: String, value: float) -> void:
+		if not total.has(stat):
+			total[stat] = {}
+		total[stat][kind] = float(total[stat].get(kind, 0.0)) + value
+	if pet["kind"] == "critter":
+		var gift := gift_mods(pet)
+		for stat: String in gift:
+			for kind: String in gift[stat]:
+				add.call(stat, kind, float(gift[stat][kind]) * (1.0 + 0.15 * rank(pet, "bond")))
+	if rank(pet, "guardian") > 0:
+		add.call("damage_taken", "percent", -0.02 * rank(pet, "guardian"))
+	if rank(pet, "scavenger") > 0:
+		add.call("gold_find", "percent", 0.03 * rank(pet, "scavenger"))
+	if rank(pet, "lucky") > 0:
+		add.call("magic_find", "flat", 0.02 * rank(pet, "lucky"))
+	for slot: String in GEAR_SLOTS:
+		var saved: Variant = pet.get(slot)
+		if saved is Dictionary and ItemDB.ITEMS.has(saved.get("id", "")):
+			var mods: Dictionary = ItemDB.ITEMS[saved["id"]].get("owner", {})
+			for stat: String in mods:
+				for kind: String in mods[stat]:
+					add.call(stat, kind, float(mods[stat][kind]))
+	return total
 
 
 func xp_to_next(pet: Dictionary) -> int:
@@ -240,12 +397,12 @@ func _refresh_look() -> void:
 	_player.stats.clear_modifiers("pet")
 	if pet.is_empty():
 		return
+	_player.stats.set_modifiers("pet", owner_mods(pet))
 	if pet["kind"] == "critter":
 		_sprite.visible = false
 		_critter.visible = true
 		_critter.scale = Vector2(1.35, 1.35)
 		_critter.frame = Critter.KINDS.find(pet["species"]) * Critter.FRAMES
-		_player.stats.set_modifiers("pet", gift_mods(pet))
 	else:
 		_critter.visible = false
 		_sprite.visible = true
@@ -364,7 +521,8 @@ func _physics_process(delta: float) -> void:
 ## Where the nearest dropped thing lies, if the pet should run to it.
 func _fetch_goal() -> Vector2:
 	var best := Vector2.INF
-	var best_distance := FETCH_REACH
+	var pet := current()
+	var best_distance := FETCH_REACH * (1.0 + 0.25 * rank(pet, "scavenger") + gear_value(pet, "reach")) if not pet.is_empty() else FETCH_REACH
 	for node in get_tree().get_nodes_in_group("pickups"):
 		if node is Node2D:
 			var distance: float = node.global_position.distance_to(_player.global_position)
@@ -394,8 +552,8 @@ func _fight(pet: Dictionary, delta: float) -> void:
 			target = enemy
 	if target == null:
 		return
-	# Older pets strike faster.
-	_attack_left = 1.3 - 0.5 * int(pet["level"]) / float(MAX_LEVEL)
+	# Older pets strike faster, and quicker still with talent and gear.
+	_attack_left = strike_gap(pet)
 	_sprite.play("lunge")
 	_sprite.flip_h = target.global_position.x < global_position.x
 	var home := global_position
@@ -405,6 +563,10 @@ func _fight(pet: Dictionary, delta: float) -> void:
 		if is_instance_valid(target) and not target.health.is_dead():
 			var savage := randf() < 0.15
 			target.take_damage(damage(pet) * (2.0 if savage else 1.0), (target.global_position - home).normalized() * 160.0, savage)
+			# Bond and a heart charm: the pet's blows mend its owner.
+			var mend := 0.01 * rank(pet, "bond") + gear_value(pet, "heal")
+			if mend > 0.0 and _player.health.current < _player.health.max_health:
+				_player.health.heal(_player.health.max_health * mend)
 	)
 	_lunge.tween_property(self, "global_position", home, 0.18)
 

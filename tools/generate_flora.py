@@ -1528,6 +1528,24 @@ def decor(kind):
         for _ in range(10):
             x = r.randrange(24, 40)
             c.fill("line", (x, 28, x + r.randrange(-2, 3), 30 + r.randrange(0, 3)), C("e8d070"), 1)
+    elif kind == "trophy_stand":
+        # A trophy stand for a hall: a dark wooden plinth on a stepped
+        # base, a navy cloth over its top edged in bronze, and a brass
+        # plaque on its face. The trophy itself is drawn over it in-game.
+        wood = ramp("7a5a40", "5a402c", "3a2a1e")
+        cloth = ramp("3e4a78", "2a3258", "1a2040")
+        bronze = ramp("e8c070", "b48a3c", "7a5a24")
+        c.shade("rect", (16, 54, 48, 61), wood)
+        c.fill("line", (16, 54, 48, 54), C("8e6c4c"), 1)
+        c.shade("rect", (20, 34, 44, 54), wood)
+        for x in (24, 32, 40):
+            c.fill("line", (x, 36, x, 52), C("4a3626"), 1)
+        c.shade("rect", (18, 30, 46, 35), cloth)
+        c.fill("line", (18, 35, 46, 35), bronze[1], 1)
+        for x in range(19, 46, 4):
+            c.fill("rect", (x, 36, x + 1, 38), cloth[1])
+        c.shade("rect", (26, 42, 38, 47), bronze)
+        c.fill("line", (28, 44, 36, 44), C("5a4020"), 1)
     c.outline()
     return c.img
 
@@ -1535,7 +1553,7 @@ def decor(kind):
 DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate", "barrel", "well", "fence", "lantern",
          "stall", "signpost", "rug", "shelf", "plant_pot", "table", "chair", "candles", "cage", "tent", "obelisk",
          "palisade", "spike_trap", "ballista", "soil", "scarecrow", "torch", "fireplace", "waystone", "waystone_lit", "gravestone", "ruined_tower", "cart",
-         "root_cutter", "root_delver", "root_tender", "root_hollow", "farmhouse", "furnace"]
+         "root_cutter", "root_delver", "root_tender", "root_hollow", "farmhouse", "furnace", "trophy_stand"]
 
 
 def sheet(images, w, h):

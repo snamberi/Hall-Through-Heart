@@ -130,6 +130,8 @@ var styles: StyleBook
 var loadouts: Loadouts
 ## Standing with merchants (see Trade).
 var trade: Trade
+## Saddle, barding and race records (see Stable).
+var stable: Stable
 ## The timing bar over a rich node being worked (see GatherMeter).
 var _gather_meter: GatherMeter
 var hotbar: Hotbar
@@ -198,6 +200,9 @@ func _ready() -> void:
 	trade = Trade.new()
 	trade.name = "Trade"
 	add_child(trade)
+	stable = Stable.new()
+	stable.name = "Stable"
+	add_child(stable)
 	var hands := HandFX.new()
 	hands.setup(self)
 	add_child(hands)
@@ -676,7 +681,7 @@ func _read_ground() -> void:
 			if (steed.get("snow", false) and tile in [TerrainTiles.Type.SNOW, TerrainTiles.Type.FROSTPINE, TerrainTiles.Type.PEAK]) \
 					or (steed.get("sand", false) and tile in [TerrainTiles.Type.SAND, TerrainTiles.Type.SALT]):
 				_ground_speed = maxf(_ground_speed, 1.0)
-			_ground_speed *= steed["speed"]
+			_ground_speed *= steed["speed"] * (1.0 + stable.speed_bonus())
 	if boating:
 		if TerrainTiles.is_water(tile):
 			_ground_speed = BOAT_SPEED
@@ -840,7 +845,7 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		_die()
 		return true
 	_invulnerable_left = maxf(_invulnerable_left, hurt_invulnerability)
-	if mount_id != "" and not Mount.MOUNTS[mount_id].get("steady", false):
+	if mount_id != "" and not Mount.MOUNTS[mount_id].get("steady", false) and not stable.steady():
 		dismount()
 	if state == State.GATHER:
 		_stop_gathering()
@@ -923,6 +928,7 @@ func ride(id: String) -> String:
 		return "You cannot ride here."
 	mount_id = id
 	_mount.ride(id)
+	stable.apply_riding(true)
 	_visual.position.y = -Mount.SEAT
 	RingBurst.spawn(get_parent(), global_position, Color(0.9, 0.85, 0.7), 40.0)
 	Events.codex_event.emit("mounts", 1)
@@ -934,6 +940,7 @@ func dismount() -> void:
 		return
 	mount_id = ""
 	_mount.put_away()
+	stable.apply_riding(false)
 	_visual.position.y = 0.0
 
 

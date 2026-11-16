@@ -28,6 +28,10 @@ static func type_name(item: Item) -> String:
 	var id := item.id
 	if item.is_relic():
 		return "Relic"
+	if def.has("pet_gear"):
+		return "Pet %s" % def["pet_gear"]
+	if def.has("tack"):
+		return "Saddle" if def["tack"] == "saddle" else "Barding"
 	if item.is_belt():
 		return "Belt"
 	if def.has("weapon"):

@@ -213,10 +213,11 @@ func restock_if_due(player: Player) -> void:
 const SPECIAL: Array[String] = ["gear", "fine_gear", "gem", "rare_gem", "set_piece"]
 ## Wares laid out only for those in good standing: [id, weight, tier].
 const BACK_ROOM := {
-	"smith": [["gold_ingot", 0.8, 1], ["iron_pickaxe", 0.6, 1], ["iron_hatchet", 0.6, 1], ["fine_gear", 1.5, 2], ["mithril_ingot", 0.6, 2],
+	"smith": [["spiked_collar", 0.5, 1], ["iron_barding", 0.4, 2], ["gold_ingot", 0.8, 1], ["iron_pickaxe", 0.6, 1], ["iron_hatchet", 0.6, 1], ["fine_gear", 1.5, 2], ["mithril_ingot", 0.6, 2],
 		["set_piece", 0.8, 3], ["mithril_pickaxe", 0.4, 3], ["mithril_hatchet", 0.4, 3], ["adamantite_ingot", 0.5, 4]],
 	"alchemy": [["rare_gem", 0.8, 2], ["gem", 1.0, 1], ["might_elixir", 0.8, 1], ["rare_gem", 1.0, 3], ["treasure_map", 0.6, 4]],
-	"general": [["fine_gear", 1.0, 1], ["gem", 0.8, 2], ["treasure_map", 0.6, 2], ["rare_gem", 0.6, 3], ["set_piece", 0.6, 4]],
+	"general": [["leather_collar", 0.8, 0], ["riding_saddle", 0.6, 0], ["fine_gear", 1.0, 1], ["lucky_charm", 0.5, 1], ["padded_barding", 0.5, 1],
+		["gem", 0.8, 2], ["treasure_map", 0.6, 2], ["racing_saddle", 0.4, 2], ["rare_gem", 0.6, 3], ["set_piece", 0.6, 4]],
 	"wandering": [["set_piece", 0.8, 2], ["rare_gem", 1.0, 3], ["fine_gear", 1.0, 4]],
 }
 ## Extra rarity rolled on this shelf's gear (from the visitor's standing).
@@ -241,7 +242,7 @@ func _make_offer(what: String, level: int, random: RandomNumberGenerator) -> Dic
 			var piece := LootGenerator.make_set_piece(level)
 			return {"item": piece, "price": piece.value() * 3, "endless": false}
 	var item := Item.create(what)
-	var single: bool = item.definition().has("tool") or item.definition().has("mount") or what in ["treasure_map", "rowboat"]
+	var single: bool = item.definition().has("tool") or item.definition().has("mount") or item.definition().has("tack") or item.definition().has("pet_gear") or what in ["treasure_map", "rowboat"]
 	var price := item.value() * (2 if what.ends_with("_ingot") else 1)
 	if what == "treasure_map":
 		price = 150

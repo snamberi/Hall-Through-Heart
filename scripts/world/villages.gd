@@ -172,6 +172,17 @@ func _build(center: Vector2i) -> Array:
 	if exits == 0:
 		add.call(Signpost.create(_at(center + Vector2i(3, 15)), center + Vector2i(3, 15), site_book))
 	add.call(Prop.create_decor(Prop.Decor.BANNER, _at(center + Vector2i(2, -6)), 5.0))
+	# The race post: a gold banner where the village's mount race starts.
+	var post_at := _at(center + Vector2i(-6, -7))
+	var course_key := "race:%d,%d" % [center.x, center.y]
+	var race_post := Prop.create_decor(Prop.Decor.BANNER, post_at, 5.0, "Race the village course", func(player: Player) -> void:
+		var problem := RaceCourse.start(player, course_key, post_at, RaceCourse.plan(_world, center, post_at))
+		if problem != "":
+			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
+	)
+	race_post.sprite().modulate = Color(1.0, 0.86, 0.45)
+	race_post.set_meta("race_course", course_key)
+	add.call(race_post)
 
 	# Houses in each quarter between the roads.
 	var doors: Array[Vector2] = []
