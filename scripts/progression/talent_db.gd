@@ -153,8 +153,83 @@ const ASCENDANT := {
 	"fortune": [["Ascendant Luck", 12, {"magic_find": {"flat": 0.03}, "gold_find": {"percent": 0.04}}], ["Paragon of Fortune", 10, {"magic_find": {"flat": 0.2}, "critical_chance": {"flat": 0.03}}]],
 }
 
-## Every talent: the hand-placed ones above, plus the wings and the
-## Ascendant tier built from WINGS and ASCENDANT.
+## Outer wings: two more chains per branch, leaving its ring-5 milestone and
+## running far outward at a wider angle. Small, steady gains (many of 1% a
+## rank, five ranks each), ending in a major talent.
+## Each entry: [name, icon, max ranks, mods per rank].
+const OUTER_WINGS := {
+	"offense": [
+		[["Whetstone", 0, 5, {"physical_damage": {"percent": 0.01}}], ["Follow Through", 3, 5, {"attack_speed": {"percent": 0.01}}],
+			["Weak Spot", 40, 5, {"critical_chance": {"flat": 0.005}}], ["Deep Cuts", 15, 5, {"critical_damage": {"flat": 0.02}}],
+			["Battle Hunger", 1, 5, {"physical_damage": {"percent": 0.01}, "life_steal": {"flat": 0.001}}],
+			["Warlord", 2, 1, {"physical_damage": {"percent": 0.08}, "attack_speed": {"percent": 0.04}, "critical_damage": {"flat": 0.1}}]],
+		[["Ember Touch", 18, 5, {"fire_damage": {"percent": 0.02}}], ["Frost Touch", 19, 5, {"frost_damage": {"percent": 0.02}}],
+			["Toxin Touch", 63, 5, {"poison_damage": {"percent": 0.02}}], ["Shade Touch", 20, 5, {"shadow_damage": {"percent": 0.02}}],
+			["Dawn Touch", 65, 5, {"holy_damage": {"percent": 0.02}}],
+			["Storm of Edges", 33, 1, {"fire_damage": {"flat": 4.0}, "frost_damage": {"flat": 4.0}, "physical_damage": {"percent": 0.05}}]],
+	],
+	"mobility": [
+		[["Long Stride", 9, 5, {"move_speed": {"percent": 0.01}}], ["Easy Breath", 37, 5, {"stamina_regen": {"percent": 0.02}}],
+			["Slip Away", 29, 5, {"dodge_efficiency": {"percent": 0.01}}], ["Far Roll", 29, 5, {"dodge_distance": {"percent": 0.02}}],
+			["Light Load", 37, 5, {"stamina_cost_multiplier": {"percent": -0.01}}],
+			["Gale Dancer", 39, 1, {"move_speed": {"percent": 0.05}, "dodge_efficiency": {"percent": 0.08}, "attack_speed": {"percent": 0.03}}]],
+		[["Quick Draw", 3, 5, {"attack_speed": {"percent": 0.008}}], ["Trail Sense", 9, 5, {"move_speed": {"flat": 2.0}}],
+			["Second Breath", 37, 5, {"max_stamina": {"flat": 4.0}}], ["Hunter's Pace", 32, 5, {"critical_chance": {"flat": 0.004}}],
+			["Wayfarer", 39, 5, {"gather_speed": {"percent": 0.01}, "move_speed": {"percent": 0.005}}],
+			["Ghost Step", 29, 1, {"dodge_distance": {"percent": 0.15}, "stamina_regen": {"percent": 0.15}}]],
+	],
+	"defense": [
+		[["Rivets", 7, 5, {"armor": {"percent": 0.01}}], ["Thick Plates", 7, 5, {"armor": {"flat": 2.0}}],
+			["Stubborn", 6, 5, {"knockback_resistance": {"flat": 0.02}}], ["Endure", 5, 5, {"damage_taken": {"percent": -0.01}}],
+			["Stout Heart", 35, 5, {"max_health": {"percent": 0.01}}],
+			["Living Wall", 5, 1, {"armor": {"percent": 0.08}, "damage_taken": {"percent": -0.04}, "max_health": {"percent": 0.04}}]],
+		[["Ember Skin", 18, 5, {"fire_resist": {"flat": 0.01}}], ["Frost Skin", 19, 5, {"frost_resist": {"flat": 0.01}}],
+			["Venom Skin", 63, 5, {"poison_resist": {"flat": 0.01}}], ["Shade Skin", 20, 5, {"shadow_resist": {"flat": 0.01}}],
+			["Dawn Skin", 65, 5, {"holy_resist": {"flat": 0.01}}],
+			["Unbowed", 12, 1, {"elemental_resistance": {"flat": 0.06}, "armor": {"percent": 0.05}}]],
+	],
+	"survival": [
+		[["Steady Pulse", 35, 5, {"max_health": {"percent": 0.01}}], ["Knitting Flesh", 16, 5, {"health_regen": {"flat": 0.2}}],
+			["Thirst", 20, 5, {"life_steal": {"flat": 0.002}}], ["Deep Lungs", 37, 5, {"max_stamina": {"percent": 0.01}}],
+			["Will to Live", 13, 5, {"max_health": {"flat": 5.0}}],
+			["Evergreen", 35, 1, {"max_health": {"percent": 0.06}, "health_regen": {"flat": 1.5}}]],
+		[["Calm Mind", 36, 5, {"max_mana": {"percent": 0.01}}], ["Trickle", 36, 5, {"mana_regen": {"percent": 0.02}}],
+			["Spell Thread", 33, 5, {"magic_power": {"percent": 0.01}}], ["Focus", 27, 5, {"magic_power": {"percent": 0.01}, "max_mana": {"flat": 2.0}}],
+			["Kindred", 65, 5, {"holy_damage": {"percent": 0.02}}],
+			["Wellspring", 27, 1, {"magic_power": {"percent": 0.08}, "mana_regen": {"percent": 0.15}}]],
+	],
+	"fortune": [
+		[["Sharp Eyes", 12, 5, {"magic_find": {"flat": 0.01}}], ["Coin Sense", 17, 5, {"gold_find": {"percent": 0.01}}],
+			["Prospecting", 49, 5, {"mining_efficiency": {"percent": 0.01}}], ["Nimble Fingers", 44, 5, {"gather_speed": {"percent": 0.01}}],
+			["Lucky Find", 13, 5, {"magic_find": {"flat": 0.01}, "gold_find": {"percent": 0.01}}],
+			["Midas", 17, 1, {"gold_find": {"percent": 0.1}, "magic_find": {"flat": 0.05}}]],
+		[["Fickle Fate", 40, 5, {"critical_chance": {"flat": 0.004}}], ["Gambler", 15, 5, {"critical_damage": {"flat": 0.02}}],
+			["Close Call", 29, 5, {"dodge_efficiency": {"percent": 0.01}}], ["Charmed", 11, 5, {"physical_damage": {"percent": 0.008}}],
+			["Four Leaves", 40, 5, {"critical_chance": {"flat": 0.003}, "magic_find": {"flat": 0.005}}],
+			["Fortune Favours", 11, 1, {"critical_chance": {"flat": 0.03}, "critical_damage": {"flat": 0.12}}]],
+	],
+}
+## Bridges between neighbouring branches, far out past the Paragons: nine
+## small talents on an arc (1% a rank, five ranks) with a Confluence in
+## the middle. Key: "branch|next branch"; value: [Confluence name, icon,
+## its mods, [stat, kind, amount per rank] cycled along the arc].
+const BRIDGES := {
+	"offense|mobility": ["Confluence of the Hunt", 92, {"attack_speed": {"percent": 0.06}, "move_speed": {"percent": 0.04}, "critical_chance": {"flat": 0.02}},
+		[["attack_speed", "percent", 0.01], ["move_speed", "percent", 0.01], ["physical_damage", "percent", 0.01]]],
+	"mobility|defense": ["Confluence of the Shield-Runner", 5, {"dodge_efficiency": {"percent": 0.08}, "armor": {"percent": 0.06}},
+		[["dodge_efficiency", "percent", 0.01], ["armor", "percent", 0.01], ["max_stamina", "percent", 0.01]]],
+	"defense|survival": ["Confluence of the Unyielding", 35, {"max_health": {"percent": 0.08}, "damage_taken": {"percent": -0.04}},
+		[["max_health", "percent", 0.01], ["armor", "percent", 0.01], ["health_regen", "flat", 0.1]]],
+	"survival|fortune": ["Confluence of Plenty", 13, {"magic_find": {"flat": 0.06}, "health_regen": {"flat": 1.0}, "gold_find": {"percent": 0.06}},
+		[["magic_find", "flat", 0.01], ["max_health", "percent", 0.01], ["gold_find", "percent", 0.01]]],
+	"fortune|offense": ["Confluence of the Gambler's Edge", 40, {"critical_chance": {"flat": 0.03}, "critical_damage": {"flat": 0.2}},
+		[["critical_damage", "flat", 0.02], ["physical_damage", "percent", 0.01], ["critical_chance", "flat", 0.003]]],
+}
+## How many small talents each bridge's arc holds (the Confluence is the middle one).
+const BRIDGE_LENGTH := 9
+
+## Every talent: the hand-placed ones above, plus the wings, the Ascendant
+## tier, the outer wings and the bridges built from the tables.
 static var NODES: Dictionary = _all_nodes()
 
 static var _edges: Array = []
@@ -188,6 +263,48 @@ static func _all_nodes() -> Dictionary:
 			"icon": ascendant[0][1], "mods": ascendant[0][2], "links": keystones}
 		nodes["%s_paragon" % branch] = {"name": ascendant[1][0], "branch": branch, "ring": 9, "side": 0.0, "kind": "keystone", "max": 1, "milestone": 50,
 			"icon": ascendant[1][1], "mods": ascendant[1][2], "links": [first]}
+		# The outer wings, from the ring-5 milestone.
+		for wing in 2:
+			var side := -1.0 if wing == 0 else 1.0
+			var previous := _base_at_ring(branch, 5)
+			var entries: Array = OUTER_WINGS[branch][wing]
+			for index in entries.size():
+				var entry: Array = entries[index]
+				var ring := 5.7 + index
+				var id := "%s_outer_%s" % [branch, (entry[0] as String).to_snake_case().replace("'", "")]
+				var last := index == entries.size() - 1
+				nodes[id] = {"name": entry[0], "branch": branch, "ring": ring, "side": side * (0.3 + 0.9 / ring),
+					"kind": "major" if last else "minor", "max": entry[2], "icon": entry[1], "mods": entry[3], "links": [previous]}
+				if last:
+					nodes[id]["milestone"] = 45
+				previous = id
+	# The bridges between neighbours, from Paragon to Paragon.
+	for index in BRANCH_ORDER.size():
+		var here := BRANCH_ORDER[index]
+		var next := BRANCH_ORDER[(index + 1) % BRANCH_ORDER.size()]
+		var bridge: Array = BRIDGES["%s|%s" % [here, next]]
+		var span := TAU / BRANCH_ORDER.size()
+		var start := "%s_bridge_out" % here
+		nodes[start] = {"name": "Far Road", "branch": here, "ring": 10.2, "side": 0.12, "kind": "minor", "max": 1, "milestone": 55,
+			"icon": 39, "mods": {"move_speed": {"percent": 0.01}}, "links": ["%s_paragon" % here]}
+		var previous := start
+		var cycle: Array = bridge[3]
+		for step in BRIDGE_LENGTH:
+			var share := (step + 1.0) / (BRIDGE_LENGTH + 1.0)
+			var side := 0.12 + (span - 0.24) * share
+			var middle := step == BRIDGE_LENGTH / 2
+			var id := "%s_%s_bridge_%d" % [here, next, step]
+			if middle:
+				nodes[id] = {"name": bridge[0], "branch": here, "ring": 11.4, "side": side, "kind": "major", "max": 1, "milestone": 60,
+					"icon": bridge[1], "mods": bridge[2], "links": [previous]}
+			else:
+				var stat: Array = cycle[step % cycle.size()]
+				nodes[id] = {"name": "Wanderer's %s" % ["Grit", "Spark", "Ease", "Edge", "Ward", "Luck", "Pulse", "Way", "Pace"][step], "branch": here,
+					"ring": 11.4, "side": side, "kind": "minor", "max": 5, "icon": bridge[1], "mods": {stat[0]: {stat[1]: stat[2]}}, "links": [previous]}
+			previous = id
+		var end := "%s_bridge_in" % next
+		nodes[end] = {"name": "Far Road", "branch": next, "ring": 10.2, "side": -0.12, "kind": "minor", "max": 1, "milestone": 55,
+			"icon": 39, "mods": {"move_speed": {"percent": 0.01}}, "links": [previous, "%s_paragon" % next]}
 	return nodes
 
 

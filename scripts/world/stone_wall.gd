@@ -25,6 +25,11 @@ const STYLES := {
 	"timber": {"face": Color("e8dcc0"), "light": Color("f8f0dc"), "dark": Color("a8987a"), "top": Color("6a4428"), "seam": Color("4a2e18"), "height": 34.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "timber"},
 	"rootwood": {"face": Color("6a4a2e"), "light": Color("8e6a44"), "dark": Color("3a2818"), "top": Color("5d7a3f"), "seam": Color("2a1c10"), "height": 34.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "roots", "glow": Color("a8e070")},
 	"heartstone": {"face": Color("5a2430"), "light": Color("7a3442"), "dark": Color("3a1420"), "top": Color("8a4452"), "seam": Color("241018"), "height": 34.0, "broken": false, "moss": Color("5d7a3f"), "veins": Color("ff5a6a")},
+	"sandstone": {"face": Color("d8b47a"), "light": Color("f0d49a"), "dark": Color("9a7a4a"), "top": Color("e8cc94"), "seam": Color("7a5a32"), "height": 32.0, "broken": false, "moss": Color("8a8a4a"), "pattern": "slabs"},
+	"dark_brick": {"face": Color("5a4a5a"), "light": Color("7a6878"), "dark": Color("362a36"), "top": Color("8a8494"), "seam": Color("a89aa8"), "height": 32.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "brick"},
+	"ice": {"face": Color("9ad0ec"), "light": Color("d8f4ff"), "dark": Color("5a8ab0"), "top": Color("e8f8ff"), "seam": Color("4a7a9a"), "height": 34.0, "broken": false, "moss": Color("bfe8ff"), "pattern": "glass"},
+	"obsidian": {"face": Color("3a2e4a"), "light": Color("5a4a72"), "dark": Color("1e1628"), "top": Color("6a5a84"), "seam": Color("140e1c"), "height": 36.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "slabs", "trim": Color("a880e0")},
+	"cobble": {"face": Color("8e8478"), "light": Color("b0a696"), "dark": Color("5a524a"), "top": Color("a89e8e"), "seam": Color("3e3832"), "height": 30.0, "broken": false, "moss": Color("5d7a3f"), "ivy": true},
 	"glass": {"face": Color("8a8794"), "light": Color("a8a5b2"), "dark": Color("55525e"), "top": Color("c0bdc9"), "seam": Color("2a2830"), "height": 34.0, "broken": false, "moss": Color("5d7a3f"), "pattern": "glass"},
 }
 

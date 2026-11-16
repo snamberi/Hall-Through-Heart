@@ -92,7 +92,7 @@ func refresh() -> void:
 
 
 func _set_zoom(value: float) -> void:
-	_zoom = clampf(value, 0.3, 1.6)
+	_zoom = clampf(value, 0.18, 1.6)
 	refresh()
 
 
@@ -106,7 +106,7 @@ func _fit_tree() -> void:
 		first = false
 	bounds = bounds.grow(40.0)
 	var room := _canvas.size if _canvas.size.x > 10.0 else _canvas.custom_minimum_size
-	_zoom = clampf(minf(room.x / bounds.size.x, (room.y - 40.0) / bounds.size.y), 0.3, 1.6)
+	_zoom = clampf(minf(room.x / bounds.size.x, (room.y - 40.0) / bounds.size.y), 0.18, 1.6)
 	_offset = -bounds.get_center()
 	refresh()
 
@@ -164,7 +164,7 @@ func _on_input(event: InputEvent) -> void:
 						Audio.play("ui_click", -10.0, 0.05)
 						refresh()
 		elif event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-			_zoom = clampf(_zoom * (1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.89), 0.3, 1.6)
+			_zoom = clampf(_zoom * (1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.89), 0.18, 1.6)
 			_zoom_label.text = "%d%%" % roundi(_zoom * 100.0)
 			_canvas.queue_redraw()
 	elif event is InputEventMouseMotion:

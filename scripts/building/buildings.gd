@@ -44,6 +44,14 @@ const KINDS := {
 	## A stand in a house for a boss's trophy (see Trophies); the record
 	## keeps the boss id in "trophy".
 	"trophy_stand": {"item": "trophy_stand", "decor": Prop.Decor.TROPHY_STAND, "solid": 12.0, "indoors": true},
+	"anvil": {"item": "anvil", "decor": Prop.Decor.ANVIL, "solid": 12.0},
+	"weapon_rack": {"item": "weapon_rack", "decor": Prop.Decor.WEAPON_RACK, "solid": 12.0},
+	"bench": {"item": "bench", "decor": Prop.Decor.BENCH, "solid": 10.0},
+	"hay_bale": {"item": "hay_bale", "decor": Prop.Decor.HAY_BALE, "solid": 12.0},
+	"flower_bed": {"item": "flower_bed", "decor": Prop.Decor.FLOWER_BED, "solid": 8.0},
+	"cupboard": {"item": "cupboard", "decor": Prop.Decor.CUPBOARD, "solid": 12.0},
+	"fountain": {"item": "fountain", "decor": Prop.Decor.FOUNTAIN, "solid": 22.0, "outdoors": true},
+	"stone_planter": {"item": "stone_planter", "decor": Prop.Decor.STONE_PLANTER, "solid": 12.0},
 	## One tile of floor inside a house; the record keeps the item and tile.
 	"floor": {"item": "", "solid": 0.0, "flat": true},
 	## One tile of laid ground outdoors (path, decking, turf, pond...); the

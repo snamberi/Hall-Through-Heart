@@ -1528,6 +1528,104 @@ def decor(kind):
         for _ in range(10):
             x = r.randrange(24, 40)
             c.fill("line", (x, 28, x + r.randrange(-2, 3), 30 + r.randrange(0, 3)), C("e8d070"), 1)
+    elif kind == "anvil":
+        # A smith's anvil on a stump: a dark iron horn and face with a bright
+        # worn top, and a hammer leaning on the block.
+        iron = ramp("8a8e9a", "5a5e6a", "34363e")
+        wood = ramp("9a7450", "6e5034", "4a3422")
+        c.shade("rect", (22, 44, 42, 62), wood)
+        for y in (48, 54, 60):
+            c.fill("line", (23, y, 41, y), C("3a2a1a"), 1)
+        c.shade("poly", [(10, 30), (50, 30), (54, 34), (44, 38), (40, 44), (24, 44), (20, 38), (14, 36)], iron)
+        c.fill("line", (12, 30, 50, 30), C("c8ccd6"), 1)
+        c.shade("poly", [(50, 30), (60, 32), (54, 35)], iron)
+        c.shade("rect", (44, 50, 46, 62), wood)
+        c.shade("rect", (40, 46, 50, 51), iron)
+    elif kind == "weapon_rack":
+        # A wooden rack with a sword, a spear and an axe standing in it.
+        wood = ramp("9a7450", "6e5034", "4a3422")
+        steel = ramp("e4e8ee", "a8b0bc", "6a7280")
+        c.shade("rect", (8, 50, 56, 56), wood)
+        c.shade("rect", (8, 18, 12, 60), wood)
+        c.shade("rect", (52, 18, 56, 60), wood)
+        c.shade("rect", (8, 24, 56, 27), wood)
+        c.fill("line", (20, 6, 20, 50), steel[1], 2)
+        c.fill("line", (19, 6, 21, 4), steel[0], 1)
+        c.fill("rect", (16, 22, 24, 23), C("c8a050"))
+        c.fill("line", (32, 4, 32, 50), C("7a5634"), 1)
+        c.shade("poly", [(29, 4), (32, 0), (35, 4), (32, 10)], steel)
+        c.fill("line", (44, 12, 44, 50), C("7a5634"), 1)
+        c.shade("poly", [(44, 12), (50, 10), (51, 18), (44, 18)], steel)
+    elif kind == "bench":
+        # A plain wooden bench: plank seat, two legs, a back rail.
+        wood = ramp("b08a5c", "7e5c3a", "54402a")
+        c.shade("rect", (6, 38, 58, 44), wood)
+        c.fill("line", (7, 38, 57, 38), C("d0aa7a"), 1)
+        c.shade("rect", (10, 44, 14, 58), wood)
+        c.shade("rect", (50, 44, 54, 58), wood)
+        c.shade("rect", (6, 26, 58, 30), wood)
+        c.shade("rect", (10, 30, 13, 38), wood)
+        c.shade("rect", (51, 30, 54, 38), wood)
+    elif kind == "hay_bale":
+        # A tied bale of hay: straw ends, twine, loose wisps.
+        hay = ramp("f0d878", "c8a848", "8a7028")
+        c.shade("rect", (8, 30, 56, 60), hay)
+        r = random.Random(41)
+        for _ in range(60):
+            x, y = r.randrange(9, 56), r.randrange(31, 60)
+            c.put(x, y, hay[0] if r.random() < 0.5 else hay[2])
+        for x in (20, 44):
+            c.fill("line", (x, 30, x, 60), C("7a4a2a"), 1)
+        for x in range(10, 56, 5):
+            c.fill("line", (x, 30, x - 1, 27), hay[0], 1)
+    elif kind == "flower_bed":
+        # A low wooden box of soil with flowers in three colours.
+        wood = ramp("9a7450", "6e5034", "4a3422")
+        c.shade("rect", (6, 46, 58, 60), wood)
+        c.fill("rect", (8, 44, 56, 48), C("4a3020"))
+        r = random.Random(43)
+        for i, x in enumerate(range(11, 56, 6)):
+            c.fill("line", (x, 46, x, 36), C("4a8a3a"), 1)
+            c.fill("rect", (x - 1, 40, x, 41), C("5a9a4a"))
+            colour = ["e05a6a", "f0d060", "a080f0", "f0f0f0"][i % 4]
+            c.shade("ellipse", (x - 3, 31, x + 3, 37), ramp(colour, colour, "8a5a50"))
+            c.put(x, 34, C("f8e8a0"))
+    elif kind == "cupboard":
+        # A tall painted cupboard: two doors with knobs, a drawer, plates on top.
+        wood = ramp("6e8aa8", "4a6482", "2e4058")
+        c.shade("rect", (12, 10, 52, 62), wood)
+        c.fill("line", (32, 14, 32, 48), C("24324a"), 1)
+        c.fill("rect", (15, 14, 29, 47), C("5a7896"))
+        c.fill("rect", (35, 14, 49, 47), C("5a7896"))
+        c.shade("rect", (15, 50, 49, 58), wood)
+        for x, y in ((28, 30), (36, 30), (32, 54)):
+            c.fill("rect", (x, y, x + 1, y + 1), C("e8c070"))
+        c.shade("ellipse", (16, 4, 26, 10), ramp("f4f4f0", "c8c8c0", "8a8a84"))
+        c.shade("ellipse", (36, 5, 46, 10), ramp("f0e8c8", "c8b890", "8a7a5a"))
+    elif kind == "fountain":
+        # A round stone fountain: a basin of water, a column and a spout,
+        # water falling into the pool.
+        stone = ramp("c4c0cc", "8e8a98", "5a5664")
+        c.shade("ellipse", (4, 38, 60, 62), stone)
+        c.shade("ellipse", (8, 40, 56, 58), ramp("8ad0f0", "4a90c8", "2a5a8a"))
+        c.shade("rect", (28, 14, 36, 48), stone)
+        c.shade("ellipse", (22, 10, 42, 18), stone)
+        c.fill("ellipse", (25, 11, 39, 16), C("6ab0e0"))
+        for x in (24, 40):
+            c.fill("line", (x, 16, x + (-3 if x < 32 else 3), 44), C("bfe8ff"), 1)
+        c.fill("rect", (14, 46, 16, 47), C("e8f8ff"))
+        c.fill("rect", (46, 50, 48, 51), C("e8f8ff"))
+    elif kind == "stone_planter":
+        # A square stone planter with a small trimmed shrub.
+        stone = ramp("b4b0bc", "86828f", "57535f")
+        c.shade("rect", (14, 40, 50, 62), stone)
+        c.fill("line", (14, 40, 50, 40), C("d4d0dc"), 1)
+        c.fill("rect", (16, 38, 48, 42), C("3a2a1c"))
+        c.shade("ellipse", (14, 12, 50, 44), ramp("6ab04a", "3e7a32", "24501e"))
+        r = random.Random(47)
+        for _ in range(30):
+            x, y = r.randrange(17, 48), r.randrange(15, 41)
+            c.put(x, y, C("8ad06a") if r.random() < 0.5 else C("2a5a22"))
     elif kind == "trophy_stand":
         # A trophy stand for a hall: a dark wooden plinth on a stepped
         # base, a navy cloth over its top edged in bronze, and a brass
@@ -1553,7 +1651,8 @@ def decor(kind):
 DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate", "barrel", "well", "fence", "lantern",
          "stall", "signpost", "rug", "shelf", "plant_pot", "table", "chair", "candles", "cage", "tent", "obelisk",
          "palisade", "spike_trap", "ballista", "soil", "scarecrow", "torch", "fireplace", "waystone", "waystone_lit", "gravestone", "ruined_tower", "cart",
-         "root_cutter", "root_delver", "root_tender", "root_hollow", "farmhouse", "furnace", "trophy_stand"]
+         "root_cutter", "root_delver", "root_tender", "root_hollow", "farmhouse", "furnace", "trophy_stand",
+         "anvil", "weapon_rack", "bench", "hay_bale", "flower_bed", "cupboard", "fountain", "stone_planter"]
 
 
 def sheet(images, w, h):

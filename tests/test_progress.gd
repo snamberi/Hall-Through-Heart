@@ -91,7 +91,7 @@ func test_ego_grows_on_stronger_foes_and_shrinks_with_honest_work(t: TestContext
 
 
 func test_every_talent_can_be_reached(t: TestContext) -> void:
-	t.check(TalentDB.NODES.size() >= 100, "the tree has only %d talents" % TalentDB.NODES.size())
+	t.check(TalentDB.NODES.size() >= 200, "the tree has only %d talents" % TalentDB.NODES.size())
 	var seen := {"awakened_heart": true}
 	var queue: Array[String] = ["awakened_heart"]
 	while not queue.is_empty():
