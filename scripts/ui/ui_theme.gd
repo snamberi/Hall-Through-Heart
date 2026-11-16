@@ -112,11 +112,27 @@ static func label(text: String, size: int = BODY, color: Color = TEXT) -> Label:
 	var result := Label.new()
 	result.text = text
 	font_size(result, size)
-	result.add_theme_color_override("font_color", ink(color))
-	if GameSettings.high_contrast:
-		result.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.9))
-		result.add_theme_constant_override("outline_size", 3)
+	result.set_meta("ui_ink", color)
+	_ink_label(result)
 	return result
+
+
+## Colours a label from its own colour and the contrast setting.
+static func _ink_label(target: Label) -> void:
+	target.add_theme_color_override("font_color", ink(target.get_meta("ui_ink", TEXT)))
+	if GameSettings.high_contrast:
+		target.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.9))
+		target.add_theme_constant_override("outline_size", 3)
+	else:
+		target.remove_theme_color_override("font_outline_color")
+		target.remove_theme_constant_override("outline_size")
+
+
+## Applies the contrast setting to every label already on screen.
+static func refresh_contrast(tree: SceneTree) -> void:
+	for node in tree.get_nodes_in_group("ui_text"):
+		if node is Label and node.has_meta("ui_ink"):
+			_ink_label(node)
 
 
 ## A text colour as shown: with High contrast on, quiet text is lifted to

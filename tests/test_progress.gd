@@ -274,3 +274,33 @@ func test_each_weapon_has_its_own_mastery(t: TestContext) -> void:
 	# The old weapon abilities are templates, not abilities of their own.
 	t.check(not AbilityDB.ABILITIES.has("heavy_slash"), "the old Heavy Slash is gone from the ability list")
 	t.check(AbilityDB.BASE_ABILITIES.has("heavy_slash"), "but stays as a template for weapon moves")
+
+
+func test_a_new_pet_does_not_push_out_the_follower(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var pets := player.pets
+	pets.pets.clear()
+	pets.active = -1
+	pets._adopt("rabbit", "critter", "First")
+	t.equal(pets.active, 0, "the first pet follows at once")
+	pets._adopt("rabbit", "critter", "Second")
+	t.equal(pets.active, 0, "the first pet keeps following when a second is tamed")
+	pets.set_active(1)
+	t.equal(pets.current()["name"], "Second", "the choice can still be made")
+
+
+func test_map_waypoint_and_filters_are_saved(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var menu := MapMenu.new()
+	MapMenu.waypoint = Vector2(320, -96)
+	MapMenu.hidden_groups = {"life": true}
+	var data := menu.save_data()
+	MapMenu.waypoint = null
+	MapMenu.hidden_groups = {}
+	menu.load_data(data)
+	t.equal(MapMenu.waypoint, Vector2(320, -96), "waypoint after a save")
+	t.check(MapMenu.hidden_groups.has("life"), "hidden legend group after a save")
+	menu.free()
+	MapMenu.waypoint = null
+	MapMenu.hidden_groups = {}

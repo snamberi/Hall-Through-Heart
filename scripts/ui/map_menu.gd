@@ -75,6 +75,10 @@ static func focus_on(world_position: Vector2, place: String) -> void:
 
 
 func _build() -> void:
+	# The waypoint and the legend's filters belong to this world.
+	waypoint = null
+	hidden_groups = {}
+	SaveGame.register("map", self)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 12)
 	content.add_child(head)
@@ -141,6 +145,7 @@ func _build() -> void:
 				hidden_groups.erase(group[0])
 			else:
 				hidden_groups[group[0]] = true
+			SaveGame.request_save()
 			_view.queue_redraw()
 		)
 		line.add_child(check)
@@ -246,6 +251,7 @@ func _toggle_waypoint() -> void:
 		waypoint = null
 	else:
 		waypoint = _world.cell_to_world(_picked["tile"])
+	SaveGame.request_save()
 	_show_picked()
 	_view.queue_redraw()
 
@@ -288,6 +294,20 @@ func _on_view_input(event: InputEvent) -> void:
 			_dirty = true
 			_view.queue_redraw()
 		_describe(event.position)
+
+
+func save_data() -> Dictionary:
+	return {"waypoint": [waypoint.x, waypoint.y] if waypoint != null else [], "hidden": hidden_groups.keys()}
+
+
+func load_data(data: Dictionary) -> void:
+	var spot: Variant = data.get("waypoint", [])
+	waypoint = Vector2(float(spot[0]), float(spot[1])) if spot is Array and spot.size() == 2 else null
+	hidden_groups = {}
+	var hidden: Variant = data.get("hidden", [])
+	if hidden is Array:
+		for group: Variant in hidden:
+			hidden_groups[str(group)] = true
 
 
 ## Picks the marker under a point, or else the spot itself.

@@ -86,13 +86,40 @@ func _adopt(species: String, kind: String, name: Variant) -> String:
 	var pet := {"id": _next_id, "species": species, "kind": kind, "name": str(name), "level": 1, "xp": 0}
 	_next_id += 1
 	pets.append(pet)
-	active = pets.size() - 1
-	Events.announcement.emit("TAMED", "%s will follow you now" % pet["name"])
+	var newest := pets.size() - 1
+	if active < 0:
+		active = newest
+		Events.announcement.emit("TAMED", "%s will follow you now" % pet["name"])
+	else:
+		# Someone already follows: they stay, and the choice is offered.
+		Events.announcement.emit("TAMED", "%s waits at home for now" % pet["name"])
+		_offer_swap(newest)
 	Events.codex_event.emit("pets", 1)
 	_refresh_look()
 	changed.emit()
 	SaveGame.request_save()
 	return ""
+
+
+## Asks whether the newly tamed pet should follow instead of the current
+## one. Saying nothing keeps things as they are.
+func _offer_swap(index: int) -> void:
+	if not is_inside_tree() or DisplayServer.get_name() == "headless":
+		return
+	var current_name: String = pets[active]["name"]
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "New pet"
+	dialog.dialog_text = "%s is tamed. Make it your follower?\n%s would go home (you can swap any time in Pets & Mounts)." % [pets[index]["name"], current_name]
+	dialog.ok_button_text = "Follow me, %s" % pets[index]["name"]
+	dialog.cancel_button_text = "Keep %s" % current_name
+	dialog.process_mode = Node.PROCESS_MODE_ALWAYS
+	dialog.confirmed.connect(func() -> void: set_active(index))
+	dialog.visibility_changed.connect(func() -> void:
+		if not dialog.visible:
+			dialog.queue_free()
+	)
+	get_tree().root.add_child(dialog)
+	dialog.popup_centered()
 
 
 func set_active(index: int) -> void:
@@ -254,9 +281,16 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 	var font := UITheme.get_theme().default_font
 	var top := -34.0 if pet["kind"] == "critter" else -52.0 * _sprite.scale.y - 8.0
-	var label := "%s  %d" % [pet["name"], pet["level"]]
-	draw_string_outline(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 13, 3, Color(0, 0, 0, 0.8))
-	draw_string(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 13, Color(0.7, 1.0, 0.72))
+	var label := "%s  ·  Lv %d" % [pet["name"], pet["level"]]
+	# The name fades out while the pet is at your feet, so it never sits
+	# over your own figure; it comes back as soon as the two part.
+	var apart := 1.0
+	if _player:
+		var gap := global_position - _player.global_position
+		apart = clampf((absf(gap.x) - 18.0) / 22.0, 0.0, 1.0) if absf(gap.y) < 60.0 else 1.0
+	if apart > 0.02:
+		draw_string_outline(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 13, 3, Color(0, 0, 0, 0.8 * apart))
+		draw_string(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 13, Color(0.7, 1.0, 0.72, apart))
 	for heart: Array in _hearts:
 		if heart[1] < 0.0:
 			continue

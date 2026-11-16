@@ -79,6 +79,8 @@ var controls_version := 0
 ## action -> saved events, each {"key": physical keycode} or {"mouse": button}.
 var bindings: Dictionary = {}
 
+## The contrast last applied to labels already built.
+var _contrast_shown := false
 ## The project's own bindings, so "Reset to defaults" can restore them.
 var _defaults: Dictionary = {}
 
@@ -244,6 +246,9 @@ func _apply() -> void:
 		get_tree().root.content_scale_factor = ui_scale
 		if not is_equal_approx(UITheme.text_scale, text_scale):
 			UITheme.set_text_scale(get_tree(), text_scale)
+		if _contrast_shown != high_contrast:
+			_contrast_shown = high_contrast
+			UITheme.refresh_contrast(get_tree())
 	if not Engine.is_editor_hint() and DisplayServer.get_name() != "headless":
 		var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
 		if DisplayServer.window_get_mode() != mode:

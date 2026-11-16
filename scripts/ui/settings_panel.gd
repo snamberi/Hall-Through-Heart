@@ -78,7 +78,6 @@ func _ready() -> void:
 		_slider(page, "damage_number_size", "Damage number size", 0.7, 1.6)
 		_check(page, "high_contrast", "High contrast text (brighter quiet text, outlined letters)")
 		_check(page, "reduce_flashes", "Reduce flashes (lightning and other bright bursts)")
-		page.add_child(UITheme.label("High contrast applies to screens as they are next drawn.", 14, UITheme.DIM))
 	)
 	_pages["Controls"] = _controls_page(holder)
 
