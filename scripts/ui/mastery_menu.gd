@@ -1,16 +1,19 @@
 class_name MasteryMenu
 extends GameMenu
-## Weapon mastery. On the left, the eight weapon kinds as rows with their
-## picture, level, progress and damage bonus (the one in hand wears a
-## badge). On the right, the chosen kind: the next milestone promoted to a
-## card of its own, then every milestone in order, with what is not in the
-## game yet tagged as such.
+## Weapon mastery, one track per weapon. On the left, your weapons grouped
+## by kind (the ones you own or have fought with; "Show every weapon" lists
+## the rest), each with its picture, level and progress, and a badge on the
+## one in hand. On the right, the chosen weapon: its next milestone on a card
+## of its own, then its own four moves, its kind's passive, the combo and
+## the title in order, with what is not in the game yet tagged as such.
 
 const ROW := Vector2(440.0, 54.0)
 const DETAIL_WIDTH := 640.0
 
 var _selected := ""
+var _show_all := false
 var _list: VBoxContainer
+var _all_toggle: CheckBox
 var _icon: TextureRect
 var _name: Label
 var _in_hand: Control
@@ -29,16 +32,30 @@ func _build() -> void:
 	var title := UITheme.heading("WEAPON MASTERY", 30)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(title)
-	var note := UITheme.label("Mastery grows as you fight with a kind of weapon, apart from your character level.", 15, UITheme.DIM)
+	var note := UITheme.label("Each weapon has its own mastery, grown by fighting with it, apart from your character level.", 15, UITheme.DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(note)
 
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 16)
 	content.add_child(columns)
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 6)
+	columns.add_child(left)
+	var list_scroll := ScrollContainer.new()
+	list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	list_scroll.custom_minimum_size = Vector2(ROW.x + 14.0, 470.0)
+	left.add_child(list_scroll)
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 5)
-	columns.add_child(_list)
+	list_scroll.add_child(_list)
+	_all_toggle = CheckBox.new()
+	_all_toggle.text = "Show every weapon"
+	_all_toggle.toggled.connect(func(on: bool) -> void:
+		_show_all = on
+		refresh()
+	)
+	left.add_child(_all_toggle)
 
 	var right := PanelContainer.new()
 	right.add_theme_stylebox_override("panel", UITheme.card("card", 14))
@@ -132,18 +149,51 @@ func _build() -> void:
 
 
 func refresh() -> void:
-	if _selected == "" or not WeaponMastery.IDS.has(_selected):
-		_selected = player.weapon_type if WeaponMastery.IDS.has(player.weapon_type) else WeaponMastery.IDS[0]
+	if _selected == "":
+		_selected = player.mastery_key()
+	_all_toggle.set_pressed_no_signal(_show_all)
 	for child in _list.get_children():
 		child.queue_free()
-	for id in WeaponMastery.IDS:
-		_list.add_child(_row(id))
+	var known := known_weapons()
+	for kind: String in WeaponMastery.IDS:
+		var keys: Array[String] = []
+		for key in WeaponMastery.keys_of_kind(kind):
+			if _show_all or key in known:
+				keys.append(key)
+		if keys.is_empty():
+			continue
+		var heading := HBoxContainer.new()
+		heading.add_theme_constant_override("separation", 8)
+		_list.add_child(heading)
+		heading.add_child(UITheme.heading(WeaponMastery.NAMES[kind], 16))
+		heading.add_child(UITheme.label("best Lv %d" % player.mastery.best_of_kind(kind), 14, UITheme.DIM))
+		for key in keys:
+			_list.add_child(_row(key, key in known))
 	_show(_selected)
 
 
-func _row(id: String) -> Button:
+## The weapons that count as yours: owned, worn, fought with, plus the bare
+## hands and (once you have magic) the magic hand.
+func known_weapons() -> Array[String]:
+	var keys: Array[String] = ["unarmed"]
+	if player.magic_school != "":
+		keys.append("magic")
+	for key: String in player.mastery.levels:
+		if not key in keys:
+			keys.append(key)
+	var items: Array = player.inventory.items.duplicate()
+	items.append_array(player.equipment.equipped.values())
+	for item in items:
+		if item is Item and item.definition().has("weapon") and not item.definition().has("tool") and not item.id in keys:
+			keys.append(item.id)
+	if not _selected in keys and _selected != "":
+		keys.append(_selected)
+	return keys
+
+
+func _row(id: String, known: bool = true) -> Button:
 	var mastery := player.mastery
-	var level := mastery.levels[id]
+	var level := mastery.level_of(id)
 	var chosen := id == _selected
 	var button := Button.new()
 	button.custom_minimum_size = ROW
@@ -173,8 +223,8 @@ func _row(id: String) -> Button:
 	top.add_theme_constant_override("separation", 8)
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	words.add_child(top)
-	top.add_child(UITheme.strong(WeaponMastery.NAMES[id], 16, UITheme.GOLD if chosen else UITheme.TEXT))
-	if id == player.weapon_type:
+	top.add_child(UITheme.strong(WeaponMastery.display_name(id), 16, UITheme.GOLD if chosen else (UITheme.TEXT if known else UITheme.DIM)))
+	if id == player.mastery_key():
 		top.add_child(UITheme.badge("In hand", "gold"))
 	var filler := Control.new()
 	filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -188,7 +238,7 @@ func _row(id: String) -> Button:
 	bar.show_percentage = false
 	bar.custom_minimum_size = Vector2(0.0, 8.0)
 	bar.max_value = WeaponMastery.xp_required(level) if level < WeaponMastery.MAX_LEVEL else 1.0
-	bar.value = mastery.xp[id] if level < WeaponMastery.MAX_LEVEL else 1.0
+	bar.value = mastery.xp_of(id) if level < WeaponMastery.MAX_LEVEL else 1.0
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	words.add_child(bar)
 	for control: Control in top.get_children():
@@ -198,22 +248,21 @@ func _row(id: String) -> Button:
 
 func _show(id: String) -> void:
 	var mastery := player.mastery
-	var level := mastery.levels[id]
+	var level := mastery.level_of(id)
 	_icon.texture = weapon_icon(id)
-	_name.text = WeaponMastery.NAMES[id]
-	_in_hand.visible = id == player.weapon_type
-	_level.text = "Mastery %d of %d   ·   +%.1f%% damage with %s" % [level, WeaponMastery.MAX_LEVEL, mastery.damage_bonus(id) * 100.0, WeaponMastery.NAMES[id].to_lower()]
+	_name.text = WeaponMastery.display_name(id)
+	_in_hand.visible = id == player.mastery_key()
+	_level.text = "%s  ·  Mastery %d of %d  ·  +%.1f%% damage with it" % [WeaponMastery.NAMES[WeaponMastery.kind_of(id)].trim_suffix("s") if id != "unarmed" else "Unarmed", level, WeaponMastery.MAX_LEVEL, mastery.damage_bonus(id) * 100.0]
 	if level >= WeaponMastery.MAX_LEVEL:
 		_bar.max_value = 1.0
 		_bar.value = 1.0
 		_bar_text.text = "Mastered."
 	else:
 		_bar.max_value = WeaponMastery.xp_required(level)
-		_bar.value = mastery.xp[id]
-		_bar_text.text = "%s / %s mastery XP to level %d  ·  earned mostly from kills" % [_whole(mastery.xp[id]), _whole(_bar.max_value), level + 1]
+		_bar.value = mastery.xp_of(id)
+		_bar_text.text = "%s / %s mastery XP to level %d  ·  earned mostly from kills with it" % [_whole(mastery.xp_of(id)), _whole(_bar.max_value), level + 1]
 
-	var source := moves_source(id)
-	_source.text = "" if source == "" else ("moves of your %s" % ItemDB.ITEMS[source]["name"] if player.equipment.in_hand() and player.equipment.in_hand().id == source else "moves of a plain %s; each weapon has its own four" % ItemDB.ITEMS[source]["name"])
+	_source.text = "its own four moves" if WeaponMoves.MOVES.has(id) else ("moves of your combat style" if id == "unarmed" else "")
 	var steps := milestones(id)
 	var next: Dictionary = {}
 	for step: Dictionary in steps:
@@ -236,10 +285,12 @@ func _show(id: String) -> void:
 ## A weapon kind's milestones in order: abilities, passives, the combo and
 ## the title, plus those not in the game yet (marked "real": false).
 func milestones(id: String) -> Array[Dictionary]:
-	var level := player.mastery.levels[id]
+	var level := player.mastery.level_of(id)
 	var steps: Array[Dictionary] = []
-	var source := moves_source(id)
-	for ability_id in AbilityDB.moves_for(source):
+	var moves: Array[String] = AbilityDB.moves_for(id) if WeaponMoves.MOVES.has(id) else []
+	if id == "unarmed" and player.styles:
+		moves = AbilityDB.style_moves(player.styles.equipped)
+	for ability_id in moves:
 		var ability: Dictionary = AbilityDB.ABILITIES[ability_id]
 		var rank := AbilityDB.rank(ability_id, level)
 		var cost := "%d stamina" % roundi(ability.get("stamina", 0.0)) if ability.has("stamina") else "%d mana" % roundi(ability.get("mana", 0.0)) if ability.has("mana") else "no cost"
@@ -247,18 +298,19 @@ func milestones(id: String) -> Array[Dictionary]:
 		if rank > 0 and ability.get("damage", 0.0) > 0.0:
 			text += "  Rank %d (x%.1f damage)." % [rank, AbilityDB.damage(ability_id, rank)]
 		steps.append({"level": int(ability.get("mastery", 1)), "title": "Move: %s" % ability["name"], "text": text, "icon": AbilityDB.icon(ability_id), "real": true})
-	var passive: Array = WeaponMastery.PASSIVES.get(id, [])
+	var kind := WeaponMastery.kind_of(id)
+	var passive: Array = WeaponMastery.PASSIVES.get(kind, [])
 	if not passive.is_empty():
 		for index in WeaponMastery.PASSIVE_LEVELS.size():
 			var amount: float = passive[2][index]
 			var text := ItemDB.describe_modifier({"stat": passive[0], "kind": passive[1], "value": absf(amount)})
 			if amount < 0.0:
 				text = "-" + text.substr(1)
-			steps.append({"level": WeaponMastery.PASSIVE_LEVELS[index], "title": "Passive: %s" % text, "text": "Always on while this kind of weapon is in hand.", "icon": weapon_icon(id), "real": true})
+			steps.append({"level": WeaponMastery.PASSIVE_LEVELS[index], "title": "Passive: %s" % text, "text": "Always on while this weapon is in hand.", "icon": weapon_icon(id), "real": true})
 	steps.append({"level": WeaponMastery.COMBO_LEVEL, "title": "Combo finisher", "text": "Every third attack in a row hits %d%% harder." % roundi((WeaponMastery.COMBO_DAMAGE - 1.0) * 100.0), "icon": weapon_icon(id), "real": true})
 	steps.append({"level": 400, "title": "Weapon awakening quest", "text": "Planned for a later update.", "icon": weapon_icon(id), "real": false})
 	steps.append({"level": 500, "title": "Ultimate technique", "text": "Planned for a later update.", "icon": weapon_icon(id), "real": false})
-	steps.append({"level": WeaponMastery.MAX_LEVEL, "title": "Title: %s Master" % WeaponMastery.NAMES[id].trim_suffix("s"), "text": "Shown under your name.", "icon": weapon_icon(id), "real": true})
+	steps.append({"level": WeaponMastery.MAX_LEVEL, "title": "Title: %s Master" % WeaponMastery.display_name(id), "text": "Shown under your name.", "icon": weapon_icon(id), "real": true})
 	steps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["level"]) < int(b["level"]))
 	return steps
 
@@ -289,22 +341,15 @@ func _step_row(step: Dictionary, level: int) -> Control:
 	return row
 
 
-## The weapon whose four moves stand for a kind: the one in hand if it is
-## of that kind, else the plainest weapon of the kind.
-func moves_source(id: String) -> String:
-	var held := player.equipment.in_hand()
-	if held and WeaponMoves.MOVES.has(held.id) and ItemDB.ITEMS[held.id]["weapon"]["type"] == id:
-		return held.id
-	for item_id: String in WeaponMoves.MOVES:
-		if ItemDB.ITEMS[item_id]["weapon"]["type"] == id:
-			return item_id
-	return ""
-
-
-## The picture for a kind of weapon: its plainest item, or a fist.
+## The picture for a weapon (or for a kind: its plainest item); a fist for
+## the bare hands and a spell for the magic hand.
 static func weapon_icon(id: String) -> Texture2D:
 	if id == "unarmed":
 		return CombatStyles.icon("fist")
+	if id == "magic":
+		return AbilityDB.icon("spell_fire_bolt")
+	if ItemDB.ITEMS.has(id) and ItemDB.ITEMS[id].has("icon"):
+		return ItemDB.icon(int(ItemDB.ITEMS[id]["icon"]))
 	for item_id: String in ItemDB.ITEMS:
 		var data: Dictionary = ItemDB.ITEMS[item_id]
 		if data.has("weapon") and data["weapon"].get("type", "") == id and data.has("icon"):

@@ -169,7 +169,7 @@ func _raw(objective: Dictionary) -> int:
 		"level":
 			return _player.leveling.level
 		"mastery":
-			return int(_player.mastery.levels.get(objective["weapon"], 0))
+			return _player.mastery.level_of(objective["weapon"])
 		"profession":
 			return _player.professions.level(objective["profession"])
 		"biome":

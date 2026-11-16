@@ -479,6 +479,11 @@ static var ABILITIES: Dictionary = _all()
 
 static func _all() -> Dictionary:
 	var all: Dictionary = BASE_ABILITIES.duplicate(true)
+	# The old weapon abilities are only templates now: each weapon's own moves
+	# copy them (WeaponMoves), so they are not abilities on their own.
+	for id: String in BASE_ABILITIES:
+		if BASE_ABILITIES[id].has("weapon"):
+			all.erase(id)
 	for weapon_id: String in WeaponMoves.MOVES:
 		var type: String = ItemDB.ITEMS[weapon_id]["weapon"]["type"]
 		var moves: Array = WeaponMoves.MOVES[weapon_id]
@@ -532,16 +537,6 @@ static func style_moves(style: String) -> Array[String]:
 ## Universal abilities and class abilities: what the second set can hold.
 static func is_universal(id: String) -> bool:
 	return ABILITIES.has(id) and (ABILITIES[id].get("universal", false) or ABILITIES[id].has("class"))
-
-
-## Ability ids for a weapon type, in unlock order.
-static func for_weapon(weapon_type: String) -> Array[String]:
-	var ids: Array[String] = []
-	for id: String in ABILITIES:
-		if ABILITIES[id].get("weapon", "") == weapon_type:
-			ids.append(id)
-	ids.sort_custom(func(a: String, b: String) -> bool: return ABILITIES[a]["mastery"] < ABILITIES[b]["mastery"])
-	return ids
 
 
 ## Level an ability unlocks at: a mastery level for weapon abilities, a

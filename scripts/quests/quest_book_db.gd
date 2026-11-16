@@ -249,9 +249,9 @@ static func _combat() -> void:
 	for weapon: String in weapons:
 		var name: String = WeaponMastery.NAMES[weapon]
 		_chain(root, [
-			["combat_%s_10" % weapon, "%s Adept" % name, "Train %s to mastery 10." % name.to_lower(), {"atlas": weapons[weapon]}, [_o("mastery", {"weapon": weapon, "level": 10})], 3.0],
-			["combat_%s_25" % weapon, "%s Expert" % name, "Train %s to mastery 25." % name.to_lower(), {"atlas": weapons[weapon]}, [_o("mastery", {"weapon": weapon, "level": 25})], 6.0],
-			["combat_%s_50" % weapon, "%s Master" % name, "Train %s to mastery 50." % name.to_lower(), {"atlas": weapons[weapon]}, [_o("mastery", {"weapon": weapon, "level": 50})], 10.0],
+			["combat_%s_10" % weapon, "%s Adept" % name, "Train any one of your %s to mastery 10." % name.to_lower(), {"atlas": weapons[weapon]}, [_o("mastery", {"weapon": weapon, "level": 10})], 3.0],
+			["combat_%s_25" % weapon, "%s Expert" % name, "Train any one of your %s to mastery 25." % name.to_lower(), {"atlas": weapons[weapon]}, [_o("mastery", {"weapon": weapon, "level": 25})], 6.0],
+			["combat_%s_50" % weapon, "%s Master" % name, "Train any one of your %s to mastery 50." % name.to_lower(), {"atlas": weapons[weapon]}, [_o("mastery", {"weapon": weapon, "level": 50})], 10.0],
 		])
 	# Fighting styles: fists first, then the masters in their dojos.
 	var masters := _chain(root, [

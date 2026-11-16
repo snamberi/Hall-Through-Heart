@@ -50,6 +50,8 @@ const BASE_CRITICAL_CHANCE := 0.05
 
 ## Weapon category whose mastery bonus applies to physical damage.
 var weapon_type := "swords"
+## The weapon whose own mastery adds damage now (see WeaponMastery).
+var mastery_key := "unarmed"
 
 var _attributes: Attributes
 var _mastery: WeaponMastery
@@ -91,7 +93,7 @@ func get_stat(id: String) -> float:
 			flat += source[id].get("flat", 0.0)
 			percent += source[id].get("percent", 0.0)
 	if id == "physical_damage":
-		percent += _mastery.damage_bonus(weapon_type)
+		percent += _mastery.damage_bonus(mastery_key)
 	return (_base(id) + flat) * (1.0 + percent)
 
 

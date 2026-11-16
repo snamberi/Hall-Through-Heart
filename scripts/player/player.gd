@@ -303,7 +303,7 @@ func attack(direction: Vector2) -> void:
 	# With enough mastery, every third attack in a row is a finisher.
 	var multiplier := 1.0
 	var reach: float = weapon["range"]
-	if mastery.has_combo(weapon_type):
+	if mastery.has_combo(mastery_key()):
 		_combo_count = _combo_count + 1 if _combo_left > 0.0 else 1
 		_combo_left = _attack_cooldown_left + 0.6
 		if _combo_count >= 3:
@@ -520,7 +520,7 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 		hit_stop(0.06)
 	elif state == State.ATTACK:
 		hit_stop(0.025)
-	Events.damage_dealt.emit(type, dealt)
+	Events.damage_dealt.emit(mastery_key(), dealt)
 	var weapon := equipment.get_item("main_hand")
 	var def: Dictionary = weapon.definition() if weapon else {}
 	if weapon == null and fighting_bare() and styles.data().has("on_hit"):
@@ -1222,7 +1222,8 @@ func _on_equipment_changed() -> void:
 		stats.set_modifiers_quietly("combat_style", {})
 	_animator.update_equipment(equipment, show_helmet)
 	stats.weapon_type = weapon_type
-	stats.set_modifiers_quietly("mastery_passive", mastery.passive_modifiers(weapon_type))
+	stats.mastery_key = mastery_key()
+	stats.set_modifiers_quietly("mastery_passive", mastery.passive_modifiers(mastery_key()))
 	stats.set_modifiers("equipment", equipment.modifiers())
 	# A class hits harder with the weapon types it favours.
 	var favoured: Array = HeroClasses.CLASSES[class_id]["weapons"]
@@ -1233,9 +1234,21 @@ func _on_equipment_changed() -> void:
 	abilities.changed.emit()
 
 
-## Bonuses earned through mastery of the weapon type in hand.
+## Bonuses earned through mastery of the weapon in hand.
 func _apply_mastery_passive() -> void:
-	stats.set_modifiers_quietly("mastery_passive", mastery.passive_modifiers(weapon_type))
+	stats.mastery_key = mastery_key()
+	stats.set_modifiers_quietly("mastery_passive", mastery.passive_modifiers(mastery_key()))
+
+
+## Which mastery the hand trains now: the weapon's item id, "magic" for the
+## magic hand, or "unarmed" for fists and combat styles.
+func mastery_key() -> String:
+	var held := equipment.weapon()
+	if held:
+		return held.id
+	if equipment.active_slot == "weapon_1" and magic_school != "":
+		return "magic"
+	return "unarmed"
 
 
 ## The person closest to the player and in reach, or null.

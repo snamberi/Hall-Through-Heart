@@ -239,3 +239,38 @@ func test_villagers_and_their_errands(t: TestContext) -> void:
 	t.equal(int(errands.helped.get(npc.villager_key, 0)), 1, "the villager remembers the help")
 	t.check(errands.offer_for(npc).is_empty(), "one errand a day")
 	npc.queue_free()
+
+
+func test_each_weapon_has_its_own_mastery(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var mastery := player.mastery
+	# Old saves kept one level per kind: every sword starts from it.
+	mastery.load_data({"levels": {"swords": 30, "axes": 1}, "xp": {}})
+	t.equal(mastery.level_of("sword"), 30, "a plain sword starts at the old sword level")
+	t.equal(mastery.level_of("flame_sword"), 30, "so does every other sword")
+	t.equal(mastery.level_of("axe"), 1, "axes had no old level")
+	# Training one sword leaves the others where they were.
+	mastery.add_xp("sword", WeaponMastery.xp_required(30) + 1.0)
+	t.equal(mastery.level_of("sword"), 31, "the trained sword grew")
+	t.equal(mastery.level_of("flame_sword"), 30, "another sword did not")
+	t.equal(mastery.level_of("swords"), 31, "a kind reports its best weapon (for quests)")
+	# Kills go to the weapon that last struck with that kind.
+	Events.damage_dealt.emit("flame_sword", 1.0)
+	var before := mastery.xp_of("flame_sword")
+	Events.enemy_killed.emit(_kill("elite", 40))
+	t.check(mastery.xp_of("flame_sword") > before, "the kill trained the weapon that made it")
+	# A weapon's own moves rank with its own mastery.
+	var move := "wm_flame_sword_2"
+	if AbilityDB.ABILITIES.has(move):
+		t.equal(player.abilities.rank(move), AbilityDB.rank(move, mastery.level_of("flame_sword")), "moves rank by their weapon's mastery")
+	# Saving keeps every weapon apart.
+	var copy := WeaponMastery.new()
+	copy.load_data(mastery.save_data())
+	t.equal(copy.level_of("sword"), 31, "saved level of the trained sword")
+	t.equal(copy.level_of("flame_sword"), mastery.level_of("flame_sword"), "saved level of the sword that made the kill")
+	t.equal(copy.level_of("frost_sword"), 30, "an untouched sword still starts at the old level")
+	copy.free()
+	# The old weapon abilities are templates, not abilities of their own.
+	t.check(not AbilityDB.ABILITIES.has("heavy_slash"), "the old Heavy Slash is gone from the ability list")
+	t.check(AbilityDB.BASE_ABILITIES.has("heavy_slash"), "but stays as a template for weapon moves")

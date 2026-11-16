@@ -147,8 +147,8 @@ func rank(id: String) -> int:
 	if ability.has("style"):
 		if _player.styles == null or not ability["style"] in _player.styles.learned:
 			return 0
-		return AbilityDB.rank(id, _player.mastery.levels.get("unarmed", 1))
-	return AbilityDB.rank(id, _player.mastery.levels.get(ability["weapon"], 1))
+		return AbilityDB.rank(id, _player.mastery.level_of("unarmed"))
+	return AbilityDB.rank(id, _player.mastery.level_of(ability.get("weapon_item", ability["weapon"])))
 
 
 func stamina_cost(id: String) -> float:
