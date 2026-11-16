@@ -1,14 +1,29 @@
 class_name ResourceNode
 extends Node2D
 ## A rock, tree, herb, or fishing spot the player can gather from.
+##
+## The tool matters past being good enough: each tier it has over what the
+## node needs works faster, may bring out one more, and makes a finer
+## material likelier. About one node in RICH_ONE_IN (of the better ones) is
+## rich: it glints, takes longer, yields far more, and while it is worked a
+## timing bar (GatherMeter) gives perfect blows for striking on the beat,
+## each worth one more and a finer roll. A rich fishing spot is teeming:
+## perfect timing lands better fish.
 
 signal harvested(node: ResourceNode)
 
 const SHEET: Texture2D = preload("res://assets/sprites/nodes.png")
 const FRAMES := 5
 const REACH := 62.0
+const RICH_ONE_IN := 6
+## Extra work a rich node takes, as a multiple.
+const RICH_WORK := 1.6
+## Chance per spare tool tier of one more of what is gathered.
+const SURPLUS_EXTRA := 0.3
 
 var resource_id := ""
+## A rich node: glints, yields far more, and is worked with a timing bar.
+var rich := false
 ## Which tree or bush from the flora sheet to show, or -1 for the default look.
 var tall_look := -1
 var cell := Vector2i.ZERO
@@ -29,6 +44,8 @@ func _ready() -> void:
 	add_to_group("resource_nodes")
 	_data = GatherDB.RESOURCES[resource_id]
 	_kind = GatherDB.KINDS[_data["kind"]]
+	rich = absi(hash([cell, resource_id])) % RICH_ONE_IN == 0 and (int(_data["level"]) >= 5 or _data["kind"] == "fish")
+	set_process(rich)
 	var tint := GatherDB.color(resource_id)
 	var solid := 0.0
 	if tall_look >= 0 or _data.has("tall"):
@@ -79,8 +96,43 @@ func _ready() -> void:
 		add_child(body)
 
 
+var _glint_time := 0.0
+
+
+func _process(delta: float) -> void:
+	_glint_time += delta
+	queue_redraw()
+
+
+## A rich node glints: small gold crosses that wink in turn about it.
+func _draw() -> void:
+	if not rich:
+		return
+	var top := -48.0 if is_tall() else -18.0
+	for index in 3:
+		var phase := fposmod(_glint_time * 0.8 + index * 0.37, 1.0)
+		if phase > 0.35:
+			continue
+		var size := roundf(sin(phase / 0.35 * PI) * 3.0)
+		var at := Vector2(roundf([-9.0, 8.0, -1.0][index]), roundf(top + [4.0, -3.0, -10.0][index]))
+		var glow := Color(1.0, 0.86, 0.4, 0.95)
+		draw_rect(Rect2(at.x - size, at.y, size * 2.0 + 1.0, 1.0), glow)
+		draw_rect(Rect2(at.x, at.y - size, 1.0, size * 2.0 + 1.0), glow)
+		draw_rect(Rect2(at.x, at.y, 1.0, 1.0), Color.WHITE)
+
+
 func kind() -> String:
 	return _data["kind"]
+
+
+## How many tiers the player's tool has over what this needs (0 without one).
+func tool_surplus(player: Player) -> int:
+	if _kind["tool"] == "":
+		return 0
+	var tool := player.equipment.tool(_kind["tool"])
+	if tool == null:
+		return 0
+	return maxi(int(tool.definition()["tool"]["tier"]) - int(_data["tier"]), 0)
 
 
 ## The tool this is gathered with: "pickaxe", "hatchet", "rod", or "".
@@ -114,9 +166,12 @@ func profession() -> String:
 	return _kind["profession"]
 
 
-## "Mine Copper Vein" and so on.
+## "Mine Copper Vein", "Mine Rich Iron Vein", "Fish Teeming Fishing Spot".
 func prompt() -> String:
-	return "%s %s" % [_kind["verb"], GatherDB.display_name(resource_id)]
+	var name := GatherDB.display_name(resource_id)
+	if rich:
+		name = ("Teeming " if kind() == "fish" else "Rich ") + name
+	return "%s %s" % [_kind["verb"], name]
 
 
 ## Why the player cannot gather this, or "".
@@ -139,24 +194,37 @@ func gather_seconds(player: Player) -> float:
 		speed *= player.equipment.tool(_kind["tool"]).definition()["tool"]["speed"]
 	if kind() == "ore":
 		speed *= player.stats.get_stat("mining_efficiency")
-	return (_kind["seconds"] + _data["level"] * 0.02) / speed
+	# Each spare tool tier works a tenth faster again.
+	speed *= 1.0 + 0.1 * tool_surplus(player)
+	return (_kind["seconds"] + _data["level"] * 0.02) / speed * (RICH_WORK if rich else 1.0)
 
 
 ## Gives the player what this yields, then disappears until it regrows.
-func harvest(player: Player) -> void:
+## `perfects` is how many perfect blows the timing bar gave on a rich node.
+func harvest(player: Player, perfects := 0) -> void:
 	var skill := player.professions.level(profession())
 	var item_id: String = _data["item"]
 	var count := randi_range(1, 2) if kind() != "fish" else 1
+	var surplus := tool_surplus(player)
+	for tier in surplus:
+		if randf() < SURPLUS_EXTRA:
+			count += 1
+	var luck := 0.25 * surplus + (0.5 + 0.35 * perfects if rich else 0.0)
+	if rich and kind() != "fish":
+		count += 2 + perfects
 	if kind() == "fish":
-		if randf() < GatherDB.TREASURE_CHANCE:
+		if randf() < GatherDB.TREASURE_CHANCE * (2.0 if rich else 1.0):
 			_give_treasure(player)
 			item_id = ""
 		else:
-			item_id = _roll_fish(skill)
+			# Perfect timing on a teeming spot hooks finer fish.
+			item_id = _roll_fish(skill + (perfects * 12 if rich else 0))
+			if rich:
+				count += perfects / 2
 	if item_id != "":
 		if randf() < player.professions.double_chance(profession()):
 			count *= 2
-		var item := Item.create_rolled(item_id, count)
+		var item := Item.create_rolled(item_id, count, luck)
 		if player.inventory.add(item):
 			Events.pickup_noted.emit(item.display_name(), count, item.tint().lightened(0.3))
 			Events.resource_gathered.emit({"resource": resource_id, "item": item_id, "count": count})
@@ -173,12 +241,14 @@ func harvest(player: Player) -> void:
 		if player.inventory.add(Item.create(seeds)):
 			Events.pickup_noted.emit(ItemDB.ITEMS[seeds]["name"], 1, UITheme.GOOD)
 	# Ore veins sometimes hold a gem.
-	if kind() == "ore" and randf() < 0.04 + skill * 0.0008:
+	if kind() == "ore" and randf() < (0.04 + skill * 0.0008 + 0.01 * surplus) * (2.0 if rich else 1.0):
 		var gem := Item.create(Gems.random_gem(maxi(_data["level"], skill)))
 		Events.codex_event.emit("gems_found", 1)
 		if player.inventory.add(gem):
 			Events.pickup_noted.emit(gem.display_name(), 1, gem.tint())
-	player.professions.add_xp(profession(), 10.0 + _data["level"] * 2.0)
+	player.professions.add_xp(profession(), (10.0 + _data["level"] * 2.0) * (2.5 if rich else 1.0))
+	if rich:
+		Events.codex_event.emit("rich_nodes", 1)
 	harvested.emit(self)
 	queue_free()
 

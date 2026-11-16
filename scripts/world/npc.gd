@@ -17,8 +17,10 @@ const RESTOCK_SECONDS := 1200.0
 const SHELF := 5
 ## One-off wares already bought this period: shelf key -> {slot: true}.
 static var _sold: Dictionary = {}
+## Shelves laid out afresh for gold this period: base shelf key -> times.
+static var _rerolls: Dictionary = {}
 ## Share of an item's value a merchant pays for it.
-const SELL_SHARE := 0.25
+const SELL_SHARE := 0.30
 var kind := "merchant"
 ## A wandering merchant sells rarer things.
 var wandering := false
@@ -171,11 +173,18 @@ func restock_if_due(player: Player) -> void:
 				pool = [["health_potion", 2.5], ["mana_potion", 1.5], ["stamina_tonic", 1.2], ["grilled_minnow", 1.2], ["copper_ingot", 1.0], ["oak_wood", 1.0],
 					["wheat_seeds", 0.8], ["carrot_seeds", 0.8], ["potato_seeds", 0.8], ["farm_plot", 0.8], ["taming_treat", 0.8], ["torch", 1.5],
 					["bronze_pickaxe", 0.8], ["bronze_hatchet", 0.8], ["pony_whistle", 0.6], ["gear", 3.0]]
+	# Better standing opens the back room.
+	var standing := player.trade.tier() if player.trade else 0
+	for extra: Array in BACK_ROOM.get("wandering" if wandering else stock_kind, BACK_ROOM["general"]):
+		if standing >= int(extra[2]):
+			pool.append([extra[0], extra[1]])
 	pool = pool.filter(func(entry: Array) -> bool: return entry[0] in SPECIAL or ItemDB.ITEMS.has(entry[0]))
 	# The loot tables roll with the global dice; pin them for this shelf.
 	seed(hash(_shelf_key()))
 	var sold := _sold_here()
-	for slot in SHELF:
+	var shelf: int = Trade.TIERS[standing]["shelf"] if player.trade else SHELF
+	_rarity_bonus = float(Trade.TIERS[standing]["rarity"]) if player.trade else 0.0
+	for slot in shelf:
 		if pool.is_empty():
 			break
 		var total := 0.0
@@ -193,21 +202,34 @@ func restock_if_due(player: Player) -> void:
 		if not chosen[0] in ["gear", "fine_gear"]:
 			pool.erase(chosen)
 		offer_entry["slot"] = slot
+		offer_entry["base_price"] = offer_entry["price"]
+		if player.trade:
+			offer_entry["price"] = player.trade.buy_price(int(offer_entry["price"]))
 		if not sold.has(slot):
 			stock.append(offer_entry)
 	randomize()
 
 
 const SPECIAL: Array[String] = ["gear", "fine_gear", "gem", "rare_gem", "set_piece"]
+## Wares laid out only for those in good standing: [id, weight, tier].
+const BACK_ROOM := {
+	"smith": [["gold_ingot", 0.8, 1], ["iron_pickaxe", 0.6, 1], ["iron_hatchet", 0.6, 1], ["fine_gear", 1.5, 2], ["mithril_ingot", 0.6, 2],
+		["set_piece", 0.8, 3], ["mithril_pickaxe", 0.4, 3], ["mithril_hatchet", 0.4, 3], ["adamantite_ingot", 0.5, 4]],
+	"alchemy": [["rare_gem", 0.8, 2], ["gem", 1.0, 1], ["might_elixir", 0.8, 1], ["rare_gem", 1.0, 3], ["treasure_map", 0.6, 4]],
+	"general": [["fine_gear", 1.0, 1], ["gem", 0.8, 2], ["treasure_map", 0.6, 2], ["rare_gem", 0.6, 3], ["set_piece", 0.6, 4]],
+	"wandering": [["set_piece", 0.8, 2], ["rare_gem", 1.0, 3], ["fine_gear", 1.0, 4]],
+}
+## Extra rarity rolled on this shelf's gear (from the visitor's standing).
+var _rarity_bonus := 0.0
 
 
 func _make_offer(what: String, level: int, random: RandomNumberGenerator) -> Dictionary:
 	match what:
 		"gear":
-			var gear := LootGenerator.make_equipment(maxi(level + random.randi_range(-1, 2), 1), maxi(LootGenerator.roll_rarity(0.0, 2.0), 1))
+			var gear := LootGenerator.make_equipment(maxi(level + random.randi_range(-1, 2), 1), maxi(LootGenerator.roll_rarity(0.0, 2.0 + _rarity_bonus), 1))
 			return {"item": gear, "price": gear.value(), "endless": false}
 		"fine_gear":
-			var fine := LootGenerator.make_equipment(maxi(level + random.randi_range(0, 2), 1), 3 if random.randf() < 0.75 else 4)
+			var fine := LootGenerator.make_equipment(maxi(level + random.randi_range(0, 2), 1), 3 if random.randf() < 0.75 - _rarity_bonus * 0.1 else 4)
 			return {"item": fine, "price": fine.value() * 2, "endless": false}
 		"gem":
 			var gem := Item.create(Gems.random_gem(level))
@@ -248,8 +270,39 @@ func _period() -> int:
 
 
 func _shelf_key() -> String:
+	return "%s:%d" % [_base_key(), int(_rerolls.get(_base_key(), 0))]
+
+
+func _base_key() -> String:
 	var at := home if home != Vector2.ZERO else position
 	return "%s:%s:%d:%d:%d" % [stock_kind, wandering, roundi(at.x / 44.0), roundi(at.y / 44.0), _period()]
+
+
+## Gold to have this merchant lay out new wares now. It doubles each time
+## within the same twenty minutes.
+func restock_fee(player: Player) -> int:
+	return (60 + player.leveling.level * 15) * int(pow(2.0, int(_rerolls.get(_base_key(), 0))))
+
+
+## Pays for new wares now. Returns false if the gold is short.
+func pay_restock(player: Player) -> bool:
+	var fee := restock_fee(player)
+	if player.inventory.gold < fee:
+		return false
+	player.inventory.add_gold(-fee)
+	_rerolls[_base_key()] = int(_rerolls.get(_base_key(), 0)) + 1
+	_stock_period = -1
+	stock.clear()
+	restock_if_due(player)
+	return true
+
+
+## Gold this merchant pays for one of an item, by the player's standing and
+## what this merchant deals in.
+func buys_for(item: Item, player: Player) -> int:
+	if player and player.trade:
+		return player.trade.sell_price(item, stock_kind, wandering)
+	return sell_price(item)
 
 
 ## Seconds until the wares change.

@@ -871,9 +871,10 @@ static func is_material(item_id: String) -> bool:
 
 ## A material's rarity as found: its usual one, sometimes one or two better
 ## and very rarely three.
-static func roll_material_rarity(item_id: String) -> int:
+## `luck` above 0 makes a finer roll likelier (a better tool, a rich node).
+static func roll_material_rarity(item_id: String, luck := 0.0) -> int:
 	var base := int(ITEMS[item_id].get("material_rarity", 0))
-	var roll := randf()
+	var roll := randf() / (1.0 + maxf(luck, 0.0))
 	var step := 3 if roll < 0.008 else 2 if roll < 0.045 else 1 if roll < 0.2 else 0
 	return clampi(base + step, 0, RARITIES.size() - 1)
 

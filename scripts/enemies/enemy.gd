@@ -322,8 +322,7 @@ func _physics_process(delta: float) -> void:
 			if _attack["kind"] == "charge":
 				# Pawing the ground before the rush.
 				_visual.position.x = sin(Time.get_ticks_msec() / 30.0) * 1.5
-			if is_area_attack():
-				queue_redraw()
+			queue_redraw()
 			if _state_time_left == 0.0:
 				_visual.modulate = _tint
 				_visual.position.x = 0.0
@@ -401,16 +400,65 @@ func _draw() -> void:
 	if brain and state != State.DEAD:
 		brain.draw()
 		return
-	# The ground marker for an area attack, filling in as the wind-up runs out.
-	if state != State.WINDUP or not is_area_attack():
-		return
-	var radius: float = _attack["radius"]
-	var progress := 1.0 - _state_time_left / windup_time
-	var color: Color = _attack.get("color", Color(1.0, 0.4, 0.3))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.75))
-	draw_circle(Vector2.ZERO, radius * progress, Color(color, 0.22))
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, Color(color, 0.85), 2.0)
-	draw_set_transform(Vector2.ZERO)
+	if state == State.WINDUP:
+		_draw_telegraph()
+
+
+## Every attack warns on the ground the same way while it winds up: a red
+## shape where the blow will land, filling in as the wind-up runs out and
+## edged brighter as it nears. Areas are rings, swipes cones, lunges and
+## charges lanes, pounces a landing ring and shots an aiming line.
+const TELEGRAPH := Color(1.0, 0.24, 0.2)
+
+
+func _draw_telegraph() -> void:
+	var progress := clampf(1.0 - _state_time_left / maxf(windup_time, 0.01), 0.0, 1.0)
+	var fill := Color(TELEGRAPH, 0.1 + 0.18 * progress)
+	var edge := Color(TELEGRAPH.lerp(Color(1.0, 0.85, 0.6), progress * 0.6), 0.55 + 0.4 * progress)
+	var facing := _direction if _direction != Vector2.ZERO else Vector2.RIGHT
+	match _attack["kind"]:
+		"slam", "cloud", "explode", "spin", "burrow":
+			var radius: float = _attack["radius"]
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.75))
+			draw_circle(Vector2.ZERO, radius * progress, fill)
+			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, edge, 2.0)
+			draw_set_transform(Vector2.ZERO)
+		"swipe", "thrust", "combo":
+			var reach: float = float(_attack.get("range", 60.0)) + 12.0
+			var arc := deg_to_rad(float(_attack.get("arc", 100.0)))
+			var points := PackedVector2Array([Vector2.ZERO])
+			for i in 13:
+				points.append(Vector2.from_angle(facing.angle() - arc / 2.0 + arc * i / 12.0) * reach * Vector2(1.0, 0.75))
+			draw_colored_polygon(points, fill)
+			points.append(Vector2.ZERO)
+			draw_polyline(points, edge, 2.0)
+		"lunge", "charge", "swoop":
+			var length := maxf(float(_attack.get("range", 0.0)), 70.0) * (2.2 if _attack["kind"] == "charge" else 1.3)
+			var side := facing.orthogonal() * body_radius
+			var tip := facing * length * Vector2(1.0, 0.75)
+			var lane := PackedVector2Array([side, side + tip, -side + tip, -side])
+			draw_colored_polygon(PackedVector2Array([side, side + tip * progress, -side + tip * progress, -side]), fill)
+			lane.append(side)
+			draw_polyline(lane, edge, 2.0)
+		"pounce":
+			if is_instance_valid(target):
+				var landing := to_local(global_position + (target.global_position - global_position).limit_length(float(_attack["range"]) * 1.15))
+				var radius := float(_attack.get("radius", 40.0))
+				draw_set_transform(landing, 0.0, Vector2(1.0, 0.75))
+				draw_circle(Vector2.ZERO, radius * progress, fill)
+				draw_arc(Vector2.ZERO, radius, 0.0, TAU, 32, edge, 2.0)
+				draw_set_transform(Vector2.ZERO)
+		"shoot", "spit":
+			if is_instance_valid(target):
+				var aim := global_position.direction_to(target.global_position)
+				var length := float(_attack.get("range", 200.0))
+				var shots: int = int(_attack.get("count", 1)) if _attack["kind"] == "spit" else 1
+				var spread := deg_to_rad(float(_attack.get("spread", 30.0))) if shots > 1 else 0.0
+				for i in shots:
+					var angle := -spread / 2.0 + spread * i / maxf(shots - 1, 1) if shots > 1 else 0.0
+					var line := aim.rotated(angle) * length
+					draw_line(Vector2.ZERO, line * progress, Color(edge, edge.a * 0.9), 2.0)
+					draw_line(line * progress, line, Color(edge, 0.18), 1.0)
 
 
 ## Returns the health actually removed, so callers can reward real damage only.

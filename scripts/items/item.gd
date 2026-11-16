@@ -39,10 +39,10 @@ var fresh := false
 
 ## A gathered or dropped material, which now and then comes out finer than
 ## usual (see ItemDB.roll_material_rarity).
-static func create_rolled(item_id: String, p_count: int = 1) -> Item:
+static func create_rolled(item_id: String, p_count: int = 1, luck := 0.0) -> Item:
 	var item := create(item_id, p_count)
 	if item and ItemDB.is_material(item_id):
-		item.rarity = ItemDB.roll_material_rarity(item_id)
+		item.rarity = ItemDB.roll_material_rarity(item_id, luck)
 	return item
 
 

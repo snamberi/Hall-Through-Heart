@@ -128,6 +128,10 @@ var relics: Relics
 var styles: StyleBook
 ## Saved sets of gear, abilities and relics (see Loadouts).
 var loadouts: Loadouts
+## Standing with merchants (see Trade).
+var trade: Trade
+## The timing bar over a rich node being worked (see GatherMeter).
+var _gather_meter: GatherMeter
 var hotbar: Hotbar
 ## Skin tone, hair, clothes, trousers and look (see Appearance).
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()
@@ -191,6 +195,9 @@ func _ready() -> void:
 	loadouts = Loadouts.new()
 	loadouts.name = "Loadouts"
 	add_child(loadouts)
+	trade = Trade.new()
+	trade.name = "Trade"
+	add_child(trade)
 	var hands := HandFX.new()
 	hands.setup(self)
 	add_child(hands)
@@ -285,7 +292,7 @@ func _physics_process(delta: float) -> void:
 		State.GATHER:
 			_process_gather(delta)
 
-	_visual.modulate.a = 0.45 if _invulnerable_left > 0.0 else 1.0
+	_show_invulnerable(delta)
 	move_and_slide()
 
 
@@ -806,8 +813,10 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		_parried(source_position)
 		return false
 	if _invulnerable_left > 0.0:
-		if state == State.DODGE and talents.has("perfect_dodge"):
-			buffs.add("perfect_dodge", "Perfect Dodge", 5.0, {"critical_chance": {"flat": 0.3}})
+		if state == State.DODGE:
+			_dodged()
+			if talents.has("perfect_dodge"):
+				buffs.add("perfect_dodge", "Perfect Dodge", 5.0, {"critical_chance": {"flat": 0.3}})
 		return false
 	if element != "":
 		# Part of the blow is the attacker's element; resistance turns it away.
@@ -1214,6 +1223,37 @@ func _try_dodge() -> void:
 	_invulnerable_left = maxf(_invulnerable_left, dodge_duration)
 
 
+## Feedback for a blow that a dodge's untouchable moment turned away: a
+## pale "Dodged" over the player (at most once a second), a white flash and
+## a short ring, so a well-timed roll reads as clearly as a hit.
+var _dodged_shown_at := -10.0
+var _dodge_flash := 0.0
+
+
+func _dodged() -> void:
+	_dodge_flash = 0.18
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _dodged_shown_at < 1.0:
+		return
+	_dodged_shown_at = now
+	DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -44), "Dodged", Color(0.75, 0.9, 1.0), 13)
+	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(0.7, 0.88, 1.0))
+	Audio.play("swing", -10.0, 0.25)
+
+
+## While the player cannot be hurt they are see-through; during a dodge
+## they also take a cool tint so the safe window can be read at a glance,
+## and they flash white the moment a dodge turns a blow away.
+func _show_invulnerable(delta: float) -> void:
+	_dodge_flash = maxf(_dodge_flash - delta, 0.0)
+	if _dodge_flash > 0.0:
+		_visual.modulate = Color(2.2, 2.2, 2.4, 0.9)
+	elif _invulnerable_left > 0.0:
+		_visual.modulate = Color(0.78, 0.9, 1.25, 0.55) if state == State.DODGE else Color(1, 1, 1, 0.45)
+	else:
+		_visual.modulate = Color.WHITE
+
+
 ## A rush in a direction that cannot be hit, for relic powers.
 func surge(direction: Vector2, speed: float, seconds: float) -> void:
 	if is_dead():
@@ -1457,6 +1497,10 @@ func _start_gathering(node: ResourceNode) -> void:
 	gather_target = node
 	gather_seconds = node.gather_seconds(self)
 	gather_progress = 0.0
+	if node.rich:
+		_gather_meter = GatherMeter.new()
+		_gather_meter.position = Vector2(0, -96.0 if node.is_tall() else -50.0)
+		node.add_child(_gather_meter)
 	_swing_left = 0.0
 	state = State.GATHER
 	velocity = Vector2.ZERO
@@ -1476,6 +1520,17 @@ func _process_gather(delta: float) -> void:
 	if moving or (break_record.is_empty() and not is_instance_valid(gather_target)):
 		_stop_gathering()
 		return
+	# On a rich node, striking on the beat of the timing bar.
+	if is_instance_valid(_gather_meter) and (Input.is_action_just_pressed("attack") or Input.is_action_just_pressed("interact")):
+		match _gather_meter.strike():
+			1:
+				gather_progress += gather_seconds * 0.12
+				DamageNumber.spawn_text(get_parent(), gather_target.global_position + Vector2(0, -70), "Perfect!", UITheme.GOLD, 13)
+				Audio.play("level_up", -16.0, 0.3)
+				shake_camera(2.0)
+			0:
+				gather_progress = maxf(gather_progress - 0.3, 0.0)
+				DamageNumber.spawn_text(get_parent(), gather_target.global_position + Vector2(0, -70), "Miss", UITheme.DIM, 11)
 	# Swing the tool: each blow lands with a sound and a spray of chips.
 	_swing_left -= delta
 	if _swing_left <= 0.0:
@@ -1492,8 +1547,9 @@ func _process_gather(delta: float) -> void:
 				DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -40), problem, UITheme.BAD, 12)
 			return
 		var node := gather_target
+		var perfects: int = _gather_meter.perfects if is_instance_valid(_gather_meter) else 0
 		_stop_gathering()
-		node.harvest(self)
+		node.harvest(self, perfects)
 
 
 ## One blow of the tool landing on what is being worked.
@@ -1519,6 +1575,9 @@ func _work_blow() -> void:
 
 
 func _stop_gathering() -> void:
+	if is_instance_valid(_gather_meter):
+		_gather_meter.queue_free()
+	_gather_meter = null
 	gather_target = null
 	break_record = {}
 	gather_progress = 0.0

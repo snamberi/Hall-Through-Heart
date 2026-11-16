@@ -32,6 +32,13 @@ var _sell_marked: Button
 ## price: [{"item", "price"}].
 var _sold_back: Array = []
 var _visiting: Npc
+## Standing with merchants: the tier, a bar toward the next, what this
+## merchant pays extra for, and the two ways to spend gold here.
+var _standing: Label
+var _standing_bar: ProgressBar
+var _specialty: Label
+var _invest: Button
+var _reroll: Button
 
 
 func _build() -> void:
@@ -57,6 +64,39 @@ func _build() -> void:
 	_tip.side_by_side = true
 	add_child(_tip)
 
+	# --- standing with merchants, and gold sinks
+	var standing_row := HBoxContainer.new()
+	standing_row.add_theme_constant_override("separation", 10)
+	content.add_child(standing_row)
+	_standing = UITheme.strong("", 15, UITheme.GOLD)
+	standing_row.add_child(_standing)
+	_standing_bar = ProgressBar.new()
+	_standing_bar.show_percentage = false
+	_standing_bar.custom_minimum_size = Vector2(140.0, 12.0)
+	_standing_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_standing_bar.max_value = 1.0
+	_standing_bar.step = 0.001
+	standing_row.add_child(_standing_bar)
+	_specialty = UITheme.label("", 14, UITheme.DIM)
+	_specialty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_specialty.clip_text = true
+	standing_row.add_child(_specialty)
+	_invest = UITheme.button("", func() -> void:
+		if player.trade.invest():
+			_say("The merchant pockets it with a nod. Your standing grows.", true)
+			Audio.play("pickup", -6.0)
+		refresh()
+	, 190.0)
+	standing_row.add_child(_invest)
+	_reroll = UITheme.button("", func() -> void:
+		if npc.pay_restock(player):
+			_choice = {}
+			_say("New wares are laid out.", true)
+			Audio.play("pickup", -6.0)
+		refresh()
+	, 200.0)
+	standing_row.add_child(_reroll)
+
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 14)
 	content.add_child(columns)
@@ -74,7 +114,7 @@ func _build() -> void:
 	buy_head.add_child(UITheme.heading("The merchant's wares", 16))
 	var ware_scroll := ScrollContainer.new()
 	ware_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	ware_scroll.custom_minimum_size = Vector2(318.0, 430.0)
+	ware_scroll.custom_minimum_size = Vector2(318.0, 398.0)
 	ware_box.add_child(ware_scroll)
 	_wares = VBoxContainer.new()
 	_wares.add_theme_constant_override("separation", 6)
@@ -96,7 +136,7 @@ func _build() -> void:
 	_bag_grid = ItemGrid.new()
 	_bag_grid.setup(player, _tip, 7, 7)
 	_bag_grid.note_for = func(item: Item) -> String:
-		return "[color=#%s]Sells for %d gold%s[/color]" % [UITheme.GOLD.to_html(false), Npc.sell_price(item), " each" if item.count > 1 else ""]
+		return "[color=#%s]Sells for %d gold%s[/color]" % [UITheme.GOLD.to_html(false), npc.buys_for(item, player), " each" if item.count > 1 else ""]
 	_bag_grid.picked.connect(func(item: Item, _index: int) -> void:
 		if _picking:
 			if item.locked:
@@ -107,14 +147,14 @@ func _build() -> void:
 				_bag_grid.marked.append(item)
 			refresh()
 			return
-		_choose(item, Npc.sell_price(item), true, {})
+		_choose(item, npc.buys_for(item, player), true, {})
 		# Shift-click sells the whole stack at once.
 		if Input.is_key_pressed(KEY_SHIFT) and not item.locked:
 			_quantity = _most()
 			_trade()
 	)
 	_bag_grid.alt_picked.connect(func(item: Item, _index: int) -> void:
-		_choose(item, Npc.sell_price(item), true, {})
+		_choose(item, npc.buys_for(item, player), true, {})
 		_quantity = 1
 		_trade()
 	)
@@ -150,7 +190,7 @@ func _build() -> void:
 	right.add_theme_constant_override("separation", 8)
 	right_panel.add_child(right)
 	_inspector = ItemInspector.new()
-	_inspector.build(320.0, 150.0)
+	_inspector.build(320.0, 130.0)
 	_inspector.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(_inspector)
 	right.add_child(UITheme.rule())
@@ -200,6 +240,7 @@ func refresh() -> void:
 		_bag_grid.marked.clear()
 	_gold.text = "%s gold" % InventoryMenu._thousands(player.inventory.gold)
 	_restock.text = "New wares in %d min" % ceili(npc.restock_in() / 60.0)
+	_show_standing()
 	for child in _wares.get_children():
 		child.queue_free()
 	for entry in npc.stock:
@@ -226,7 +267,7 @@ func refresh() -> void:
 	_pick_toggle.text = "Done" if _picking else "Select many"
 	var total := 0
 	for item: Item in _bag_grid.marked:
-		total += Npc.sell_price(item) * item.count
+		total += npc.buys_for(item, player) * item.count
 	_sell_marked.disabled = _bag_grid.marked.is_empty()
 	_sell_marked.text = "Sell %d for %d gold" % [_bag_grid.marked.size(), total] if not _bag_grid.marked.is_empty() else "Sell marked"
 	_show()
@@ -373,6 +414,29 @@ func _show() -> void:
 		_message.text = ""
 
 
+func _show_standing() -> void:
+	var trade := player.trade
+	var info := trade.tier_info()
+	var next := trade.to_next()
+	_standing.text = "%s  ·  %s standing" % [info["name"], InventoryMenu._thousands(trade.standing())]
+	_standing.tooltip_text = "Gold spent here counts in full, gold earned counts half.\n%s: %d wares, %d%% off, sells at %d%% of worth." % [
+		info["name"], int(info["shelf"]), roundi(float(info["discount"]) * 100.0), roundi(float(info["share"]) * 100.0)]
+	_standing_bar.value = trade.progress()
+	_standing_bar.tooltip_text = ("%s more to become a %s" % [InventoryMenu._thousands(next), Trade.TIERS[trade.tier() + 1]["name"]]) if next > 0 else "The best standing there is."
+	var kinds: Array = ["epic or better"] if npc.wandering else Trade.SPECIALTIES.get(npc.stock_kind, [])
+	if npc.stock_kind == "smith":
+		kinds = ["Arms", "Armour"] + kinds
+	_specialty.text = "Pays +%d%% for: %s" % [roundi(Trade.SPECIALTY_BONUS * 100.0), ", ".join(kinds.slice(0, 5))] if not kinds.is_empty() else ""
+	var step := trade.invest_step()
+	_invest.text = "Put in %s g" % InventoryMenu._thousands(step)
+	_invest.disabled = player.inventory.gold < step or next == 0
+	_invest.tooltip_text = "Gold given to the shop for standing. It does not come back." if next > 0 else "Your standing cannot rise further."
+	var fee := npc.restock_fee(player)
+	_reroll.text = "New wares now: %s g" % InventoryMenu._thousands(fee)
+	_reroll.disabled = player.inventory.gold < fee
+	_reroll.tooltip_text = "Lay out a fresh shelf. The fee doubles each time until the wares change on their own."
+
+
 ## Remembers something sold, so a mistake can be bought back this visit.
 func _remember(item: Item, amount: int, price_each: int) -> void:
 	var copy := Item.from_dict(item.to_dict())
@@ -391,14 +455,15 @@ func _sell_all_marked() -> void:
 	for item: Item in _bag_grid.marked.duplicate():
 		if not item in player.inventory.items or item.locked:
 			continue
-		gold += Npc.sell_price(item) * item.count
+		gold += npc.buys_for(item, player) * item.count
 		count += 1
-		_remember(item, item.count, Npc.sell_price(item))
+		_remember(item, item.count, npc.buys_for(item, player))
 		player.inventory.remove(item)
 	_bag_grid.marked.clear()
 	_picking = false
 	if count > 0:
 		player.inventory.add_gold(gold)
+		player.trade.note_earned(gold)
 		Events.codex_event.emit("sales", count)
 		Audio.play("pickup", -6.0)
 		_say("Sold %d for %d gold. They can be bought back until you leave." % [count, gold], true)
@@ -417,6 +482,7 @@ func _trade() -> void:
 			return
 		var amount := clampi(_quantity, 1, item.count)
 		inventory.add_gold(int(_choice["price"]) * amount)
+		player.trade.note_earned(int(_choice["price"]) * amount)
 		Events.codex_event.emit("sales", 1)
 		_remember(item, amount, int(_choice["price"]))
 		if item.is_stackable():
@@ -432,6 +498,7 @@ func _trade() -> void:
 			_say("Your bag is full.", false)
 			return
 		inventory.add_gold(-int(_choice["price"]))
+		player.trade.note_earned(-int(_choice["price"]))
 		inventory.add(item)
 		_sold_back = _sold_back.filter(func(sold: Dictionary) -> bool: return sold["item"] != item)
 		_say("Bought back.", true)
@@ -446,6 +513,7 @@ func _trade() -> void:
 				_say("Your bag is full.", false)
 				break
 			inventory.add_gold(-int(_choice["price"]))
+			player.trade.note_spent(int(_choice["price"]))
 			inventory.add(bought)
 			bought_count += 1
 			Events.codex_event.emit("purchases", 1)

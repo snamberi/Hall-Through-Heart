@@ -275,3 +275,77 @@ func _key(code: Key) -> InputEventKey:
 	var key := InputEventKey.new()
 	key.physical_keycode = code
 	return key
+
+
+func test_merchant_standing_tiers(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var trade := player.trade
+	t.equal(trade.tier(), 0, "a stranger to begin with")
+	var ore := Item.create("iron_ore", 10)
+	var plain := trade.sell_price(ore, "general", false)
+	t.check(trade.sell_price(ore, "smith", false) > plain, "a smith pays more for ore")
+	trade.note_spent(1600)
+	t.equal(trade.tier(), 1, "spending makes a customer")
+	t.check(trade.sell_price(ore, "general", false) >= plain, "standing never lowers the price")
+	t.check(trade.buy_price(1000) < 1000, "customers get a little off")
+	trade.note_earned(1000)
+	trade.note_earned(-1000)
+	t.equal(trade.earned, 0, "selling and buying back gains nothing")
+	var standing := trade.standing()
+	player.inventory.add_gold(100000)
+	t.check(trade.invest(), "gold can be put into the shop")
+	t.check(trade.standing() > standing, "putting gold in raises standing")
+	# A shelf is bigger with better standing, and laying out new wares costs gold.
+	var npc := Npc.create("merchant", player.global_position + Vector2(40, 0))
+	main.add_child(npc)
+	trade.note_spent(40000)
+	npc.restock_if_due(player)
+	var shelf := npc.stock.size()
+	t.check(shelf >= 6, "a patron sees more wares (%d)" % shelf)
+	var gold := player.inventory.gold
+	var fee := npc.restock_fee(player)
+	t.check(npc.pay_restock(player), "new wares can be paid for")
+	t.equal(player.inventory.gold, gold - fee, "the fee is taken")
+	t.check(npc.restock_fee(player) > fee, "the next time costs more")
+	npc.queue_free()
+
+
+func test_rich_nodes_and_tool_tiers(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	player.professions.load_data({})
+	var rich: ResourceNode = null
+	var plain: ResourceNode = null
+	for x in 400:
+		var probe := ResourceNode.create("tin", Vector2i(x, 7), player.global_position + Vector2(30, 0))
+		main.add_child(probe)
+		if probe.rich and rich == null:
+			rich = probe
+		elif not probe.rich and plain == null:
+			plain = probe
+		else:
+			probe.queue_free()
+		if rich and plain:
+			break
+	t.check(rich != null and plain != null, "some tin veins are rich, most are not")
+	t.check(rich.prompt().contains("Rich"), "a rich vein says so")
+	player.inventory.add(Item.create("adamantite_pickaxe"))
+	t.check(plain.tool_surplus(player) >= 3, "a tier 5 pickaxe has tiers to spare on tin")
+	t.check(rich.gather_seconds(player) > plain.gather_seconds(player), "a rich vein takes longer")
+	# Perfect blows on the timing bar.
+	var meter := GatherMeter.new()
+	main.add_child(meter)
+	for step in 400:
+		meter._time = step * 0.01
+		meter._rest_left = 0.0
+		var at := meter.marker()
+		if at >= meter._zone_start and at <= meter._zone_start + meter._zone_width:
+			meter.strike()
+	t.equal(meter.perfects, GatherMeter.MAX_PERFECTS, "perfect blows count up to the cap")
+	meter.queue_free()
+	var before := player.inventory.count_of("tin_ore")
+	rich.harvest(player, 3)
+	var after := player.inventory.count_of("tin_ore")
+	t.check(after - before >= 6, "a rich vein worked perfectly gives plenty (%d)" % (after - before))
+	plain.queue_free()
