@@ -666,6 +666,8 @@ const ITEMS := {
 		"value": 40, "text": "Baked for the Harvest Fair. +8% maximum health and +1 health a second for 10 minutes."},
 	"mulled_cider": {"name": "Mulled Cider", "icon": 69, "tint": Color("d08040"), "material_rarity": 2, "use": {"buff": "food", "name": "Warmed Through", "duration": 600.0, "mods": {"frost_resist": {"flat": 0.3}, "stamina_regen": {"percent": 0.25}}},
 		"value": 40, "text": "Spiced and steaming, from the Frost Market. +30% frost resistance and stamina back 25% faster for 10 minutes."},
+	"bottomless_satchel": {"name": "Bottomless Satchel", "icon": 164, "material_rarity": 5, "satchel": true, "value": 25000,
+		"text": "Sewn from rift-cloth around a heartstone clasp. Use it to bind it to you: every material you carry goes into it, and it never fills."},
 	"rift_shard": {"name": "Rift Shard", "icon": 154, "material_rarity": 3, "value": 120,
 		"text": "A splinter of a closed Heart Rift, still beating faintly. Runes are bound with it."},
 	"trophy_stand": {"name": "Trophy Stand", "decor": Prop.Decor.TROPHY_STAND, "icon": 149, "material_rarity": 1, "place": "trophy_stand", "value": 120,
@@ -925,6 +927,16 @@ static func is_material(item_id: String) -> bool:
 	return not def.is_empty() and not def.has("slot") and not def.has("use") and not def.has("place") and not def.has("tool") \
 		and not def.has("backpack") and not def.has("relic") and not def.has("belt") and not def.has("gem") and not def.get("currency", false) \
 		and not def.has("mount") and not def.has("boat") and not def.has("treasure_map")
+
+
+## What the Bottomless Satchel takes: materials only (ores, ingots, wood,
+## herbs, hides, monster parts, runes, shards...), not gear for pets or
+## mounts, keys, blade pieces or anything that is used or worn.
+static func is_satchel_material(item_id: String) -> bool:
+	if not is_material(item_id):
+		return false
+	var def: Dictionary = ITEMS[item_id]
+	return not (def.has("pet_gear") or def.has("tack") or def.has("blade_piece") or def.has("satchel")) and not item_id in ["dungeon_key", "boss_trophy", "festival_token", "blood_token"]
 
 
 ## A material's rarity as found: its usual one, sometimes one or two better

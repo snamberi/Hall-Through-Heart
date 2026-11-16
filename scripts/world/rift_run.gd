@@ -79,6 +79,9 @@ func _finish() -> void:
 	var items: Array = [Item.create("rift_shard", shards).to_dict()]
 	for rune in (2 if timed else 1):
 		items.append(Item.create(LootGenerator.random_rune()).to_dict())
+	# Deep in the rift, now and then, the bag with no bottom.
+	if timed and _rifts.depth > 10 and randf() < 0.1 and not _player.inventory.satchel and _player.inventory.count_of("bottomless_satchel") == 0:
+		items.append(Item.create("bottomless_satchel").to_dict())
 	var finds := 3 if timed else 2
 	for index in finds:
 		var rarity := 4 if timed and index == 0 and randf() < 0.35 + 0.03 * _rifts.depth else 3

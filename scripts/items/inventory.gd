@@ -15,6 +15,14 @@ var gold := 0
 var starter_given := false
 ## Whether the basic gathering tools have been handed out.
 var tools_given := false
+## The Bottomless Satchel, once bound: materials go into it, with no limit
+## on how many, and everything that counts or takes materials (crafting,
+## smelting, projects) reaches into it too.
+var satchel := false
+## Whether picked-up materials go straight into the satchel.
+var satchel_auto := true
+## What the satchel holds: "id|rarity" -> count.
+var materials: Dictionary = {}
 
 
 func _ready() -> void:
@@ -30,7 +38,7 @@ func free_slots() -> int:
 
 
 func has_room_for(item: Item) -> bool:
-	if item.definition().get("currency", false):
+	if item.definition().get("currency", false) or _to_satchel(item):
 		return true
 	if not item.is_stackable():
 		return free_slots() > 0
@@ -50,6 +58,9 @@ func add(item: Item, arriving: bool = true) -> bool:
 	# Coins go straight into the purse.
 	if item.definition().get("currency", false):
 		add_gold(item.count)
+		return true
+	if _to_satchel(item):
+		store_material(item)
 		return true
 	if not has_room_for(item):
 		return false
@@ -110,7 +121,104 @@ func count_of(item_id: String) -> int:
 	for item in items:
 		if item.id == item_id:
 			total += item.count
+	if not materials.is_empty():
+		for key: String in materials:
+			if key.get_slice("|", 0) == item_id:
+				total += int(materials[key])
 	return total
+
+
+# --- the Bottomless Satchel
+
+## Whether something picked up goes straight into the satchel.
+func _to_satchel(item: Item) -> bool:
+	return satchel and satchel_auto and ItemDB.is_satchel_material(item.id)
+
+
+## Binds the satchel: from now on materials have somewhere to go.
+func bind_satchel(item: Item) -> String:
+	if satchel:
+		return "You already carry a Bottomless Satchel."
+	satchel = true
+	remove(item)
+	store_all_materials()
+	Events.announcement.emit("BOTTOMLESS SATCHEL", "Materials now go into it, and there is no end to it")
+	return ""
+
+
+## Puts a stack of a material into the satchel.
+func store_material(item: Item) -> void:
+	var key := "%s|%d" % [item.id, item.rarity]
+	materials[key] = int(materials.get(key, 0)) + item.count
+	changed.emit()
+	SaveGame.request_save()
+
+
+## Moves every material in the bag into the satchel. Returns how many stacks.
+func store_all_materials() -> int:
+	var moved := 0
+	for item in items.duplicate():
+		if item and not item.locked and ItemDB.is_satchel_material(item.id):
+			items.erase(item)
+			var key := "%s|%d" % [item.id, item.rarity]
+			materials[key] = int(materials.get(key, 0)) + item.count
+			moved += 1
+	if moved > 0:
+		changed.emit()
+		SaveGame.request_save()
+	return moved
+
+
+## The satchel's contents as items (counts can be far over a stack), best
+## first, then by name.
+func satchel_items() -> Array[Item]:
+	var result: Array[Item] = []
+	for key: String in materials:
+		var id := key.get_slice("|", 0)
+		if not ItemDB.ITEMS.has(id) or int(materials[key]) <= 0:
+			continue
+		var item := Item.create(id, int(materials[key]))
+		item.rarity = int(key.get_slice("|", 1))
+		result.append(item)
+	result.sort_custom(func(a: Item, b: Item) -> bool: return a.display_name() < b.display_name() if a.display_name() != b.display_name() else a.rarity > b.rarity)
+	return result
+
+
+## Takes up to `amount` of a satchel stack out into the bag. Returns how
+## many came out (fewer if the bag filled up).
+func withdraw(item_id: String, rarity: int, amount: int) -> int:
+	var key := "%s|%d" % [item_id, rarity]
+	var have := int(materials.get(key, 0))
+	var moved := 0
+	amount = mini(amount, have)
+	while moved < amount:
+		var piece := Item.create(item_id, mini(amount - moved, ItemDB.MAX_STACK))
+		piece.rarity = rarity
+		# Into the bag itself, not back through add (which would store it again).
+		var room := free_slots() * ItemDB.MAX_STACK
+		for stack in items:
+			if stack.id == item_id and stack.rarity == rarity:
+				room += maxi(ItemDB.MAX_STACK - stack.count, 0)
+		if room <= 0:
+			break
+		piece.count = mini(piece.count, room)
+		var left := piece.count
+		for stack in items:
+			if left > 0 and stack.id == item_id and stack.rarity == rarity and stack.count < ItemDB.MAX_STACK:
+				var into := mini(ItemDB.MAX_STACK - stack.count, left)
+				stack.count += into
+				left -= into
+		if left > 0:
+			piece.count = left
+			items.append(piece)
+		moved += mini(amount - moved, room)
+	if moved > 0:
+		materials[key] = have - moved
+		if int(materials[key]) <= 0:
+			materials.erase(key)
+		changed.emit()
+		SaveGame.request_save()
+	return moved
 
 
 ## Removes `amount` of a stackable item, the plainest first (or the finest
@@ -119,19 +227,36 @@ func count_of(item_id: String) -> int:
 func take(item_id: String, amount: int, best_first: bool = false) -> bool:
 	if count_of(item_id) < amount:
 		return false
-	var stacks: Array = items.filter(func(item: Item) -> bool: return item.id == item_id)
-	stacks.sort_custom(func(a: Item, b: Item) -> bool: return a.rarity > b.rarity if best_first else a.rarity < b.rarity)
+	# Every stack of it, in the bag and in the satchel, worst first (or best).
+	var sources: Array = []
+	for item in items:
+		if item.id == item_id:
+			sources.append([item.rarity, item, ""])
+	for key: String in materials:
+		if key.get_slice("|", 0) == item_id:
+			sources.append([int(key.get_slice("|", 1)), null, key])
+	sources.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0] if best_first else a[0] < b[0])
 	var total := 0.0
 	var taken := amount
-	for item: Item in stacks:
+	for source: Array in sources:
 		if amount <= 0:
 			break
-		var used := mini(item.count, amount)
-		item.count -= used
-		amount -= used
-		total += used * item.rarity
-		if item.count <= 0:
-			items.erase(item)
+		if source[1] != null:
+			var item: Item = source[1]
+			var used := mini(item.count, amount)
+			item.count -= used
+			amount -= used
+			total += used * item.rarity
+			if item.count <= 0:
+				items.erase(item)
+		else:
+			var key: String = source[2]
+			var used := mini(int(materials[key]), amount)
+			materials[key] = int(materials[key]) - used
+			amount -= used
+			total += used * int(source[0])
+			if int(materials[key]) <= 0:
+				materials.erase(key)
 	last_rarity = total / maxf(taken, 1.0)
 	changed.emit()
 	SaveGame.request_save()
@@ -172,6 +297,9 @@ func save_data() -> Dictionary:
 		"starter_given": starter_given,
 		"tools_given": tools_given,
 		"items": items.map(func(item: Item) -> Dictionary: return item.to_dict()),
+		"satchel": satchel,
+		"satchel_auto": satchel_auto,
+		"materials": materials.duplicate(),
 	}
 
 
@@ -179,6 +307,14 @@ func load_data(data: Dictionary) -> void:
 	gold = maxi(int(data.get("gold", 0)), 0)
 	starter_given = bool(data.get("starter_given", false))
 	tools_given = bool(data.get("tools_given", false))
+	satchel = bool(data.get("satchel", false))
+	satchel_auto = bool(data.get("satchel_auto", true))
+	materials.clear()
+	var stored: Variant = data.get("materials", {})
+	if stored is Dictionary:
+		for key: Variant in stored:
+			if ItemDB.ITEMS.has(str(key).get_slice("|", 0)) and int(stored[key]) > 0:
+				materials[str(key)] = int(stored[key])
 	items.clear()
 	var saved: Variant = data.get("items", [])
 	if saved is Array:

@@ -70,6 +70,9 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "padded_barding", "profession": "building", "level": 8, "inputs": {"leather": 4, "wool": 6}, "item": "padded_barding", "count": 1, "xp": 24.0},
 	{"id": "iron_barding", "profession": "blacksmithing", "level": 15, "inputs": {"iron_ingot": 8, "leather": 4}, "item": "iron_barding", "count": 1, "xp": 60.0},
 	{"id": "heartsteel_barding", "profession": "blacksmithing", "level": 50, "inputs": {"obsidian_ingot": 8, "leather": 6}, "item": "heartsteel_barding", "count": 1, "xp": 150.0},
+	# The end of a long road: a bag with no bottom (see Inventory.satchel).
+	{"id": "bottomless_satchel", "profession": "building", "level": 70, "inputs": {"heartstone_ingot": 6, "void_ingot": 6, "spiritwood": 20, "rift_shard": 30, "leather": 40, "heart_shard": 10},
+		"item": "bottomless_satchel", "count": 1, "xp": 500.0},
 	{"id": "trophy_stand", "profession": "building", "level": 6, "inputs": {"oak_wood": 12, "stone": 6, "leather": 2, "gold_ingot": 1}, "item": "trophy_stand", "count": 1, "xp": 30.0},
 	{"id": "stone_statue", "profession": "building", "level": 4, "inputs": {"stone": 20}, "item": "stone_statue", "count": 1, "xp": 22.0},
 	{"id": "brazier", "profession": "building", "level": 4, "inputs": {"iron_ingot": 3, "stone": 4}, "item": "brazier", "count": 1, "xp": 22.0},

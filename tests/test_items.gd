@@ -458,3 +458,56 @@ func test_food_and_supply_slots(t: TestContext) -> void:
 	t.check(player.hotbar.assign(8, wall) != "", "a wall goes in neither")
 	t.check(Hotbar.is_supply("torch"), "torches are supplies")
 	t.check(Hotbar.is_food("wild_berries"), "berries are food")
+
+
+func test_shield_blocks_from_the_front(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var shield := LootGenerator.make_equipment(1, 0, "shield")
+	player.inventory.add(shield)
+	t.equal(player.equipment.equip(shield, "off_hand"), "", "a shield goes on")
+	t.check(player.held_shield() != null, "it is held")
+	player.health.heal_full()
+	player.stamina.fill()
+	player._start_block()
+	player.parry_left = 0.0
+	player._invulnerable_left = 0.0
+	player.block_direction = Vector2.RIGHT
+	var health := player.health.current
+	var stamina := player.stamina.current
+	t.check(not player.take_damage(20.0, player.global_position + Vector2(60, 0)), "a blow from the front is stopped")
+	t.equal(player.health.current, health, "no health lost")
+	t.check(player.stamina.current < stamina, "it cost stamina")
+	player._invulnerable_left = 0.0
+	t.check(player.take_damage(20.0, player.global_position + Vector2(-60, 0)), "a blow from behind lands")
+	t.check(player.health.current < health, "and hurts")
+	player._end_block()
+	t.check(not player.blocking, "the shield comes down")
+	player.equipment.unequip("off_hand")
+
+
+func test_bottomless_satchel(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var inventory := player.inventory
+	t.check(RecipeDB.find("bottomless_satchel").size() > 0, "the satchel can be made")
+	var bag := Item.create("bottomless_satchel")
+	inventory.add(bag)
+	inventory.add(Item.create("iron_ore", 50))
+	t.equal(player.use_item(bag), "", "the satchel binds")
+	t.check(inventory.satchel, "it is bound")
+	t.equal(inventory.count_of("bottomless_satchel"), 0, "and used up")
+	var slots := inventory.items.size()
+	t.check(inventory.add(Item.create("iron_ore", 5000)), "five thousand ore fit")
+	t.equal(inventory.items.size(), slots, "without taking a bag slot")
+	t.check(inventory.count_of("iron_ore") >= 5050, "it is all counted")
+	t.check(inventory.take("iron_ore", 5000), "and can be taken for crafting")
+	t.check(not ItemDB.is_satchel_material("health_potion"), "potions are not materials")
+	t.check(not ItemDB.is_satchel_material("leather_collar"), "nor is pet gear")
+	inventory.add(Item.create("health_potion"))
+	t.equal(inventory.materials.keys().filter(func(k: String) -> bool: return k.begins_with("health_potion")).size(), 0, "a potion stays in the bag")
+	var out := inventory.withdraw("iron_ore", 0, 200)
+	t.check(out > 0, "materials can be taken out (%d)" % out)
+	t.check(inventory.items.any(func(i: Item) -> bool: return i.id == "iron_ore"), "into the bag")
+	inventory.satchel = false
+	inventory.materials.clear()

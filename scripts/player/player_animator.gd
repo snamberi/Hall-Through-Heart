@@ -521,14 +521,27 @@ func _on_animation_finished() -> void:
 
 ## Shows `item` on a layer using the sheet at assets/sprites/<path>.png, or
 ## hides the layer when item is null. Metal layers are tinted by tier.
+## While a shield is raised it is drawn by ShieldGuard, so the one carried
+## in the hand is hidden.
+var _guarding := false
+
+
+func set_guarding(on: bool) -> void:
+	_guarding = on
+	if _layers.has("shield") and _layers["shield"].get_meta("worn", false):
+		_layers["shield"].visible = not on
+
+
 func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true, tint: Color = Color.WHITE) -> void:
 	var sprite := _layers[layer]
 	if item == null or path == "" or path.ends_with("/"):
 		sprite.visible = false
+		sprite.set_meta("worn", false)
 		return
 	BodyFit.wear(sprite, path, layer, _appearance)
 	BodyFit.follow(sprite, self)
-	sprite.visible = true
+	sprite.visible = not (layer == "shield" and _guarding)
+	sprite.set_meta("worn", true)
 	var material := sprite.material as ShaderMaterial
 	# Worn gear is drawn as part of the body: its own metal, a plain dark
 	# outline, no coloured edge or glow. Rarity shows in the aura underfoot.

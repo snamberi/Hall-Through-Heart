@@ -108,6 +108,19 @@ const EXPOSE_SECONDS := 2.0
 const FINISHER_DAMAGE := 3.0
 var parry_left := 0.0
 var _parry_cooldown := 0.0
+## Holding a shield up (right mouse held with a shield on): blows from the
+## way it faces are stopped, for stamina. See ShieldGuard.
+var blocking := false
+var block_direction := Vector2.DOWN
+var _block_cooldown := 0.0
+var _guard: ShieldGuard
+## How wide the shield covers: blows from within this angle of the way it
+## faces are blocked (cosine of 75 degrees).
+const BLOCK_ARC := 0.26
+## How fast you move behind a raised shield.
+const BLOCK_SPEED := 0.45
+## Share of a blocked blow paid in stamina instead.
+const BLOCK_STAMINA := 0.35
 
 @onready var health: Health = $Health
 @onready var stamina: ResourcePool = $Stamina
@@ -258,6 +271,9 @@ func _physics_process(delta: float) -> void:
 	_unbreakable_left = maxf(_unbreakable_left - delta, 0.0)
 	parry_left = maxf(parry_left - delta, 0.0)
 	_parry_cooldown = maxf(_parry_cooldown - delta, 0.0)
+	_block_cooldown = maxf(_block_cooldown - delta, 0.0)
+	if blocking:
+		_hold_block()
 	potion_cooldown_left = maxf(potion_cooldown_left - delta, 0.0)
 	_combo_left = maxf(_combo_left - delta, 0.0)
 	_read_ground()
@@ -567,6 +583,8 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 
 ## Uses a consumable from the bag. Returns "" on success or why it failed.
 func use_item(item: Item) -> String:
+	if item.definition().has("satchel") and item in inventory.items:
+		return inventory.bind_satchel(item)
 	if item.definition().has("boat") and item in inventory.items:
 		return board_boat()
 	if item.definition().has("mount") and item in inventory.items:
@@ -817,6 +835,11 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 	if parry_left > 0.0:
 		_parried(source_position)
 		return false
+	if blocking and _shield_covers(source_position) and _invulnerable_left <= 0.0:
+		if _blocked(amount, source_position):
+			return false
+		# The guard broke under it: half the blow gets through.
+		amount *= 0.5
 	if _invulnerable_left > 0.0:
 		if state == State.DODGE:
 			_dodged()
@@ -1121,6 +1144,9 @@ func _process_move(delta: float) -> void:
 		else:
 			stamina.spend(SPRINT_STAMINA * stats.get_stat("stamina_cost_multiplier") * delta)
 			pace = SPRINT_SPEED
+	if blocking:
+		pace = BLOCK_SPEED
+		sprinting = false
 	velocity = velocity.move_toward(input * stats.get_stat("move_speed") * _ground_speed * pace, acceleration * delta)
 	if deep_water:
 		# Both hands are busy keeping afloat.
@@ -1149,14 +1175,92 @@ func _process_move(delta: float) -> void:
 			DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
 	elif Input.is_action_just_pressed("interact") and _try_interact(not Input.is_action_just_pressed("parry")):
 		pass
-	elif Input.is_action_just_pressed("parry") and _parry_cooldown == 0.0 and not placing and not swimming:
+	elif Input.is_action_just_pressed("parry") and not placing and not swimming and held_shield() != null and mount_id == "" and _block_cooldown == 0.0:
+		_start_block()
+	elif Input.is_action_just_pressed("parry") and _parry_cooldown == 0.0 and not placing and not swimming and held_shield() == null:
 		_start_parry()
 	elif Input.is_action_just_pressed("recall_home"):
 		Events.recall_requested.emit()
 	elif Input.is_action_just_pressed("attack") and not placing and not HudMenuButton.hovered and _try_work():
 		pass
-	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing and not HudMenuButton.hovered:
+	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing and not HudMenuButton.hovered and not blocking:
 		attack(aim_direction())
+
+
+## The shield worn in the off hand, if any (not while both hands hold a
+## weapon).
+func held_shield() -> Item:
+	var item := equipment.get_item("off_hand")
+	if item == null or not item.definition().has("armor"):
+		return null
+	var weapon := equipment.in_hand()
+	if weapon and weapon.definition().get("two_handed", false):
+		return null
+	return item
+
+
+## Raises the shield toward the mouse. Its first moment is a parry.
+func _start_block() -> void:
+	blocking = true
+	block_direction = aim_direction()
+	if _parry_cooldown == 0.0:
+		parry_left = PARRY_WINDOW * 0.8
+		_parry_cooldown = PARRY_COOLDOWN
+	if _guard == null:
+		_guard = ShieldGuard.new()
+		add_child(_guard)
+	_guard.dress(held_shield())
+	_guard.direction = block_direction
+	_guard.visible = true
+	_animator.set_guarding(true)
+	Audio.play("swing", -12.0, 0.1)
+
+
+## Keeps the shield up and turned toward the mouse while the button is
+## held, and lowers it when it is let go or anything else takes over.
+func _hold_block() -> void:
+	if not Input.is_action_pressed("parry") or state != State.MOVE or held_shield() == null or mount_id != "" or swimming or is_dead():
+		_end_block()
+		return
+	block_direction = aim_direction()
+	_guard.direction = block_direction
+	if absf(block_direction.x) > 0.1:
+		_face_visual(block_direction.x)
+
+
+func _end_block() -> void:
+	blocking = false
+	if _guard:
+		_guard.visible = false
+	_animator.set_guarding(false)
+
+
+## Whether a blow from this place meets the raised shield.
+func _shield_covers(source_position: Vector2) -> bool:
+	var toward := global_position.direction_to(source_position)
+	return toward == Vector2.ZERO or toward.dot(block_direction) >= BLOCK_ARC
+
+
+## A blow on the raised shield: it stops it for stamina. Returns false if
+## the stamina ran out and the guard broke instead.
+func _blocked(amount: float, source_position: Vector2) -> bool:
+	var cost := maxf(4.0, amount * BLOCK_STAMINA) * stats.get_stat("stamina_cost_multiplier")
+	if not stamina.spend(cost):
+		_end_block()
+		_block_cooldown = 1.2
+		stamina.current = 0.0
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -46), "Guard broken", UITheme.BAD, 14)
+		Audio.play("hit", -2.0, 0.05)
+		shake_camera(5.0)
+		return false
+	_guard.flash()
+	HitSpark.spawn(get_parent(), global_position + block_direction * 14.0 + Vector2(0, -16), Color(0.85, 0.92, 1.0), false)
+	DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -44), "Blocked", Color(0.8, 0.9, 1.0), 12)
+	Audio.play("mine", -4.0, 0.12)
+	velocity += source_position.direction_to(global_position) * 90.0
+	shake_camera(1.5)
+	Events.codex_event.emit("blocks", 1)
+	return true
 
 
 func _start_parry() -> void:

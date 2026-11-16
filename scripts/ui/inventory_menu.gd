@@ -29,7 +29,7 @@ const BELT_SLOT := 42.0
 const VISIBLE_ROWS := 8
 ## The same, while the hand-crafting strip is open beneath.
 const ROWS_WITH_CRAFTING := 6
-const FILTERS: Array[Array] = [["all", "All"], ["gear", "Gear"], ["materials", "Materials"], ["supplies", "Supplies"]]
+const FILTERS: Array[Array] = [["all", "All"], ["gear", "Gear"], ["materials", "Materials"], ["supplies", "Supplies"], ["satchel", "Satchel"]]
 const INSPECTOR := 340.0
 
 var _count: Label
@@ -62,6 +62,11 @@ var _secondary: Button
 var _pick_toggle: Button
 var _search: LineEdit
 var _filter := "all"
+## The Bottomless Satchel's own buttons, shown in its view.
+var _store_all: Button
+var _auto_store: Button
+var _common: Button
+var _grid_width := 0.0
 var _filter_buttons: Dictionary = {}
 var _scroll: ScrollContainer
 var _craft_toggle: Button
@@ -120,6 +125,7 @@ func _build() -> void:
 	left.add_theme_constant_override("separation", 8)
 	bag_panel.add_child(left)
 	var grid_width := COLUMNS * (SLOT_SIZE + 3.0) + 12.0
+	_grid_width = grid_width
 	_search = UITheme.search_box("Search items...", grid_width, refresh)
 	left.add_child(_search)
 	var filters := HBoxContainer.new()
@@ -155,6 +161,21 @@ func _build() -> void:
 	var common := UITheme.button("Mark common", _mark_common, 112.0)
 	common.tooltip_text = "Marks every common piece of gear that is not locked."
 	bag_actions.add_child(common)
+	_common = common
+	_store_all = UITheme.button("Store all", func() -> void:
+		var moved := player.inventory.store_all_materials()
+		_message.add_theme_color_override("font_color", UITheme.GOOD)
+		_message.text = "Stored %d stack%s of materials." % [moved, "" if moved == 1 else "s"] if moved > 0 else "No loose materials in the bag."
+	, 112.0)
+	_store_all.tooltip_text = "Puts every material in the bag into the satchel (locked ones stay)."
+	bag_actions.add_child(_store_all)
+	_auto_store = UITheme.button("", func() -> void:
+		player.inventory.satchel_auto = not player.inventory.satchel_auto
+		SaveGame.request_save()
+		refresh()
+	, 112.0)
+	_auto_store.tooltip_text = "Whether materials you pick up go straight into the satchel."
+	bag_actions.add_child(_auto_store)
 	_craft_toggle = UITheme.button("Crafting", _toggle_crafting, 106.0)
 	_craft_toggle.toggle_mode = true
 	_craft_toggle.tooltip_text = "Simple things made by hand, with no workbench."
@@ -455,8 +476,14 @@ func refresh() -> void:
 		_selected = null
 	# The whole bag with its empty pockets, or just what is searched for.
 	var words := _search.text.strip_edges().to_lower()
+	if _filter == "satchel" and not inventory.satchel:
+		_filter = "all"
 	var narrowed := words != "" or _filter != "all"
-	if narrowed:
+	var satchel_view := _filter == "satchel"
+	if satchel_view:
+		_shown = inventory.satchel_items().filter(func(item: Item) -> bool:
+			return words == "" or item.display_name().to_lower().contains(words) or ItemText.type_name(item).to_lower().contains(words))
+	elif narrowed:
 		_shown = inventory.items.filter(func(item: Item) -> bool:
 			return item != null and (_filter == "all" or category(item) == _filter) \
 				and (words == "" or item.display_name().to_lower().contains(words) or ItemText.type_name(item).to_lower().contains(words))
@@ -465,10 +492,26 @@ func refresh() -> void:
 		_shown = inventory.items
 	for id: String in _filter_buttons:
 		(_filter_buttons[id] as Button).set_pressed_no_signal(id == _filter)
+	# The satchel's tab only once it is bound; the tabs share the row.
+	_filter_buttons["satchel"].visible = inventory.satchel
+	var tabs := FILTERS.size() if inventory.satchel else FILTERS.size() - 1
+	for id: String in _filter_buttons:
+		(_filter_buttons[id] as Button).custom_minimum_size.x = (_grid_width - 4.0 * tabs) / tabs
+	_pick_toggle.visible = not satchel_view
+	_common.visible = not satchel_view
+	_store_all.visible = satchel_view
+	_auto_store.visible = satchel_view
+	_auto_store.text = "Auto: on" if inventory.satchel_auto else "Auto: off"
 	var slots := _shown.size() if narrowed else maxi(inventory.capacity(), inventory.items.size())
 	_ensure_slots(maxi(slots, 1))
 	_count.text = "%d / %d" % [inventory.items.size(), inventory.capacity()]
 	_count.add_theme_color_override("font_color", UITheme.BAD if inventory.items.size() >= inventory.capacity() else UITheme.TEXT)
+	if satchel_view:
+		var held := 0
+		for key: String in inventory.materials:
+			held += int(inventory.materials[key])
+		_count.text = "Satchel: %s" % _thousands(held)
+		_count.add_theme_color_override("font_color", Color("c9a0f0"))
 	for recipe_id in _hand_buttons:
 		var blocked := Crafting.blocked_reason(player, RecipeDB.find(recipe_id))
 		_hand_buttons[recipe_id].disabled = blocked != ""
@@ -479,7 +522,7 @@ func refresh() -> void:
 			continue
 		var item := _bag_item(index)
 		_style_button(_bag_buttons[index], item)
-		_bag_counts[index].text = str(item.count) if item and item.count > 1 else ""
+		_bag_counts[index].text = _short_count(item.count) if item and item.count > 1 else ""
 		_bag_marks[index].visible = item != null and item in _marked
 		_bag_locks[index].visible = item != null and item.locked
 		_bag_fresh[index].visible = item != null and item.fresh
@@ -503,6 +546,23 @@ func refresh() -> void:
 	_set_label.text = "   ·   ".join(notes)
 	_pick_toggle.text = "Done" if _picking else "Select many"
 	_refresh_details()
+
+
+## A count that fits a slot: 128, 4521, 12k, 3.4m.
+static func _short_count(number: int) -> String:
+	if number >= 1000000:
+		return "%.1fm" % (number / 1000000.0)
+	if number >= 10000:
+		return "%dk" % (number / 1000)
+	return str(number)
+
+
+## Takes a satchel stack out into the bag: a full stack, all that fits with
+## Shift, or one.
+func _withdraw(item: Item, amount: int) -> void:
+	var moved := player.inventory.withdraw(item.id, item.rarity, amount)
+	_message.add_theme_color_override("font_color", UITheme.GOOD if moved > 0 else UITheme.BAD)
+	_message.text = "Took out %d %s." % [moved, item.display_name()] if moved > 0 else "Your bag is full."
 
 
 static func _thousands(number: int) -> String:
@@ -887,6 +947,9 @@ func _equipped_slot(item: Item) -> String:
 func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 	button.pressed.connect(func() -> void:
 		var item: Item = item_of.call()
+		if _filter == "satchel" and item != null and not item in player.inventory.items and empty_text == "":
+			_withdraw(item, item.count if Input.is_key_pressed(KEY_SHIFT) else ItemDB.MAX_STACK)
+			return
 		if _picking and item != null and item in player.inventory.items and not item.locked:
 			if item in _marked:
 				_marked.erase(item)
@@ -916,6 +979,9 @@ func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 	button.gui_input.connect(func(event: InputEvent) -> void:
 		var click := event as InputEventMouseButton
 		if click and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT and item_of.call():
+			if _filter == "satchel" and empty_text == "" and not item_of.call() in player.inventory.items:
+				_withdraw(item_of.call(), 1)
+				return
 			_select(item_of.call())
 			_use_selected()
 	)
