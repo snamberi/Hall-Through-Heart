@@ -14,7 +14,7 @@ const FRAME := Vector2(760.0, 440.0)
 ## Controls, grouped: [heading, actions].
 const GROUPS := [
 	["Movement", ["move_up", "move_down", "move_left", "move_right", "dodge", "sprint", "mount"]],
-	["Combat", ["attack", "parry", "ability_1", "ability_2", "ability_3", "ability_4", "ability_swap", "relic_ability", "quick_use"]],
+	["Combat", ["attack", "parry", "ability_1", "ability_2", "ability_3", "ability_4", "ability_swap", "relic_ability", "quick_use", "loadout_next"]],
 	["World", ["interact", "build_mode", "recall_home"]],
 	["Hotbar", ["hotbar_1", "hotbar_2", "hotbar_3", "hotbar_4", "hotbar_5", "hotbar_6", "hotbar_7", "hotbar_8", "hotbar_9", "hotbar_10"]],
 	["Menus", ["toggle_menu", "open_inventory", "open_quests", "open_map"]],

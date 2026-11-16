@@ -52,7 +52,7 @@ static func use(ability: String, player: Player, rarity: int) -> String:
 			player.buffs.add("bulwark", "Bulwark", 6.0, {"damage_taken": {"percent": -minf(0.5 + 0.06 * power, 0.72)}})
 			RingBurst.spawn(world, at + Vector2(0, -14), Color(0.8, 0.85, 0.95), 50.0)
 		"blink":
-			var target := player.get_global_mouse_position()
+			var target := player.pointer() if not GameSettings.using_pad else player.global_position + player.aim_direction() * 400.0
 			var offset := (target - at).limit_length(260.0 + 30.0 * power)
 			var landing := at + offset
 			if not player.has_line_to(landing) or (player.indoors == false and _is_wall(player, landing)):

@@ -352,7 +352,9 @@ func _on_npc_interacted(npc: Node) -> void:
 func _input(event: InputEvent) -> void:
 	if _player == null:
 		return
-	if event.is_action_pressed("ui_cancel"):
+	var from_pad := event is InputEventJoypadButton or event is InputEventJoypadMotion
+	if event.is_action_pressed("ui_cancel") and not (from_pad and not is_open()):
+		# (On a gamepad B is the dodge in play; it only backs out of menus.)
 		if is_open():
 			close()
 		else:
@@ -366,9 +368,9 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif _shortcut(event):
 		get_viewport().set_input_as_handled()
-	elif _open_id == "wheel" and event is InputEventKey and event.pressed and not event.echo and _wheel_key(event):
+	elif _open_id == "wheel" and (event is InputEventKey or from_pad) and event.is_pressed() and not event.is_echo() and _wheel_key(event):
 		get_viewport().set_input_as_handled()
-	elif is_open() and event is InputEventKey and event.pressed and get_viewport().gui_get_focus_owner() == null:
+	elif is_open() and (event is InputEventKey or from_pad) and event.is_pressed() and get_viewport().gui_get_focus_owner() == null:
 		# The first arrow or Tab press on a screen picks up its first control,
 		# so every screen can be worked from the keyboard.
 		for action: String in ["ui_focus_next", "ui_focus_prev", "ui_up", "ui_down", "ui_left", "ui_right"]:
@@ -395,10 +397,11 @@ func _shortcut(event: InputEvent) -> bool:
 
 ## The wheel from the keyboard: numbers open a wedge, the arrows step
 ## round it and Enter opens the lit one.
-func _wheel_key(event: InputEventKey) -> bool:
+func _wheel_key(event: InputEvent) -> bool:
 	if get_viewport().gui_get_focus_owner() != null:
 		return false
-	var number := event.keycode - KEY_0 if event.keycode >= KEY_1 and event.keycode <= KEY_8 else 0
+	var key := event as InputEventKey
+	var number := key.keycode - KEY_0 if key and key.keycode >= KEY_1 and key.keycode <= KEY_8 else 0
 	if number > 0:
 		return _wheel.open_lit(number)
 	if event.is_action_pressed("ui_right") or event.is_action_pressed("ui_down"):

@@ -16,6 +16,8 @@ signal level_up(level: int)
 ## Every tenth level.
 signal milestone_reached(level: int)
 signal mastery_level_up(weapon_type: String, level: int)
+## Something was picked up: the HUD's feed merges repeats into one line.
+signal pickup_noted(name: String, count: int, color: Color)
 ## A boss has noticed the player and is coming (the game saves first).
 signal boss_engaged(boss: Node)
 signal player_died(xp_lost: int)

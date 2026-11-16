@@ -126,6 +126,8 @@ var ego: Ego
 var relics: Relics
 ## Combat styles known and the one in use (see StyleBook).
 var styles: StyleBook
+## Saved sets of gear, abilities and relics (see Loadouts).
+var loadouts: Loadouts
 var hotbar: Hotbar
 ## Skin tone, hair, clothes, trousers and look (see Appearance).
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()
@@ -186,6 +188,9 @@ func _ready() -> void:
 	styles.name = "Styles"
 	add_child(styles)
 	styles.changed.connect(_on_equipment_changed)
+	loadouts = Loadouts.new()
+	loadouts.name = "Loadouts"
+	add_child(loadouts)
 	var hands := HandFX.new()
 	hands.setup(self)
 	add_child(hands)
@@ -459,8 +464,20 @@ func end_ability() -> void:
 
 ## Direction from the player to the mouse, or the facing if the mouse is on them.
 func aim_direction() -> Vector2:
+	if GameSettings.using_pad:
+		# The right stick aims; let go and you aim the way you face.
+		var stick := Vector2(Input.get_joy_axis(0, JOY_AXIS_RIGHT_X), Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y))
+		return stick.normalized() if stick.length() > 0.35 else facing
 	var aim := get_global_mouse_position() - global_position
 	return aim.normalized() if aim.length() > 1.0 else facing
+
+
+## Where the player points: the mouse, or with a gamepad a spot a step
+## ahead in the aimed direction (for gathering, placing and blinking).
+func pointer() -> Vector2:
+	if GameSettings.using_pad:
+		return global_position + aim_direction() * 46.0 + Vector2(0, -8)
+	return get_global_mouse_position()
 
 
 func face(direction: Vector2) -> void:
@@ -1341,7 +1358,7 @@ var _confirm_break_left := 0.0
 
 ## Finds what the mouse is pointing at, each frame the player is free.
 func _update_hover() -> void:
-	var mouse := get_global_mouse_position()
+	var mouse := pointer()
 	var found: ResourceNode = null
 	var best := POINT_RADIUS
 	for node: ResourceNode in get_tree().get_nodes_in_group("resource_nodes"):
@@ -1402,7 +1419,7 @@ func _try_interact(by_key: bool) -> bool:
 	var npc := nearest_npc()
 	var prop := nearest_prop()
 	if not by_key:
-		var mouse := get_global_mouse_position()
+		var mouse := pointer()
 		if npc and (npc.global_position + Vector2(0, -20)).distance_to(mouse) > 46.0:
 			npc = null
 		if prop and (prop.global_position + Vector2(0, -20)).distance_to(mouse) > maxf(46.0, prop.reach * 0.6):
@@ -1416,7 +1433,7 @@ func _try_interact(by_key: bool) -> bool:
 	# the animal is the nearer of the two.
 	if animal and prop and prop.global_position.distance_to(global_position) < animal.global_position.distance_to(global_position):
 		animal = null
-	if animal and (by_key or (animal.global_position + Vector2(0, -16)).distance_to(get_global_mouse_position()) < 40.0):
+	if animal and (by_key or (animal.global_position + Vector2(0, -16)).distance_to(pointer()) < 40.0):
 		DamageNumber.spawn_text(get_parent(), animal.global_position + Vector2(0, -56), feed_animal(animal), Color(1.0, 0.85, 0.9), 12)
 		return true
 	if prop:

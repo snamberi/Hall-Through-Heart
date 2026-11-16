@@ -221,3 +221,57 @@ func test_hold_to_confirm_needs_a_rare_item(t: TestContext) -> void:
 	t.check(not menu._precious([common]), "common gear is thrown away with an ordinary press")
 	t.check(menu._precious([common, rare]), "a rare piece among them must be held")
 	menu.free()
+
+
+func test_loadouts_swap_gear_and_abilities(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var first := Item.create("sword")
+	var second := Item.create("flame_sword")
+	player.inventory.add(first)
+	player.inventory.add(second)
+	t.equal(player.equipment.equip(first, "weapon_2"), "", "first sword worn")
+	player.loadouts.save_set(0)
+	t.equal(player.equipment.equip(second, "weapon_2"), "", "another sword worn in its place")
+	player.loadouts.save_set(1)
+	t.equal(player.loadouts.wear_set(0), "", "set 1 can be worn")
+	t.check(player.equipment.equipped.get("weapon_2") == first, "set 1 brings the sword back")
+	t.equal(player.loadouts.wear_next(), "", "the key steps to the next set")
+	t.check(player.equipment.equipped.get("weapon_2") == second, "set 2 brings the other sword back")
+	t.check(not player.loadouts.wear_set(2).is_empty(), "an empty set says so")
+	# Uids survive a save, so sets still find their pieces.
+	var copy := Item.from_dict(first.to_dict())
+	t.equal(copy.uid, first.uid, "a piece keeps its uid through saving")
+
+
+func test_pickup_feed_merges_repeats(t: TestContext) -> void:
+	var feed := PickupFeed.new()
+	feed.note("Oak Wood", 3, Color.WHITE)
+	feed.note("Oak Wood", 4, Color.WHITE)
+	feed.note("Stone", 2, Color.WHITE)
+	t.equal(feed._lines.size(), 2, "two kinds of thing, two lines")
+	t.equal(int(feed._lines[0]["count"]), 7, "the oak wood line adds up")
+	feed.free()
+
+
+func test_gamepad_names_and_bindings(t: TestContext) -> void:
+	t.equal(GameSettings.pad_name("attack"), "RT", "attack is the right trigger")
+	t.equal(GameSettings.pad_name("interact"), "A", "interact is A")
+	var has_pad := false
+	for event in InputMap.action_get_events("dodge"):
+		if event is InputEventJoypadButton:
+			has_pad = true
+	t.check(has_pad, "dodge answers the pad")
+	GameSettings.rebind("dodge", _key(KEY_K))
+	has_pad = false
+	for event in InputMap.action_get_events("dodge"):
+		if event is InputEventJoypadButton:
+			has_pad = true
+	t.check(has_pad, "rebinding the key keeps the pad button")
+	GameSettings.reset_action("dodge")
+
+
+func _key(code: Key) -> InputEventKey:
+	var key := InputEventKey.new()
+	key.physical_keycode = code
+	return key

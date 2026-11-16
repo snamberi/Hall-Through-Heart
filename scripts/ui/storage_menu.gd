@@ -31,6 +31,7 @@ func _build() -> void:
 	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(_heading)
 	_tip = ItemTooltip.new()
+	_tip.side_by_side = true
 	add_child(_tip)
 	# What a click does, said once with the keys shown, and a search.
 	var top := HBoxContainer.new()

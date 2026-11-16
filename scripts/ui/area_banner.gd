@@ -25,9 +25,14 @@ var _tween: Tween
 func setup(player: Player) -> void:
 	_player = player
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	position = Vector2(-300.0, 78.0)
-	size = Vector2(600.0, 60.0)
+	anchor_left = 0.5
+	anchor_right = 0.5
+	anchor_top = 0.0
+	anchor_bottom = 0.0
+	offset_left = -300.0
+	offset_right = 300.0
+	offset_top = 62.0
+	offset_bottom = 122.0
 	var box := VBoxContainer.new()
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	box.add_theme_constant_override("separation", 0)

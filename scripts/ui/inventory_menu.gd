@@ -16,7 +16,7 @@ const DOLL_SLOT := 50.0
 ## From the top of one equipment slot to the top of the next (its name
 ## sits in the gap).
 const DOLL_PITCH := 62.0
-const DOLL_SIZE := Vector2(336.0, 376.0)
+const DOLL_SIZE := Vector2(336.0, 368.0)
 ## Equipment slots down each side of the character.
 const LEFT_SLOTS: Array[String] = ["necklace", "ring_1", "ring_2", "artifact", "backpack", "belt"]
 const RIGHT_SLOTS: Array[String] = ["helmet", "chest", "legs", "boots", "off_hand"]
@@ -52,6 +52,7 @@ var _enchant: Button
 var _infuse: Button
 var _socket: Button
 var _bag_fresh: Array[Panel] = []
+var _set_buttons: Array[Button] = []
 var _salvage: HoldButton
 var _discard: HoldButton
 ## From this rarity (rare) salvaging or discarding must be held down.
@@ -215,10 +216,29 @@ func _build() -> void:
 			doll.add_child(name_label)
 			doll.add_child(button)
 			_slot_buttons[slot] = button
+	var set_row := HBoxContainer.new()
+	set_row.add_theme_constant_override("separation", 4)
+	middle.add_child(set_row)
 	_set_label = UITheme.label("", 14, UITheme.GOOD)
-	_set_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_set_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_set_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_set_label.custom_minimum_size.y = 18.0
-	middle.add_child(_set_label)
+	set_row.add_child(_set_label)
+	# Saved sets of gear, abilities and relics: click wears, right- or
+	# Shift-click saves what is worn now.
+	var sets_title := UITheme.label("Sets", 14, UITheme.DIM)
+	sets_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	set_row.add_child(sets_title)
+	for index in Loadouts.SLOTS:
+		var set_button := UITheme.button(str(index + 1), func() -> void: _use_set(index, Input.is_key_pressed(KEY_SHIFT)), 30.0)
+		set_button.custom_minimum_size = Vector2(30, 26)
+		set_button.gui_input.connect(func(event: InputEvent) -> void:
+			var click := event as InputEventMouseButton
+			if click and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT:
+				_use_set(index, true)
+		)
+		set_row.add_child(set_button)
+		_set_buttons.append(set_button)
 	middle.add_child(UITheme.rule())
 	# The weapons and tools the hotbar's first keys draw: not the belt that
 	# is worn (that is an equipment slot above).
@@ -418,7 +438,17 @@ static func category(item: Item) -> String:
 	return "materials"
 
 
+func _refresh_sets() -> void:
+	for index in _set_buttons.size():
+		var button := _set_buttons[index]
+		var empty := player.loadouts.is_empty(index)
+		button.modulate = Color(1, 1, 1) if not empty else Color(0.6, 0.6, 0.65)
+		button.theme_type_variation = &"PrimaryButton" if player.loadouts.current == index and not empty else &""
+		button.tooltip_text = ("Set %d (empty). Right- or Shift-click to save what you wear now." % (index + 1)) if empty else ("Set %d: click to wear its gear, abilities and relics.\nRight- or Shift-click to save over it." % (index + 1))
+
+
 func refresh() -> void:
+	_refresh_sets()
 	var inventory := player.inventory
 	# Forget a selection that no longer exists (discarded, used up, salvaged).
 	if _selected and not _selected in inventory.items and _equipped_slot(_selected) == "":
@@ -944,3 +974,16 @@ func _seen_one() -> void:
 		_bag_fresh[index].visible = item != null and item.fresh
 	SaveGame.request_save()
 	player.inventory.changed.emit()
+
+
+## Wears saved set `index`, or with `keep` saves what is worn into it.
+func _use_set(index: int, keep: bool) -> void:
+	if keep:
+		player.loadouts.save_set(index)
+		_message.text = "Set %d saved: gear, abilities and relics. %s wears the next set." % [index + 1, GameSettings.describe("loadout_next").split(" / ")[0]]
+		_message.add_theme_color_override("font_color", UITheme.GOOD)
+	else:
+		var problem := player.loadouts.wear_set(index)
+		_message.text = problem
+		_message.add_theme_color_override("font_color", UITheme.BAD)
+	refresh()

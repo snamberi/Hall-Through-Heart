@@ -122,7 +122,7 @@ func _collect() -> void:
 	Audio.play("pickup", -8.0)
 	if item == null:
 		_player.inventory.add_gold(gold)
-		DamageNumber.spawn_text(get_parent(), text_position, "+%d gold" % gold, Color(0.95, 0.8, 0.3), 12)
+		Events.pickup_noted.emit("gold", gold, Color(0.95, 0.8, 0.3))
 		queue_free()
 		return
 	var label := item.display_name() if item.count == 1 else "%s x%d" % [item.display_name(), item.count]
@@ -132,7 +132,7 @@ func _collect() -> void:
 		queue_free()
 		return
 	if _player.inventory.add(item):
-		DamageNumber.spawn_text(get_parent(), text_position, label, item.color(), 12)
+		Events.pickup_noted.emit(item.display_name(), item.count, item.color())
 		Events.item_acquired.emit(item.to_dict())
 		queue_free()
 	else:

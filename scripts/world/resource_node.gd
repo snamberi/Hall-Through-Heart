@@ -157,9 +157,8 @@ func harvest(player: Player) -> void:
 		if randf() < player.professions.double_chance(profession()):
 			count *= 2
 		var item := Item.create_rolled(item_id, count)
-		var label := "%s x%d" % [item.display_name(), count] if count > 1 else item.display_name()
 		if player.inventory.add(item):
-			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -30), label, item.tint().lightened(0.3), 12)
+			Events.pickup_noted.emit(item.display_name(), count, item.tint().lightened(0.3))
 			Events.resource_gathered.emit({"resource": resource_id, "item": item_id, "count": count})
 		else:
 			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -30), "Inventory full", UITheme.BAD, 12)
@@ -171,13 +170,14 @@ func harvest(player: Player) -> void:
 		var seeds: String = "frostberry_seeds" if tile in [TerrainTiles.Type.SNOW, TerrainTiles.Type.FROSTPINE] else ["wheat_seeds", "carrot_seeds", "potato_seeds", "pumpkin_seeds"][randi() % 4]
 		if randf() < 0.05:
 			seeds = "sunroot_seeds"
-		player.inventory.add(Item.create(seeds))
+		if player.inventory.add(Item.create(seeds)):
+			Events.pickup_noted.emit(ItemDB.ITEMS[seeds]["name"], 1, UITheme.GOOD)
 	# Ore veins sometimes hold a gem.
 	if kind() == "ore" and randf() < 0.04 + skill * 0.0008:
 		var gem := Item.create(Gems.random_gem(maxi(_data["level"], skill)))
 		Events.codex_event.emit("gems_found", 1)
 		if player.inventory.add(gem):
-			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -44), gem.display_name(), gem.tint(), 13)
+			Events.pickup_noted.emit(gem.display_name(), 1, gem.tint())
 	player.professions.add_xp(profession(), 10.0 + _data["level"] * 2.0)
 	harvested.emit(self)
 	queue_free()

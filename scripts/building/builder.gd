@@ -90,7 +90,7 @@ func _process(_delta: float) -> void:
 	if _player.is_dead() or not _item in _player.inventory.items:
 		cancel()
 		return
-	var at := _snapped(get_global_mouse_position())
+	var at := _snapped(_player.pointer())
 	_problem = _buildings.placement_problem(_kind, at)
 	# Dragging lays a run of walls or ground, one tile at a time.
 	if _painting and _kind in ["ground", "wall"]:
@@ -108,7 +108,7 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	if _item == null:
 		return
-	var at := to_local(_snapped(get_global_mouse_position()))
+	var at := to_local(_snapped(_player.pointer()))
 	var tile := float(TerrainTiles.TILE_SIZE)
 	var half := tile * (1.5 if _kind == "house" else 0.5)
 	var color := Color(0.45, 0.85, 1.0) if _problem == "" else UITheme.BAD
@@ -167,7 +167,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		get_viewport().set_input_as_handled()
-		confirm(_snapped(get_global_mouse_position()))
+		confirm(_snapped(_player.pointer()))
 		_painting = _kind in ["ground", "wall"]
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_T:
 		_flip = not _flip

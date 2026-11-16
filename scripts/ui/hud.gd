@@ -83,6 +83,13 @@ func setup(player: Player) -> void:
 	area.name = "AreaBanner"
 	add_child(area)
 	area.setup(player)
+	var feed := PickupFeed.new()
+	feed.name = "PickupFeed"
+	add_child(feed)
+	var compass := CompassStrip.new()
+	compass.name = "Compass"
+	add_child(compass)
+	compass.setup(player)
 	_boss_bar.draw.connect(_draw_boss_bar)
 	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
 		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)

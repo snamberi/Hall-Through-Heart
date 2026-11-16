@@ -28,6 +28,10 @@ var quality := 1.0
 ## A keeper: the player has locked this piece so that bulk selling, marking,
 ## salvaging and discarding leave it alone. Gear only.
 var locked := false
+## A number that tells this one piece from every other (gear, tools and
+## relics; 0 until needed). Loadouts remember pieces by it.
+var uid := 0
+static var _next_uid := 1
 ## Newly arrived and not looked at yet: the bag marks it "new" until it is
 ## hovered or chosen.
 var fresh := false
@@ -40,6 +44,14 @@ static func create_rolled(item_id: String, p_count: int = 1) -> Item:
 	if item and ItemDB.is_material(item_id):
 		item.rarity = ItemDB.roll_material_rarity(item_id)
 	return item
+
+
+## This piece's uid, given one first if it had none.
+func ensure_uid() -> int:
+	if uid == 0:
+		uid = _next_uid
+		_next_uid += 1
+	return uid
 
 
 static func create(item_id: String, p_count: int = 1) -> Item:
@@ -77,6 +89,8 @@ static func from_dict(data: Dictionary) -> Item:
 	item.quality = clampf(float(data.get("quality", 1.0)), 0.3, 3.0)
 	item.locked = bool(data.get("locked", false))
 	item.fresh = bool(data.get("fresh", false))
+	item.uid = int(data.get("uid", 0))
+	_next_uid = maxi(_next_uid, item.uid + 1)
 	var saved_infusions: Variant = data.get("infusions", [])
 	if saved_infusions is Array:
 		for material: Variant in saved_infusions:
@@ -102,6 +116,8 @@ func to_dict() -> Dictionary:
 			plain["rarity"] = rarity
 		if fresh:
 			plain["fresh"] = true
+		if uid != 0 and not is_stackable():
+			plain["uid"] = uid
 		return plain
 	var data := {"id": id, "rarity": rarity, "level": level, "upgrade": upgrade, "mods": mods.duplicate(true), "enchant": enchant.duplicate()}
 	if not sockets.is_empty():
@@ -118,6 +134,8 @@ func to_dict() -> Dictionary:
 		data["locked"] = true
 	if fresh:
 		data["fresh"] = true
+	if uid != 0:
+		data["uid"] = uid
 	return data
 
 

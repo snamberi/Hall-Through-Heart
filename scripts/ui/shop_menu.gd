@@ -54,6 +54,7 @@ func _build() -> void:
 	_restock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	title_row.add_child(_restock)
 	_tip = ItemTooltip.new()
+	_tip.side_by_side = true
 	add_child(_tip)
 
 	var columns := HBoxContainer.new()

@@ -44,10 +44,34 @@ const REBINDABLE: Array[Array] = [
 	["toggle_menu", "Menu wheel"], ["build_mode", "Build mode"], ["mount", "Mount / dismount"], ["recall_home", "Recall home"],
 	["relic_ability", "Relic power"],
 	["open_inventory", "Open inventory"], ["open_quests", "Open quest book"], ["open_map", "Open map"],
+	["loadout_next", "Wear next saved set"],
 ]
 ## Actions the game adds itself when it starts (not in the project file):
-## action -> default physical key.
-const EXTRA_ACTIONS := {"open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N}
+## action -> default physical key (KEY_NONE for pad-only actions).
+const EXTRA_ACTIONS := {"open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L}
+## Gamepad layout, kept alongside whatever keys are bound: action ->
+## [JOY_BUTTON_*] or ["axis", JOY_AXIS_*, direction].
+const PAD := {
+	"move_left": ["axis", JOY_AXIS_LEFT_X, -1.0], "move_right": ["axis", JOY_AXIS_LEFT_X, 1.0],
+	"move_up": ["axis", JOY_AXIS_LEFT_Y, -1.0], "move_down": ["axis", JOY_AXIS_LEFT_Y, 1.0],
+	"attack": ["axis", JOY_AXIS_TRIGGER_RIGHT, 1.0], "parry": ["axis", JOY_AXIS_TRIGGER_LEFT, 1.0],
+	"interact": [JOY_BUTTON_A], "dodge": [JOY_BUTTON_B], "sprint": [JOY_BUTTON_LEFT_STICK],
+	"ability_1": [JOY_BUTTON_X], "ability_2": [JOY_BUTTON_Y], "ability_3": [JOY_BUTTON_LEFT_SHOULDER], "ability_4": [JOY_BUTTON_RIGHT_SHOULDER],
+	"ability_swap": [JOY_BUTTON_RIGHT_STICK], "quick_use": [JOY_BUTTON_DPAD_DOWN], "open_inventory": [JOY_BUTTON_DPAD_UP],
+	"hotbar_prev": [JOY_BUTTON_DPAD_LEFT], "hotbar_next": [JOY_BUTTON_DPAD_RIGHT],
+	"toggle_menu": [JOY_BUTTON_START], "open_map": [JOY_BUTTON_BACK],
+}
+const PAD_NAMES := {
+	JOY_BUTTON_A: "A", JOY_BUTTON_B: "B", JOY_BUTTON_X: "X", JOY_BUTTON_Y: "Y", JOY_BUTTON_LEFT_SHOULDER: "LB", JOY_BUTTON_RIGHT_SHOULDER: "RB",
+	JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3", JOY_BUTTON_START: "Start", JOY_BUTTON_BACK: "Back",
+	JOY_BUTTON_DPAD_UP: "D-pad up", JOY_BUTTON_DPAD_DOWN: "D-pad down", JOY_BUTTON_DPAD_LEFT: "D-pad left", JOY_BUTTON_DPAD_RIGHT: "D-pad right",
+}
+
+## Emitted when play moves between keyboard and mouse and a gamepad, so
+## key prompts can change.
+signal device_changed
+## True while the last input came from a gamepad.
+var using_pad := false
 
 var master_volume := 1.0
 var music_volume := 0.6
@@ -97,9 +121,19 @@ func _ready() -> void:
 	for action: String in EXTRA_ACTIONS:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
-			var key := InputEventKey.new()
-			key.physical_keycode = EXTRA_ACTIONS[action]
-			InputMap.action_add_event(action, key)
+			if EXTRA_ACTIONS[action] != KEY_NONE:
+				var key := InputEventKey.new()
+				key.physical_keycode = EXTRA_ACTIONS[action]
+				InputMap.action_add_event(action, key)
+	for action: String in PAD:
+		_add_pad(action)
+	# Menus answer the left stick as well as the D-pad.
+	for entry: Array in [["ui_left", JOY_AXIS_LEFT_X, -1.0], ["ui_right", JOY_AXIS_LEFT_X, 1.0], ["ui_up", JOY_AXIS_LEFT_Y, -1.0], ["ui_down", JOY_AXIS_LEFT_Y, 1.0]]:
+		var motion := InputEventJoypadMotion.new()
+		motion.axis = entry[1]
+		motion.axis_value = entry[2]
+		if not InputMap.action_has_event(entry[0], motion):
+			InputMap.action_add_event(entry[0], motion)
 	for entry in REBINDABLE:
 		if InputMap.has_action(entry[0]):
 			_defaults[entry[0]] = _events_to_data(InputMap.action_get_events(entry[0]))
@@ -198,10 +232,13 @@ func reset_bindings() -> void:
 	changed.emit()
 
 
-## How an action's first binding reads, e.g. "W", "Space", "Left mouse".
+## How an action's binding reads, e.g. "W", "Space", "Left mouse" (or,
+## while a gamepad is in use, its button: "RT", "A").
 static func describe(action: String) -> String:
 	if not InputMap.has_action(action):
 		return "-"
+	if GameSettings.using_pad and pad_name(action) != "":
+		return pad_name(action)
 	var names: PackedStringArray = []
 	for event in InputMap.action_get_events(action):
 		if event is InputEventKey:
@@ -215,11 +252,58 @@ static func describe(action: String) -> String:
 	return " / ".join(names) if not names.is_empty() else "unbound"
 
 
+## Gives an action its gamepad input (see PAD), once.
+func _add_pad(action: String) -> void:
+	if not InputMap.has_action(action) or not PAD.has(action):
+		return
+	var entry: Array = PAD[action]
+	var event: InputEvent
+	if entry[0] is String:
+		var motion := InputEventJoypadMotion.new()
+		motion.axis = entry[1]
+		motion.axis_value = entry[2]
+		event = motion
+	else:
+		var button := InputEventJoypadButton.new()
+		button.button_index = entry[0]
+		event = button
+	if not InputMap.action_has_event(action, event):
+		InputMap.action_add_event(action, event)
+
+
+## The gamepad's name for an action's input ("RT", "A", "D-pad up"), or "".
+static func pad_name(action: String) -> String:
+	if not PAD.has(action):
+		return ""
+	var entry: Array = PAD[action]
+	if entry[0] is String:
+		match int(entry[1]):
+			JOY_AXIS_TRIGGER_RIGHT:
+				return "RT"
+			JOY_AXIS_TRIGGER_LEFT:
+				return "LT"
+			_:
+				return "Left stick"
+	return PAD_NAMES.get(entry[0], "Pad %d" % entry[0])
+
+
+func _input(event: InputEvent) -> void:
+	var pad := event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.4)
+	var desk := event is InputEventKey or event is InputEventMouseButton or (event is InputEventMouseMotion and (event as InputEventMouseMotion).relative.length() > 4.0)
+	if pad and not using_pad:
+		using_pad = true
+		device_changed.emit()
+	elif desk and using_pad:
+		using_pad = false
+		device_changed.emit()
+
+
 func _apply_binding(action: String) -> void:
 	if not InputMap.has_action(action):
 		return
 	var events: Array = bindings.get(action, _defaults.get(action, []))
 	InputMap.action_erase_events(action)
+	_add_pad(action)
 	for data: Dictionary in events:
 		var event: InputEvent
 		if data.has("mouse"):

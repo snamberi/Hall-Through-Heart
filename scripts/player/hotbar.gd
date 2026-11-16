@@ -161,6 +161,12 @@ func _stack(id: String) -> Item:
 func _unhandled_input(event: InputEvent) -> void:
 	if _player.is_dead() or get_tree().paused:
 		return
+	# The D-pad steps through what can be held: arms and tools.
+	for step: Array in [["hotbar_prev", -1], ["hotbar_next", 1]]:
+		if event.is_action_pressed(step[0]):
+			_cycle(step[1])
+			get_viewport().set_input_as_handled()
+			return
 	for index in SIZE:
 		if event.is_action_pressed("hotbar_%d" % (index + 1)):
 			var problem := activate(index)
@@ -168,6 +174,24 @@ func _unhandled_input(event: InputEvent) -> void:
 				DamageNumber.spawn_text(_player.get_parent(), _player.global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
 			get_viewport().set_input_as_handled()
 			return
+
+
+## Takes the next (or previous) slot that holds something to hold.
+func _cycle(direction: int) -> void:
+	var holdable: Array[int] = []
+	for index in range(0, BELT_SIZE):
+		if hand_icon(index) != null or item_in(index) != null:
+			holdable.append(index)
+	if holdable.is_empty():
+		return
+	var current := -1
+	for index in holdable:
+		if is_active(index):
+			current = holdable.find(index)
+	var next: int = holdable[posmod(current + direction, holdable.size())] if current >= 0 else holdable[0]
+	var problem := activate(next)
+	if problem != "":
+		DamageNumber.spawn_text(_player.get_parent(), _player.global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
 
 
 func save_data() -> Dictionary:
