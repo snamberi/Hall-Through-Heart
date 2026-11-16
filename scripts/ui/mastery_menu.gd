@@ -126,7 +126,7 @@ func _build() -> void:
 	player.mastery.changed.connect(refresh_if_open)
 	# Each opening starts on the weapon in hand.
 	visibility_changed.connect(func() -> void:
-		if not visible:
+		if not is_visible_in_tree():
 			_selected = ""
 	)
 

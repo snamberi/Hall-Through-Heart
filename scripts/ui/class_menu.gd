@@ -51,7 +51,7 @@ func _build() -> void:
 		_choose_box.add_child(_card(id))
 	# A question left open closes with the screen.
 	visibility_changed.connect(func() -> void:
-		if not visible:
+		if not is_visible_in_tree():
 			for popup in find_children("*", "PopupPanel", false, false):
 				(popup as PopupPanel).hide()
 	)

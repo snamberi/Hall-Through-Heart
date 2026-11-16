@@ -95,6 +95,8 @@ func _ready() -> void:
 
 
 func show_tab(tab: String) -> void:
+	if not _pages.has(tab):
+		return
 	_listening = ""
 	_current = tab
 	# Keyboard users moving along the tabs keep the focus on the shown one.

@@ -90,7 +90,7 @@ func _build() -> void:
 	_looks.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_looks)
 	visibility_changed.connect(func() -> void:
-		if visible:
+		if is_visible_in_tree():
 			_opening = player.appearance.duplicate()
 	)
 

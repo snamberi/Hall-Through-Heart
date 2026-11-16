@@ -91,7 +91,7 @@ func _build() -> void:
 	_evolve = UITheme.primary_button("", _on_evolve, 330.0)
 	side.add_child(_evolve)
 	visibility_changed.connect(func() -> void:
-		if not visible:
+		if not is_visible_in_tree():
 			_selected = -1
 	)
 

@@ -44,7 +44,7 @@ func _build() -> void:
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(_message)
 	visibility_changed.connect(func() -> void:
-		if not visible:
+		if not is_visible_in_tree():
 			_selected = -1
 			_message.text = ""
 	)

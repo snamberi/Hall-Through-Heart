@@ -103,7 +103,7 @@ func _build() -> void:
 	_action = UITheme.primary_button("", func() -> void: _take_up(_selected), 220.0)
 	foot.add_child(_action)
 	visibility_changed.connect(func() -> void:
-		if not visible:
+		if not is_visible_in_tree():
 			_selected = ""
 	)
 
