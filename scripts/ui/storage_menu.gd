@@ -54,14 +54,15 @@ func _build() -> void:
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 14)
 	content.add_child(columns)
-	var chest_side := _column(columns)
+	# The chest's side looks into the chest; the bag's into the bag.
+	var chest_side := _column(columns, "chest")
 	_chest_title = chest_side[0]
 	_chest_way = chest_side[2]
 	_chest_grid = chest_side[1]
 	_chest_grid.note_for = func(_item: Item) -> String: return "[color=#%s]Click to take it into your bag[/color]" % UITheme.GOOD.to_html(false)
 	_chest_grid.picked.connect(func(item: Item, index: int) -> void: _take(_saved[index], item.count / 2 if Input.is_key_pressed(KEY_SHIFT) and item.count > 1 else item.count))
 	_chest_grid.alt_picked.connect(func(_item: Item, index: int) -> void: _take(_saved[index], 1))
-	var bag_side := _column(columns)
+	var bag_side := _column(columns, "pack")
 	_bag_title = bag_side[0]
 	_bag_way = bag_side[2]
 	_bag_grid = bag_side[1]
@@ -207,8 +208,9 @@ func _changed() -> void:
 
 ## One side of the screen: a heading and which way a click moves things,
 ## over a grid. Returns [heading, grid, direction label].
-func _column(parent: Control) -> Array:
+func _column(parent: Control, skin: String) -> Array:
 	var panel := UITheme.inset_panel()
+	panel.add_theme_stylebox_override("panel", UITheme.skin_panel(skin))
 	parent.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
@@ -221,6 +223,7 @@ func _column(parent: Control) -> Array:
 	var way := UITheme.label("", 14, UITheme.INFO)
 	head.add_child(way)
 	var grid := ItemGrid.new()
+	grid.skin = skin
 	grid.setup(player, _tip, 8, 7)
 	box.add_child(grid)
 	return [heading, grid, way]

@@ -36,6 +36,8 @@ var _xp_gain: Label
 ## The last recipe looked at in each profession, to come back to.
 var _last: Dictionary = {}
 var _list: VBoxContainer
+## The middle and right: a crafting table's top while a craft is chosen.
+var _bench: Array[PanelContainer] = []
 # Right.
 var _picture: TextureRect
 var _title: Label
@@ -140,6 +142,7 @@ func _build() -> void:
 	# --- middle: the chosen profession
 	var middle_panel := UITheme.inset_panel()
 	columns.add_child(middle_panel)
+	_bench.append(middle_panel)
 	var middle := VBoxContainer.new()
 	middle.add_theme_constant_override("separation", 8)
 	middle.custom_minimum_size.x = 390.0
@@ -203,6 +206,7 @@ func _build() -> void:
 	# --- right: the chosen recipe
 	var right_panel := UITheme.inset_panel()
 	columns.add_child(right_panel)
+	_bench.append(right_panel)
 	var right := VBoxContainer.new()
 	right.custom_minimum_size = Vector2(372.0, 0.0)
 	right_panel.add_child(right)
@@ -326,6 +330,12 @@ func refresh() -> void:
 	_xp_bar.queue_redraw()
 	var gathering := _selected in Professions.GATHERING
 	_tabs["recipes"].text = "Gathers" if gathering else "Recipes"
+	# Crafts are worked on the table: its planked top under the recipes.
+	for panel in _bench:
+		if gathering:
+			panel.remove_theme_stylebox_override("panel")
+		else:
+			panel.add_theme_stylebox_override("panel", UITheme.skin_panel("table"))
 	for id in _tabs:
 		_tabs[id].set_pressed_no_signal(id == _tab)
 	_filter_row.visible = _tab == "recipes" and not gathering

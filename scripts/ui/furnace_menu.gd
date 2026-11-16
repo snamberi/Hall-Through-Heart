@@ -24,6 +24,7 @@ func _build() -> void:
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(note)
 	var panel := UITheme.inset_panel()
+	panel.add_theme_stylebox_override("panel", UITheme.skin_panel("stone"))
 	content.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)

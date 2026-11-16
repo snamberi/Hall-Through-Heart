@@ -3,6 +3,19 @@ extends Control
 ## list, make a new world with a difficulty, change settings, or quit.
 
 const GAME := "res://scenes/main.tscn"
+## The logo and the panorama behind everything (tools/generate_title.py):
+## the sky stands still; the layers in front drift past at their own pace,
+## in whole art pixels, wrapping round.
+const LOGO: Texture2D = preload("res://assets/ui/logo.png")
+const SKY: Texture2D = preload("res://assets/ui/title_sky.png")
+const SKY_SIZE := Vector2(427, 240)
+const LAYER_WIDTH := 640.0
+## [picture, art pixels a second]
+const LAYERS := [
+	[preload("res://assets/ui/title_far.png"), 1.0],
+	[preload("res://assets/ui/title_hills.png"), 3.0],
+	[preload("res://assets/ui/title_woods.png"), 8.0],
+]
 
 var _pages: Dictionary[String, Control] = {}
 var _save_list: VBoxContainer
@@ -23,6 +36,7 @@ var _editor: AppearanceEditor
 
 func _ready() -> void:
 	theme = UITheme.get_theme()
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	get_tree().paused = false
 	Engine.time_scale = 1.0
@@ -52,57 +66,33 @@ func show_page(page: String) -> void:
 
 
 func _draw() -> void:
-	# A dark field with a faint glow where the heart would be, beating.
-	draw_rect(Rect2(Vector2.ZERO, size), Color("0a0c14"))
+	# The night over the land, at the largest whole scale that fills the
+	# window (cropped evenly), so each art pixel is a square of screen ones.
 	var now := Time.get_ticks_msec() / 1000.0
-	var middle := Vector2(size.x / 2.0, size.y * 0.3)
+	var scale := ceilf(maxf(size.y / SKY_SIZE.y, size.x / SKY_SIZE.x))
+	var view := SKY_SIZE * scale
+	var origin := ((size - view) / 2.0).floor()
+	draw_rect(Rect2(Vector2.ZERO, size), Color("05070e"))
+	draw_texture_rect(SKY, Rect2(origin, view), false)
+	# A faint glow low in the sky, beating with the heart under the land.
 	var beat := _beat(now)
-	for ring in 9:
-		draw_circle(middle, 420.0 - ring * 44.0 + beat * 10.0, Color(0.45, 0.08, 0.12, 0.03 + 0.012 * beat))
-	if not _pages.has("home") or not _pages["home"].visible:
-		return
-	# The Sanctuary far off: a pixel silhouette on the horizon, its windows
-	# lit in time with the heart.
-	var ground := roundf(size.y * 0.9)
-	var dark := Color("0f111a")
-	draw_rect(Rect2(0, ground, size.x, size.y - ground), Color("07080d"))
-	var mid := roundf(size.x / 2.0)
-	var block := 4.0
-	# The hall, then towers by height: [offset from the middle, width, height].
-	draw_rect(Rect2(mid - 210.0, ground - 36.0, 420.0, 36.0), dark)
-	for tower: Array in [[0.0, 40.0, 132.0], [-92.0, 28.0, 92.0], [92.0, 28.0, 92.0], [-172.0, 22.0, 60.0], [172.0, 22.0, 60.0]]:
-		var x: float = mid + float(tower[0])
-		var width: float = tower[1]
-		var high: float = tower[2]
-		draw_rect(Rect2(x - width / 2.0, ground - high, width, high), dark)
-		# A stepped spire on top.
-		var step_width := width
-		var top := ground - high
-		while step_width > block:
-			step_width -= block * 2.0
-			top -= block * 2.0
-			draw_rect(Rect2(x - step_width / 2.0, top, step_width, block * 2.0), dark)
-		var glow := Color(0.95, 0.55, 0.3, 0.25 + 0.45 * beat)
-		draw_rect(Rect2(x - 3.0, ground - high * 0.62, 6.0, 9.0), glow)
-	for window in 7:
-		draw_rect(Rect2(mid - 150.0 + window * 50.0, ground - 22.0, 5.0, 8.0), Color(0.95, 0.55, 0.3, 0.15 + 0.3 * beat))
-	# The heartbeat line along the ground.
-	var points := PackedVector2Array()
-	var phase := fmod(now * 0.25, 1.0)
-	for index in 241:
-		var t := float(index) / 240.0
-		var d := fmod(t - phase + 1.0, 1.0) - 0.5
-		var y := ground + 26.0
-		if absf(d) < 0.03:
-			y -= sin((d + 0.03) / 0.06 * TAU) * 16.0
-		points.append(Vector2(t * size.x, y))
-	draw_polyline(points, Color(0.75, 0.2, 0.25, 0.4), 2.0)
-	# Embers rising.
+	var middle := Vector2(size.x / 2.0, origin.y + 168.0 * scale)
+	for ring in 7:
+		draw_circle(middle, (150.0 - ring * 18.0 + beat * 4.0) * scale, Color(0.5, 0.08, 0.14, 0.025 + 0.012 * beat))
+	for layer: Array in LAYERS:
+		var picture: Texture2D = layer[0]
+		var width := LAYER_WIDTH * scale
+		var shift := fmod(floorf(now * float(layer[1])), LAYER_WIDTH) * scale
+		var x := origin.x - shift
+		while x < size.x:
+			draw_texture_rect(picture, Rect2(Vector2(x, origin.y), Vector2(width, view.y)), false)
+			x += width
+	# Embers rising from the woods.
 	for index in 24:
 		var seed := float(index) * 37.13
 		var drift := fmod(now * (0.02 + fmod(seed, 0.03)) + fmod(seed, 1.0), 1.0)
-		var at := Vector2(fmod(seed * 91.7, size.x), ground - drift * size.y * 0.7)
-		draw_rect(Rect2(at.floor(), Vector2(2, 2)), Color(1.0, 0.55, 0.3, 0.5 * (1.0 - drift)))
+		var at := Vector2(fmod(seed * 91.7, size.x), size.y * 0.92 - drift * size.y * 0.7)
+		draw_rect(Rect2((at / scale).floor() * scale, Vector2(scale, scale)), Color(1.0, 0.55, 0.3, 0.55 * (1.0 - drift)))
 
 
 ## The heartbeat: two quick thumps, then a rest (0 to 1).
@@ -132,11 +122,20 @@ func _framed(inner: Control) -> PanelContainer:
 func _home_page() -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
-	var title := UITheme.heading("Hall Through Heart", 64)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# The logo, drawn pixel by pixel, at three screen pixels to each of its own.
+	var title := TextureRect.new()
+	title.texture = LOGO
+	title.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	title.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	title.stretch_mode = TextureRect.STRETCH_SCALE
+	title.custom_minimum_size = LOGO.get_size() * 3.0
+	title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(title)
-	var line := UITheme.label("The land is the corpse of a god. Its heart still beats.", 18, UITheme.DIM)
+	var line := UITheme.label("The land is the corpse of a god. Its heart still beats.", 18, Color("c8c0b0"))
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# Dark-edged, so it reads over the sky and the mountains behind.
+	line.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05, 0.95))
+	line.add_theme_constant_override("outline_size", 6)
 	box.add_child(line)
 	var gap := Control.new()
 	gap.custom_minimum_size.y = 24.0

@@ -17,6 +17,8 @@ var player: Player
 var tooltip: ItemTooltip
 ## Extra line for the tooltip, per item (a price, say). Optional.
 var note_for: Callable
+## A container's look for the slots ("pack", "chest"...; see UITheme.skin_slot).
+var skin := ""
 ## The item drawn as chosen, if any.
 var selected: Item
 ## Items shown with a tick (marked to sell or throw away together).
@@ -52,7 +54,7 @@ func set_items(items: Array, capacity: int) -> void:
 		var button := _buttons[index]
 		button.visible = index < count
 		var item: Item = items[index] if index < items.size() else null
-		style_slot(button, item, item != null and item == selected)
+		style_slot(button, item, item != null and item == selected, skin)
 		_counts[index].text = str(item.count) if item and item.count > 1 else ""
 		_marks[index].visible = item != null and item in marked
 		_locks[index].visible = item != null and item.locked
@@ -122,7 +124,13 @@ func _item(index: int) -> Item:
 
 ## A sunken pixel-art slot in the item's rarity look (see
 ## UITheme.rarity_slot), lit up while hovered; the chosen item's is gold.
-static func frame_style(item: Item, chosen: bool, kind: String = "") -> StyleBoxTexture:
+static func frame_style(item: Item, chosen: bool, kind: String = "", skin: String = "") -> StyleBoxTexture:
+	# In a container's own look, plain things sit in its slots; finer ones
+	# keep their rarity's frame.
+	if skin != "" and (item == null or item.rarity == 0 or chosen or kind == "slot_active"):
+		var skinned := UITheme.skin_slot(skin, kind if kind != "" else ("slot_active" if chosen else "slot"))
+		skinned.set_content_margin_all(5)
+		return skinned
 	if item and not chosen and kind in ["", "slot_hover"]:
 		var framed := UITheme.rarity_slot(item.rarity)
 		if kind == "slot_hover":
@@ -136,11 +144,11 @@ static func frame_style(item: Item, chosen: bool, kind: String = "") -> StyleBox
 ## Dresses any button as an item slot, with the same four states everywhere:
 ## hover lifts the fill and brightens the edge, pressed sinks it, disabled
 ## greys it.
-static func style_slot(button: Button, item: Item, chosen: bool = false) -> void:
-	var style := frame_style(item, chosen)
-	var hover := frame_style(item, chosen, "slot_active" if chosen else "slot_hover")
-	var pressed := frame_style(item, chosen, "slot_active")
-	var disabled := frame_style(item, chosen)
+static func style_slot(button: Button, item: Item, chosen: bool = false, skin: String = "") -> void:
+	var style := frame_style(item, chosen, "", skin)
+	var hover := frame_style(item, chosen, "slot_active" if chosen else "slot_hover", skin)
+	var pressed := frame_style(item, chosen, "slot_active", skin)
+	var disabled := frame_style(item, chosen, "", skin)
 	disabled.modulate_color = Color(0.6, 0.6, 0.65)
 	button.add_theme_stylebox_override("normal", style)
 	button.add_theme_stylebox_override("pressed", pressed)

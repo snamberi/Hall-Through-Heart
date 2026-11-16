@@ -119,7 +119,9 @@ func _build() -> void:
 	content.add_child(columns)
 
 	# --- left: the bag
+	# Opening the bag looks into it: stitched leather and sewn pockets.
 	var bag_panel := UITheme.inset_panel()
+	bag_panel.add_theme_stylebox_override("panel", UITheme.skin_panel("pack"))
 	columns.add_child(bag_panel)
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 8)
@@ -1007,7 +1009,7 @@ func _frame_style(item: Item, selected: bool) -> StyleBoxTexture:
 
 
 func _style_button(button: Button, item: Item) -> void:
-	ItemGrid.style_slot(button, item, item != null and item == _selected)
+	ItemGrid.style_slot(button, item, item != null and item == _selected, "pack" if button.get_parent() == _grid else "")
 
 
 ## Hotbar keys put the hovered (or selected) item in that slot; the

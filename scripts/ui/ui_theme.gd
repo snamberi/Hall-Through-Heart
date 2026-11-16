@@ -347,6 +347,21 @@ static func slot(kind: String = "slot") -> StyleBoxTexture:
 	return _frame(kind, 8, 4)
 
 
+## The inside of what was opened, so its screen looks like it: "pack" (the
+## bag: stitched leather), "table" (a crafting table's planked top),
+## "chest" (dark boards in iron) or "stone" (a furnace's sooty brick).
+static func skin_panel(kind: String) -> StyleBoxTexture:
+	return _frame("skin_" + kind, 16, 14)
+
+
+## A slot in a container's own look: a sewn pocket, a well cut in the
+## table, a box in the chest, a hollow in the brick. `state` is "slot",
+## "slot_hover" or "slot_active".
+static func skin_slot(kind: String, state: String = "slot") -> StyleBoxTexture:
+	var suffix := "" if state == "slot" else state.trim_prefix("slot")
+	return _frame("skin_%s_slot%s" % [kind, suffix], 8, 5)
+
+
 ## An item slot in its rarity's look (0 common .. 5 mythic): the lip in
 ## that rarity's metal, the well glowing its colour, gems and filigree on
 ## the finer ones. Stretched, not tiled, so the glow stays centred.
