@@ -92,6 +92,8 @@ func enter(new_room: Room) -> void:
 	_player.camera.reset_smoothing()
 	Events.announcement.emit(room.title, "")
 	entered.emit(room)
+	# Going in or coming out of a place always saves.
+	SaveGame.request_save()
 
 
 ## Returns the player to the world. Pass a position to come out somewhere
@@ -111,6 +113,7 @@ func leave(at: Variant = null) -> void:
 	_world.load_around_now(_player.global_position)
 	_player.camera.reset_smoothing()
 	left.emit()
+	SaveGame.request_save()
 
 
 # --- caves

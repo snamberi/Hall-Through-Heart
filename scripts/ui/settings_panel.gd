@@ -73,6 +73,7 @@ func _ready() -> void:
 		_check(page, "damage_numbers", "Show damage numbers")
 	)
 	_pages["Comfort"] = _page(holder, func(page: VBoxContainer) -> void:
+		_choice(page, "sprint_mode", "Sprint key", [["toggle", "Press to toggle"], ["hold", "Hold to sprint"]])
 		_check(page, "screen_shake", "Screen shake")
 		_slider(page, "shake_strength", "Shake strength", 0.0, 1.5)
 		_slider(page, "damage_number_size", "Damage number size", 0.7, 1.6)

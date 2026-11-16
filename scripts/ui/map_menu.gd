@@ -241,6 +241,8 @@ func _show_picked() -> void:
 	var offset := Vector2(tile - _player_tile())
 	var tiles := roundi(offset.length())
 	_pick_distance.text = "You are here." if tiles < 2 else "%s tiles to the %s" % [InventoryMenu._thousands(tiles), MagicMenu._compass(offset)]
+	if _picked.get("kind", "") in ["village", "merchant"]:
+		_pick_text.text += "\nMerchants bring new wares in %d min." % ceili(Npc.restock_in() / 60.0)
 	var on_it := waypoint != null and _world.world_to_cell(waypoint) == tile
 	_waypoint_button.text = "Clear waypoint" if on_it else "Set waypoint here"
 	_waypoint_button.disabled = false
@@ -508,3 +510,10 @@ func _draw_icon(at: Vector2, kind: String) -> void:
 	var size := 24.0 if kind in ["village", "temple", "boss", "home"] else 20.0
 	_view.draw_circle(at + Vector2(0, 1), size * 0.5, Color(0, 0, 0, 0.45))
 	MapIcons.draw(_view, at, kind, size)
+	# Where merchants trade, a small tag: minutes until new wares.
+	if kind in ["village", "merchant"] and _scale() >= 3.0:
+		var words := "%dm" % ceili(Npc.restock_in() / 60.0)
+		var font := UITheme.body_bold()
+		var spot := at + Vector2(size * 0.45, size * 0.55)
+		_view.draw_rect(Rect2(spot + Vector2(-2, -12), Vector2(font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 4, 15)), Color(0.04, 0.05, 0.08, 0.85))
+		_view.draw_string(font, spot, words, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.GOLD)

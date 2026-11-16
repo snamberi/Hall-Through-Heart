@@ -134,7 +134,8 @@ var mount_id := ""
 ## What last hurt the player: an element, a status, or "blow". Shapes the
 ## words on the death screen.
 var last_harm := "blow"
-## Shift toggles between walking and sprinting; sprinting burns stamina.
+## The sprint key toggles between walking and sprinting (or, with the
+## "hold" setting, sprints while held); sprinting burns stamina.
 var sprinting := false
 const SPRINT_SPEED := 1.4
 const SPRINT_STAMINA := 7.0
@@ -1073,7 +1074,10 @@ func _process_move(delta: float) -> void:
 	if input != Vector2.ZERO:
 		facing = input.normalized()
 		_face_visual(input.x)
-	if Input.is_action_just_pressed("sprint"):
+	if GameSettings.sprint_mode == "hold":
+		# Hold to sprint: only while the key is down.
+		sprinting = Input.is_action_pressed("sprint") and stamina.current >= 1.0
+	elif Input.is_action_just_pressed("sprint"):
 		sprinting = not sprinting
 		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), "Sprinting" if sprinting else "Walking", UITheme.DIM, 12)
 	var pace := 1.0

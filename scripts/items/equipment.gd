@@ -216,7 +216,7 @@ func unequip(slot: String) -> String:
 	var item := equipped[slot]
 	equipped.erase(slot)
 	_inventory.bonus_slots = bag_slots()
-	_inventory.add(item)
+	_inventory.add(item, false)
 	_emit_changed()
 	return ""
 

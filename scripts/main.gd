@@ -154,6 +154,8 @@ func _ready() -> void:
 	_menus.setup(_player)
 	_debug_hud.setup(_world, _player)
 	_player.died.connect(_on_player_died)
+	# Before a boss fight, a save: dying in it never costs the walk there.
+	Events.boss_engaged.connect(func(_boss: Node) -> void: SaveGame.request_save())
 
 
 func save_data() -> Dictionary:

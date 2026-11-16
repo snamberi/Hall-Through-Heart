@@ -180,7 +180,7 @@ func _take(saved: Dictionary, amount: int) -> bool:
 		return false
 	amount = clampi(amount, 1, item.count)
 	item.count = amount
-	if not player.inventory.add(item):
+	if not player.inventory.add(item, false):
 		_say("Your bag is full: %d of %d slots used. Store or drop something first." % [player.inventory.items.size(), player.inventory.capacity()])
 		return false
 	if amount >= int(saved.get("count", 1)):

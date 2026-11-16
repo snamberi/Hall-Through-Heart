@@ -115,6 +115,8 @@ var revive_shield := 0.0
 var _speed := 100.0
 var _tint := Color.WHITE
 var _last_weapon_type := ""
+## Whether this boss has turned on the player yet (for the autosave).
+var _engaged := false
 var _since_hurt := 99.0
 var _blink_left := 3.0
 var _aura_left := 0.0
@@ -287,6 +289,10 @@ func _physics_process(delta: float) -> void:
 			velocity = _direction * _speed * 0.4 * _ground_speed
 			if has_target and distance < AGGRO_RADIUS and (not Difficulty.monsters_passive() or _since_hurt < 30.0) and not target.buffs.has("night_veil"):
 				state = State.CHASE
+				# A boss turning on you is a moment worth saving before.
+				if rank >= Rank.BOSS and not _engaged:
+					_engaged = true
+					Events.boss_engaged.emit(self)
 			elif _state_time_left == 0.0:
 				_pick_wander()
 		State.CHASE:

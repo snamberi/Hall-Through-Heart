@@ -253,7 +253,7 @@ func _shelf_key() -> String:
 
 
 ## Seconds until the wares change.
-func restock_in() -> float:
+static func restock_in() -> float:
 	return RESTOCK_SECONDS - fmod(Time.get_unix_time_from_system(), RESTOCK_SECONDS)
 
 

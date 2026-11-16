@@ -36,7 +36,10 @@ func has_room_for(item: Item) -> bool:
 
 
 ## Adds an item, merging stackables. Returns false if the bag is full.
-func add(item: Item) -> bool:
+## Puts an item in the bag. Something new to the bag (not an unequipped or
+## stored piece, which pass `arriving` false) is marked fresh, unless it only
+## joins a stack already there.
+func add(item: Item, arriving: bool = true) -> bool:
 	# Coins go straight into the purse.
 	if item.definition().get("currency", false):
 		add_gold(item.count)
@@ -51,10 +54,20 @@ func add(item: Item) -> bool:
 	if stack:
 		stack.count = mini(stack.count + item.count, ItemDB.MAX_STACK)
 	else:
+		item.fresh = arriving
 		items.append(item)
 	changed.emit()
 	SaveGame.request_save()
 	return true
+
+
+## How many items in the bag are new.
+func fresh_count() -> int:
+	var total := 0
+	for item in items:
+		if item and item.fresh:
+			total += 1
+	return total
 
 
 func remove(item: Item) -> void:

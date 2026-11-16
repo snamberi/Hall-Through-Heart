@@ -113,8 +113,12 @@ func _build() -> void:
 	_bag = ItemGrid.new()
 	_bag.setup(player, _tip, 5, 3)
 	_bag.custom_minimum_size = Vector2(5 * (ItemGrid.SLOT + ItemGrid.GAP) + 12.0, 3 * (ItemGrid.SLOT + ItemGrid.GAP) + 6.0)
-	_bag.note_for = func(_item: Item) -> String: return "[color=#%s]Click to choose, right-click to wear[/color]" % UITheme.GOOD.to_html(false)
-	_bag.picked.connect(func(item: Item, _index: int) -> void: _select(item))
+	_bag.note_for = func(_item: Item) -> String: return "[color=#%s]Click to choose; right- or Shift-click to wear[/color]" % UITheme.GOOD.to_html(false)
+	_bag.picked.connect(func(item: Item, _index: int) -> void:
+		_select(item)
+		if Input.is_key_pressed(KEY_SHIFT):
+			_wear_or_remove()
+	)
 	_bag.alt_picked.connect(func(item: Item, _index: int) -> void:
 		_select(item)
 		_wear_or_remove()
@@ -193,7 +197,8 @@ func _build() -> void:
 	_wear_button.custom_minimum_size.y = 40.0
 	buttons.add_child(_wear_button)
 	detail.add_child(UITheme.rule())
-	_discard_button = UITheme.danger_button("Discard", _discard_selected, 150.0)
+	# Rare and better relics are held down to destroy; plainer ones ask twice.
+	_discard_button = HoldButton.make("Discard", _discard_selected, func() -> bool: return _selected != null and _selected.rarity >= InventoryMenu.HOLD_FROM_RARITY, 150.0)
 	_discard_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	detail.add_child(_discard_button)
 
@@ -331,7 +336,7 @@ func _show_details() -> void:
 		child.queue_free()
 	_icon_frame.visible = item != null
 	_discard_button.disabled = item == null
-	_discard_button.text = "Really discard?" if _confirm_discard else "Discard"
+	_discard_button.text = "Really discard?" if _confirm_discard else ("Hold: discard" if _selected and _selected.rarity >= InventoryMenu.HOLD_FROM_RARITY else "Discard")
 	if item == null:
 		_name.text = "Nothing chosen"
 		_name.add_theme_color_override("font_color", UITheme.DIM)
@@ -416,7 +421,7 @@ func _focus_selected() -> void:
 func _discard_selected() -> void:
 	if _selected == null:
 		return
-	if not _confirm_discard:
+	if not _confirm_discard and _selected.rarity < InventoryMenu.HOLD_FROM_RARITY:
 		_confirm_discard = true
 		_message.text = "Discarding destroys the relic for good. Press again to confirm."
 		_show_details()

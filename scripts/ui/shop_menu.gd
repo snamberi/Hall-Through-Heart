@@ -107,6 +107,10 @@ func _build() -> void:
 			refresh()
 			return
 		_choose(item, Npc.sell_price(item), true, {})
+		# Shift-click sells the whole stack at once.
+		if Input.is_key_pressed(KEY_SHIFT) and not item.locked:
+			_quantity = _most()
+			_trade()
 	)
 	_bag_grid.alt_picked.connect(func(item: Item, _index: int) -> void:
 		_choose(item, Npc.sell_price(item), true, {})
@@ -114,7 +118,7 @@ func _build() -> void:
 		_trade()
 	)
 	bag_box.add_child(_bag_grid)
-	bag_box.add_child(UITheme.label("Things sell for a quarter of their worth. Right-click sells one.", 14, UITheme.DIM))
+	bag_box.add_child(UITheme.label("Right-click sells one; Shift-click sells the stack.", 14, UITheme.DIM))
 	var bulk := HBoxContainer.new()
 	bulk.add_theme_constant_override("separation", 4)
 	bag_box.add_child(bulk)
@@ -272,7 +276,13 @@ func _card(entry: Dictionary) -> Button:
 	var cost := UITheme.strong("%d g" % price, 16, UITheme.GOLD if affordable else UITheme.BAD)
 	cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(cost)
-	button.pressed.connect(func() -> void: _choose(item, price, false, entry))
+	button.pressed.connect(func() -> void:
+		_choose(item, price, false, entry)
+		# Shift-click buys as many as you can carry and pay for.
+		if Input.is_key_pressed(KEY_SHIFT):
+			_quantity = _most()
+			_trade()
+	)
 	button.gui_input.connect(func(event: InputEvent) -> void:
 		var click := event as InputEventMouseButton
 		if click and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT:

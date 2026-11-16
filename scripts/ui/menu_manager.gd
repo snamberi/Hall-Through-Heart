@@ -303,6 +303,8 @@ func badge_for(id: String) -> int:
 			return 1 if _player.class_id == "adventurer" and _player.leveling.level >= HeroClasses.CHOICE_LEVEL else 0
 		"abilities":
 			return _player.abilities.unspent_points() if _player.abilities.has_method("unspent_points") else 0
+		"inventory":
+			return _player.inventory.fresh_count()
 	return 0
 
 

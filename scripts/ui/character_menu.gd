@@ -19,6 +19,9 @@ const GROUPS: Array[Array] = [
 var _title: Label
 var _xp: Label
 var _points: Label
+var _respec: Button
+## How near the Sanctuary's middle counts as being at it, in pixels.
+const SANCTUARY_REACH := 14 * 44
 var _amount := 1
 var _amount_buttons: Array[Button] = []
 var _values: Dictionary[String, Label] = {}
@@ -44,6 +47,9 @@ func _build() -> void:
 	_xp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_xp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_xp)
+	# Taking back every spent point costs gold, and only at the Sanctuary.
+	_respec = UITheme.button("Reset all points", _respec_points, 170.0)
+	head.add_child(_respec)
 	_points = UITheme.strong("", 17, UITheme.GOLD)
 	_points.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_points)
@@ -217,6 +223,13 @@ func refresh() -> void:
 	if _planned_total() > attributes.unspent:
 		_plan.clear()
 	_title.text = "%s  ·  Level %d" % [HeroClasses.CLASSES[player.class_id]["name"], leveling.level]
+	var spent := 0
+	for id: String in attributes.points:
+		spent += attributes.points[id]
+	var problem := respec_problem()
+	_respec.disabled = problem != ""
+	_respec.text = "Reset all points  ·  %s gold" % InventoryMenu._thousands(respec_cost())
+	_respec.tooltip_text = problem if problem != "" else "Gives back all %d spent points to place again." % spent
 	_xp.text = "Maximum level" if leveling.is_max_level() else "%s / %s XP  ·  %d talent point%s" % [InventoryMenu._thousands(leveling.xp), InventoryMenu._thousands(leveling.xp_to_next()), leveling.talent_points, "" if leveling.talent_points == 1 else "s"]
 	var free := attributes.unspent - _planned_total()
 	if attributes.unspent <= 0:
@@ -248,3 +261,32 @@ func refresh() -> void:
 	_apply.text = "Apply %d point%s" % [_planned_total(), "" if _planned_total() == 1 else "s"] if not _plan.is_empty() else "Apply"
 	_reset.disabled = _plan.is_empty()
 	_note.text = "Planned points are not spent until you press Apply." if not _plan.is_empty() else ("Choose an amount, then press + beside an attribute." if attributes.unspent > 0 else "You earn attribute points as you level.")
+
+
+## Gold to take back every spent point: grows with level.
+func respec_cost() -> int:
+	return 50 + roundi(15.0 * pow(player.leveling.level, 1.3))
+
+
+## Why the points cannot be reset now, or "".
+func respec_problem() -> String:
+	var spent := 0
+	for id: String in player.attributes.points:
+		spent += player.attributes.points[id]
+	if spent <= 0:
+		return "No points have been spent."
+	if player.indoors or player.global_position.length() > SANCTUARY_REACH:
+		return "Only at the Sanctuary, where the world began."
+	if player.inventory.gold < respec_cost():
+		return "Costs %s gold." % InventoryMenu._thousands(respec_cost())
+	return ""
+
+
+func _respec_points() -> void:
+	if respec_problem() != "":
+		return
+	player.inventory.add_gold(-respec_cost())
+	player.attributes.reset()
+	_plan.clear()
+	Audio.play("level_up", -8.0, 0.0)
+	refresh()

@@ -192,3 +192,32 @@ func test_chests_take_whole_half_or_one(t: TestContext) -> void:
 	t.equal((chest["items"] as Array).size(), 0, "the chest is empty")
 	t.equal(player.inventory.count_of("oak_wood"), before + 10, "all ten are in the bag again")
 	player.inventory.take("oak_wood", 10)
+
+
+func test_new_items_are_marked_until_seen(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var sword := Item.create("sword")
+	player.inventory.add(sword)
+	t.check(sword.fresh, "a new sword arrives marked new")
+	t.check(Item.from_dict(sword.to_dict()).fresh, "the mark survives saving")
+	sword.fresh = false
+	t.equal(player.equipment.equip(sword), "", "the sword can be worn")
+	t.equal(player.equipment.unequip(player.equipment.slot_of(sword)), "", "and taken off")
+	t.check(not sword.fresh, "taking off a piece does not make it new again")
+	var ore := Item.create("copper_ore", 3)
+	player.inventory.add(ore)
+	var more := Item.create("copper_ore", 2)
+	player.inventory.add(more)
+	t.check(not more.fresh, "ore joining a stack is not a new item")
+
+
+func test_hold_to_confirm_needs_a_rare_item(t: TestContext) -> void:
+	var common := Item.create("sword")
+	common.rarity = 0
+	var rare := Item.create("sword")
+	rare.rarity = 3
+	var menu := InventoryMenu.new()
+	t.check(not menu._precious([common]), "common gear is thrown away with an ordinary press")
+	t.check(menu._precious([common, rare]), "a rare piece among them must be held")
+	menu.free()

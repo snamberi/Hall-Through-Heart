@@ -16,6 +16,8 @@ signal level_up(level: int)
 ## Every tenth level.
 signal milestone_reached(level: int)
 signal mastery_level_up(weapon_type: String, level: int)
+## A boss has noticed the player and is coming (the game saves first).
+signal boss_engaged(boss: Node)
 signal player_died(xp_lost: int)
 ## The player picked something up. `item` is the saved form (Item.to_dict()).
 signal item_acquired(item: Dictionary)

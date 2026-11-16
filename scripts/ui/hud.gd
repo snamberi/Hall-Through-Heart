@@ -78,6 +78,11 @@ func setup(player: Player) -> void:
 		Audio.play("level_up", -6.0, 0.0)
 	)
 	Events.announcement.connect(_show_banner)
+	# The land underfoot, named as you walk into it.
+	var area := AreaBanner.new()
+	area.name = "AreaBanner"
+	add_child(area)
+	area.setup(player)
 	_boss_bar.draw.connect(_draw_boss_bar)
 	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
 		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
@@ -192,7 +197,11 @@ func show_death(xp_lost: int, respawn_name: String) -> void:
 	if DayNight.blood_moon and randf() < 0.5:
 		lines = ["The blood moon feeds", "Red night, red end"]
 	_death_message.text = lines.pick_random()
-	_death_summary.text = "Lost %d XP  -  waking at %s" % [xp_lost, respawn_name]
+	var share := roundi(float(Difficulty.value("death_loss")) * 100.0)
+	if xp_lost <= 0:
+		_death_summary.text = "Nothing lost: %s keeps your progress.\nYou keep your gear, gold and bag.  ·  Waking at %s" % [Difficulty.display_name(), respawn_name]
+	else:
+		_death_summary.text = "Lost %s XP: %d%% of your progress toward level %d.\nYou keep your level, gear, gold and bag.  ·  Waking at %s" % [InventoryMenu._thousands(xp_lost), share, _player.leveling.level + 1, respawn_name]
 	_death_message.visible = true
 
 

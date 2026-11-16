@@ -51,8 +51,11 @@ var _upgrade: Button
 var _enchant: Button
 var _infuse: Button
 var _socket: Button
-var _salvage: Button
-var _discard: Button
+var _bag_fresh: Array[Panel] = []
+var _salvage: HoldButton
+var _discard: HoldButton
+## From this rarity (rare) salvaging or discarding must be held down.
+const HOLD_FROM_RARITY := 2
 var _lock: Button
 var _secondary: Button
 var _pick_toggle: Button
@@ -255,7 +258,7 @@ func _build() -> void:
 			var gap := Control.new()
 			gap.custom_minimum_size.x = 6.0
 			belt.add_child(gap)
-	var hint := UITheme.label("Hover an item, press 1-9 for the hotbar or %s for quick use" % GameSettings.describe("quick_use").split(" / ")[0], 14, UITheme.DIM)
+	var hint := UITheme.label("Hover: 1-9 hotbar, %s quick use  ·  Shift-click equips or uses" % GameSettings.describe("quick_use").split(" / ")[0], 14, UITheme.DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(DOLL_SIZE.x, 0)
@@ -338,10 +341,11 @@ func _build() -> void:
 	var gap := Control.new()
 	gap.custom_minimum_size.x = 14.0
 	risky.add_child(gap)
-	_salvage = UITheme.danger_button("Salvage", func() -> void: _act(Crafting.salvage), 100.0)
+	# Rare and better pieces must be held down to salvage or throw away.
+	_salvage = HoldButton.make("Salvage", func() -> void: _act(Crafting.salvage), func() -> bool: return _precious([_selected]), 100.0)
 	_salvage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	risky.add_child(_salvage)
-	_discard = UITheme.danger_button("Discard", _discard_selected, 100.0)
+	_discard = HoldButton.make("Discard", _discard_selected, func() -> bool: return _precious(_marked if not _marked.is_empty() else [_selected]), 100.0)
 	_discard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	risky.add_child(_discard)
 
@@ -382,6 +386,21 @@ func _ensure_slots(count: int) -> void:
 		lock.visible = false
 		button.add_child(lock)
 		_bag_locks.append(lock)
+		# A small gold dot on what has just arrived and not been looked at.
+		var fresh := Panel.new()
+		var dot := StyleBoxFlat.new()
+		dot.bg_color = UITheme.GOLD
+		dot.border_color = Color("1a1408")
+		dot.set_border_width_all(1)
+		dot.set_corner_radius_all(5)
+		fresh.add_theme_stylebox_override("panel", dot)
+		fresh.position = Vector2(SLOT_SIZE - 13, 3)
+		fresh.size = Vector2(10, 10)
+		fresh.tooltip_text = "New"
+		fresh.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fresh.visible = false
+		button.add_child(fresh)
+		_bag_fresh.append(fresh)
 		_bag_marks.append(MarkOverlay.attach(button))
 		_grid.add_child(button)
 		_bag_buttons.append(button)
@@ -433,6 +452,7 @@ func refresh() -> void:
 		_bag_counts[index].text = str(item.count) if item and item.count > 1 else ""
 		_bag_marks[index].visible = item != null and item in _marked
 		_bag_locks[index].visible = item != null and item.locked
+		_bag_fresh[index].visible = item != null and item.fresh
 	for slot in _belt_marks:
 		_belt_marks[slot].visible = player.equipment.active_slot == slot and player.equipment.equipped.has(slot)
 	for slot in _slot_buttons:
@@ -520,7 +540,10 @@ func _refresh_details() -> void:
 	var keeper := item != null and item.locked
 	_discard.disabled = (not in_bag and _marked.is_empty()) or (keeper and _marked.is_empty())
 	_discard.text = ("Really? (%d)" % _marked.size() if _confirming else "Discard %d" % _marked.size()) if not _marked.is_empty() else ("Really?" if _confirming else "Discard")
-	_discard.tooltip_text = "Locked: unlock it first." if keeper else "Throws the item away for good. Asks twice."
+	var precious := _precious(_marked if not _marked.is_empty() else [item])
+	if precious and not _confirming:
+		_discard.text = "Hold: discard" + (" %d" % _marked.size() if not _marked.is_empty() else "")
+	_discard.tooltip_text = "Locked: unlock it first." if keeper else ("Rare or better: hold the button down to throw it away for good." if precious else "Throws the item away for good. Asks twice.")
 	_secondary.visible = item != null and (item.is_consumable() or item.is_placeable() or (item.is_equipment() and item.is_upgradable()))
 	if _secondary.visible:
 		if item.is_equipment():
@@ -544,6 +567,9 @@ func _refresh_details() -> void:
 	_socket.tooltip_text = "" if not _socket.disabled else ("Only gear has sockets." if not gear else "This piece has no sockets.")
 	_salvage.disabled = not in_bag or not gear or keeper
 	_salvage.tooltip_text = "Locked: unlock it first." if keeper else ("Breaks the piece down into materials. It is gone for good." if gear and in_bag else "Only gear in the bag can be salvaged.")
+	_salvage.text = "Hold: salvage" if gear and item.rarity >= HOLD_FROM_RARITY else "Salvage"
+	if gear and item.rarity >= HOLD_FROM_RARITY and in_bag and not keeper:
+		_salvage.tooltip_text = "Rare or better: hold the button down to break it into materials."
 	_lock.disabled = item == null or category(item) != "gear" or item.is_stackable()
 	_lock.text = "Unlock" if keeper else "Lock"
 
@@ -577,6 +603,8 @@ func _number_cell(cell: Array, divided: bool) -> Control:
 
 func _select(item: Item) -> void:
 	_selected = item
+	if item:
+		item.fresh = false
 	_confirming = false
 	_message.text = _costs(item)
 	_message.add_theme_color_override("font_color", UITheme.DIM)
@@ -590,6 +618,10 @@ func _typing() -> bool:
 
 func _hover(item: Item) -> void:
 	_hovered = item
+	# Looking at it is enough: it is no longer new.
+	if item and item.fresh:
+		item.fresh = false
+		_seen_one.call_deferred()
 	_refresh_details()
 
 
@@ -725,9 +757,18 @@ func _open_gems() -> void:
 	popup.popup_hide.connect(popup.queue_free)
 
 
+## Whether any of these is rare or better (and so must be held to lose).
+func _precious(items: Array) -> bool:
+	for item: Variant in items:
+		if item is Item and item.rarity >= HOLD_FROM_RARITY:
+			return true
+	return false
+
+
 func _discard_selected() -> void:
-	# Throwing things away asks twice.
-	if not _confirming:
+	# Throwing plain things away asks twice; precious ones were held down.
+	var held := _precious(_marked if not _marked.is_empty() else [_selected])
+	if not _confirming and not held:
 		_confirming = true
 		refresh()
 		return
@@ -823,6 +864,9 @@ func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 			refresh()
 			return
 		_select(item)
+		# Shift-click: the item's main action at once (equip, use, place).
+		if item != null and Input.is_key_pressed(KEY_SHIFT):
+			_use_selected()
 	)
 	button.mouse_entered.connect(func() -> void:
 		var item: Item = item_of.call()
@@ -891,3 +935,12 @@ func _input(event: InputEvent) -> void:
 			_message.text = "%s is on hotbar slot %d." % [item.display_name(), index + 1] if problem == "" else problem
 			get_viewport().set_input_as_handled()
 			return
+
+
+## Something stopped being new: redraw the marks (and the menu's count).
+func _seen_one() -> void:
+	for index in _bag_fresh.size():
+		var item := _bag_item(index)
+		_bag_fresh[index].visible = item != null and item.fresh
+	SaveGame.request_save()
+	player.inventory.changed.emit()

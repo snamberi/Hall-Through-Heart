@@ -26,6 +26,7 @@ const DEFAULTS := {
 	"damage_number_size": 1.0,
 	"high_contrast": false,
 	"reduce_flashes": false,
+	"sprint_mode": "toggle",
 	"controls_version": 0,
 }
 ## Raised whenever the default keys change, so old saved bindings are dropped
@@ -35,7 +36,7 @@ const CONTROLS_VERSION := 2
 const REBINDABLE: Array[Array] = [
 	["move_up", "Move up"], ["move_down", "Move down"], ["move_left", "Move left"], ["move_right", "Move right"],
 	["attack", "Attack / break / gather"], ["interact", "Interact / open / talk"], ["parry", "Parry"], ["dodge", "Dash"],
-	["sprint", "Sprint on / off"],
+	["sprint", "Sprint"],
 	["ability_1", "Ability 1"], ["ability_2", "Ability 2"], ["ability_3", "Ability 3"], ["ability_4", "Ability 4"],
 	["ability_swap", "Switch ability set"], ["quick_use", "Quick-use potion or food"],
 	["hotbar_1", "Hotbar 1"], ["hotbar_2", "Hotbar 2"], ["hotbar_3", "Hotbar 3"], ["hotbar_4", "Hotbar 4"], ["hotbar_5", "Hotbar 5"],
@@ -75,6 +76,8 @@ var shake_strength := 1.0
 var damage_number_size := 1.0
 var high_contrast := false
 var reduce_flashes := false
+## The sprint key: "toggle" (press to switch) or "hold" (sprint while held).
+var sprint_mode := "toggle"
 var controls_version := 0
 ## action -> saved events, each {"key": physical keycode} or {"mouse": button}.
 var bindings: Dictionary = {}
@@ -120,6 +123,8 @@ func _ready() -> void:
 		hud_layout = "compact"
 	if not tracker_mode in ["full", "compact", "off"]:
 		tracker_mode = "full"
+	if not sprint_mode in ["toggle", "hold"]:
+		sprint_mode = "toggle"
 	if controls_version < CONTROLS_VERSION:
 		# The key layout changed: drop bindings saved for the old one.
 		bindings.clear()

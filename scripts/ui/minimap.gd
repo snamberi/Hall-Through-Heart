@@ -7,6 +7,9 @@ const RADIUS := 34
 ## Screen pixels per tile.
 const SCALE := 2.0
 const REFRESH_SECONDS := 0.3
+## How far (in minimap pixels from the middle) small things show in the
+## darkest night.
+const NIGHT_REACH := 16.0
 const DOT := {"ore": Color("c8c8d0"), "tree": Color("4fae5a"), "herb": Color("a8e070"), "fish": Color("6fc0ff")}
 
 var _player: Player
@@ -73,16 +76,25 @@ func _draw() -> void:
 		draw_texture_rect(_texture, inner, false)
 	var middle := size / 2.0
 	var origin := _player.global_position
+	# At night you see less: resources, loot and creatures show only close
+	# by, so the minimap stays readable in the dark.
+	var sight := INF
+	if _day_night and _day_night.is_night() and not _player.indoors:
+		sight = lerpf(size.x * 0.5, NIGHT_REACH, clampf(_day_night.darkness() * 1.4, 0.0, 1.0)) * TerrainTiles.TILE_SIZE / SCALE
 	for node in get_tree().get_nodes_in_group("resource_nodes"):
-		_dot(inner, middle, node.global_position - origin, DOT[node.kind()], 1.5)
+		if node.global_position.distance_to(origin) < sight:
+			_dot(inner, middle, node.global_position - origin, DOT[node.kind()], 1.5)
 	for pickup in get_tree().get_nodes_in_group("pickups"):
-		_dot(inner, middle, pickup.global_position - origin, UITheme.GOLD, 1.5)
+		if pickup.global_position.distance_to(origin) < sight:
+			_dot(inner, middle, pickup.global_position - origin, UITheme.GOLD, 1.5)
 	# Places close by, as on the big map.
 	for place: Array in _places:
 		_icon(inner, middle, (place[0] as Vector2) - origin, place[1], 13.0)
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
 		if enemy == null or enemy.health.is_dead():
+			continue
+		if enemy.rank < Enemy.Rank.MINIBOSS and enemy.global_position.distance_to(origin) > sight:
 			continue
 		if enemy.is_wild():
 			_icon(inner, middle, enemy.global_position - origin, "animal", 10.0)
