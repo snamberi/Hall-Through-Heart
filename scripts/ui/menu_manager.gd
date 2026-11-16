@@ -26,6 +26,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "talents", "title": "Talents", "icon": 28, "text": "Passive gifts", "side": true, "group": "Character"},
 	{"id": "mastery", "title": "Mastery", "icon": 0, "text": "Weapon skill", "side": true, "group": "Character"},
 	{"id": "evolution", "title": "Evolution", "icon": 39, "text": "Your race's paths", "side": true, "group": "Character"},
+	{"id": "runes", "title": "Runes", "icon": 156, "text": "Bind runes into gear", "side": true, "group": "Character"},
 	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary and feats", "side": true, "group": "Collection"},
 	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions, mounts", "side": true, "group": "Collection"},
 	{"id": "relics", "title": "Relics", "icon": 102, "text": "Boss relics and powers", "side": true, "group": "Collection"},
@@ -35,7 +36,7 @@ const SCREENS: Array[Dictionary] = [
 ## Screens with a key of their own (rebindable): action -> screen id.
 const SHORTCUTS := {"open_inventory": "inventory", "open_quests": "journal", "open_map": "map"}
 ## Where a screen's Back button leads, when not to the wheel. "" closes.
-const BACK := {"settings": "pause", "teacher": "", "villager": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": "", "trophies": "", "projects": "", "rift": ""}
+const BACK := {"settings": "pause", "teacher": "", "villager": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": "", "trophies": "", "projects": "", "rift": "", "festival": "", "trade_board": "shop"}
 
 var _menus: Dictionary[String, GameMenu] = {}
 ## "" when closed, "wheel", or a screen id.
@@ -126,6 +127,9 @@ func setup(player: Player) -> void:
 	_add("trophies", TrophyMenu.new())
 	_add("projects", ProjectsMenu.new())
 	_add("rift", RiftMenu.new())
+	_add("festival", FestivalMenu.new())
+	_add("trade_board", TradeBoardMenu.new())
+	_add("runes", RuneMenu.new())
 	Events.project_board_opened.connect(func(center: Vector2i) -> void:
 		(_menus["projects"] as ProjectsMenu).center = center
 		open("projects")
@@ -329,6 +333,10 @@ func badge_total() -> int:
 
 ## Talking to someone opens their screen.
 func _on_npc_interacted(npc: Node) -> void:
+	if npc.kind == "festival":
+		(_menus["festival"] as FestivalMenu).festival = npc.offer.get("festival", "harvest")
+		open("festival")
+		return
 	if npc.kind == "master":
 		(_menus["teacher"] as TeacherMenu).style = npc.offer.get("style", "fist")
 		(_menus["teacher"] as TeacherMenu).master = npc.title_text

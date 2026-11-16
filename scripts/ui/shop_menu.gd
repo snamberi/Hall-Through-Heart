@@ -39,6 +39,7 @@ var _standing_bar: ProgressBar
 var _specialty: Label
 var _invest: Button
 var _reroll: Button
+var _wanted: Label
 
 
 func _build() -> void:
@@ -56,10 +57,18 @@ func _build() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
+	var title_right := HBoxContainer.new()
+	title_right.custom_minimum_size.x = 300.0
+	title_right.alignment = BoxContainer.ALIGNMENT_END
+	title_right.add_theme_constant_override("separation", 8)
+	title_row.add_child(title_right)
 	_restock = UITheme.label("", 14, UITheme.DIM)
-	_restock.custom_minimum_size.x = 300.0
-	_restock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	title_row.add_child(_restock)
+	title_right.add_child(_restock)
+	var prices := UITheme.button("Village prices", func() -> void:
+		Events.screen_requested.emit("trade_board")
+	, 130.0)
+	prices.tooltip_text = "What each village you know wants, and has plenty of."
+	title_right.add_child(prices)
 	_tip = ItemTooltip.new()
 	_tip.side_by_side = true
 	add_child(_tip)
@@ -133,10 +142,18 @@ func _build() -> void:
 	sell_head.add_child(UITheme.badge("SELL", "gold"))
 	_bag_title = UITheme.heading("", 16)
 	sell_head.add_child(_bag_title)
+	_wanted = UITheme.label("", 13, UITheme.GOOD)
+	_wanted.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_wanted.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_wanted.clip_text = true
+	_wanted.mouse_filter = Control.MOUSE_FILTER_PASS
+	sell_head.add_child(_wanted)
 	_bag_grid = ItemGrid.new()
 	_bag_grid.setup(player, _tip, 7, 7)
 	_bag_grid.note_for = func(item: Item) -> String:
-		return "[color=#%s]Sells for %d gold%s[/color]" % [UITheme.GOLD.to_html(false), npc.buys_for(item, player), " each" if item.count > 1 else ""]
+		var wanted := TradeDemand.factor(npc.village, item.id) if npc.village != null else 1.0
+		var note := "" if wanted == 1.0 else ("  (wanted here: %s)" if wanted > 1.0 else "  (plenty here: %s)") % TradeDemand.percent(wanted)
+		return "[color=#%s]Sells for %d gold%s%s[/color]" % [UITheme.GOLD.to_html(false), npc.buys_for(item, player), " each" if item.count > 1 else "", note]
 	_bag_grid.picked.connect(func(item: Item, _index: int) -> void:
 		if _picking:
 			if item.locked:
@@ -239,7 +256,7 @@ func refresh() -> void:
 		_picking = false
 		_bag_grid.marked.clear()
 	_gold.text = "%s gold" % InventoryMenu._thousands(player.inventory.gold)
-	_restock.text = "New wares in %d min" % ceili(npc.restock_in() / 60.0)
+	_restock.text = "New in %d min" % ceili(npc.restock_in() / 60.0)
 	_show_standing()
 	for child in _wares.get_children():
 		child.queue_free()
@@ -261,6 +278,19 @@ func refresh() -> void:
 		_choice = {"item": first["item"], "price": first["price"], "selling": false, "entry": first, "back": false}
 		_quantity = 1
 	_bag_title.text = "Your bag   %d / %d" % [player.inventory.items.size(), player.inventory.capacity()]
+	if npc.village != null:
+		var demand := TradeDemand.of(npc.village)
+		var wants: PackedStringArray = []
+		var lines: PackedStringArray = []
+		for id: String in demand["wants"]:
+			wants.append(ItemDB.ITEMS[id]["name"])
+			lines.append("Wanted: %s %s" % [ItemDB.ITEMS[id]["name"], TradeDemand.percent(TradeDemand.factor(npc.village, id))])
+		for id: String in demand["plenty"]:
+			lines.append("Plenty: %s %s" % [ItemDB.ITEMS[id]["name"], TradeDemand.percent(demand["plenty"][id])])
+		_wanted.text = "Wanted: " + ", ".join(wants)
+		_wanted.tooltip_text = "\n".join(lines)
+	else:
+		_wanted.text = ""
 	_bag_grid.selected = _choice["item"] if not _choice.is_empty() and _choice["selling"] else null
 	_bag_grid.marked = _bag_grid.marked.filter(func(item: Item) -> bool: return item in player.inventory.items)
 	_bag_grid.set_items(player.inventory.items, player.inventory.capacity())
@@ -456,6 +486,7 @@ func _sell_all_marked() -> void:
 		if not item in player.inventory.items or item.locked:
 			continue
 		gold += npc.buys_for(item, player) * item.count
+		npc.note_sold(item, item.count)
 		count += 1
 		_remember(item, item.count, npc.buys_for(item, player))
 		player.inventory.remove(item)
@@ -483,6 +514,7 @@ func _trade() -> void:
 		var amount := clampi(_quantity, 1, item.count)
 		inventory.add_gold(int(_choice["price"]) * amount)
 		player.trade.note_earned(int(_choice["price"]) * amount)
+		npc.note_sold(item, amount)
 		Events.codex_event.emit("sales", 1)
 		_remember(item, amount, int(_choice["price"]))
 		if item.is_stackable():

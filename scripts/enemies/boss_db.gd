@@ -120,6 +120,7 @@ static func drops(id: String, level: int) -> Array:
 	for i in 2:
 		items.append(Item.create(Gems.random_gem(level + 20)).to_dict())
 	items.append(Item.create("heart_shard", 3).to_dict())
+	items.append(Item.create(LootGenerator.random_rune()).to_dict())
 	if PIECES.has(id):
 		items.append(Item.create(PIECES[id]).to_dict())
 	items.append(Item.create("boss_trophy").to_dict())

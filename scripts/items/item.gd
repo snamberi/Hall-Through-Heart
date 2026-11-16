@@ -20,6 +20,8 @@ var sockets: Array[String] = []
 var set_id := ""
 ## Materials worked into it, oldest first (see Infusions).
 var infusions: Array[String] = []
+## A runeword bound into the piece (see Runes), or "".
+var runeword := ""
 ## For forged gear: the tier of metal it was made from (its name and look
 ## follow the metal, not its level) and how strong that and the materials'
 ## rarity made it (1.0 is ordinary).
@@ -88,6 +90,7 @@ static func from_dict(data: Dictionary) -> Item:
 	item.forged_tier = maxi(int(data.get("forged", 0)), 0)
 	item.quality = clampf(float(data.get("quality", 1.0)), 0.3, 3.0)
 	item.locked = bool(data.get("locked", false))
+	item.runeword = str(data.get("runeword", "")) if Runes.WORDS.has(str(data.get("runeword", ""))) else ""
 	item.fresh = bool(data.get("fresh", false))
 	item.uid = int(data.get("uid", 0))
 	_next_uid = maxi(_next_uid, item.uid + 1)
@@ -126,6 +129,8 @@ func to_dict() -> Dictionary:
 		data["set"] = set_id
 	if not infusions.is_empty():
 		data["infusions"] = infusions.duplicate()
+	if runeword != "":
+		data["runeword"] = runeword
 	if forged_tier > 0:
 		data["forged"] = forged_tier
 	if not is_equal_approx(quality, 1.0):
@@ -302,6 +307,7 @@ func all_modifiers() -> Array[Dictionary]:
 			result.append(Gems.modifier(gem, slot()))
 	for material in infusions:
 		result.append(Infusions.modifier(material, level))
+	result.append_array(Runes.modifiers(runeword, level))
 	return result
 
 

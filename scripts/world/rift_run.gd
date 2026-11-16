@@ -77,6 +77,8 @@ func _finish() -> void:
 		RaceCourse.clock_text(_clock), shards, "  ·  depth %d next" % _rifts.depth if timed else "  ·  beat %s to go deeper" % RaceCourse.clock_text(limit)])
 	_label.text = "Rift closed in %s" % RaceCourse.clock_text(_clock)
 	var items: Array = [Item.create("rift_shard", shards).to_dict()]
+	for rune in (2 if timed else 1):
+		items.append(Item.create(LootGenerator.random_rune()).to_dict())
 	var finds := 3 if timed else 2
 	for index in finds:
 		var rarity := 4 if timed and index == 0 and randf() < 0.35 + 0.03 * _rifts.depth else 3

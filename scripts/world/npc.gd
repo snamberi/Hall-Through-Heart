@@ -10,6 +10,7 @@ const KINDS := {
 	"settler": {"name": "Settler", "prompt": "Talk", "sheet": "res://assets/sprites/npc_merchant.png"},
 	"recruit": {"name": "Wanderer", "prompt": "Talk", "sheet": "res://assets/sprites/npc_warden.png"},
 	"master": {"name": "Master", "prompt": "Speak with the master", "sheet": "res://assets/sprites/npc_warden.png"},
+	"festival": {"name": "Festival Keeper", "prompt": "Visit the festival stall", "sheet": "res://assets/sprites/npc_merchant.png"},
 }
 ## A merchant's wares change this often, in seconds.
 const RESTOCK_SECONDS := 1200.0
@@ -27,6 +28,9 @@ var wandering := false
 ## A village's market hall: one more ware on the shelf, and a little off.
 var extra_shelf := 0
 var discount := 0.0
+## The village a merchant trades in (its centre cell), for what it needs
+## (see TradeDemand); null for merchants out of any village.
+var village: Variant = null
 ## Settlers and recruits: their trade, name, prompt, wares and colouring.
 var role := ""
 var title_text := ""
@@ -210,6 +214,11 @@ func restock_if_due(player: Player) -> void:
 			offer_entry["price"] = player.trade.buy_price(int(offer_entry["price"]))
 		if discount > 0.0:
 			offer_entry["price"] = maxi(roundi(int(offer_entry["price"]) * (1.0 - discount)), 1)
+		if village != null and offer_entry["item"] is Item:
+			# What the village has plenty of sells cheap; what it wants, dear.
+			var demand := TradeDemand.factor(village, (offer_entry["item"] as Item).id)
+			if demand != 1.0:
+				offer_entry["price"] = maxi(roundi(int(offer_entry["price"]) * (demand if demand < 1.0 else 1.0 + (demand - 1.0) / 2.0)), 1)
 		if not sold.has(slot):
 			stock.append(offer_entry)
 	randomize()
@@ -306,9 +315,16 @@ func pay_restock(player: Player) -> bool:
 ## Gold this merchant pays for one of an item, by the player's standing and
 ## what this merchant deals in.
 func buys_for(item: Item, player: Player) -> int:
-	if player and player.trade:
-		return player.trade.sell_price(item, stock_kind, wandering)
-	return sell_price(item)
+	var price := player.trade.sell_price(item, stock_kind, wandering) if player and player.trade else sell_price(item)
+	if village != null:
+		price = maxi(roundi(price * TradeDemand.factor(village, item.id)), 1)
+	return price
+
+
+## Notes goods sold here, which slowly fills what the village wants.
+func note_sold(item: Item, count: int) -> void:
+	if village != null:
+		TradeDemand.note_sold(village, item.id, count)
 
 
 ## Seconds until the wares change.

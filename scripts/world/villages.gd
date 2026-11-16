@@ -28,6 +28,12 @@ func setup(world: World) -> void:
 	_world = world
 	world.chunk_built.connect(_on_chunk_built)
 	world.chunk_freed.connect(_on_chunk_freed)
+	var festivals: Festivals = get_parent().get_node_or_null("Festivals")
+	if festivals:
+		festivals.changed.connect(func() -> void:
+			for center: Vector2i in _built.keys():
+				rebuild(center)
+		)
 	var projects := _projects()
 	if projects:
 		projects.changed.connect(func(key: String) -> void:
@@ -172,6 +178,7 @@ func _build_project(project: String, plot: Vector2i, center: Vector2i, add: Call
 			smith.stock_kind = "smith"
 			smith.tint = Color(0.8, 0.8, 0.9)
 			smith.home = _at(plot + Vector2i(-3, 1))
+			smith.village = center
 			add.call(smith)
 		"inn":
 			var inn := Prop.create(Prop.Art.HOUSE, _at(plot), 34.0, "Rest at the inn", func(player: Player) -> void:
@@ -260,6 +267,7 @@ func _build(center: Vector2i) -> Array:
 	fire.add_light(1.0, 2.2)
 	add.call(fire)
 	var merchant := Npc.create("merchant", _at(center + Vector2i(-3, -2), Vector2(0, 16)))
+	merchant.village = center
 	if _projects() and _projects().has(center, "market"):
 		merchant.extra_shelf = 1
 		merchant.discount = 0.05
@@ -368,6 +376,29 @@ func _build(center: Vector2i) -> Array:
 		if person["job"] == "fisher" or person["job"] == "farmer":
 			villager.home = _at(center + Vector2i(random.randi_range(-9, 9), random.randi_range(6, 11)))
 		add.call(villager)
+	# A festival: the village's colours out, and the Festival Keeper.
+	var festivals: Festivals = get_parent().get_node_or_null("Festivals")
+	var festival := festivals.current() if festivals else ""
+	if festival != "":
+		var colour: Color = Festivals.FESTIVALS[festival]["color"]
+		for spot: Vector2i in [Vector2i(-1, -5), Vector2i(5, -1), Vector2i(-5, 1), Vector2i(1, 5)]:
+			var flag := Prop.create_decor(Prop.Decor.BANNER, _at(center + spot), 5.0)
+			flag.sprite().modulate = colour
+			add.call(flag)
+		for spot: Vector2i in [Vector2i(-3, 6), Vector2i(3, -7), Vector2i(7, 2)]:
+			var lamp := Prop.create_decor(Prop.Decor.LANTERN, _at(center + spot), 5.0)
+			lamp.add_light(0.9, 1.6, colour.lightened(0.3))
+			add.call(lamp)
+		var stall := Prop.create_decor(Prop.Decor.STALL, _at(center + Vector2i(0, -4)), 18.0)
+		stall.sprite().modulate = colour.lightened(0.2)
+		add.call(stall)
+		var keeper := Npc.create("festival", _at(center + Vector2i(0, -3), Vector2(0, 16)))
+		keeper.offer = {"festival": festival}
+		keeper.title_text = "%s Keeper" % Festivals.FESTIVALS[festival]["name"]
+		keeper.prompt_text = "Visit the %s" % Festivals.FESTIVALS[festival]["name"]
+		keeper.tint = colour.lightened(0.3)
+		keeper.home = _at(center + Vector2i(0, -3))
+		add.call(keeper)
 	# What the village has built with your help, each on the first free plot.
 	if projects:
 		var taken: Array[Vector2i] = []

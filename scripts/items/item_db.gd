@@ -78,8 +78,8 @@ const STATUSES := {
 ## Courses of food. Each course is its own buff, so one meal, one drink and
 ## one treat can all work at once; another of the same course replaces it.
 ## Food not listed here is a meal.
-const DRINKS: Array[String] = ["frost_tea", "hunters_brew", "swiftfoot_tea", "ironbark_tonic", "sages_infusion", "ember_ale", "sunroot_cordial"]
-const TREATS: Array[String] = ["berry_tart", "thornberry_jam", "frostberry_tart", "sweet_roll", "candied_frostberries", "pumpkin_bread"]
+const DRINKS: Array[String] = ["mulled_cider", "frost_tea", "hunters_brew", "swiftfoot_tea", "ironbark_tonic", "sages_infusion", "ember_ale", "sunroot_cordial"]
+const TREATS: Array[String] = ["harvest_pie", "berry_tart", "thornberry_jam", "frostberry_tart", "sweet_roll", "candied_frostberries", "pumpkin_bread"]
 const COURSE_NAMES := {"meal": "Meal", "drink": "Drink", "treat": "Treat"}
 
 
@@ -639,6 +639,32 @@ const ITEMS := {
 		"text": "Plates over the chest and flanks. +20% armour while riding, and blows no longer throw you from the saddle."},
 	"heartsteel_barding": {"name": "Heartsteel Barding", "icon": 153, "tint": Color("e0606a"), "material_rarity": 3, "tack": "barding", "tack_armour": 0.3, "tack_speed": 0.04, "steady": true, "value": 1400,
 		"text": "Dark red steel, light as leather. +30% armour while riding, 4% faster, and you cannot be thrown."},
+	# --- runes (see Runes)
+	"rune_ember": {"name": "Ember Rune", "icon": 156, "material_rarity": 2, "value": 90,
+		"text": "Warm to hold; it smells of smoke. Two or three runes bind into a runeword on a weapon or armour (Rune Binding)."},
+	"rune_rime": {"name": "Rime Rune", "icon": 157, "material_rarity": 2, "value": 90,
+		"text": "Frost grows in its grooves. Two or three runes bind into a runeword on a weapon or armour (Rune Binding)."},
+	"rune_venom": {"name": "Venom Rune", "icon": 158, "material_rarity": 2, "value": 90,
+		"text": "The carving weeps green. Two or three runes bind into a runeword on a weapon or armour (Rune Binding)."},
+	"rune_gloom": {"name": "Gloom Rune", "icon": 159, "material_rarity": 2, "value": 90,
+		"text": "It drinks the light around it. Two or three runes bind into a runeword on a weapon or armour (Rune Binding)."},
+	"rune_dawn": {"name": "Dawn Rune", "icon": 160, "material_rarity": 2, "value": 90,
+		"text": "It glows faintly, like the sky before morning. Two or three runes bind into a runeword on a weapon or armour (Rune Binding)."},
+	"rune_gale": {"name": "Gale Rune", "icon": 161, "material_rarity": 2, "value": 90,
+		"text": "It will not lie still on a table. Two or three runes bind into a runeword on a weapon or armour (Rune Binding)."},
+	"rune_stone": {"name": "Stone Rune", "icon": 162, "material_rarity": 2, "value": 90,
+		"text": "Heavier than it should be. Two or three runes bind into a runeword on a weapon or armour (Rune Binding)."},
+	"rune_blood": {"name": "Blood Rune", "icon": 163, "material_rarity": 2, "value": 90,
+		"text": "It beats, slowly. Two or three runes bind into a runeword on a weapon or armour (Rune Binding)."},
+	# --- festivals (see Festivals)
+	"festival_token": {"name": "Festival Token", "icon": 155, "tint": Color("f0c860"), "material_rarity": 1, "value": 30,
+		"text": "Stamped with the year's sign. The Festival Keeper takes them for festival goods."},
+	"blood_token": {"name": "Blood Token", "icon": 155, "tint": Color("e05060"), "material_rarity": 2, "value": 60,
+		"text": "Warm, and it should not be. The Hooded Trader of the Blood Moon Bazaar takes them."},
+	"harvest_pie": {"name": "Harvest Pie", "icon": 70, "tint": Color("e8a050"), "material_rarity": 2, "use": {"buff": "food", "name": "Harvest Cheer", "duration": 600.0, "mods": {"max_health": {"percent": 0.08}, "health_regen": {"flat": 1.0}}},
+		"value": 40, "text": "Baked for the Harvest Fair. +8% maximum health and +1 health a second for 10 minutes."},
+	"mulled_cider": {"name": "Mulled Cider", "icon": 69, "tint": Color("d08040"), "material_rarity": 2, "use": {"buff": "food", "name": "Warmed Through", "duration": 600.0, "mods": {"frost_resist": {"flat": 0.3}, "stamina_regen": {"percent": 0.25}}},
+		"value": 40, "text": "Spiced and steaming, from the Frost Market. +30% frost resistance and stamina back 25% faster for 10 minutes."},
 	"rift_shard": {"name": "Rift Shard", "icon": 154, "material_rarity": 3, "value": 120,
 		"text": "A splinter of a closed Heart Rift, still beating faintly. Runes are bound with it."},
 	"trophy_stand": {"name": "Trophy Stand", "decor": Prop.Decor.TROPHY_STAND, "icon": 149, "material_rarity": 1, "place": "trophy_stand", "value": 120,

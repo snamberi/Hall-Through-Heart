@@ -107,6 +107,10 @@ func _ready() -> void:
 	bounties.name = "Bounties"
 	add_child(bounties)
 	bounties.setup(_world, _player, _spawner)
+	var festivals := Festivals.new()
+	festivals.name = "Festivals"
+	add_child(festivals)
+	festivals.setup(_player, _day_night)
 	var rifts := HeartRift.new()
 	rifts.name = "HeartRift"
 	add_child(rifts)

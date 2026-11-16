@@ -30,6 +30,8 @@ static func type_name(item: Item) -> String:
 		return "Relic"
 	if def.has("pet_gear"):
 		return "Pet %s" % def["pet_gear"]
+	if Runes.is_rune(id):
+		return "Rune"
 	if def.has("tack"):
 		return "Saddle" if def["tack"] == "saddle" else "Barding"
 	if item.is_belt():
@@ -199,6 +201,8 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 		lines.append("[color=#%s]~ %s: %s  (infused)[/color]" % ["e88aa0", Infusions.MATERIALS[material]["name"], Infusions.describe(material, item.level)])
 	if item.infusions.size() < Infusions.room(item):
 		lines.append("[color=#%s]~ %d infusion%s free[/color]" % [dim, Infusions.room(item) - item.infusions.size(), "s" if Infusions.room(item) - item.infusions.size() > 1 else ""])
+	if item.runeword != "":
+		lines.append("[color=#%s]Runeword: %s  -  %s[/color]" % ["ffb070", Runes.WORDS[item.runeword]["name"], Runes.describe(item.runeword, item.level)])
 	for gem in item.sockets:
 		if gem == "":
 			lines.append("[color=#%s]<> Empty socket[/color]" % dim)

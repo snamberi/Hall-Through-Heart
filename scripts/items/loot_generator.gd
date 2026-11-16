@@ -87,6 +87,9 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 	# Gems from the tougher monsters.
 	if randf() < {"normal": 0.004, "elite": 0.06, "champion": 0.2, "miniboss": 0.6}.get(info["rank"], 0.0) * (1.0 + magic_find):
 		items.append(Item.create(Gems.random_gem(level)))
+	# Runes, carried by the tougher ones (see Runes).
+	if randf() < {"normal": 0.002, "elite": 0.04, "champion": 0.12, "miniboss": 0.5}.get(info["rank"], 0.0) * (1.0 + magic_find):
+		items.append(Item.create(random_rune()))
 	# Gear is what that kind of monster would carry, and rare from the
 	# rank and file; Elites and above drop it far more readily.
 	for entry: Array in table.get("gear", []):
@@ -96,6 +99,11 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 			items.append(make_equipment(level, rarity, base, magic_find))
 			break
 	return result
+
+
+static func random_rune() -> String:
+	var ids: Array = Runes.RUNES.keys()
+	return ids[randi() % ids.size()]
 
 
 ## Chance of a set piece and of a unique, by rank.

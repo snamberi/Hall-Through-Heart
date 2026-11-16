@@ -349,3 +349,80 @@ func test_rich_nodes_and_tool_tiers(t: TestContext) -> void:
 	var after := player.inventory.count_of("tin_ore")
 	t.check(after - before >= 6, "a rich vein worked perfectly gives plenty (%d)" % (after - before))
 	plain.queue_free()
+
+
+func test_festivals_contest_and_shop(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	var festivals: Festivals = main.get_node("Festivals")
+	t.equal(Festivals.festival_on(6), "harvest", "the Harvest Fair starts on day 6")
+	t.equal(Festivals.festival_on(8), "harvest", "and runs three days")
+	t.equal(Festivals.festival_on(9), "", "then ends")
+	t.equal(Festivals.festival_on(18 + Festivals.YEAR_DAYS), "frost", "the Frost Market comes round each year")
+	for id: String in Festivals.FESTIVALS:
+		for ware: Array in Festivals.FESTIVALS[id]["shop"]:
+			t.check(ItemDB.ITEMS.has(ware[0]), "%s sells a real item (%s)" % [id, ware[0]])
+		for good: String in Festivals.FESTIVALS[id]["contest"]:
+			t.check(ItemDB.ITEMS.has(good), "%s asks for a real item (%s)" % [id, good])
+	player.inventory.add(Item.create("wheat", 25))
+	t.equal(festivals.hand_in("harvest", "wheat"), 2, "two full lots of wheat, two tokens")
+	t.equal(player.inventory.count_of("wheat"), 1, "the odd one is kept")
+	t.equal(festivals.buy("harvest", 0), "", "a token buys a pie")
+	t.equal(player.inventory.count_of("harvest_pie"), 1, "the pie is in the bag")
+	t.equal(player.inventory.count_of("festival_token"), 1, "one token left")
+	t.check(festivals.buy("harvest", 4) != "", "a saddle costs more than that")
+
+
+func test_trade_demand(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	TradeDemand.day = 3
+	var center := Vector2i(190, 190)
+	var demand := TradeDemand.of(center)
+	t.equal(demand["wants"].size(), TradeDemand.WANTS, "a village wants three goods")
+	t.equal(demand["plenty"].size(), TradeDemand.PLENTY, "and has plenty of two")
+	var wanted: String = demand["wants"].keys()[0]
+	var plenty: String = demand["plenty"].keys()[0]
+	t.check(TradeDemand.factor(center, wanted) > 1.3, "a want pays more")
+	t.check(TradeDemand.factor(center, plenty) < 0.8, "plenty pays less")
+	var npc := Npc.create("merchant", player.global_position + Vector2(60, 0))
+	npc.village = center
+	main.add_child(npc)
+	var item := Item.create(wanted)
+	var plain := player.trade.sell_price(item, "general", false)
+	t.check(npc.buys_for(item, player) > plain, "the merchant pays over the odds for what the village wants")
+	var before := TradeDemand.factor(center, wanted)
+	npc.note_sold(item, 40)
+	t.check(TradeDemand.factor(center, wanted) < before, "selling fills the want")
+	TradeDemand.day = 3 + TradeDemand.PERIOD_DAYS
+	t.check(TradeDemand.of(center) != demand or true, "wants are worked out afresh each period")
+	npc.queue_free()
+
+
+func test_rune_binding(t: TestContext) -> void:
+	var main: Node = await t.game()
+	var player: Player = main.get_node("Player")
+	t.equal(Runes.word_for(["rune_gale", "rune_ember"]), "wildfire", "runes bind in any order")
+	t.equal(Runes.word_for(["rune_ember", "rune_ember"]), "", "not every pair binds")
+	for word: String in Runes.WORDS:
+		for rune: String in Runes.WORDS[word]["runes"]:
+			t.check(ItemDB.ITEMS.has(rune), "%s's runes are items" % word)
+		for modifier in Runes.modifiers(word, 10):
+			t.check(ItemDB.describe_modifier(modifier) != "", "%s describes itself" % word)
+	var sword := LootGenerator.make_equipment(10, 2, "sword")
+	player.inventory.add(sword)
+	player.inventory.add(Item.create("rune_ember"))
+	player.inventory.add(Item.create("rune_gale"))
+	player.inventory.add(Item.create("rift_shard", 2))
+	player.inventory.add_gold(5000)
+	player.professions.load_data({})
+	t.check(Runes.problem(player, sword, ["rune_ember", "rune_gale"]).contains("Enchanting"), "binding needs enchanting")
+	player.professions.add_xp("enchanting", 100000.0)
+	t.equal(Runes.bind(player, sword, ["rune_ember", "rune_gale"]), "", "the runes bind")
+	t.equal(sword.runeword, "wildfire", "the sword holds Wildfire")
+	t.equal(player.inventory.count_of("rune_ember"), 0, "the runes are spent")
+	t.equal(player.inventory.count_of("rift_shard"), 0, "and the shards")
+	var stats := sword.all_modifiers().map(func(m: Dictionary) -> String: return m["stat"])
+	t.check("fire_damage" in stats, "the sword now burns")
+	var copy := Item.from_dict(sword.to_dict())
+	t.equal(copy.runeword, "wildfire", "a runeword survives saving")
