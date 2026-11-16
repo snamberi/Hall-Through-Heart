@@ -325,7 +325,7 @@ func _card(entry: Dictionary) -> Button:
 	picture.modulate = item.icon_tint()
 	picture.custom_minimum_size = Vector2(48.0, 48.0)
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(picture)

@@ -35,6 +35,10 @@ func _ready() -> void:
 	_sprite.texture = item.icon() if item else ItemDB.icon(ItemDB.GOLD_ICON)
 	if item:
 		_sprite.modulate = item.icon_tint()
+		# The 32-pixel item pictures lie at half size: at the usual zoom one
+		# of their pixels is one on the screen.
+		if ItemIcons.has(item.id):
+			_sprite.scale = Vector2(0.5, 0.5)
 	else:
 		# A bigger heap for a bigger purse.
 		_sprite.scale = Vector2.ONE * clampf(0.85 + log(maxf(gold, 1)) * 0.08, 0.85, 1.35)

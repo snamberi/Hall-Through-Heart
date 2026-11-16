@@ -97,7 +97,7 @@ func _build() -> void:
 	frame.add_theme_stylebox_override("panel", UITheme.slot("slot"))
 	top.add_child(frame)
 	_icon = TextureRect.new()
-	_icon.custom_minimum_size = Vector2(72, 72)
+	_icon.custom_minimum_size = Vector2(64, 64)
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -226,7 +226,7 @@ func _row(id: String) -> Button:
 	icon.modulate = item.icon_tint() if not data.has("decor") and not data.has("ground") else Color.WHITE
 	icon.custom_minimum_size = Vector2(40, 40)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(icon)

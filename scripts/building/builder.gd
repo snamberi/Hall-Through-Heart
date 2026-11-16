@@ -143,7 +143,7 @@ func _draw() -> void:
 		draw_rect(Rect2(at.x - tile / 2.0, at.y + StoneWall.THICK / 2.0 - height - 4.0, tile, 4.0), Color(look["top"], 0.8))
 	# The item held in the hand.
 	var hand := to_local(_player.global_position + Vector2(9.0 * signf(_player.aim_direction().x if _player.aim_direction().x != 0.0 else 1.0), -18.0 + 2.0 * sin(Time.get_ticks_msec() / 220.0)))
-	draw_texture_rect(_item.icon(), Rect2(hand - Vector2(9, 9), Vector2(18, 18)), false)
+	draw_texture_rect(_item.icon(), Rect2(hand - Vector2(8, 8), Vector2(16, 16)), false)
 	# What the mouse does here, right under the preview: first line the
 	# click (or why it cannot), second the other keys.
 	var left := _player.inventory.count_of(_item_id)

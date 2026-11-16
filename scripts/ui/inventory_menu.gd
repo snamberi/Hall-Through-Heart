@@ -195,8 +195,7 @@ func _build() -> void:
 		# A picture each; pointing at one says what it is and what it takes.
 		button.custom_minimum_size = Vector2((grid_width - 20.0) / maxf(RecipeDB.NO_TABLE.size(), 1.0), 52.0)
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.expand_icon = true
-		button.add_theme_constant_override("icon_max_width", 34)
+		button.expand_icon = false
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		var made := Item.create(recipe["item"]) if recipe.has("item") else LootGenerator.make_equipment(1, 0, recipe.get("equipment", "club"))
 		button.icon = made.icon()
@@ -321,6 +320,7 @@ func _build() -> void:
 	_detail_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	top.add_child(_detail_frame)
 	_detail_icon = UITheme.icon(0, 50.0)
+	_detail_icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	_detail_frame.add_child(_detail_icon)
 	var naming := VBoxContainer.new()
 	naming.add_theme_constant_override("separation", 1)
@@ -990,7 +990,7 @@ func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 func _item_button(side: float) -> Button:
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(side, side)
-	button.expand_icon = true
+	button.expand_icon = side < 40.0
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return button

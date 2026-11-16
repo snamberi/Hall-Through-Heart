@@ -66,7 +66,7 @@ func _draw() -> void:
 	draw_circle(tip, 4.0 + sin(_time * 8.0), Color(color, 0.35))
 	draw_circle(tip, 2.0, color.lightened(0.4))
 	if _carried:
-		var size := Vector2(18, 18)
+		var size := Vector2(16, 16)
 		draw_texture_rect(_carried, Rect2(tip - size / 2.0 - Vector2(0, 6), size), false, _carried_tint)
 
 

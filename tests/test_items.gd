@@ -511,3 +511,20 @@ func test_bottomless_satchel(t: TestContext) -> void:
 	t.check(inventory.items.any(func(i: Item) -> bool: return i.id == "iron_ore"), "into the bag")
 	inventory.satchel = false
 	inventory.materials.clear()
+
+
+func test_every_item_has_its_own_picture(t: TestContext) -> void:
+	var seen := {}
+	var sheet: Texture2D = load(ItemIcons.SHEET)
+	var image := sheet.get_image()
+	for id: String in ItemDB.ITEMS:
+		t.check(ItemIcons.has(id), "%s has no drawn picture" % id)
+		if not ItemIcons.has(id):
+			continue
+		var index: int = ItemIcons.INDEX[id]
+		var region := image.get_region(Rect2i((index % ItemIcons.COLUMNS) * ItemIcons.SIZE, (index / ItemIcons.COLUMNS) * ItemIcons.SIZE, ItemIcons.SIZE, ItemIcons.SIZE))
+		t.check(not region.is_invisible(), "%s's picture is empty" % id)
+		var key := Marshalls.raw_to_base64(region.get_data())
+		t.check(not seen.has(key), "%s looks just like %s" % [id, seen.get(key, "")])
+		seen[key] = id
+		t.check(Item.create(id).icon() == ItemIcons.texture(id), "%s shows its picture" % id)

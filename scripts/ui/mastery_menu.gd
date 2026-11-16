@@ -350,12 +350,12 @@ static func weapon_icon(id: String) -> Texture2D:
 		return CombatStyles.icon("fist")
 	if id == "magic":
 		return AbilityDB.icon("spell_fire_bolt")
-	if ItemDB.ITEMS.has(id) and ItemDB.ITEMS[id].has("icon"):
-		return ItemDB.icon(int(ItemDB.ITEMS[id]["icon"]))
+	if ItemDB.ITEMS.has(id):
+		return Item.create(id).icon()
 	for item_id: String in ItemDB.ITEMS:
 		var data: Dictionary = ItemDB.ITEMS[item_id]
-		if data.has("weapon") and data["weapon"].get("type", "") == id and data.has("icon"):
-			return ItemDB.icon(int(data["icon"]))
+		if data.has("weapon") and data["weapon"].get("type", "") == id:
+			return Item.create(item_id).icon()
 	return ItemDB.icon(0)
 
 

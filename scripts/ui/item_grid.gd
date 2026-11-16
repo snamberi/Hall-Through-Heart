@@ -62,7 +62,8 @@ func _add_slot() -> void:
 	var index := _buttons.size()
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(SLOT, SLOT)
-	button.expand_icon = true
+	# The 32-pixel pictures at their own size, so every pixel stays one.
+	button.expand_icon = false
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	button.pressed.connect(func() -> void:

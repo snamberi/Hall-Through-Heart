@@ -502,7 +502,7 @@ func _slot(rect: Rect2, item: Item, ghost: int, missing: bool, active: bool, hov
 	frame.modulate_color = Color.WHITE.lerp(item.color().lightened(0.15), 0.5) if item and not missing and not active else Color.WHITE
 	draw_style_box(frame, rect.grow(3.0))
 	if item:
-		draw_texture_rect(item.icon(), rect.grow(-6.0), false, item.icon_tint() if not missing else Color(0.45, 0.45, 0.5, 0.8))
+		draw_texture_rect(item.icon(), ItemIcons.snap(rect.grow(-6.0)), false, item.icon_tint() if not missing else Color(0.45, 0.45, 0.5, 0.8))
 	else:
 		draw_texture_rect(ItemDB.icon(ghost), rect.grow(-10.0), false, Color(1, 1, 1, 0.2))
 	if hovered:
@@ -542,7 +542,7 @@ func _hand_slot(rect: Rect2, picture: Texture2D, ghost: int, active: bool, hover
 func _mini(rect: Rect2, item: Item, ghost: int, dimmed: bool, hovered: bool) -> void:
 	draw_style_box(_slot_styles["slot_hover" if hovered else "slot"], rect.grow(2.0))
 	if item:
-		draw_texture_rect(item.icon(), rect.grow(-2.0), false, Color(item.icon_tint(), 0.45 if dimmed else 1.0))
+		draw_texture_rect(item.icon(), ItemIcons.snap(rect.grow(-2.0)), false, Color(item.icon_tint(), 0.45 if dimmed else 1.0))
 	else:
 		draw_texture_rect(ItemDB.icon(ghost), rect.grow(-4.0), false, Color(1, 1, 1, 0.18))
 	if hovered:

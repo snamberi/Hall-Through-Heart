@@ -196,6 +196,8 @@ func tint() -> Color:
 
 ## The colour to draw the icon in: white for icons that carry their own.
 func icon_tint() -> Color:
+	if ItemIcons.has(id):
+		return Color.WHITE
 	return Color.WHITE if int(definition().get("icon", 0)) >= ItemDB.NATURAL_ICONS_FROM else tint()
 
 
@@ -242,6 +244,8 @@ func is_unique() -> bool:
 
 
 func icon() -> Texture2D:
+	if ItemIcons.has(id):
+		return ItemIcons.texture(id)
 	if definition().has("ground"):
 		return TerrainTiles.icon(definition()["ground"])
 	if definition().has("flora"):

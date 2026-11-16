@@ -143,7 +143,7 @@ func _work(target: Node2D) -> void:
 	else:
 		item = _tend(plot)
 	if item:
-		root.carry(item.icon(), item.tint())
+		root.carry(item.icon(), item.icon_tint())
 	await root.retract(0.9)
 	tree_exiting.disconnect(cut_root)
 	if item:
