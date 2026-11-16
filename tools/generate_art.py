@@ -3121,17 +3121,9 @@ def draw_terrain():
 def main():
     os.makedirs(os.path.join(ROOT, "sprites"), exist_ok=True)
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
-    draw_sheet(HUMAN_BALD, HUMAN_ORDER, HUMAN_ANIMATIONS).save(os.path.join(ROOT, "sprites", "player_sheet.png"))
-    os.makedirs(os.path.join(ROOT, "sprites", "looks"), exist_ok=True)
-    for name, parts_by_group in LOOKS.items():
-        # Flat face details (marks, eyes, most race details) have no outline;
-        # race details that stand out from the head (fins, a nose, a muzzle,
-        # drips) do.
-        flat = name.startswith(("mark_", "eyes", "acc_1", "acc_3", "acc_5")) or (name.startswith("race_") and name not in ("race_merfolk", "race_slime", "race_dwarf", "race_beastkin"))
-        draw_layer_sheet(parts_by_group, outline=not flat).save(os.path.join(ROOT, "sprites", "looks", name + ".png"))
+    # People (the player's body, looks, armour, held weapons and villagers)
+    # are hand-placed pixel maps now: see tools/generate_people.py.
     draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS, rich=True).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
-    for name, (changes, extras) in NPCS.items():
-        draw_npc(changes, extras).save(os.path.join(ROOT, "sprites", "npc_%s.png" % name))
     os.makedirs(os.path.join(ROOT, "sprites", "enemies"), exist_ok=True)
     for name, (rig, order, animations) in MONSTERS.items():
         draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
@@ -3140,12 +3132,8 @@ def main():
     os.makedirs(os.path.join(ROOT, "sprites", "mounts"), exist_ok=True)
     for name, (rig, order, animations) in MOUNTS.items():
         draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "mounts", name + ".png"))
-    os.makedirs(os.path.join(ROOT, "sprites", "weapons"), exist_ok=True)
-    for name, parts in WEAPONS.items():
-        draw_layer_sheet({"sword": parts}).save(os.path.join(ROOT, "sprites", "weapons", name + ".png"))
-    os.makedirs(os.path.join(ROOT, "sprites", "layers"), exist_ok=True)
-    for name, parts_by_group in LAYERS.items():
-        draw_layer_sheet(parts_by_group).save(os.path.join(ROOT, "sprites", "layers", name + ".png"))
+    import generate_people
+    generate_people.main()
     draw_terrain()
 
     os.makedirs(os.path.join(ROOT, "icons"), exist_ok=True)

@@ -36,7 +36,7 @@ func _init() -> void:
 		_body.add_child(sprite)
 		_layers[entry[0]] = sprite
 	_held = Sprite2D.new()
-	_held.scale = Vector2(0.55, 0.55)
+	_held.scale = Vector2(0.5, 0.5)
 	_held.visible = false
 	add_child(_held)
 	_body.animation_changed.connect(_sync)
@@ -46,15 +46,21 @@ func _init() -> void:
 ## Dresses the figure from an appearance (see Appearance).
 func dress(appearance: Dictionary, size: float = 1.0) -> void:
 	_body.material = Appearance.make_material(appearance)
-	_body.scale = Appearance.body_scale(appearance) * size
+	# Children and grown-ups differ by drawn height, not by stretching: a
+	# smaller `size` picks a shorter body.
+	var fitted := appearance.duplicate()
+	if size < 0.95:
+		fitted["height"] = 0
+	_body.sprite_frames = BodyFit.body(fitted)
+	_body.scale = Vector2.ONE
 	_body.self_modulate.a = Appearance.alpha(appearance)
-	_body.position = Vector2(0, -23.0 * _body.scale.y)
-	var features := Appearance.layers(appearance)
+	_body.position = Vector2(0, -23.0)
+	var features := Appearance.layers(fitted)
 	for slot: String in _layers:
 		var sprite: AnimatedSprite2D = _layers[slot]
 		sprite.visible = features.has(slot)
 		if sprite.visible:
-			sprite.sprite_frames = _sheet("looks/" + features[slot]["sheet"])
+			BodyFit.wear(sprite, "looks/" + features[slot]["sheet"], "look_" + slot, fitted)
 			(sprite.material as ShaderMaterial).set_shader_parameter("tint", features[slot]["tint"])
 	_body.play("idle")
 	_sync()
@@ -91,12 +97,11 @@ func head_height() -> float:
 
 
 func _place_held() -> void:
-	_held.position = Vector2(7.0 * _facing * _body.scale.x, -14.0 * _body.scale.y)
+	_held.position = Vector2(roundf(7.0 * _facing), -14.0)
 	_held.flip_h = _facing < 0.0
 
 
 func _sync() -> void:
 	for sprite: AnimatedSprite2D in _layers.values():
 		if sprite.visible:
-			sprite.animation = _body.animation
-			sprite.frame = _body.frame
+			BodyFit.follow(sprite, _body)

@@ -335,11 +335,10 @@ static func hair_styles_with_hair() -> Array[int]:
 	return result
 
 
-## How the body is stretched: x for build, y for height.
-static func body_scale(appearance: Dictionary) -> Vector2:
-	var worn := resolved(appearance)
-	var height: float = HEIGHTS[worn["height"]]["scale"]
-	return Vector2(height * float(BUILDS[worn["build"]]["scale"]), height)
+## Kept for old callers: height and build are drawn into the body's own
+## sheets now (see BodyFit), so nothing is stretched.
+static func body_scale(_appearance: Dictionary) -> Vector2:
+	return Vector2.ONE
 
 
 ## How solid the body is drawn (slimes are see-through).

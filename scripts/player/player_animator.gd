@@ -187,8 +187,7 @@ func _process(delta: float) -> void:
 	_choose_animation(delta)
 	for sprite: AnimatedSprite2D in _layers.values():
 		if sprite.visible:
-			sprite.animation = animation
-			sprite.frame = frame
+			BodyFit.follow(sprite, self)
 	if _aura_color.a > 0.0:
 		queue_redraw()
 	# Sink while swimming (deeper in deep water) and bob with each stroke;
@@ -356,6 +355,8 @@ var _rest_y := -23.0
 ## Features a helmet covers.
 const UNDER_HELMET: Array[String] = ["hair", "horns", "hat"]
 var _features: Dictionary = {}
+## The appearance the body and its layers are fitted to.
+var _appearance: Dictionary = Appearance.DEFAULT.duplicate()
 
 
 ## Dresses the body for the player's appearance: colours, size, and the
@@ -368,11 +369,24 @@ func apply_appearance(appearance: Dictionary) -> void:
 	else:
 		material = Appearance.make_material(appearance)
 		_water_line = 9999.0
-	scale = Appearance.body_scale(appearance)
-	_rest_y = -23.0 * scale.y
+	# Height and build are drawn into the body's own sheet, pixel for pixel:
+	# nothing is stretched.
+	_appearance = appearance.duplicate()
+	var keep := animation
+	var at := frame
+	sprite_frames = BodyFit.body(appearance)
+	animation = keep
+	frame = at
+	scale = Vector2.ONE
+	_rest_y = -23.0
 	position.y = _rest_y
 	self_modulate.a = Appearance.alpha(appearance)
 	_features = Appearance.layers(appearance)
+	# Worn armour and the weapon move to fit the new height and build.
+	for layer: String in _layers:
+		var sprite: AnimatedSprite2D = _layers[layer]
+		if sprite.visible and sprite.has_meta("fit_path") and not layer.begins_with("look_"):
+			BodyFit.wear(sprite, sprite.get_meta("fit_path"), layer, _appearance)
 	_show_features()
 	_hood_color = Appearance.hood(appearance)
 	_update_hood()
@@ -390,12 +404,8 @@ func _show_features() -> void:
 		if not _features.has(slot) or (helmeted and slot in UNDER_HELMET):
 			sprite.visible = false
 			continue
-		var path: String = "looks/" + _features[slot]["sheet"]
-		if not _frames_cache.has(path):
-			_frames_cache[path] = SheetAnimations.build(load("res://assets/sprites/%s.png" % path), FRAME_SIZE, ROWS)
-		sprite.sprite_frames = _frames_cache[path]
-		sprite.animation = animation
-		sprite.frame = frame
+		BodyFit.wear(sprite, "looks/" + _features[slot]["sheet"], "look_" + slot, _appearance)
+		BodyFit.follow(sprite, self)
 		sprite.visible = true
 		var look_material := sprite.material as ShaderMaterial
 		look_material.set_shader_parameter("tint", _features[slot]["tint"])
@@ -413,12 +423,8 @@ func _update_hood() -> void:
 	if _hood_color.a == 0.0 or _layers["helmet"].visible:
 		sprite.visible = false
 		return
-	var path := "layers/hood"
-	if not _frames_cache.has(path):
-		_frames_cache[path] = SheetAnimations.build(load("res://assets/sprites/layers/hood.png"), FRAME_SIZE, ROWS)
-	sprite.sprite_frames = _frames_cache[path]
-	sprite.animation = animation
-	sprite.frame = frame
+	BodyFit.wear(sprite, "layers/hood", "hood", _appearance)
+	BodyFit.follow(sprite, self)
 	sprite.visible = true
 	var hood_material := sprite.material as ShaderMaterial
 	hood_material.set_shader_parameter("tint", _hood_color)
@@ -520,12 +526,8 @@ func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true,
 	if item == null or path == "" or path.ends_with("/"):
 		sprite.visible = false
 		return
-	if not _frames_cache.has(path):
-		var sheet: Texture2D = load("res://assets/sprites/%s.png" % path)
-		_frames_cache[path] = SheetAnimations.build(sheet, FRAME_SIZE, ROWS)
-	sprite.sprite_frames = _frames_cache[path]
-	sprite.animation = animation
-	sprite.frame = frame
+	BodyFit.wear(sprite, path, layer, _appearance)
+	BodyFit.follow(sprite, self)
 	sprite.visible = true
 	var material := sprite.material as ShaderMaterial
 	# Worn gear is drawn as part of the body: its own metal, a plain dark

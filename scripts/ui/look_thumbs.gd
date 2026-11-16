@@ -37,15 +37,29 @@ static func texture(appearance: Dictionary, whole: bool = false) -> Texture2D:
 	var front: Array = []
 	for entry: Array in Appearance.LAYER_ORDER:
 		if layers.has(entry[0]):
-			(behind if entry[1] else front).append(layers[entry[0]])
+			var layer: Dictionary = layers[entry[0]].duplicate()
+			layer["slot"] = "look_" + entry[0]
+			(behind if entry[1] else front).append(layer)
 	for layer: Dictionary in behind:
-		_lay(canvas, _frame("looks/" + layer["sheet"]).get_region(cut), layer["tint"])
-	_lay(canvas, _recolour(_frame("player_sheet").get_region(cut), worn), Color.WHITE)
+		_lay(canvas, _layer_region(layer, worn, cut), layer["tint"])
+	var body_sheet := "people/body_h%d_b%d" % [BodyFit.height_of(worn), BodyFit.build_of(worn)]
+	_lay(canvas, _recolour(_frame(body_sheet).get_region(cut), worn), Color.WHITE)
 	for layer: Dictionary in front:
-		_lay(canvas, _frame("looks/" + layer["sheet"]).get_region(cut), layer["tint"])
+		_lay(canvas, _layer_region(layer, worn, cut), layer["tint"])
 	var result := ImageTexture.create_from_image(canvas)
 	_cache[key] = result
 	return result
+
+
+## A look layer cut to match the body: its sheet for this figure, read from
+## where its whole-pixel shift puts it.
+static func _layer_region(layer: Dictionary, worn: Dictionary, cut: Rect2i) -> Image:
+	var path := BodyFit.sheet_for("looks/" + layer["sheet"], layer["slot"], worn)
+	var shift := BodyFit.shift_for(layer["slot"], worn)
+	var image := _frame(path)
+	var out := Image.create(cut.size.x, cut.size.y, false, Image.FORMAT_RGBA8)
+	out.blit_rect(image, Rect2i(cut.position - shift, cut.size), Vector2i.ZERO)
+	return out
 
 
 ## The body's own colours swapped for the look's (as the body shader does).

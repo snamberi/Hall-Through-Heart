@@ -3,7 +3,8 @@ extends Control
 ## A large, breathing copy of the player with their visible equipment, for
 ## the inventory screen. It mirrors the player's own sprite layers.
 
-const SCALE := 3.6
+## Whole-number zoom, so the art keeps square pixels.
+const SCALE := 4.0
 const IDLE_FPS := 6.0
 
 var _player: Player
@@ -69,8 +70,9 @@ func _process(_delta: float) -> void:
 		if sprite.visible:
 			sprite.texture = sources[index].sprite_frames.get_frame_texture("idle", frame)
 			sprite.material = sources[index].material
-			# The figure keeps its own height and build.
-			sprite.scale = body.scale * SCALE * Vector2(facing, 1.0)
+			sprite.scale = Vector2(SCALE * facing, SCALE)
 			sprite.self_modulate.a = body.self_modulate.a if sources[index] == body else 1.0
-			# Frames are 96px with the feet 23px below the middle.
-			sprite.position = feet - Vector2(0, 23.0 * SCALE * body.scale.y)
+			# Frames are 96px with the feet 23px below the middle; a layer
+			# keeps its own whole-pixel fit to the body (see BodyFit).
+			var fit: Vector2 = Vector2.ZERO if sources[index] == body else BodyFit.offset(sources[index].get_meta("fit_shift", Vector2i.ZERO), &"idle", frame)
+			sprite.position = feet - Vector2(0, 23.0 * SCALE) + Vector2(fit.x * facing, fit.y) * SCALE

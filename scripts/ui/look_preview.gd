@@ -60,14 +60,18 @@ func show_look(appearance: Dictionary) -> void:
 	if _body == null:
 		return
 	_body.material = Appearance.make_material(_appearance)
-	_body.scale = Appearance.body_scale(_appearance)
+	# Height and build are the body's own sheet: nothing is stretched.
+	var keep := _body.animation
+	_body.sprite_frames = BodyFit.body(_appearance)
+	if _body.sprite_frames.has_animation(keep):
+		_body.play(keep)
 	_body.self_modulate.a = Appearance.alpha(_appearance)
 	var features := Appearance.layers(_appearance)
 	for slot: String in _layers:
 		var sprite: AnimatedSprite2D = _layers[slot]
 		sprite.visible = features.has(slot)
 		if sprite.visible:
-			sprite.sprite_frames = _sheet("looks/" + features[slot]["sheet"])
+			BodyFit.wear(sprite, "looks/" + features[slot]["sheet"], "look_" + slot, _appearance)
 			(sprite.material as ShaderMaterial).set_shader_parameter("tint", features[slot]["tint"])
 	_place()
 
@@ -95,10 +99,12 @@ func turn() -> void:
 func _place() -> void:
 	if _holder == null:
 		return
-	_holder.scale = Vector2(zoom * _facing, zoom)
+	# Whole-number zoom only, so every pixel of the art is the same size.
+	var whole := maxf(roundf(zoom), 1.0)
+	_holder.scale = Vector2(whole * _facing, whole)
 	# Feet on the plinth: frames are 96px with the feet 23px below the middle.
-	_holder.position = Vector2(size.x / 2.0, size.y - (64.0 if framed else 14.0))
-	_body.position = Vector2(0, -23.0 * _body.scale.y)
+	_holder.position = Vector2(roundf(size.x / 2.0), roundf(size.y - (64.0 if framed else 14.0)))
+	_body.position = Vector2(0, -23.0)
 
 
 func _process(_delta: float) -> void:
@@ -106,8 +112,7 @@ func _process(_delta: float) -> void:
 		return
 	for sprite: AnimatedSprite2D in _layers.values():
 		if sprite.visible:
-			sprite.animation = _body.animation
-			sprite.frame = _body.frame
+			BodyFit.follow(sprite, _body)
 	queue_redraw()
 
 
