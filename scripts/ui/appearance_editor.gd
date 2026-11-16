@@ -233,7 +233,11 @@ func _build_row(page: VBoxContainer, key: String) -> void:
 			button = Button.new()
 			button.toggle_mode = true
 			button.text = title
-			button.custom_minimum_size = Vector2(88.0, 32.0)
+			# A short list (heights, builds) sits on one deliberate row.
+			var across := 88.0
+			if entries.size() <= 6:
+				across = floorf((width - 16.0 - 4.0 * (entries.size() - 1)) / entries.size())
+			button.custom_minimum_size = Vector2(maxf(across, 64.0), 32.0)
 			UITheme.font_size(button, 14)
 			UITheme.sounds(button)
 		button.pressed.connect(func() -> void:

@@ -83,7 +83,7 @@ func play_rebirth(player: Player) -> void:
 	await player.rebirth_finished
 	RingBurst.spawn(player.get_parent(), player.global_position + Vector2(0, -16), Color(1.0, 0.92, 0.65), 130.0)
 	var flash := _tween()
-	flash.tween_method(_set_effect.bind("flash"), 0.25, 0.0, 0.4)
+	flash.tween_method(_set_effect.bind("flash"), 0.08 if GameSettings.reduce_flashes else 0.25, 0.0, 0.4)
 	await tween.finished
 	_rect.visible = false
 

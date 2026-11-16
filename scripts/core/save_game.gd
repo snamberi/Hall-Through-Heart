@@ -19,6 +19,10 @@ var enabled := true
 var path := ""
 var slot_id := ""
 
+## When the game last reached the disk (Unix seconds; 0 = not this session),
+## and why the last try failed ("" when it worked).
+var last_saved_at := 0.0
+var last_error := ""
 var _data: Dictionary = {}
 var _targets: Dictionary[String, Node] = {}
 var _autosave_left := AUTOSAVE_SECONDS
@@ -158,9 +162,12 @@ func _notification(what: int) -> void:
 func _write() -> void:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
-		push_warning("Could not write the save file.")
+		last_error = "Could not write the save file (%s)." % error_string(FileAccess.get_open_error())
+		push_warning(last_error)
 		return
 	file.store_string(JSON.stringify(_data, "\t"))
+	last_error = ""
+	last_saved_at = Time.get_unix_time_from_system()
 
 
 func _slot_path(id: String) -> String:

@@ -112,8 +112,21 @@ static func label(text: String, size: int = BODY, color: Color = TEXT) -> Label:
 	var result := Label.new()
 	result.text = text
 	font_size(result, size)
-	result.add_theme_color_override("font_color", color)
+	result.add_theme_color_override("font_color", ink(color))
+	if GameSettings.high_contrast:
+		result.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.9))
+		result.add_theme_constant_override("outline_size", 3)
 	return result
+
+
+## A text colour as shown: with High contrast on, quiet text is lifted to
+## near the body colour and every other colour is brightened.
+static func ink(color: Color) -> Color:
+	if not GameSettings.high_contrast:
+		return color
+	if color == DIM:
+		return Color("cfc8ba")
+	return color.lightened(0.18)
 
 
 ## Body text that wraps within a width.

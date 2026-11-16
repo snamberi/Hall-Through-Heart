@@ -144,6 +144,45 @@ func rebind(action: String, event: InputEvent) -> void:
 	changed.emit()
 
 
+## Puts one action back to its default keys.
+func reset_action(action: String) -> void:
+	bindings.erase(action)
+	_apply_binding(action)
+	_save()
+	changed.emit()
+
+
+## Other rebindable actions that share a key or button with this one.
+static func conflicts(action: String) -> Array[String]:
+	var result: Array[String] = []
+	if not InputMap.has_action(action):
+		return result
+	for entry in REBINDABLE:
+		var other: String = entry[0]
+		if other == action or not InputMap.has_action(other):
+			continue
+		for mine in InputMap.action_get_events(action):
+			for theirs in InputMap.action_get_events(other):
+				if _same(mine, theirs) and not result.has(other):
+					result.append(other)
+	return result
+
+
+static func _same(a: InputEvent, b: InputEvent) -> bool:
+	if a is InputEventKey and b is InputEventKey:
+		return (a as InputEventKey).physical_keycode == (b as InputEventKey).physical_keycode
+	if a is InputEventMouseButton and b is InputEventMouseButton:
+		return (a as InputEventMouseButton).button_index == (b as InputEventMouseButton).button_index
+	return false
+
+
+static func action_name(action: String) -> String:
+	for entry in REBINDABLE:
+		if entry[0] == action:
+			return entry[1]
+	return action.capitalize()
+
+
 func reset_bindings() -> void:
 	bindings.clear()
 	for action: String in _defaults:

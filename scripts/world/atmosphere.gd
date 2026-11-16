@@ -326,6 +326,8 @@ func _weather_effects(delta: float) -> void:
 
 
 func flash(strength: float = 0.6) -> void:
+	if GameSettings.reduce_flashes:
+		strength *= 0.3
 	_flash.color.a = strength * 0.6
 	_day_night.lightning(minf(strength * 1.5, 1.0))
 

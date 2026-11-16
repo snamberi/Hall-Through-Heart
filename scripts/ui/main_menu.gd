@@ -52,12 +52,63 @@ func show_page(page: String) -> void:
 
 
 func _draw() -> void:
-	# A dark field with a faint glow where the heart would be.
+	# A dark field with a faint glow where the heart would be, beating.
 	draw_rect(Rect2(Vector2.ZERO, size), Color("0a0c14"))
+	var now := Time.get_ticks_msec() / 1000.0
 	var middle := Vector2(size.x / 2.0, size.y * 0.3)
-	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 900.0)
+	var beat := _beat(now)
 	for ring in 9:
-		draw_circle(middle, 420.0 - ring * 44.0, Color(0.45, 0.08, 0.12, 0.03 + 0.01 * pulse))
+		draw_circle(middle, 420.0 - ring * 44.0 + beat * 10.0, Color(0.45, 0.08, 0.12, 0.03 + 0.012 * beat))
+	if not _pages.has("home") or not _pages["home"].visible:
+		return
+	# The Sanctuary far off: a pixel silhouette on the horizon, its windows
+	# lit in time with the heart.
+	var ground := roundf(size.y * 0.9)
+	var dark := Color("0f111a")
+	draw_rect(Rect2(0, ground, size.x, size.y - ground), Color("07080d"))
+	var mid := roundf(size.x / 2.0)
+	var block := 4.0
+	# The hall, then towers by height: [offset from the middle, width, height].
+	draw_rect(Rect2(mid - 210.0, ground - 36.0, 420.0, 36.0), dark)
+	for tower: Array in [[0.0, 40.0, 132.0], [-92.0, 28.0, 92.0], [92.0, 28.0, 92.0], [-172.0, 22.0, 60.0], [172.0, 22.0, 60.0]]:
+		var x: float = mid + float(tower[0])
+		var width: float = tower[1]
+		var high: float = tower[2]
+		draw_rect(Rect2(x - width / 2.0, ground - high, width, high), dark)
+		# A stepped spire on top.
+		var step_width := width
+		var top := ground - high
+		while step_width > block:
+			step_width -= block * 2.0
+			top -= block * 2.0
+			draw_rect(Rect2(x - step_width / 2.0, top, step_width, block * 2.0), dark)
+		var glow := Color(0.95, 0.55, 0.3, 0.25 + 0.45 * beat)
+		draw_rect(Rect2(x - 3.0, ground - high * 0.62, 6.0, 9.0), glow)
+	for window in 7:
+		draw_rect(Rect2(mid - 150.0 + window * 50.0, ground - 22.0, 5.0, 8.0), Color(0.95, 0.55, 0.3, 0.15 + 0.3 * beat))
+	# The heartbeat line along the ground.
+	var points := PackedVector2Array()
+	var phase := fmod(now * 0.25, 1.0)
+	for index in 241:
+		var t := float(index) / 240.0
+		var d := fmod(t - phase + 1.0, 1.0) - 0.5
+		var y := ground + 26.0
+		if absf(d) < 0.03:
+			y -= sin((d + 0.03) / 0.06 * TAU) * 16.0
+		points.append(Vector2(t * size.x, y))
+	draw_polyline(points, Color(0.75, 0.2, 0.25, 0.4), 2.0)
+	# Embers rising.
+	for index in 24:
+		var seed := float(index) * 37.13
+		var drift := fmod(now * (0.02 + fmod(seed, 0.03)) + fmod(seed, 1.0), 1.0)
+		var at := Vector2(fmod(seed * 91.7, size.x), ground - drift * size.y * 0.7)
+		draw_rect(Rect2(at.floor(), Vector2(2, 2)), Color(1.0, 0.55, 0.3, 0.5 * (1.0 - drift)))
+
+
+## The heartbeat: two quick thumps, then a rest (0 to 1).
+static func _beat(now: float) -> float:
+	var t := fmod(now, 1.4)
+	return maxf(exp(-pow((t - 0.1) / 0.06, 2.0)), 0.7 * exp(-pow((t - 0.32) / 0.06, 2.0)))
 
 
 func _process(_delta: float) -> void:
@@ -100,11 +151,14 @@ func _home_page() -> Control:
 	if SaveGame.has_slot(last):
 		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(SaveGame.DIRECTORY.path_join(last + ".json")))
 		var meta: Dictionary = parsed.get("meta", {}) if parsed is Dictionary else {}
-		var resume := UITheme.button("Continue  -  %s" % meta.get("name", "your world"), _play.bind(last), 320.0)
+		var resume := UITheme.primary_button("Continue  ·  %s" % meta.get("name", "your world"), _play.bind(last), 320.0)
 		buttons.add_child(resume)
 	if not SaveGame.list_slots().is_empty():
 		buttons.add_child(UITheme.button("Load a World", show_page.bind("load"), 320.0))
-	buttons.add_child(UITheme.button("New World", show_page.bind("new"), 320.0))
+	if SaveGame.has_slot(last):
+		buttons.add_child(UITheme.button("New World", show_page.bind("new"), 320.0))
+	else:
+		buttons.add_child(UITheme.primary_button("New World", show_page.bind("new"), 320.0))
 	buttons.add_child(UITheme.button("Settings", show_page.bind("settings"), 320.0))
 	buttons.add_child(UITheme.button("Quit", get_tree().quit, 320.0))
 	return box
@@ -187,26 +241,25 @@ func _new_page() -> Control:
 	var subtitle := UITheme.label("CHARACTER CREATION", 14, UITheme.DIM)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(subtitle)
+	# --- the steps, as one line: 1 Look > 2 Class > 3 World
+	var steps := HBoxContainer.new()
+	steps.alignment = BoxContainer.ALIGNMENT_CENTER
+	steps.add_theme_constant_override("separation", 8)
+	box.add_child(steps)
+	for index in STEPS.size():
+		var step: Array = STEPS[index]
+		if index > 0:
+			var arrow := UITheme.strong(">", 18, UITheme.DIM)
+			arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			steps.add_child(arrow)
+		var button := UITheme.button("%d  %s" % [index + 1, step[1]], _show_step.bind(step[0]), 170.0)
+		button.toggle_mode = true
+		button.tooltip_text = step[2]
+		steps.add_child(button)
+		_step_buttons[step[0]] = button
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 10)
 	box.add_child(body)
-
-	# --- the steps, down the left side
-	var steps := VBoxContainer.new()
-	steps.add_theme_constant_override("separation", 6)
-	body.add_child(steps)
-	for index in STEPS.size():
-		var step: Array = STEPS[index]
-		var button := Button.new()
-		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(108.0, 70.0)
-		button.text = "%d\n%s" % [index + 1, step[1]]
-		UITheme.font_size(button, 15)
-		button.tooltip_text = step[2]
-		button.pressed.connect(_show_step.bind(step[0]))
-		UITheme.sounds(button)
-		steps.add_child(button)
-		_step_buttons[step[0]] = button
 	var pages := HBoxContainer.new()
 	body.add_child(pages)
 
@@ -277,7 +330,9 @@ func _new_page() -> Control:
 	turn_row.add_theme_constant_override("separation", 6)
 	middle.add_child(turn_row)
 	turn_row.add_child(UITheme.button("<", func() -> void: _figure.turn(), 40.0))
-	turn_row.add_child(UITheme.button("Randomise", _randomise, 130.0))
+	var roll := UITheme.button("Randomise look", _randomise_look, 150.0)
+	roll.tooltip_text = "New colours, hair and clothes. Keeps your race."
+	turn_row.add_child(roll)
 	turn_row.add_child(UITheme.button(">", func() -> void: _figure.turn(), 40.0))
 	middle.add_child(UITheme.label("Preview", 14, UITheme.DIM))
 	var poses := HBoxContainer.new()
@@ -345,10 +400,13 @@ func _new_page() -> Control:
 	_class_text.bbcode_enabled = true
 	_class_text.fit_content = true
 	_class_text.scroll_active = false
-	_class_text.custom_minimum_size = Vector2(300.0, 180.0)
-	UITheme.font_size(_class_text, 14, "normal_font_size")
+	_class_text.custom_minimum_size = Vector2(320.0, 150.0)
+	UITheme.font_size(_class_text, 15, "normal_font_size")
 	_class_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	detail_box.add_child(_class_text)
+	_class_skills = HBoxContainer.new()
+	_class_skills.add_theme_constant_override("separation", 8)
+	detail_box.add_child(_class_skills)
 
 	# --- step 3: the world
 	var world_panel := UITheme.inset_panel()
@@ -363,11 +421,13 @@ func _new_page() -> Control:
 	_name_field = LineEdit.new()
 	_name_field.placeholder_text = "World %d" % (SaveGame.list_slots().size() + 1)
 	_name_field.custom_minimum_size = Vector2(560.0, 34.0)
+	_name_field.text_changed.connect(func(_text: String) -> void: _update_summary())
 	left.add_child(_name_field)
 	left.add_child(UITheme.label("Seed", 14, UITheme.DIM))
 	_seed_field = LineEdit.new()
 	_seed_field.placeholder_text = "Empty for a random world"
 	_seed_field.custom_minimum_size = Vector2(560.0, 34.0)
+	_seed_field.text_changed.connect(func(_text: String) -> void: _update_summary())
 	left.add_child(_seed_field)
 	left.add_child(UITheme.label("Difficulty", 14, UITheme.DIM))
 	var row := HBoxContainer.new()
@@ -385,22 +445,29 @@ func _new_page() -> Control:
 		_difficulty_buttons[level] = button
 	_difficulty_text = UITheme.label("", 14, UITheme.DIM)
 	_difficulty_text.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_difficulty_text.custom_minimum_size = Vector2(560.0, 44.0)
+	_difficulty_text.custom_minimum_size = Vector2(560.0, 46.0)
 	left.add_child(_difficulty_text)
+	var hardcore_card := PanelContainer.new()
+	hardcore_card.add_theme_stylebox_override("panel", UITheme.card("card", 8))
+	left.add_child(hardcore_card)
+	var hardcore_box := VBoxContainer.new()
+	hardcore_box.add_theme_constant_override("separation", 2)
+	hardcore_card.add_child(hardcore_box)
 	_hardcore = CheckBox.new()
-	_hardcore.text = "Hardcore: one life, always Insane. Dying deletes the world."
-	UITheme.font_size(_hardcore, 15)
+	_hardcore.text = "Hardcore"
+	UITheme.font_size(_hardcore, 17)
+	hardcore_box.add_child(_hardcore)
+	hardcore_box.add_child(UITheme.paragraph("One life, always Insane. When you die, this world is deleted for good.", 520.0, 15, Color("e8a070")))
 	_hardcore.toggled.connect(func(on: bool) -> void:
 		for level in _difficulty_buttons:
 			_difficulty_buttons[level].disabled = on
 		_choose_difficulty("insane" if on else "normal")
 	)
-	left.add_child(_hardcore)
 	_summary = RichTextLabel.new()
 	_summary.bbcode_enabled = true
 	_summary.fit_content = true
 	_summary.scroll_active = false
-	_summary.custom_minimum_size = Vector2(560.0, 80.0)
+	_summary.custom_minimum_size = Vector2(560.0, 96.0)
 	UITheme.font_size(_summary, 15, "normal_font_size")
 	_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.add_child(_summary)
@@ -410,10 +477,17 @@ func _new_page() -> Control:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 12)
 	box.add_child(buttons)
-	_back_button = UITheme.button("<  Back", _step_back, 180.0)
+	_back_button = UITheme.button("<  Back", _step_back, 140.0)
+	_back_button.flat = true
 	buttons.add_child(_back_button)
-	buttons.add_child(UITheme.button("Randomise", _randomise, 160.0))
-	_next_button = UITheme.button("Next  >", _step_next, 220.0)
+	var roll_all := UITheme.button("Randomise all", _randomise_all, 170.0)
+	roll_all.tooltip_text = "A new race, look and class at once."
+	buttons.add_child(roll_all)
+	_undo_button = UITheme.button("Undo", _undo, 100.0)
+	_undo_button.tooltip_text = "Back to how it was before the last Randomise."
+	_undo_button.disabled = true
+	buttons.add_child(_undo_button)
+	_next_button = UITheme.primary_button("Next  >", _step_next, 240.0)
 	buttons.add_child(_next_button)
 	_choose_difficulty("normal")
 	_choose_class("adventurer")
@@ -433,6 +507,10 @@ var _class_figure: LookPreview
 var _summary: RichTextLabel
 var _back_button: Button
 var _next_button: Button
+var _undo_button: Button
+var _class_skills: HBoxContainer
+## What Undo puts back: [appearance, class] before each Randomise.
+var _history: Array = []
 
 
 func _show_step(step: String) -> void:
@@ -462,8 +540,45 @@ func _step_back() -> void:
 		_show_step(STEPS[index - 1][0])
 
 
-func _randomise() -> void:
-	_appearance = Appearance.random()
+## New colours, hair and clothes; the race stays.
+func _randomise_look() -> void:
+	_remember()
+	var race: String = Appearance.resolved(_appearance)["race"]
+	var look := Appearance.random()
+	for attempt in 40:
+		if Appearance.resolved(look)["race"] == race:
+			break
+		look = Appearance.random()
+	if Appearance.resolved(look)["race"] != race:
+		look["race"] = race
+	_set_look(look)
+
+
+## A new race, look and class.
+func _randomise_all() -> void:
+	_remember()
+	_set_look(Appearance.random())
+	_choose_class(HeroClasses.CLASSES.keys().pick_random())
+
+
+func _remember() -> void:
+	_history.append([_appearance.duplicate(), _class])
+	if _history.size() > 20:
+		_history.pop_front()
+	_undo_button.disabled = false
+
+
+func _undo() -> void:
+	if _history.is_empty():
+		return
+	var last: Array = _history.pop_back()
+	_set_look(last[0])
+	_choose_class(last[1])
+	_undo_button.disabled = _history.is_empty()
+
+
+func _set_look(look: Dictionary) -> void:
+	_appearance = look
 	_editor.set_appearance(_appearance)
 	_on_look_changed(_appearance)
 
@@ -483,20 +598,33 @@ func _on_look_changed(look: Dictionary) -> void:
 
 
 func _update_summary() -> void:
+	if _summary == null or _hardcore == null:
+		return
 	var worn := Appearance.resolved(_appearance)
-	_summary.text = "[color=#%s]You will begin as a[/color] [color=#%s]%s %s[/color][color=#%s], on %s.[/color]" % [
-		UITheme.DIM.to_html(false), UITheme.GOLD.to_html(false), Appearance.RACES[worn["race"]]["name"],
-		HeroClasses.CLASSES[_class]["name"] if _class != "adventurer" else "Adventurer", UITheme.DIM.to_html(false),
-		"Hardcore" if _hardcore.button_pressed else Difficulty.display_name(_difficulty)]
+	var dim := UITheme.DIM.to_html(false)
+	var gold := UITheme.GOLD.to_html(false)
+	var world_name := _name_field.text.strip_edges() if _name_field.text.strip_edges() != "" else _name_field.placeholder_text
+	var seed_words := _seed_field.text.strip_edges() if _seed_field.text.strip_edges() != "" else "random"
+	var lines: PackedStringArray = []
+	lines.append("[color=#%s]Race[/color]  [color=#%s]%s[/color]  [color=#%s](for life)[/color]" % [dim, gold, Appearance.RACES[worn["race"]]["name"], dim])
+	if _class == "adventurer":
+		lines.append("[color=#%s]Class[/color]  [color=#%s]Adventurer[/color]  [color=#%s](choose for good at level %d)[/color]" % [dim, gold, dim, HeroClasses.CHOICE_LEVEL])
+	else:
+		lines.append("[color=#%s]Class[/color]  [color=#%s]%s[/color]  [color=#%s](for life; its abilities open at level %d)[/color]" % [dim, gold, HeroClasses.CLASSES[_class]["name"], dim, HeroClasses.CHOICE_LEVEL])
+	lines.append("[color=#%s]World[/color]  [color=#%s]%s[/color]  [color=#%s]·  seed %s  ·[/color]  [color=#%s]%s[/color]" % [dim, gold, world_name, dim, seed_words,
+		UITheme.BAD.to_html(false) if _hardcore.button_pressed else gold, "Hardcore (Insane)" if _hardcore.button_pressed else Difficulty.display_name(_difficulty)])
+	_summary.text = "\n".join(lines)
 
 
 func _choose_difficulty(level: String) -> void:
 	_difficulty = level
 	for other in _difficulty_buttons:
 		_difficulty_buttons[other].set_pressed_no_signal(other == level)
-	_difficulty_text.text = Difficulty.DATA[level]["text"]
+	var data: Dictionary = Difficulty.DATA[level]
+	_difficulty_text.text = "%s\nMonster damage x%s, health x%s  ·  XP x%s, loot x%s  ·  dying costs %d%%" % [data["text"], str(data["damage"]), str(data["health"]), str(data["xp"]), str(data["loot"]), roundi(float(data["death_loss"]) * 100.0)]
 	if _hardcore and _hardcore.button_pressed:
-		_difficulty_text.text = "One life. When you die the world is deleted. " + Difficulty.DATA["insane"]["text"]
+		_difficulty_text.text = "One life: when you die the world is deleted.\n" + _difficulty_text.text
+	_update_summary()
 
 
 func _choose_class(id: String) -> void:
@@ -508,8 +636,10 @@ func _choose_class(id: String) -> void:
 	var data: Dictionary = HeroClasses.CLASSES[id]
 	var lines: PackedStringArray = []
 	if id == "adventurer":
-		lines.append("[color=#%s]Start as an Adventurer and choose a class at level %d, in the Class screen.[/color]" % [UITheme.DIM.to_html(false), HeroClasses.CHOICE_LEVEL])
+		lines.append("[color=#%s]Decide later[/color]" % UITheme.HEADING.to_html(false))
+		lines.append("[color=#%s]Start as an Adventurer with no class bonuses. At level %d the Class screen lets you choose one for good, once you know how you like to fight.[/color]" % [UITheme.TEXT.to_html(false), HeroClasses.CHOICE_LEVEL])
 	else:
+		lines.append("[color=#%s]%s[/color]  [color=#%s]·  for life[/color]" % [UITheme.HEADING.to_html(false), data["name"], UITheme.DIM.to_html(false)])
 		lines.append("[color=#%s]%s[/color]" % [UITheme.TEXT.to_html(false), data["text"]])
 		for stat: String in data["mods"]:
 			for kind: String in data["mods"][stat]:
@@ -517,8 +647,31 @@ func _choose_class(id: String) -> void:
 		var weapons: PackedStringArray = []
 		for weapon: String in data["weapons"]:
 			weapons.append(weapon.capitalize())
-		lines.append("[color=#%s]Favours %s. Its abilities open from level %d.[/color]" % [UITheme.DIM.to_html(false), ", ".join(weapons).to_lower(), HeroClasses.CHOICE_LEVEL])
+		lines.append("[color=#%s]Favours %s. Signature skills, opening from level %d:[/color]" % [UITheme.DIM.to_html(false), ", ".join(weapons).to_lower(), HeroClasses.CHOICE_LEVEL])
 	_class_text.text = "\n".join(lines)
+	if _class_skills:
+		for child in _class_skills.get_children():
+			child.queue_free()
+		if id != "adventurer" and HeroClasses.TREES.has(id):
+			for entry: Array in HeroClasses.TREES[id]["abilities"]:
+				var cell := VBoxContainer.new()
+				cell.add_theme_constant_override("separation", 0)
+				cell.custom_minimum_size.x = 74.0
+				var picture := TextureRect.new()
+				picture.texture = AbilityDB.icon(entry[0])
+				picture.custom_minimum_size = Vector2(32, 32)
+				picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+				picture.tooltip_text = AbilityDB.ABILITIES[entry[0]]["text"]
+				cell.add_child(picture)
+				var name_label := UITheme.label(AbilityDB.ABILITIES[entry[0]]["name"], 14, UITheme.INFO)
+				name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				name_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+				name_label.custom_minimum_size.x = 74.0
+				cell.add_child(name_label)
+				_class_skills.add_child(cell)
+	_update_summary()
 
 
 func _create() -> void:

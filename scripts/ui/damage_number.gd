@@ -30,7 +30,7 @@ static func spawn_text(
 	var label := DamageNumber.new()
 	label.text = text
 	label.add_theme_font_override("font", UITheme.bold())
-	label.add_theme_font_size_override("font_size", font_size + 2)
+	label.add_theme_font_size_override("font_size", roundi((font_size + 2) * GameSettings.damage_number_size))
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0.02, 0.01, 0.03))
 	label.add_theme_constant_override("outline_size", 5)
