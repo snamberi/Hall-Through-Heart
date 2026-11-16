@@ -95,6 +95,17 @@ func _draw() -> void:
 	if _player.pets and _player.pets.active >= 0:
 		_icon(inner, middle, _player.pets.global_position - origin, "pet", 9.0)
 	_icon(inner, middle, -origin, "temple", 12.0)
+	# The waypoint set on the big map: a gold diamond, kept at the edge
+	# (pointing the way) when it lies beyond the minimap.
+	if MapMenu.waypoint != null:
+		var point := middle + (MapMenu.waypoint as Vector2 - origin) / TerrainTiles.TILE_SIZE * SCALE
+		var edge := inner.grow(-6.0)
+		if not edge.has_point(point):
+			var way := (point - middle)
+			var reach := minf(absf(edge.size.x / 2.0 / way.x) if way.x != 0.0 else INF, absf(edge.size.y / 2.0 / way.y) if way.y != 0.0 else INF)
+			point = middle + way * reach
+		draw_colored_polygon(PackedVector2Array([point + Vector2(0, -6), point + Vector2(5, 0), point + Vector2(0, 6), point + Vector2(-5, 0)]), Color(0, 0, 0, 0.8))
+		draw_colored_polygon(PackedVector2Array([point + Vector2(0, -4), point + Vector2(3.5, 0), point + Vector2(0, 4), point + Vector2(-3.5, 0)]), UITheme.GOLD)
 	MapIcons.draw_player(self, middle, _player.facing, 14.0)
 	# The day count and time of day, just under the map.
 	if _day_night:

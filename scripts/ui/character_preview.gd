@@ -8,6 +8,12 @@ const IDLE_FPS := 6.0
 
 var _player: Player
 var _sprites: Array[Sprite2D] = []
+## 1 faces right, -1 left; turn() flips it.
+var facing := 1.0
+
+
+func turn() -> void:
+	facing = -facing
 
 
 func setup(player: Player) -> void:
@@ -64,7 +70,7 @@ func _process(_delta: float) -> void:
 			sprite.texture = sources[index].sprite_frames.get_frame_texture("idle", frame)
 			sprite.material = sources[index].material
 			# The figure keeps its own height and build.
-			sprite.scale = body.scale * SCALE
+			sprite.scale = body.scale * SCALE * Vector2(facing, 1.0)
 			sprite.self_modulate.a = body.self_modulate.a if sources[index] == body else 1.0
 			# Frames are 96px with the feet 23px below the middle.
 			sprite.position = feet - Vector2(0, 23.0 * SCALE * body.scale.y)

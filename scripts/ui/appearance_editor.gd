@@ -192,13 +192,39 @@ func _build_row(page: VBoxContainer, key: String) -> void:
 			style.set_corner_radius_all(3)
 			var chosen := style.duplicate() as StyleBoxFlat
 			chosen.border_color = Color.WHITE
-			chosen.set_border_width_all(3)
+			chosen.set_border_width_all(2)
 			var hover := style.duplicate() as StyleBoxFlat
 			hover.border_color = UITheme.GOLD
 			button.add_theme_stylebox_override("normal", style)
 			button.add_theme_stylebox_override("hover", hover)
 			button.add_theme_stylebox_override("pressed", chosen)
 			button.add_theme_stylebox_override("hover_pressed", chosen)
+			# The chosen colour wears a second, gold ring outside the white
+			# one and a tick, so it never rests on border contrast alone.
+			var ring := ReferenceRect.new()
+			ring.name = "Ring"
+			ring.border_color = UITheme.GOLD
+			ring.border_width = 2.0
+			ring.editor_only = false
+			ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			ring.offset_left = -3.0
+			ring.offset_top = -3.0
+			ring.offset_right = 3.0
+			ring.offset_bottom = 3.0
+			ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ring.visible = false
+			button.add_child(ring)
+			var tick := TextureRect.new()
+			tick.name = "Tick"
+			tick.texture = UITheme.tick_texture()
+			tick.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			tick.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tick.position = Vector2(9, 7)
+			tick.size = Vector2(16, 16)
+			tick.modulate = Color.WHITE if Color(entries[index][0]).get_luminance() < 0.6 else Color(0.1, 0.1, 0.12)
+			tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tick.visible = false
+			button.add_child(tick)
 			UITheme.sounds(button)
 		elif key in PICTURED:
 			button = _picture_button(null, title, false)
@@ -229,7 +255,13 @@ func _mark() -> void:
 	for key: String in _choices:
 		var buttons: Array = _choices[key]
 		for index in buttons.size():
-			(buttons[index] as Button).set_pressed_no_signal(index == int(worn[key]))
+			var button := buttons[index] as Button
+			var on := index == int(worn[key])
+			button.set_pressed_no_signal(on)
+			for part in ["Ring", "Tick"]:
+				var marker := button.get_node_or_null(part)
+				if marker:
+					marker.visible = on
 	for race in _race_buttons:
 		_race_buttons[race].set_pressed_no_signal(race == worn["race"])
 	if _race_text:

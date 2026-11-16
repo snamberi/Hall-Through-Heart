@@ -144,12 +144,19 @@ func _draw() -> void:
 	# The item held in the hand.
 	var hand := to_local(_player.global_position + Vector2(9.0 * signf(_player.aim_direction().x if _player.aim_direction().x != 0.0 else 1.0), -18.0 + 2.0 * sin(Time.get_ticks_msec() / 220.0)))
 	draw_texture_rect(_item.icon(), Rect2(hand - Vector2(9, 9), Vector2(18, 18)), false)
+	# What the mouse does here, right under the preview: first line the
+	# click (or why it cannot), second the other keys.
 	var left := _player.inventory.count_of(_item_id)
-	var how := "hold and drag to lay a run" if _kind in ["ground", "wall"] else "T to mirror"
-	var text := "Left-click to place (%d left)  -  %s  -  right-click to put away" % [left, how] if _problem == "" else _problem
-	var font := UITheme.get_theme().default_font
-	draw_string_outline(font, at + Vector2(-170, half + 22.0), text, HORIZONTAL_ALIGNMENT_CENTER, 340.0, 13, 4, Color.BLACK)
-	draw_string(font, at + Vector2(-170, half + 22.0), text, HORIZONTAL_ALIGNMENT_CENTER, 340.0, 13, color)
+	var how := "Hold and drag: lay a run" if _kind in ["ground", "wall", "floor"] else "T: mirror"
+	var first := "Click: place  ·  %d left" % left if _problem == "" else _problem
+	var second := "%s  ·  Right-click: put away  ·  Click your own builds later to take them down" % how
+	var font := UITheme.body_bold()
+	for line in 2:
+		var words: String = [first, second][line]
+		var size := 14 if line == 0 else 12
+		var spot := at + Vector2(-260, half + 22.0 + line * 17.0)
+		draw_string_outline(font, spot, words, HORIZONTAL_ALIGNMENT_CENTER, 520.0, size, 4, Color.BLACK)
+		draw_string(font, spot, words, HORIZONTAL_ALIGNMENT_CENTER, 520.0, size, color if line == 0 else Color(0.85, 0.85, 0.9))
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -1,18 +1,30 @@
 class_name CodexMenu
 extends GameMenu
 ## The Codex: a bestiary of every creature met (a wall of portraits, dark
-## until first slain), achievements and titles, and a record of what has
-## been gathered, caught and done.
+## until first slain, in plain frames; the Hunter's Mark is a badge of its
+## own), achievements and titles, and a record of what has been gathered,
+## caught and done. The bestiary and achievements can be searched and
+## filtered; the right-hand side always holds the details.
 
 const TILE := Vector2(98, 112)
 
 var _tab := "bestiary"
+## A tab another screen asked the Codex to open on (the Wardrobe's looks).
+static var requested_tab := ""
 var _tabs: Dictionary = {}
 var _left: VBoxContainer
 var _right: VBoxContainer
 var _picked := ""
 var _title_pick: OptionButton
 var _tip: ItemTooltip
+var _filter_row: HBoxContainer
+var _search: LineEdit
+var _filter := "all"
+var _filter_buttons: HBoxContainer
+const FILTERS := {
+	"bestiary": [["all", "All"], ["known", "Known"], ["unknown", "Unknown"], ["marked", "Marked"]],
+	"achievements": [["all", "All"], ["earned", "Earned"], ["progress", "In progress"]],
+}
 
 
 func _build() -> void:
@@ -29,26 +41,28 @@ func _build() -> void:
 		var button := UITheme.button(tab[1], func() -> void:
 			_tab = tab[0]
 			_picked = ""
+			_filter = "all"
+			_search.text = ""
 			refresh()
 		, 160.0)
 		button.toggle_mode = true
 		tabs.add_child(button)
 		_tabs[tab[0]] = button
-	tabs.add_child(UITheme.label("   Title:", 15, UITheme.DIM))
-	_title_pick = OptionButton.new()
-	_title_pick.custom_minimum_size = Vector2(200, 34)
-	_title_pick.item_selected.connect(func(index: int) -> void:
-		_codex().title = "" if index == 0 else _title_pick.get_item_text(index)
-		SaveGame.request_save()
-	)
-	tabs.add_child(_title_pick)
+	_filter_row = HBoxContainer.new()
+	_filter_row.add_theme_constant_override("separation", 8)
+	content.add_child(_filter_row)
+	_search = UITheme.search_box("Search", 240.0, refresh)
+	_filter_row.add_child(_search)
+	_filter_buttons = HBoxContainer.new()
+	_filter_buttons.add_theme_constant_override("separation", 6)
+	_filter_row.add_child(_filter_buttons)
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 14)
 	content.add_child(columns)
 	var left_panel := UITheme.inset_panel()
 	columns.add_child(left_panel)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(540, 440)
+	scroll.custom_minimum_size = Vector2(540, 410)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_panel.add_child(scroll)
 	_left = VBoxContainer.new()
@@ -58,7 +72,7 @@ func _build() -> void:
 	var right_panel := UITheme.inset_panel()
 	columns.add_child(right_panel)
 	var right_scroll := ScrollContainer.new()
-	right_scroll.custom_minimum_size = Vector2(400, 440)
+	right_scroll.custom_minimum_size = Vector2(400, 410)
 	right_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	right_panel.add_child(right_scroll)
 	_right = VBoxContainer.new()
@@ -77,14 +91,25 @@ func _codex() -> Codex:
 
 func refresh() -> void:
 	var codex := _codex()
+	if requested_tab != "":
+		_tab = requested_tab
+		requested_tab = ""
+		_picked = ""
+		_filter = "all"
+		_search.text = ""
 	for id: String in _tabs:
 		_tabs[id].set_pressed_no_signal(id == _tab)
-	_title_pick.clear()
-	_title_pick.add_item("(none)")
-	for title: String in codex.titles():
-		_title_pick.add_item(title)
-		if title == codex.title:
-			_title_pick.select(_title_pick.item_count - 1)
+	_filter_row.visible = FILTERS.has(_tab)
+	for child in _filter_buttons.get_children():
+		child.queue_free()
+	for entry: Array in FILTERS.get(_tab, []):
+		var button := UITheme.button(entry[1], func() -> void:
+			_filter = entry[0]
+			refresh()
+		, 96.0)
+		button.toggle_mode = true
+		button.set_pressed_no_signal(entry[0] == _filter)
+		_filter_buttons.add_child(button)
 	for child in _left.get_children() + _right.get_children():
 		child.queue_free()
 	match _tab:
@@ -114,20 +139,50 @@ func _bestiary(codex: Codex) -> void:
 	for id: String in EnemyDB.ENEMIES:
 		if codex.kills_of(id) > 0:
 			known += 1
-	_left.add_child(UITheme.label("%d of %d kinds known. Gold frames wear the Hunter's Mark." % [known, EnemyDB.ENEMIES.size()], 14, UITheme.DIM))
+	var marked := 0
+	for id: String in EnemyDB.ENEMIES:
+		if codex.kills_of(id) >= int(Codex.REVEAL["mark"]):
+			marked += 1
+	_left.add_child(UITheme.label("%d of %d kinds known  ·  %d with the Hunter's Mark" % [known, EnemyDB.ENEMIES.size(), marked], 15, UITheme.TEXT))
+	var words := _search.text.strip_edges().to_lower()
+	var shown := 0
 	for group: Array in [["Monsters", false], ["Beasts of the wild", true]]:
-		_left.add_child(UITheme.heading(group[0], 16))
 		var grid := HFlowContainer.new()
 		grid.add_theme_constant_override("h_separation", 5)
 		grid.add_theme_constant_override("v_separation", 5)
 		grid.custom_minimum_size.x = 520.0
-		_left.add_child(grid)
 		for id: String in EnemyDB.ENEMIES:
-			if EnemyDB.ENEMIES[id].has("wild") == group[1]:
-				grid.add_child(_creature_tile(codex, id))
+			if EnemyDB.ENEMIES[id].has("wild") != group[1]:
+				continue
+			var kills := codex.kills_of(id)
+			match _filter:
+				"known":
+					if kills == 0:
+						continue
+				"unknown":
+					if kills > 0:
+						continue
+				"marked":
+					if kills < int(Codex.REVEAL["mark"]):
+						continue
+			# Only known names can be searched for: the unknown stay secret.
+			if words != "" and (kills == 0 or not str(EnemyDB.ENEMIES[id]["name"]).to_lower().contains(words)):
+				continue
+			grid.add_child(_creature_tile(codex, id))
+		if grid.get_child_count() > 0:
+			_left.add_child(UITheme.heading("%s (%d)" % [group[0], grid.get_child_count()], 16))
+			_left.add_child(grid)
+			shown += grid.get_child_count()
+		else:
+			grid.free()
+	if shown == 0:
+		_left.add_child(UITheme.label("Nothing matches.", 15, UITheme.DIM))
 	if _picked == "":
-		_say("[color=#%s]Slay a kind of creature to learn of it. More is revealed at %d, %d and %d kills; at %d you earn the Hunter's Mark, dealing 5%% more damage to that kind.[/color]" % [
-			UITheme.DIM.to_html(false), Codex.REVEAL["weakness"], Codex.REVEAL["drops"], Codex.REVEAL["mark"], Codex.REVEAL["mark"]])
+		_right.add_child(UITheme.heading("The hunt", 20))
+		_say("Slay a kind of creature to learn of it. Each kill count reveals more:")
+		for step: Array in _reveal_steps():
+			_right.add_child(_reveal_row(step[1], "%d kill%s" % [step[0], "" if step[0] == 1 else "s"], true, false))
+		_say("[color=#%s]The Hunter's Mark: you deal 5%% more damage to that kind.[/color]" % UITheme.GOLD.to_html(false))
 		return
 	_creature_page(codex, _picked)
 
@@ -138,7 +193,8 @@ func _creature_tile(codex: Codex, id: String) -> Button:
 	var marked := kills >= int(Codex.REVEAL["mark"])
 	var button := Button.new()
 	button.custom_minimum_size = TILE
-	var style := UITheme.card("card_selected" if id == _picked or marked else "card", 4)
+	# Plain frames for all; the chosen one is lit; the Mark is its own badge.
+	var style := UITheme.card("card_selected" if id == _picked else ("card" if kills > 0 else "card_dim"), 4)
 	var hover := UITheme.card("card_selected" if id == _picked else "card_hover", 4)
 	for state: String in ["normal", "pressed"]:
 		button.add_theme_stylebox_override(state, style)
@@ -165,13 +221,20 @@ func _creature_tile(codex: Codex, id: String) -> Button:
 		ask.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ask.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.add_child(ask)
-	var label := UITheme.label(("%d slain" % kills) if kills > 0 else "unknown", 13, UITheme.GOLD if marked else UITheme.TEXT if kills > 0 else UITheme.DIM)
+	if marked:
+		var mark := Control.new()
+		mark.position = Vector2(TILE.x - 26, 4)
+		mark.size = Vector2(22, 22)
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mark.draw.connect(_draw_mark.bind(mark))
+		button.add_child(mark)
+	var label := UITheme.label(("%d slain" % kills) if kills > 0 else "unknown", 14, UITheme.TEXT if kills > 0 else UITheme.DIM)
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	label.offset_top = -20.0
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(label)
-	button.tooltip_text = EnemyDB.ENEMIES[id]["name"] if kills > 0 else "Not yet slain"
+	button.tooltip_text = (EnemyDB.ENEMIES[id]["name"] + ("  (Hunter's Mark)" if marked else "")) if kills > 0 else "Not yet slain"
 	button.pressed.connect(func() -> void:
 		_picked = id
 		refresh()
@@ -185,7 +248,21 @@ func _creature_page(codex: Codex, id: String) -> void:
 	var data: Dictionary = EnemyDB.ENEMIES[id]
 	var kills := codex.kills_of(id)
 	if kills == 0:
-		_say("[font_size=22][color=#%s]???[/color][/font_size]\n\n[color=#%s]Not yet slain. Its shape is all you know.[/color]" % [UITheme.HEADING.to_html(false), UITheme.DIM.to_html(false)])
+		var shadow := TextureRect.new()
+		var atlas := AtlasTexture.new()
+		atlas.atlas = EnemyDB.sheet(id)
+		atlas.region = Rect2(16, 14, 64, 64)
+		shadow.texture = atlas
+		shadow.custom_minimum_size = Vector2(384, 140)
+		shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		shadow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		shadow.modulate = Color(0.16, 0.14, 0.3)
+		_right.add_child(shadow)
+		_right.add_child(UITheme.heading("???", 22))
+		_say("[color=#%s]Not yet slain. Its shape is all you know.[/color]" % UITheme.DIM.to_html(false))
+		for step: Array in _reveal_steps():
+			_right.add_child(_reveal_row(step[1], "slay %d" % step[0], false, true))
 		return
 	# The creature itself, walking on the spot.
 	var stage := Control.new()
@@ -230,6 +307,10 @@ func _creature_page(codex: Codex, id: String) -> void:
 		bar.draw_string(font, Vector2(4, 14), "%d slain" % kills, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color.WHITE)
 	)
 	_right.add_child(bar)
+	for step: Array in _reveal_steps():
+		if kills < int(step[0]):
+			_right.add_child(UITheme.label("Next: %s at %d kills (%d more)" % [step[1].to_lower(), step[0], int(step[0]) - kills], 15, UITheme.INFO))
+			break
 	if kills >= int(Codex.REVEAL["weakness"]):
 		_right.add_child(_element_row(id))
 	else:
@@ -247,6 +328,35 @@ func _creature_page(codex: Codex, id: String) -> void:
 		_say("[color=#%s]What it leaves behind: slay %d to learn.[/color]" % [UITheme.DIM.to_html(false), Codex.REVEAL["drops"]])
 	if kills >= goal:
 		_say("[color=#%s]Hunter's Mark: you deal 5%% more damage to this kind.[/color]" % UITheme.GOLD.to_html(false))
+
+
+## What each kill count reveals: [kills, what].
+static func _reveal_steps() -> Array:
+	return [[Codex.REVEAL["name"], "Name and lore"], [Codex.REVEAL["weakness"], "Weaknesses"], [Codex.REVEAL["drops"], "What it leaves behind"], [Codex.REVEAL["mark"], "Hunter's Mark"]]
+
+
+func _reveal_row(what: String, when: String, open: bool, locked: bool) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.add_child(StateMark.make("locked" if locked else "ready", 16))
+	var name_label := UITheme.label(what, 15, UITheme.DIM if locked else UITheme.TEXT)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(name_label)
+	var when_label := UITheme.label(when, 14, UITheme.DIM if locked else UITheme.GOLD if open else UITheme.TEXT)
+	when_label.custom_minimum_size.x = 90.0
+	when_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(when_label)
+	return row
+
+
+## The Hunter's Mark badge: a gold crosshair in a dark ring.
+func _draw_mark(mark: Control) -> void:
+	var middle := mark.size / 2.0
+	mark.draw_circle(middle, 10.5, Color(0.05, 0.04, 0.02, 0.9))
+	mark.draw_arc(middle, 9.0, 0.0, TAU, 20, UITheme.GOLD, 2.0)
+	mark.draw_arc(middle, 4.0, 0.0, TAU, 12, UITheme.GOLD, 1.5)
+	for direction: Vector2 in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+		mark.draw_line(middle + direction * 5.5, middle + direction * 11.0, UITheme.GOLD, 2.0)
 
 
 ## What the creature fights with, what hurts it and what it shrugs off,
@@ -324,10 +434,15 @@ func _achievements(codex: Codex) -> void:
 			return done_a
 		return float(codex.progress(a)) / a["goal"] > float(codex.progress(b)) / b["goal"]
 	)
+	var words := _search.text.strip_edges().to_lower()
 	for achievement: Dictionary in order:
 		var done := codex.is_done(achievement["id"])
 		var progress := codex.progress(achievement)
 		var goal: int = achievement["goal"]
+		if (_filter == "earned" and not done) or (_filter == "progress" and (done or progress <= 0)):
+			continue
+		if words != "" and not (str(achievement["name"]) + " " + str(achievement["text"])).to_lower().contains(words):
+			continue
 		var card := Control.new()
 		card.custom_minimum_size = Vector2(516, 58)
 		card.draw.connect(func() -> void:
@@ -357,11 +472,27 @@ func _achievements(codex: Codex) -> void:
 			card.draw_string(font, Vector2(card.size.x - 126.0, 52), "%d / %d" % [mini(progress, goal), goal], HORIZONTAL_ALIGNMENT_RIGHT, 116.0, 12, UITheme.GOOD if done else UITheme.TEXT)
 		)
 		_left.add_child(card)
-	_say("[font_size=20][color=#%s]Achievements[/color][/font_size]\n\nEach pays gold when earned: [color=#%s]%d gold[/color] so far.\n\nSome grant a title to wear beside your level (choose it at the top), and a few unlock a whole new look in the Wardrobe." % [
+	_say("[font_size=20][color=#%s]Achievements[/color][/font_size]\n\nEach pays gold when earned: [color=#%s]%d gold[/color] so far.\n\nSome grant a title to wear beside your level (choose it below), and a few unlock a whole new look in the Wardrobe." % [
 		UITheme.HEADING.to_html(false), UITheme.GOLD.to_html(false), gold])
+	_right.add_child(UITheme.rule())
+	_right.add_child(UITheme.heading("Title", 18))
 	var titles := codex.titles()
-	if not titles.is_empty():
-		_say("[color=#%s]Titles earned[/color]\n%s" % [UITheme.DIM.to_html(false), ", ".join(titles)])
+	if titles.is_empty():
+		_say("[color=#%s]No titles yet. Achievements marked \"title\" give one.[/color]" % UITheme.DIM.to_html(false))
+	else:
+		_say("Shown beside your level. %d earned." % titles.size())
+		_title_pick = OptionButton.new()
+		_title_pick.custom_minimum_size = Vector2(300, 34)
+		_title_pick.add_item("(none)")
+		for title: String in titles:
+			_title_pick.add_item(title)
+			if title == codex.title:
+				_title_pick.select(_title_pick.item_count - 1)
+		_title_pick.item_selected.connect(func(index: int) -> void:
+			_codex().title = "" if index == 0 else _title_pick.get_item_text(index)
+			SaveGame.request_save()
+		)
+		_right.add_child(_title_pick)
 
 
 func _collection(codex: Codex) -> void:
