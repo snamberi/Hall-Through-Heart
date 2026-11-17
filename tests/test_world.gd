@@ -436,3 +436,68 @@ func test_flight_is_won_in_the_trial_of_panic(t: TestContext) -> void:
 	t.check(not player.flying and player.collision_mask == 1, "T lands again")
 	t.check(player.save_data().get("flight_unlocked", false), "flight is kept in the save")
 	t.close_game()
+
+
+func test_the_world_remembers(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var world: World = main.get_node("World")
+	var memory: WorldMemory = main.get_node("WorldMemory")
+	var here := world.world_to_cell(player.global_position)
+	# Felling: stumps, then a clearing.
+	for i in WorldMemory.CLEARING:
+		memory.note(here, "chops")
+	t.equal(memory.count(here, "chops"), WorldMemory.CLEARING, "felled trees are counted for the area")
+	var spawner: ResourceSpawner = main.get_node("Resources")
+	var stump := spawner._stump(player.global_position)
+	t.check(stump is ResourceSpawner.Stump, "a felled tree leaves a stump")
+	stump.queue_free()
+	# Footsteps wear a trail.
+	var tile := here + Vector2i(3, 0)
+	memory.trails["%d,%d" % [tile.x, tile.y]] = WorldMemory.TRAIL
+	t.equal(memory.wear(tile), 2, "a well-walked tile is a dirt trail")
+	t.equal(memory.wear(tile + Vector2i(9, 9)), 0, "an unwalked one is not")
+	# Death three times in a place grows a Sorrow Bloom; a boss leaves a scar.
+	for i in WorldMemory.SORROW:
+		memory.note(here, "deaths")
+	memory.boss_fell("hollow_king")
+	memory._show_near(player.global_position)
+	var blooms := memory.get_children().filter(func(n: Node) -> bool: return n is WorldMemory.SorrowBloom)
+	var scars := memory.get_children().filter(func(n: Node) -> bool: return n is WorldMemory.BossScar)
+	t.equal(blooms.size(), 1, "a Sorrow Bloom grows where the player fell again and again")
+	t.equal(scars.size(), 1, "the ground stays scarred where a boss fell")
+	(blooms[0] as WorldMemory.SorrowBloom)._kneel(player)
+	t.check(player.buffs.has("sorrows_lesson"), "kneeling at the bloom teaches Sorrow's Lesson")
+	# Villagers have heard about it all.
+	var talk := memory.rumours(here)
+	t.check(talk.size() >= 2, "villagers speak of what happened nearby (%d rumours)" % talk.size())
+	# Blood draws monsters; magic sharpens their senses.
+	for i in 120:
+		memory.note(here, "kills")
+	for i in 60:
+		memory.note(here, "magic")
+	t.check(memory.violence(here) > 1.2, "more monsters stir where much blood was spilled")
+	t.check(memory.harmonics(here) > 1.4, "monsters hear further where magic was cast")
+	# Abandoned camps count their days.
+	t.equal(memory.days_abandoned("camp:test", 3), 0, "a camp's first day empty")
+	t.equal(memory.days_abandoned("camp:test", 8), 5, "and five days later")
+	var saved := memory.save_data()
+	t.check(saved["scars"].size() == 1 and saved["areas"].size() >= 1, "the memory is kept in the save")
+	# Resonance: the song from the inscription opens the hidden chamber.
+	var structures: Structures = main.get_node("Structures")
+	var placed: Array = []
+	structures._resonance(here + Vector2i(20, 0), "ruin:test", 5, placed)
+	var stones := placed.filter(func(n: Node) -> bool: return n is Prop and (n as Prop).prompt_text.begins_with("Strike the"))
+	t.equal(stones.size(), 4, "a ruin with four chime stones")
+	for node: Node in placed:
+		structures.add_child(node)
+	var song := RandomNumberGenerator.new()
+	song.seed = hash("ruin:test:song")
+	for i in 5:
+		var index := song.randi_range(0, 3)
+		(stones[index] as Prop).on_interact.call(player)
+	t.check(structures.used.has("ruin:test:resonance"), "the song struck in order wakes the ruin")
+	t.check(placed.any(func(n: Node) -> bool: return n is Prop and (n as Prop).prompt_text == "Descend into the hidden chamber"), "and a stair opens to a hidden chamber")
+	for node: Node in placed:
+		node.queue_free()
+	t.close_game()

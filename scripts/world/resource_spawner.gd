@@ -104,6 +104,7 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 	var used := {}
 	var origin := chunk * World.CHUNK_SIZE
 	var cover := GroundCover.new()
+	var memory: WorldMemory = get_parent().get_node_or_null("WorldMemory")
 
 	# Village and structure grounds stay clear of growth.
 	var villages: Villages = get_parent().get_node_or_null("Villages")
@@ -155,7 +156,16 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 			var roll := random.randf()
 			var tree_chance: float = biome["forest"] * (0.08 + 0.55 * forest_at(cell) * forest_at(cell))
 			var jitter := Vector2(random.randf_range(-14, 14), random.randf_range(-12, 12))
-			if roll < tree_chance and not biome["trees"].is_empty():
+			# Woods felled again and again: first some trees are only stumps,
+			# then the whole patch is an open clearing with a few stumps left.
+			var felled := memory.count(cell, "chops") if memory else 0
+			var cut_down := felled >= WorldMemory.STUMPS and absi(hash(Vector3i(cell.x, cell.y, 909))) % 100 \
+					< (felled - WorldMemory.STUMPS + 1) * 100 / (WorldMemory.CLEARING - WorldMemory.STUMPS + 1)
+			if roll < tree_chance and not biome["trees"].is_empty() and cut_down:
+				if felled < WorldMemory.CLEARING or absi(hash(cell)) % 4 == 0:
+					used[cell] = true
+					placed.append(_stump(_world.cell_to_world(cell) + jitter))
+			elif roll < tree_chance and not biome["trees"].is_empty():
 				used[cell] = true
 				trees_at[cell] = true
 				var look: int = biome["trees"][random.randi_range(0, biome["trees"].size() - 1)]
@@ -181,6 +191,19 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 				cover.decals.append([_world.cell_to_world(cell) + Vector2(detail % 23 - 11, detail / 23 % 19 - 9), decals[detail / 437 % decals.size()], detail % 2 == 0])
 			if used.has(cell):
 				continue
+			# Nothing grows round a Sorrow Bloom but the bloom itself.
+			if memory and memory.is_sorrow_ground(cell):
+				continue
+			var worn := memory.wear(cell) if memory else 0
+			if worn > 0:
+				# Which neighbours are worn too, so the track runs on unbroken.
+				var joined := 0
+				for side in 4:
+					if memory.wear(cell + [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT][side]) > 0:
+						joined |= 1 << side
+				cover.trails.append([_world.cell_to_world(cell), worn, absi(hash(cell)), joined])
+				if worn == 2 or random.randf() < 0.5:
+					continue
 			_cover_tile(cover, cell, Vector2i(x, y), tile, biome, type_at, sites, trees_at, random)
 	_thin(cover, origin)
 	add_child(cover)
@@ -192,6 +215,9 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 		var biome: Dictionary = Flora.BIOMES.get(generator.tile_type_at(cell), {})
 		if biome.is_empty() or biome["critters"].is_empty() or random.randf() < 0.4:
 			continue
+		# Peaceful creatures keep away from where blood was spilled.
+		if memory and memory.count(cell, "kills") >= WorldMemory.BLOODY / 2:
+			continue
 		var kind: String = biome["critters"][random.randi_range(0, biome["critters"].size() - 1)]
 		var critter := Critter.create(kind, _world.cell_to_world(cell))
 		add_child(critter)
@@ -200,13 +226,75 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 
 
 func _place_node(placed: Array, id: String, cell: Vector2i, look: int, offset: Vector2 = Vector2.ZERO) -> void:
+	var tree := look in Flora.WOODEN
 	if _gathered.has(cell) and _now() - _gathered[cell] < REGROW_SECONDS:
+		# A felled tree's stump stands until it grows back.
+		if tree:
+			placed.append(_stump(_world.cell_to_world(cell) + offset))
 		return
 	var node := ResourceNode.create(id, cell, _world.cell_to_world(cell) + offset)
 	node.tall_look = look
-	node.harvested.connect(func(gone: ResourceNode) -> void: _gathered[gone.cell] = _now())
+	node.harvested.connect(func(gone: ResourceNode) -> void:
+		_gathered[gone.cell] = _now()
+		if tree:
+			placed.append(_stump(gone.position))
+			var memory: WorldMemory = get_parent().get_node_or_null("WorldMemory")
+			if memory:
+				memory.note(gone.cell, "chops"))
 	add_child(node)
 	placed.append(node)
+
+
+## What is left of a felled tree.
+func _stump(at: Vector2) -> Node2D:
+	var stump := Stump.new()
+	stump.position = at.round()
+	add_child(stump)
+	return stump
+
+
+## A tree stump drawn pixel by pixel: cut rings on top, bark down the
+## sides, roots spreading into the ground, and moss on the shaded side.
+class Stump:
+	extends Node2D
+
+	const BARK := [Color("2e2117"), Color("4a3524"), Color("644a32")]
+	const WOOD := [Color("b08a5c"), Color("caa474"), Color("8e6a44")]
+
+	func _draw() -> void:
+		var grain := absi(hash(position))
+		# Shadow on the ground.
+		for y in range(-2, 3):
+			var half := floorf(13.0 * sqrt(1.0 - y * y / 9.0))
+			draw_rect(Rect2(-half + 2, y, half * 2.0, 1.0), Color(0.02, 0.02, 0.05, 0.28))
+		# Roots.
+		for root: Array in [[-11, -2, 5], [7, -2, 5], [-4, 0, 3], [3, -1, 3]]:
+			draw_rect(Rect2(root[0], root[1], root[2], 2), BARK[1])
+			draw_rect(Rect2(root[0], root[1], root[2], 1), BARK[2])
+		# Bark sides.
+		draw_rect(Rect2(-8, -11, 16, 10), BARK[1])
+		draw_rect(Rect2(-8, -11, 3, 10), BARK[2])
+		draw_rect(Rect2(5, -11, 3, 10), BARK[0])
+		for x in [-4, 0, 3]:
+			draw_rect(Rect2(x, -9 + (grain + x) % 3, 1, 5), BARK[0])
+		# Moss on the north-facing side.
+		if grain % 3 != 0:
+			draw_rect(Rect2(4, -6, 4, 3), Color("4f6a34"))
+			draw_rect(Rect2(5, -7, 2, 1), Color("6d8a44"))
+		# The cut top: an oval of pale wood with rings.
+		for y in range(-3, 4):
+			var half := floorf(8.0 * sqrt(1.0 - y * y / 16.0))
+			draw_rect(Rect2(-half, -14 + y, half * 2.0, 1.0), WOOD[0])
+		for y in range(-2, 3):
+			var half := floorf(5.0 * sqrt(1.0 - y * y / 9.0))
+			draw_rect(Rect2(-half, -14 + y, half * 2.0, 1.0), WOOD[1])
+		draw_rect(Rect2(-3, -15, 6, 1), WOOD[2])
+		draw_rect(Rect2(-3, -13, 6, 1), WOOD[2])
+		draw_rect(Rect2(-1, -14, 2, 1), WOOD[2])
+		# The bark rim round the cut.
+		draw_rect(Rect2(-6, -18, 12, 1), BARK[0])
+		draw_rect(Rect2(-8, -16, 1, 4), BARK[0])
+		draw_rect(Rect2(7, -16, 1, 4), BARK[0])
 
 
 ## A tree or bush that is only there to look at. `solid` > 0 blocks movement.

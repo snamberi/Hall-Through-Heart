@@ -425,6 +425,13 @@ func _build(center: Vector2i) -> Array:
 		var person := VillagerLife.make(center, i, _world.generator.world_seed)
 		var villager := Npc.create("villager", _at(center + Vector2i(random.randi_range(-6, 6), random.randi_range(-6, 6))))
 		villager.lines = LINES
+		# What happened near the village is on everyone's lips.
+		var memory: WorldMemory = get_parent().get_node_or_null("WorldMemory")
+		if memory:
+			var said: Array[String] = LINES.duplicate()
+			for rumour: String in memory.rumours(center):
+				said.append_array([rumour, rumour])
+			villager.lines = said
 		villager.villager_name = person["name"]
 		villager.job = person["job"]
 		villager.look = person["look"]

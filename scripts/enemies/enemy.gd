@@ -76,6 +76,9 @@ var display_name := "Husk"
 var level := 1
 var rank := Rank.NORMAL
 var target: Player
+## How far off this monster notices the player, as a share of AGGRO_RADIUS
+## (more where magic still hums in the air; see WorldMemory).
+var senses := 1.0
 var state := State.WANDER
 ## Roughly how wide the enemy is; used for hits and for spacing from others.
 var body_radius := 13.0
@@ -301,7 +304,7 @@ func _physics_process(delta: float) -> void:
 	match state:
 		State.WANDER:
 			velocity = _direction * _speed * 0.4 * _ground_speed
-			if has_target and distance < AGGRO_RADIUS and (not Difficulty.monsters_passive() or _since_hurt < 30.0) and not target.buffs.has("night_veil"):
+			if has_target and distance < AGGRO_RADIUS * senses and (not Difficulty.monsters_passive() or _since_hurt < 30.0) and not target.buffs.has("night_veil"):
 				state = State.CHASE
 				# A boss turning on you is a moment worth saving before.
 				if rank >= Rank.BOSS and not _engaged:

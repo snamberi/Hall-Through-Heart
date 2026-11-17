@@ -341,6 +341,70 @@ func _build_ruin(cell: Vector2i, key: String, level: int, random: RandomNumberGe
 	_decor(placed, Prop.Decor.BRAZIER, cell + Vector2i(-2, -2), 8.0, true)
 	_decor(placed, Prop.Decor.BANNER, cell + Vector2i(2, -3), 4.0)
 	placed.append(_chest(cell, key, level, 1.0))
+	# Some ruins still hold chime stones that remember an old song.
+	if absi(hash(key + ":resonance")) % 2 == 0:
+		_resonance(cell, key, level, placed)
+
+
+## The four chime stones of a ruin, each with its own note, and an
+## inscription with the song they once sang. Struck in that order, the
+## ruin answers and a stair opens down to a hidden chamber.
+const CHIMES := [
+	{"name": "Root", "pitch": 0.75, "color": Color(0.6, 0.9, 0.5), "at": Vector2i(-3, -1)},
+	{"name": "Tide", "pitch": 0.9, "color": Color(0.5, 0.8, 1.0), "at": Vector2i(-3, 2)},
+	{"name": "Moon", "pitch": 1.12, "color": Color(0.85, 0.85, 1.0), "at": Vector2i(3, -1)},
+	{"name": "Ember", "pitch": 1.34, "color": Color(1.0, 0.65, 0.35), "at": Vector2i(3, 2)},
+]
+
+
+func _resonance(cell: Vector2i, key: String, level: int, placed: Array) -> void:
+	var song: Array[int] = []
+	var notes := RandomNumberGenerator.new()
+	notes.seed = hash(key + ":song")
+	for i in 5:
+		song.append(notes.randi_range(0, CHIMES.size() - 1))
+	var words := ", ".join(song.map(func(index: int) -> String: return CHIMES[index]["name"]))
+	var tablet := _decor(placed, Prop.Decor.SIGNPOST, cell + Vector2i(1, 2))
+	tablet.prompt_text = "Read the inscription"
+	tablet.on_interact = func(_p: Player) -> void:
+		Events.announcement.emit("AN INSCRIPTION", "Carved in an old hand: \"Wake the hall as the song goes: %s.\"" % words)
+	var solved := key + ":resonance"
+	var stair_at := _at(cell + Vector2i(0, 2))
+	var open_stair := func() -> Prop:
+		return Prop.create(Prop.Art.CAVE, stair_at, 0.0, "Descend into the hidden chamber", func(_p: Player) -> void:
+			_instances.enter_cave(hash(key + ":chamber"), level + 3, not used.has(key + ":chamber"), func() -> void:
+				used[key + ":chamber"] = true
+				SaveGame.request_save()
+			)
+		)
+	if used.has(solved):
+		placed.append(open_stair.call())
+	var heard: Array[int] = []
+	for index in CHIMES.size():
+		var chime: Dictionary = CHIMES[index]
+		var stone := Prop.create_decor(Prop.Decor.OBELISK, _at(cell + (chime["at"] as Vector2i)), 9.0, "Strike the %s stone" % chime["name"])
+		stone.sprite().modulate = (chime["color"] as Color).lerp(Color(0.75, 0.75, 0.8), 0.55)
+		stone.on_interact = func(_p: Player) -> void:
+			Audio.play_note("pickup", float(chime["pitch"]), -2.0)
+			RingBurst.spawn(get_parent(), stone.global_position + Vector2(0, -26), chime["color"], 44.0)
+			if used.has(solved):
+				return
+			heard.append(index)
+			if heard[heard.size() - 1] != song[heard.size() - 1]:
+				# A wrong note: a dull knock, and the song starts again.
+				heard.clear()
+				get_tree().create_timer(0.25).timeout.connect(func() -> void: Audio.play_note("hit", 0.5, -8.0))
+				Events.announcement.emit("", "The stones fall silent.")
+				return
+			if heard.size() == song.size():
+				used[solved] = true
+				SaveGame.request_save()
+				LightPillar.spawn(get_parent(), stair_at, Color(0.8, 0.85, 1.0))
+				Events.announcement.emit("THE RUIN ANSWERS", "The song is whole again. A stair opens in the floor: a hidden chamber below.")
+				var stair: Prop = open_stair.call()
+				placed.append(stair)
+				add_child(stair)
+		placed.append(stone)
 
 
 ## The Altar of Magic: a raised stone ring of obelisks and candles round an
@@ -568,6 +632,17 @@ func _build_camp(cell: Vector2i, key: String, level: int, random: RandomNumberGe
 	if random.randf() < 0.3:
 		contents.append(Item.create("treasure_map").to_dict())
 	placed.append(_chest(cell + Vector2i(2, 1), key, level, 1.2, contents))
+	# Once its chest has been emptied, nobody comes back: in a few days the
+	# green starts taking the camp, and in a few more it is half buried.
+	var memory: WorldMemory = get_parent().get_node_or_null("WorldMemory")
+	var days: DayNight = get_parent().get_node_or_null("DayNight")
+	if used.has(key) and memory and days:
+		var since := memory.days_abandoned(key, days.day)
+		if since >= 2:
+			var stage := 2 if since >= 5 else 1
+			fire.sprite().modulate = Color(0.45, 0.5, 0.42)
+			Overgrowth.cover(placed, _at(cell), [[_at(cell + Vector2i(-2, -1)), 58.0, 48.0], [_at(cell + Vector2i(2, -1)), 34.0, 28.0],
+					[_at(cell + Vector2i(3, 0)), 30.0, 28.0], [_at(cell + Vector2i(1, 1)), 36.0, 10.0]], stage, random)
 
 
 ## A waystone in the wilds.

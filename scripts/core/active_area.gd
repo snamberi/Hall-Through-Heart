@@ -7,7 +7,7 @@ extends Node
 ## which saves the CPU most on slower machines and phones. Bosses always
 ## stay awake. Checked a few times a second, a slice of the world at a time.
 
-const GROUPS: Array[String] = ["enemies", "critters", "livestock", "npcs", "props", "fires"]
+const GROUPS: Array[String] = ["enemies", "critters", "livestock", "npcs", "props", "fires", "scenery"]
 const INTERVAL := 0.25
 
 var _player: Node2D

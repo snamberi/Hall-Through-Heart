@@ -55,6 +55,11 @@ func _ready() -> void:
 	trial.name = "FlightTrial"
 	add_child(trial)
 	trial.setup(_player, _instances, _world, _spawner)
+	# The world's memory of what was done in it (trails, clearings, scars).
+	var memory := WorldMemory.new()
+	memory.name = "WorldMemory"
+	add_child(memory)
+	memory.setup(_player, _world)
 	if saved_world.has("checkpoint"):
 		var point: Array = saved_world["checkpoint"]
 		_checkpoint = Vector2(point[0], point[1])

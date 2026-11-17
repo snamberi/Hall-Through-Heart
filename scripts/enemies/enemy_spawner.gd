@@ -89,7 +89,7 @@ func _physics_process(delta: float) -> void:
 
 	# More things stir after dark.
 	var night: DayNight = get_parent().get_node_or_null("DayNight")
-	var limit := roundi(max_alive * (1.5 if night and night.is_night() else 0.6) * (1.8 if DayNight.blood_moon else 1.0))
+	var limit := roundi(max_alive * (1.5 if night and night.is_night() else 0.6) * (1.8 if DayNight.blood_moon else 1.0) * _violence())
 	if alive_count() < limit:
 		_try_spawn()
 
@@ -125,7 +125,18 @@ func _try_spawn() -> void:
 		if named != "":
 			_spawn_named(named, _world.cell_to_world(cell), level + 2)
 			return
-	spawn_at(_world.cell_to_world(cell), level, rank, enemy_id)
+	var enemy := spawn_at(_world.cell_to_world(cell), level, rank, enemy_id)
+	# Where much magic was cast, the air still hums, and monsters born there
+	# hear the player from further off.
+	var memory: WorldMemory = get_parent().get_node_or_null("WorldMemory")
+	if memory and enemy:
+		enemy.senses = memory.harmonics(cell)
+
+
+## Monsters are drawn to places where much blood has been spilled.
+func _violence() -> float:
+	var memory: WorldMemory = get_parent().get_node_or_null("WorldMemory")
+	return memory.violence(_world.world_to_cell(_player.global_position)) if memory and not _player.indoors else 1.0
 
 
 func _named_about() -> bool:
