@@ -49,6 +49,13 @@ func _ready() -> void:
 	_pages["home"] = _home_page()
 	_pages["load"] = _load_page()
 	_pages["new"] = _new_page()
+	var together := MultiplayerPage.new()
+	together.back.connect(show_page.bind("home"))
+	together.play.connect(func(id: String, as_guest: bool) -> void:
+		SaveGame.use_slot(id, as_guest)
+		get_tree().change_scene_to_file(GAME)
+	)
+	_pages["together"] = together
 	var settings := SettingsPanel.new()
 	settings.closed.connect(show_page.bind("home"))
 	_pages["settings"] = _framed(settings)
@@ -152,6 +159,7 @@ func _home_page() -> Control:
 	play.custom_minimum_size.y = 56.0
 	UITheme.font_size(play, 24)
 	buttons.add_child(play)
+	buttons.add_child(UITheme.button("Play Together (LAN)", show_page.bind("together"), 320.0))
 	buttons.add_child(UITheme.button("Settings", show_page.bind("settings"), 320.0))
 	buttons.add_child(UITheme.button("Quit", get_tree().quit, 320.0))
 	return box
@@ -729,5 +737,7 @@ func _create() -> void:
 
 
 func _play(id: String) -> void:
+	if Net.online() or Net.mode == "joining":
+		Net.leave("")
 	SaveGame.use_slot(id)
 	get_tree().change_scene_to_file(GAME)

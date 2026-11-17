@@ -22,6 +22,14 @@ var enabled := true
 ## The file being played. Tests may point this anywhere.
 var path := ""
 var slot_id := ""
+## Visiting another player's world (Net): only the character's own sections
+## are read from and written to this save; the world sections are left as
+## they were, so the guest's own world is waiting for them at home.
+var guest := false
+## What a character carries between worlds.
+const CARRIED: Array[String] = ["character", "leveling", "attributes", "talents", "abilities", "inventory", "equipment", "hotbar",
+	"loadouts", "relics", "mastery", "styles", "professions", "ego", "codex", "chronicle", "echoes", "pact", "shadows",
+	"dread_aura", "pets", "stable"]
 
 ## When the game last reached the disk (Unix seconds; 0 = not this session),
 ## and why the last try failed ("" when it worked).
@@ -76,7 +84,8 @@ func create_slot(world_name: String, difficulty: String, world_seed: int = 0, ap
 
 
 ## Selects a slot and reads it from disk.
-func use_slot(id: String) -> void:
+func use_slot(id: String, as_guest: bool = false) -> void:
+	guest = as_guest
 	slot_id = id
 	path = _slot_path(id)
 	_targets.clear()
@@ -117,6 +126,8 @@ func get_section(section: String) -> Dictionary:
 ## Registers a system and immediately hands it any saved data.
 func register(section: String, target: Node) -> void:
 	_targets[section] = target
+	if guest and not section in CARRIED:
+		return
 	if _data.has(section):
 		target.load_data(get_section(section))
 
@@ -133,13 +144,16 @@ func save_now() -> void:
 		return
 	_data["version"] = VERSION
 	for section in _targets:
+		if guest and not section in CARRIED:
+			continue
 		if is_instance_valid(_targets[section]):
 			_data[section] = _targets[section].save_data()
 	# Keep the slot's summary up to date for the save list.
 	var meta := get_section("meta")
 	meta["played_at"] = Time.get_unix_time_from_system()
 	meta["level"] = int(get_section("leveling").get("level", meta.get("level", 1)))
-	meta["day"] = int(get_section("world").get("day", meta.get("day", 1)))
+	if not guest:
+		meta["day"] = int(get_section("world").get("day", meta.get("day", 1)))
 	meta["class"] = str(get_section("character").get("class_id", "adventurer"))
 	_data["meta"] = meta
 	_write()

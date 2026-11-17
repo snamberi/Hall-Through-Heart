@@ -34,6 +34,13 @@ func _ready() -> void:
 	if _active_seed == 0:
 		_active_seed = int(randi())
 	var saved_world := SaveGame.get_section("world")
+	var visiting := Net.is_guest() and SaveGame.guest
+	if visiting:
+		# Someone else's world: their seed, their rules, their hour.
+		_active_seed = int(Net.world.get("seed", _active_seed))
+		Difficulty.hardcore = bool(Net.world.get("hardcore", false))
+		Difficulty.current = str(Net.world.get("difficulty", "normal"))
+		saved_world = {"day": int(Net.world.get("day", 1)), "time": float(Net.world.get("time", 0.3))}
 	_day_night.day = maxi(int(saved_world.get("day", 1)), 1)
 	_day_night.time = clampf(float(saved_world.get("time", _day_night.time)), 0.0, 0.999)
 	_day_night.setup(_player)
@@ -190,6 +197,13 @@ func _ready() -> void:
 		_player.global_position = resume
 		_player.camera.reset_smoothing()
 		_world.load_around_now(resume)
+	if visiting and Net.world.get("spawn") is Vector2:
+		# Wake beside the host.
+		var near: Vector2 = Net.world["spawn"] + Vector2(48, 24)
+		var spot := _world.cell_to_world(_world.generator.find_walkable_near(_world.world_to_cell(near)))
+		_player.global_position = spot
+		_player.camera.reset_smoothing()
+		_world.load_around_now(spot)
 	_world.target = _player
 	_spawner.setup(_world, _player)
 	_loot.setup(_player)
@@ -245,6 +259,16 @@ func _ready() -> void:
 	aura.name = "DreadAura"
 	_player.add_child(aura)
 	aura.setup(_player)
+	# Thumbs on a phone.
+	var touch := TouchControls.new()
+	touch.name = "TouchControls"
+	add_child(touch)
+	touch.setup(_player)
+	# Playing together over the network.
+	var party := Party.new()
+	party.name = "Party"
+	add_child(party)
+	party.setup(_player, _day_night, _instances)
 	_menus.setup(_player)
 	_debug_hud.setup(_world, _player)
 	_player.died.connect(_on_player_died)

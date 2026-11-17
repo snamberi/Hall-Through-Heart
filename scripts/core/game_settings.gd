@@ -53,6 +53,8 @@ const DEFAULTS := {
 	"inner_voice": true,
 	"remnants": true,
 	"system_window": true,
+	"touch_controls": "auto",
+	"player_name": "",
 }
 
 ## The four graphics presets. Each sets these; changing any one alone makes
@@ -87,10 +89,11 @@ const REBINDABLE: Array[Array] = [
 	["loadout_next", "Wear next saved set"],
 	["photo_mode", "Photo mode (hide the interface)"], ["mark_junk", "Mark hovered item as junk"], ["lock_item", "Lock hovered item"],
 	["release_aura", "Release your aura (scares weaker monsters)"], ["open_system", "Open the System window"], ["shadow_swap", "Swap places with a shadow"], ["raise_shadow", "Raise a fallen foe as a shadow"],
+	["open_chat", "Chat (in a shared game)"],
 ]
 ## Actions the game adds itself when it starts (not in the project file):
 ## action -> default physical key (KEY_NONE for pad-only actions).
-const EXTRA_ACTIONS := {"toggle_flight": KEY_T, "open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L, "photo_mode": KEY_F10, "mark_junk": KEY_DELETE, "lock_item": KEY_K, "release_aura": KEY_U, "open_system": KEY_P, "shadow_swap": KEY_Y, "raise_shadow": KEY_E}
+const EXTRA_ACTIONS := {"toggle_flight": KEY_T, "open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L, "photo_mode": KEY_F10, "mark_junk": KEY_DELETE, "lock_item": KEY_K, "release_aura": KEY_U, "open_system": KEY_P, "shadow_swap": KEY_Y, "raise_shadow": KEY_E, "open_chat": KEY_ENTER}
 ## Gamepad layout, kept alongside whatever keys are bound: action ->
 ## [JOY_BUTTON_*] or ["axis", JOY_AXIS_*, direction].
 const PAD := {
@@ -190,6 +193,11 @@ var inner_voice := true
 var remnants := true
 ## The System's daily training and its messages.
 var system_window := true
+## On-screen controls for a phone or tablet: "auto" (on when the device is
+## one), "on" or "off".
+var touch_controls := "auto"
+## The name other players see in a shared game.
+var player_name := ""
 ## action -> saved events, each {"key": physical keycode} or {"mouse": button}.
 var bindings: Dictionary = {}
 
@@ -244,6 +252,8 @@ func _ready() -> void:
 		hud_layout = "compact"
 	if not tracker_mode in ["full", "compact", "off"]:
 		tracker_mode = "full"
+	if not touch_controls in ["auto", "on", "off"]:
+		touch_controls = "auto"
 	if not sprint_mode in ["toggle", "hold"]:
 		sprint_mode = "toggle"
 	if not shaders in ["off", "basic", "full"]:

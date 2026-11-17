@@ -18,7 +18,7 @@ const GROUPS := [
 	["World", ["interact", "build_mode", "recall_home"]],
 	["Interface", ["photo_mode", "mark_junk", "lock_item"]],
 	["Hotbar", ["hotbar_1", "hotbar_2", "hotbar_3", "hotbar_4", "hotbar_5", "hotbar_6", "hotbar_7", "hotbar_8", "hotbar_9", "hotbar_10"]],
-	["Menus", ["toggle_menu", "open_inventory", "open_quests", "open_map", "open_system"]],
+	["Menus", ["toggle_menu", "open_inventory", "open_quests", "open_map", "open_system", "open_chat"]],
 ]
 ## Pairs that share a key on purpose (one works in a menu, one in the world).
 const SHARED_OK := [["attack", "interact"]]
@@ -105,6 +105,7 @@ func _ready() -> void:
 	)
 	_pages["Comfort"] = _scroll_page(holder, func(page: VBoxContainer) -> void:
 		_choice(page, "sprint_mode", "Sprint key", [["toggle", "Press to toggle"], ["hold", "Hold to sprint"]])
+		_choice(page, "touch_controls", "Touch controls", [["auto", "On phones"], ["on", "Always"], ["off", "Never"]])
 		_check(page, "screen_shake", "Screen shake")
 		_slider(page, "shake_strength", "Shake strength", 0.0, 1.5)
 		_slider(page, "damage_number_size", "Damage number size", 0.7, 1.6)

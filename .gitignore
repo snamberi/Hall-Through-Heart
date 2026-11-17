@@ -1,8 +1,10 @@
 # Godot 4 editor cache and local data
 .godot/
 *.translation
-export_presets.cfg
 
 # Python caches from the art tools
 __pycache__/
 *.pyc
+
+# Exported builds
+build/

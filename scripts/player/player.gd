@@ -521,6 +521,8 @@ func end_ability() -> void:
 
 ## Direction from the player to the mouse, or the facing if the mouse is on them.
 func aim_direction() -> Vector2:
+	if TouchControls.active:
+		return TouchControls.aim_for(self)
 	if GameSettings.using_pad:
 		# The right stick aims; let go and you aim the way you face.
 		var stick := Vector2(Input.get_joy_axis(0, JOY_AXIS_RIGHT_X), Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y))
@@ -532,7 +534,7 @@ func aim_direction() -> Vector2:
 ## Where the player points: the mouse, or with a gamepad a spot a step
 ## ahead in the aimed direction (for gathering, placing and blinking).
 func pointer() -> Vector2:
-	if GameSettings.using_pad:
+	if GameSettings.using_pad or TouchControls.active:
 		return global_position + aim_direction() * 46.0 + Vector2(0, -8)
 	return get_global_mouse_position()
 
@@ -1374,6 +1376,10 @@ func load_data(data: Dictionary) -> void:
 
 
 func _process_move(delta: float) -> void:
+	if ChatBox.typing:
+		# Words, not steps: the keys are typing a message.
+		velocity = velocity.move_toward(Vector2.ZERO, acceleration * delta)
+		return
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if falling:
 		# The Trial of Panic: the fall carries you down; you can only lean.
