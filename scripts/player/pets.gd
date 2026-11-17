@@ -401,7 +401,7 @@ func _refresh_look() -> void:
 	if pet["kind"] == "critter":
 		_sprite.visible = false
 		_critter.visible = true
-		_critter.scale = Vector2(1.35, 1.35)
+		_critter.scale = Vector2.ONE
 		_critter.frame = Critter.KINDS.find(pet["species"]) * Critter.FRAMES
 	else:
 		_critter.visible = false

@@ -70,7 +70,8 @@ const UPGRADE_COSTS := {
 	3: {"oak_wood": 80, "stone": 80, "silver_ingot": 8},
 }
 ## How big the house looks from outside at each tier.
-const HOUSE_SCALE := {1: 2.0, 2: 2.35, 3: 2.7}
+## Whole-number sizes only, so the pixels stay square.
+const HOUSE_SCALE := {1: 2.0, 2: 2.0, 3: 3.0}
 const CHEST_SLOTS := 24
 ## Seconds between uses of the recall home.
 const RECALL_COOLDOWN := 300.0
@@ -776,8 +777,8 @@ func _spawn(record: Dictionary) -> void:
 ## A farmhouse: bigger than other furniture, its produce kept like a
 ## chest's, and its animals brought out to wander round it.
 func _spawn_farm(prop: Prop, record: Dictionary) -> void:
-	prop.sprite().scale = Vector2(1.8, 1.8)
-	prop.sprite().position.y *= 1.8
+	prop.sprite().scale = Vector2(2.0, 2.0)
+	prop.sprite().position.y *= 2.0
 	if not record.has("animals"):
 		record["animals"] = []
 	Livestock.catch_up(record)

@@ -67,7 +67,6 @@ func _ready() -> void:
 		plant.region_enabled = true
 		plant.region_rect = Flora.small_region(_data["flora"])
 		plant.position.y = -14.0
-		plant.scale = Vector2(1.25, 1.25)
 		add_child(plant)
 		ContactShadow.under(plant)
 	else:
