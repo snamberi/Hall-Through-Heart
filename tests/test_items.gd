@@ -528,3 +528,49 @@ func test_every_item_has_its_own_picture(t: TestContext) -> void:
 		t.check(not seen.has(key), "%s looks just like %s" % [id, seen.get(key, "")])
 		seen[key] = id
 		t.check(Item.create(id).icon() == ItemIcons.texture(id), "%s shows its picture" % id)
+
+
+func test_chests_nearby_feed_crafting_and_take_quick_stacks(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var buildings: Node = main.get_node("Buildings")
+	player.inventory.items.clear()
+	player.inventory.materials.clear()
+	player.inventory.satchel_auto = false
+	var record := {"id": 9001, "kind": "chest", "where": "world", "x": player.global_position.x + 60.0, "y": player.global_position.y, "items": [{"id": "oak_wood", "count": 30}, {"id": "stone", "count": 30}]}
+	buildings.records.append(record)
+	t.equal(Stash.available(player, "oak_wood"), 30, "wood in a chest nearby counts as yours")
+	var table := RecipeDB.find("crafting_table")
+	t.check(Crafting.blocked_reason(player, table) == "", "so a crafting table can be made from it (%s)" % Crafting.blocked_reason(player, table))
+	var before := int(record["items"][0]["count"])
+	t.equal(Crafting.craft(player, table), "", "and is made")
+	t.check(record["items"].is_empty() or int(record["items"][0]["count"]) < before, "taking the wood from the chest")
+	# Quick stack: wood in the bag joins the chest that holds wood.
+	record["items"] = [{"id": "oak_wood", "count": 5}]
+	player.inventory.add(Item.create("oak_wood", 12), false)
+	t.equal(Stash.quick_stack(player), 1, "quick stack moves the wood")
+	t.equal(player.inventory.count_of("oak_wood"), 0, "out of the bag")
+	t.equal(int(record["items"][0]["count"]), 17, "onto the chest's stack")
+	# A chest far away is not counted.
+	record["x"] = player.global_position.x + 5000.0
+	t.equal(Stash.available(player, "oak_wood"), 0, "a chest far off does not count")
+	buildings.records.erase(record)
+	# Junk and splitting.
+	player.inventory.items.clear()
+	player.inventory.add(Item.create("oak_wood", 10), false)
+	var stack: Item = player.inventory.items[0]
+	t.equal(player.inventory.split(stack, 4), "", "a stack splits")
+	t.equal(player.inventory.items.size(), 2, "into two")
+	t.equal(stack.count, 6, "leaving six")
+	stack.junk = true
+	t.equal(player.inventory.junk_items().size(), 1, "marked junk is listed for selling")
+	t.check(Item.from_dict(stack.to_dict()).junk, "junk is kept in the save")
+	stack.locked = true
+	t.equal(player.inventory.junk_items().size(), 0, "locked items are never sold as junk")
+	# A pinned recipe shows on the tracker with what it needs.
+	player.pinned_recipe = "crafting_table"
+	var tracker: Control = main.get_node("HUD/QuestTracker")
+	var lines: Array = tracker._lines()
+	t.check(not lines.is_empty() and str(lines[0][0]).begins_with("Craft:"), "the pinned recipe heads the tracker")
+	player.pinned_recipe = ""
+	t.close_game()

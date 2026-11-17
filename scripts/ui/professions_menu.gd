@@ -50,6 +50,7 @@ var _produce_name: Label
 var _amount: Label
 var _craft: Button
 var _craft_all: Button
+var _pin: Button
 var _message: Label
 var _detail: VBoxContainer
 var _empty: Label
@@ -87,7 +88,7 @@ func state_of(recipe: Dictionary) -> String:
 	if player.professions.level(recipe["profession"]) < recipe["level"]:
 		return "locked"
 	for item_id: String in recipe["inputs"]:
-		if player.inventory.count_of(item_id) < recipe["inputs"][item_id]:
+		if Stash.available(player, item_id) < recipe["inputs"][item_id]:
 			return "missing"
 	return "ready"
 
@@ -309,6 +310,17 @@ func _build() -> void:
 	_craft_all = UITheme.button("Craft all", func() -> void: _make(_most()), 154.0)
 	_craft_all.custom_minimum_size.y = 42.0
 	buttons.add_child(_craft_all)
+	# Pin the recipe to the HUD with what it still needs.
+	_pin = UITheme.button("Pin", func() -> void:
+		if _recipe.is_empty():
+			return
+		player.pinned_recipe = "" if player.pinned_recipe == _recipe["id"] else _recipe["id"]
+		SaveGame.request_save()
+		refresh()
+	, 70.0)
+	_pin.custom_minimum_size.y = 42.0
+	_pin.tooltip_text = "Show this recipe and the materials it still needs on the game screen."
+	buttons.add_child(_pin)
 
 	visibility_changed.connect(func() -> void:
 		if not is_visible_in_tree():
@@ -598,7 +610,7 @@ func _most() -> int:
 		return 0
 	var most := 999
 	for item_id: String in _recipe["inputs"]:
-		most = mini(most, player.inventory.count_of(item_id) / int(_recipe["inputs"][item_id]))
+		most = mini(most, Stash.available(player, item_id) / int(_recipe["inputs"][item_id]))
 	return most
 
 
@@ -644,7 +656,7 @@ func _show_recipe() -> void:
 		child.queue_free()
 	for item_id: String in _recipe["inputs"]:
 		var need: int = int(_recipe["inputs"][item_id]) * _quantity
-		var have := player.inventory.count_of(item_id)
+		var have := Stash.available(player, item_id)
 		var part := Item.create(item_id)
 		var row := Panel.new()
 		row.custom_minimum_size = Vector2(372.0, 38.0)
@@ -702,6 +714,7 @@ func _show_recipe() -> void:
 	_craft.text = "Craft" if _quantity == 1 else "Craft x%d" % _quantity
 	_craft_all.disabled = problem != "" or _most() < 2
 	_craft_all.text = "Craft all (%d)" % _most() if _most() > 1 else "Craft all"
+	_pin.text = "Unpin" if player.pinned_recipe == _recipe["id"] else "Pin"
 	_craft.tooltip_text = problem
 	if problem != "" and (_message.text == "" or not _message.text.begins_with("Made")):
 		_message.add_theme_color_override("font_color", Color("e8a070"))

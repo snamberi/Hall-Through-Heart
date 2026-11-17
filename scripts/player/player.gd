@@ -150,6 +150,12 @@ var relics: Relics
 var styles: StyleBook
 ## Saved sets of gear, abilities and relics (see Loadouts).
 var loadouts: Loadouts
+## The recipe pinned to the HUD with what it still needs (RecipeDB id, or "").
+var pinned_recipe := "":
+	set(value):
+		pinned_recipe = value
+		pinned_changed.emit()
+signal pinned_changed
 ## Standing with merchants (see Trade).
 var trade: Trade
 ## Saddle, barding and race records (see Stable).
@@ -1107,7 +1113,7 @@ func take_up_magic(school: String) -> String:
 
 
 func save_data() -> Dictionary:
-	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate(), "flight_unlocked": flight_unlocked}
+	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate(), "flight_unlocked": flight_unlocked, "pinned_recipe": pinned_recipe}
 
 
 ## Takes to the air, or lands. Flight is won in the Trial of Panic.
@@ -1176,6 +1182,7 @@ func set_appearance(changes: Dictionary) -> void:
 
 func load_data(data: Dictionary) -> void:
 	flight_unlocked = bool(data.get("flight_unlocked", false))
+	pinned_recipe = str(data.get("pinned_recipe", ""))
 	class_id = str(data.get("class_id", class_id))
 	magic_school = str(data.get("magic_school", ""))
 	if not MagicDB.SCHOOLS.has(magic_school):

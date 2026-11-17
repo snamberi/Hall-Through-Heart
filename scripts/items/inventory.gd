@@ -89,6 +89,9 @@ func add(item: Item, arriving: bool = true) -> bool:
 			left -= piece.count
 	else:
 		item.fresh = arriving
+		# Plain common gear can be marked as junk as it comes in.
+		if arriving and GameSettings.auto_junk and item.is_equipment() and item.rarity == 0 and not item.is_unique() and item.set_id == "" and not item.locked:
+			item.junk = true
 		items.append(item)
 	changed.emit()
 	SaveGame.request_save()
@@ -277,9 +280,12 @@ func best_tool(kind: String) -> Item:
 	return best
 
 
-## Equipment first, best rarity and level first, then materials by name.
+## Equipment first, best rarity and level first, then materials by name;
+## junk always sinks to the end.
 func sort() -> void:
 	items.sort_custom(func(a: Item, b: Item) -> bool:
+		if a.junk != b.junk:
+			return b.junk
 		if a.is_equipment() != b.is_equipment():
 			return a.is_equipment()
 		if a.rarity != b.rarity:
@@ -289,6 +295,29 @@ func sort() -> void:
 		return a.display_name() < b.display_name()
 	)
 	changed.emit()
+
+
+## Everything marked as junk.
+func junk_items() -> Array[Item]:
+	return items.filter(func(item: Item) -> bool: return item.junk and not item.locked)
+
+
+## Splits a stack: `amount` of it goes into a new stack in a free slot.
+## Returns "" or why it could not.
+func split(item: Item, amount: int) -> String:
+	if not item in items or not item.is_stackable() or item.count < 2:
+		return "Only a stack of two or more can be split."
+	if items.size() >= capacity():
+		return "No free slot to split into."
+	amount = clampi(amount, 1, item.count - 1)
+	var piece := Item.from_dict(item.to_dict())
+	piece.count = amount
+	piece.fresh = false
+	item.count -= amount
+	items.insert(items.find(item) + 1, piece)
+	changed.emit()
+	SaveGame.request_save()
+	return ""
 
 
 func save_data() -> Dictionary:

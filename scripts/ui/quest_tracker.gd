@@ -10,6 +10,8 @@ var _book: QuestBook
 func setup(player: Player) -> void:
 	_player = player
 	player.quests.changed.connect(queue_redraw)
+	player.inventory.changed.connect(queue_redraw)
+	player.pinned_changed.connect(queue_redraw)
 	GameSettings.changed.connect(queue_redraw)
 
 
@@ -21,6 +23,16 @@ func _process(_delta: float) -> void:
 ## What to show: [title, [[objective text, have, need], ...], tracked].
 func _lines() -> Array:
 	var result: Array = []
+	# A recipe pinned from the crafting screen: what it still needs (the
+	# bag, the satchel and your chests nearby all count).
+	if _player.pinned_recipe != "":
+		var recipe := RecipeDB.find(_player.pinned_recipe)
+		if not recipe.is_empty():
+			var steps: Array = []
+			for item_id: String in recipe["inputs"]:
+				steps.append([str(ItemDB.ITEMS[item_id]["name"]), mini(Stash.available(_player, item_id), int(recipe["inputs"][item_id])), int(recipe["inputs"][item_id])])
+			var made_id: String = recipe.get("equipment", recipe.get("item", ""))
+			result.append(["Craft: " + str(ItemDB.ITEMS.get(made_id, {}).get("name", "something")), steps.slice(0, 4), true])
 	if _book == null:
 		_book = _player.get_parent().get_node_or_null("QuestBook")
 	if _book:

@@ -30,6 +30,8 @@ var quality := 1.0
 ## A keeper: the player has locked this piece so that bulk selling, marking,
 ## salvaging and discarding leave it alone. Gear only.
 var locked := false
+## Marked as junk: sold all at once at any merchant ("Sell junk").
+var junk := false
 ## A number that tells this one piece from every other (gear, tools and
 ## relics; 0 until needed). Loadouts remember pieces by it.
 var uid := 0
@@ -90,6 +92,7 @@ static func from_dict(data: Dictionary) -> Item:
 	item.forged_tier = maxi(int(data.get("forged", 0)), 0)
 	item.quality = clampf(float(data.get("quality", 1.0)), 0.3, 3.0)
 	item.locked = bool(data.get("locked", false))
+	item.junk = bool(data.get("junk", false)) and not item.locked
 	item.runeword = str(data.get("runeword", "")) if Runes.WORDS.has(str(data.get("runeword", ""))) else ""
 	item.fresh = bool(data.get("fresh", false))
 	item.uid = int(data.get("uid", 0))
@@ -121,6 +124,8 @@ func to_dict() -> Dictionary:
 			plain["fresh"] = true
 		if uid != 0 and not is_stackable():
 			plain["uid"] = uid
+		if junk:
+			plain["junk"] = true
 		return plain
 	var data := {"id": id, "rarity": rarity, "level": level, "upgrade": upgrade, "mods": mods.duplicate(true), "enchant": enchant.duplicate()}
 	if not sockets.is_empty():
@@ -137,6 +142,8 @@ func to_dict() -> Dictionary:
 		data["quality"] = snappedf(quality, 0.001)
 	if locked:
 		data["locked"] = true
+	if junk:
+		data["junk"] = true
 	if fresh:
 		data["fresh"] = true
 	if uid != 0:

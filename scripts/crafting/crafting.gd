@@ -13,8 +13,9 @@ static func blocked_reason(player: Player, recipe: Dictionary) -> String:
 		return "Stand next to a crafting table."
 	if player.professions.level(recipe["profession"]) < recipe["level"]:
 		return "Requires %s %d." % [Professions.NAMES[recipe["profession"]], recipe["level"]]
+	# The bag, the satchel and the player's own chests nearby all count.
 	for item_id: String in recipe["inputs"]:
-		if player.inventory.count_of(item_id) < recipe["inputs"][item_id]:
+		if Stash.available(player, item_id) < recipe["inputs"][item_id]:
 			return "Not enough %s." % ItemDB.ITEMS[item_id]["name"]
 	if player.inventory.free_slots() <= 0:
 		return "Inventory is full."
@@ -36,8 +37,7 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 	var units := 0
 	for item_id: String in recipe["inputs"]:
 		var amount: int = recipe["inputs"][item_id]
-		player.inventory.take(item_id, amount, forging)
-		rarity_sum += player.inventory.last_rarity * amount
+		rarity_sum += Stash.take_anywhere(player, item_id, amount, forging) * amount
 		units += amount
 	var material_rarity := rarity_sum / maxf(units, 1.0)
 	var skill := player.professions.level(recipe["profession"])

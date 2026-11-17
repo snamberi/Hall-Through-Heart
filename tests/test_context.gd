@@ -34,6 +34,10 @@ func frames(count: int) -> void:
 ## The game, loaded once on a fixed world seed and a throwaway save.
 func game() -> Node:
 	if _main == null:
+		# Let a game closed by the test before go first: on its way out it
+		# drops every global signal connection, and would take the new
+		# game's with it.
+		await frames(2)
 		var save: Node = tree.root.get_node("SaveGame")
 		save.path = "user://tests_save.json"
 		save.delete_save()

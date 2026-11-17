@@ -28,6 +28,7 @@ var _quantity := 1
 var _picking := false
 var _pick_toggle: Button
 var _sell_marked: Button
+var _sell_junk: Button
 ## What was sold on this visit, newest first, to buy back at the same
 ## price: [{"item", "price"}].
 var _sold_back: Array = []
@@ -199,6 +200,10 @@ func _build() -> void:
 	_sell_marked = UITheme.button("Sell marked", _sell_all_marked, 150.0)
 	_sell_marked.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bulk.add_child(_sell_marked)
+	# Everything marked as junk in the bag (Delete over an item marks it).
+	_sell_junk = UITheme.button("Sell junk", _sell_all_junk, 130.0)
+	_sell_junk.tooltip_text = "Sells everything marked as junk. Mark items in the bag with %s." % GameSettings.describe("mark_junk").split(" / ")[0]
+	bulk.add_child(_sell_junk)
 
 	# --- the chosen thing, and the deal
 	var right_panel := UITheme.inset_panel()
@@ -298,6 +303,12 @@ func refresh() -> void:
 	var total := 0
 	for item: Item in _bag_grid.marked:
 		total += npc.buys_for(item, player) * item.count
+	var junk := player.inventory.junk_items()
+	var junk_total := 0
+	for item: Item in junk:
+		junk_total += npc.buys_for(item, player) * item.count
+	_sell_junk.disabled = junk.is_empty()
+	_sell_junk.text = "Sell junk (%d)  %d g" % [junk.size(), junk_total] if not junk.is_empty() else "Sell junk"
 	_sell_marked.disabled = _bag_grid.marked.is_empty()
 	_sell_marked.text = "Sell %d for %d gold" % [_bag_grid.marked.size(), total] if not _bag_grid.marked.is_empty() else "Sell marked"
 	_show()
@@ -479,6 +490,13 @@ func _remember(item: Item, amount: int, price_each: int) -> void:
 
 
 ## Sells every marked stack at once.
+func _sell_all_junk() -> void:
+	_bag_grid.marked.clear()
+	for item: Item in player.inventory.junk_items():
+		_bag_grid.marked.append(item)
+	_sell_all_marked()
+
+
 func _sell_all_marked() -> void:
 	var gold := 0
 	var count := 0

@@ -42,6 +42,14 @@ const DEFAULTS := {
 	"fog": true,
 	"fps_limit": 0,
 	"wing_display": "flight",
+	"auto_junk": false,
+	"pickup_radius": 1.0,
+	"loot_filter": 0,
+	"dps_meter": false,
+	"quest_arrows": true,
+	"colorblind": "off",
+	"pause_unfocused": true,
+	"enemy_info": true,
 }
 
 ## The four graphics presets. Each sets these; changing any one alone makes
@@ -74,10 +82,11 @@ const REBINDABLE: Array[Array] = [
 	["relic_ability", "Relic power"], ["toggle_flight", "Fly / land (once flight is won)"],
 	["open_inventory", "Open inventory"], ["open_quests", "Open quest book"], ["open_map", "Open map"],
 	["loadout_next", "Wear next saved set"],
+	["photo_mode", "Photo mode (hide the interface)"], ["mark_junk", "Mark hovered item as junk"], ["lock_item", "Lock hovered item"],
 ]
 ## Actions the game adds itself when it starts (not in the project file):
 ## action -> default physical key (KEY_NONE for pad-only actions).
-const EXTRA_ACTIONS := {"toggle_flight": KEY_T, "open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L}
+const EXTRA_ACTIONS := {"toggle_flight": KEY_T, "open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L, "photo_mode": KEY_F10, "mark_junk": KEY_DELETE, "lock_item": KEY_K}
 ## Gamepad layout, kept alongside whatever keys are bound: action ->
 ## [JOY_BUTTON_*] or ["axis", JOY_AXIS_*, direction].
 const PAD := {
@@ -153,6 +162,24 @@ var fog := true
 var fps_limit := 0
 ## The wings of flight: shown "flight" (only while flying), "always" or "never".
 var wing_display := "flight"
+## Common gear picked up is marked as junk at once (sold with "Sell junk").
+var auto_junk := false
+## How far loot is drawn in to be picked up (0.5 .. 2 times the usual).
+var pickup_radius := 1.0
+## The lowest rarity of gear picked up by walking over it (0 = everything);
+## lesser gear stays on the ground to be picked by hand.
+var loot_filter := 0
+## A small meter of damage dealt per second, over the last few seconds.
+var dps_meter := false
+## Arrows at the edge of the screen toward the tracked quest's goal.
+var quest_arrows := true
+## Attack warnings in colours told apart with colour blindness:
+## "off", "deuteranopia", "protanopia" or "tritanopia".
+var colorblind := "off"
+## The game pauses when its window loses focus.
+var pause_unfocused := true
+## Hovering a monster shows its resistances, faction and what it expects.
+var enemy_info := true
 ## action -> saved events, each {"key": physical keycode} or {"mouse": button}.
 var bindings: Dictionary = {}
 

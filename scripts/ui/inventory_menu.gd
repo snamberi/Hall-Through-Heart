@@ -77,6 +77,8 @@ var _shown: Array = []
 ## Marking many items at once (to throw them away together).
 var _picking := false
 var _marked: Array[Item] = []
+## A small junk tag on each bag slot, shown on items marked as junk.
+var _bag_junk: Array[Control] = []
 var _confirming := false
 var _bag_marks: Array[MarkOverlay] = []
 var _message: Label
@@ -157,6 +159,13 @@ func _build() -> void:
 	bag_actions.add_theme_constant_override("separation", 4)
 	left.add_child(bag_actions)
 	bag_actions.add_child(UITheme.button("Sort", func() -> void: player.inventory.sort(), 62.0))
+	var stack := UITheme.button("To chests", func() -> void:
+		var moved := Stash.quick_stack(player)
+		_message.add_theme_color_override("font_color", UITheme.GOOD if moved > 0 else UITheme.DIM)
+		_message.text = "Put %d stack%s into your chests nearby." % [moved, "" if moved == 1 else "s"] if moved > 0 else ("Nothing in the bag matches what your chests nearby hold." if not Stash.chests_near(player).is_empty() else "None of your storage chests is near.")
+	, 92.0)
+	stack.tooltip_text = "Quick stack: each thing in the bag that a storage chest nearby already holds goes into it. Locked items stay."
+	bag_actions.add_child(stack)
 	_pick_toggle = UITheme.button("Select many", _toggle_picking, 112.0)
 	_pick_toggle.tooltip_text = "Mark several items to throw away together. Locked items are left alone."
 	bag_actions.add_child(_pick_toggle)
@@ -300,7 +309,7 @@ func _build() -> void:
 			var gap := Control.new()
 			gap.custom_minimum_size.x = 6.0
 			belt.add_child(gap)
-	var hint := UITheme.label("Hover: 1-9 hotbar, %s quick use  ·  Shift-click equips or uses" % GameSettings.describe("quick_use").split(" / ")[0], 14, UITheme.DIM)
+	var hint := UITheme.label("Hover: 1-9 hotbar, %s quick use, %s junk, %s lock  ·  Shift-click equips  ·  Ctrl-click splits" % [GameSettings.describe("quick_use").split(" / ")[0], GameSettings.describe("mark_junk").split(" / ")[0], GameSettings.describe("lock_item").split(" / ")[0]], 14, UITheme.DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(DOLL_SIZE.x, 0)
@@ -429,6 +438,11 @@ func _ensure_slots(count: int) -> void:
 		lock.visible = false
 		button.add_child(lock)
 		_bag_locks.append(lock)
+		var junk_tag := JunkTag.new()
+		junk_tag.position = Vector2(2, SLOT_SIZE - 14)
+		junk_tag.visible = false
+		button.add_child(junk_tag)
+		_bag_junk.append(junk_tag)
 		# A small gold dot on what has just arrived and not been looked at.
 		var fresh := Panel.new()
 		var dot := StyleBoxFlat.new()
@@ -527,6 +541,7 @@ func refresh() -> void:
 		_bag_counts[index].text = _short_count(item.count) if item and item.count > 1 else ""
 		_bag_marks[index].visible = item != null and item in _marked
 		_bag_locks[index].visible = item != null and item.locked
+		_bag_junk[index].visible = item != null and item.junk
 		_bag_fresh[index].visible = item != null and item.fresh
 	for slot in _belt_marks:
 		_belt_marks[slot].visible = player.equipment.active_slot == slot and player.equipment.equipped.has(slot)
@@ -960,6 +975,14 @@ func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 			_confirming = false
 			refresh()
 			return
+		# Ctrl-click: split a stack in half.
+		if item != null and Input.is_key_pressed(KEY_CTRL) and item in player.inventory.items:
+			var problem := player.inventory.split(item, item.count / 2)
+			_report(problem)
+			if problem == "":
+				_message.add_theme_color_override("font_color", UITheme.GOOD)
+				_message.text = "Split the stack of %s." % item.display_name()
+			return
 		_select(item)
 		# Shift-click: the item's main action at once (equip, use, place).
 		if item != null and Input.is_key_pressed(KEY_SHIFT):
@@ -981,6 +1004,10 @@ func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 	button.gui_input.connect(func(event: InputEvent) -> void:
 		var click := event as InputEventMouseButton
 		if click and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT and item_of.call():
+			# Ctrl and right-click: take one off the stack.
+			if Input.is_key_pressed(KEY_CTRL) and item_of.call() in player.inventory.items:
+				_report(player.inventory.split(item_of.call(), 1))
+				return
 			if _filter == "satchel" and empty_text == "" and not item_of.call() in player.inventory.items:
 				_withdraw(item_of.call(), 1)
 				return
@@ -1020,6 +1047,29 @@ func _input(event: InputEvent) -> void:
 	var item := _hovered if _hovered else _selected
 	if item == null:
 		return
+	if event.is_action_pressed("mark_junk") and item in player.inventory.items:
+		if item.locked:
+			_message.add_theme_color_override("font_color", UITheme.BAD)
+			_message.text = "%s is locked. Unlock it first." % item.display_name()
+		else:
+			item.junk = not item.junk
+			_message.add_theme_color_override("font_color", UITheme.DIM)
+			_message.text = "%s is %s." % [item.display_name(), "marked as junk: sell it with \"Sell junk\" at any merchant" if item.junk else "no longer junk"]
+			SaveGame.request_save()
+			refresh()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("lock_item") and item in player.inventory.items:
+		item.locked = not item.locked
+		if item.locked:
+			item.junk = false
+		_marked.erase(item)
+		_message.add_theme_color_override("font_color", UITheme.GOOD)
+		_message.text = "%s is %s." % [item.display_name(), "locked: it will not be sold, salvaged or thrown away in bulk" if item.locked else "unlocked"]
+		SaveGame.request_save()
+		refresh()
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("quick_use"):
 		var refused := player.hotbar.set_quick(item)
 		_message.add_theme_color_override("font_color", UITheme.GOOD if refused == "" else UITheme.BAD)
@@ -1057,3 +1107,20 @@ func _use_set(index: int, keep: bool) -> void:
 		_message.text = problem
 		_message.add_theme_color_override("font_color", UITheme.BAD)
 	refresh()
+
+
+## A small grey tag in the corner of a slot holding junk: a crossed box.
+class JunkTag:
+	extends Control
+
+	func _ready() -> void:
+		size = Vector2(12, 12)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tooltip_text = "Junk"
+
+	func _draw() -> void:
+		draw_rect(Rect2(0, 0, 12, 12), Color("1a1820"))
+		draw_rect(Rect2(1, 1, 10, 10), Color("6e6a78"))
+		for k in 6:
+			draw_rect(Rect2(3 + k, 3 + k, 1, 1), Color("e8e2ea"))
+			draw_rect(Rect2(8 - k, 3 + k, 1, 1), Color("e8e2ea"))
