@@ -40,6 +40,7 @@ const LAYERS: Array[Dictionary] = [
 	{"name": "cape", "behind": true},
 	{"name": "look_ears", "behind": false},
 	{"name": "look_race", "behind": false},
+	{"name": "look_outfit", "behind": false},
 	{"name": "look_eyes", "behind": false},
 	{"name": "look_mark", "behind": false},
 	{"name": "look_race_accent", "behind": false},
@@ -91,6 +92,11 @@ const AURA_FROM_RARITY := 4
 const LAYER_SHADER := """
 shader_type canvas_item;
 uniform vec4 tint : source_color = vec4(1.0);
+// With a ramp, grey art takes the chosen colour's own three tones exactly
+// (light, mid, dark) instead of being multiplied darker.
+uniform vec4 tint_mid : source_color = vec4(1.0);
+uniform vec4 tint_dark : source_color = vec4(1.0);
+uniform float use_ramp = 0.0;
 uniform vec4 rarity_color : source_color = vec4(1.0);
 uniform float outline_mix = 0.0;
 uniform float glow = 0.0;
@@ -100,10 +106,12 @@ uniform float sparkle = 0.0;
 uniform float water_line = 9999.0;
 varying float local_y;
 varying vec2 local_pos;
+varying vec4 modulate;
 
 void vertex() {
 	local_y = VERTEX.y;
 	local_pos = VERTEX;
+	modulate = COLOR;
 }
 
 float hash(vec2 p) {
@@ -117,6 +125,12 @@ void fragment() {
 	vec4 pixel = texture(TEXTURE, UV);
 	float outline = step(pixel.r + pixel.g + pixel.b, 0.125) * pixel.a;
 	vec3 body = COLOR.rgb * tint.rgb + rarity_color.rgb * glow * 0.3;
+	float spread = max(max(pixel.r, pixel.g), pixel.b) - min(min(pixel.r, pixel.g), pixel.b);
+	if (use_ramp > 0.5 && spread < 0.08 && outline < 0.5) {
+		float level = pixel.g;
+		vec3 tone = level > 0.88 ? tint.rgb : (level > 0.68 ? tint_mid.rgb : (level > 0.5 ? tint_dark.rgb : tint_dark.rgb * 0.78));
+		body = tone * modulate.rgb + rarity_color.rgb * glow * 0.3;
+	}
 	vec3 edge = rarity_color.rgb;
 	vec3 result = mix(body, mix(COLOR.rgb, edge, outline_mix), outline);
 	float inside = (1.0 - outline) * step(0.5, pixel.a);
@@ -412,7 +426,7 @@ func _show_features() -> void:
 		BodyFit.follow(sprite, self)
 		sprite.visible = true
 		var look_material := sprite.material as ShaderMaterial
-		look_material.set_shader_parameter("tint", _features[slot]["tint"])
+		Appearance.apply_tint(look_material, _features[slot])
 		look_material.set_shader_parameter("rarity_color", Color.BLACK)
 		look_material.set_shader_parameter("outline_mix", 0.0)
 		look_material.set_shader_parameter("glow", 0.0)

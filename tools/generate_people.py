@@ -1266,19 +1266,40 @@ LOOK["race_elf_accent"] = face(["w"], 15, 21)
 LOOK["race_dwarf"] = face([".oo.", "oMmo", "omdo", ".oo."], 20, 20)
 LOOK["race_orc"] = face(["ddd..ddd"], 18, 18)
 LOOK["race_orc_accent"] = face(["i....i", "i....i"], 22, 19)
-LOOK["race_goblin"] = face([".o.", "oMo", "oMo", ".o."], 20, 21)
-LOOK["race_slime"] = face(["oMo..........oMo", ".o............o."], 23, 14)
+# A long hooked goblin nose between the eyes.
+LOOK["race_goblin"] = face(["..o.", ".oMo", "oMMo", "oMmo", "oMmdo", ".ooo."], 18, 20)
+# Slime runs off the jaw and cheeks in drips.
+LOOK["race_slime"] = merged(face(["oMo..........oMo", ".o............o."], 23, 14)["head"],
+                            face([".M....M.", ".M....M.", ".M......", ".o......"], 24, 17)["head"])
+LOOK["race_slime"] = {"head": LOOK["race_slime"]}
 LOOK["race_slime_accent"] = face(["++", "+."], 14, 16)
-LOOK["race_undead"] = face(["DDD..DDD", "D.D..D.D", "D.D..D.D"], 18, 18)
+# A skull: dark sockets round the eyes, a hollow nose, cheekbones.
+LOOK["race_undead"] = merged(face([".xx....xx.", "xxDx..xDxx", "xxDx..xDxx", ".xx....xx."], 18, 17)["head"],
+                             face(["xx", ".x"], 22, 21)["head"], face(["D", "D"], 21, 15)["head"], face(["D", "D"], 21, 28)["head"])
+LOOK["race_undead"] = {"head": LOOK["race_undead"]}
 LOOK["race_undead_accent"] = face(["vvvvvv", "e.e.e."], 22, 19)
 LOOK["race_demonkin_accent"] = face([".f.", "fFf"], 14, 20)
-LOOK["race_beastkin"] = face([".oMMMMo.", "oMMMMMMo", ".oMMMMo."], 21, 18)
-LOOK["race_beastkin_accent"] = face(["..ee..", "+....+"], 21, 19)
-LOOK["race_lizardfolk"] = face(["d.d.d.d", ".......", "d.....d", "..d.d.."], 13, 18)
+# A fox's face: fur tufts out at the cheeks (in the coat's colour) and a
+# pale muzzle with a black nose.
+LOOK["race_beastkin"] = merged(face(["oM.", "oMM", ".oM"], 19, 12)["head"], face([".Mo", "MMo", "Mo."], 19, 29)["head"],
+                               face([".oMMMMo.", "oMMMMMMo"], 17, 18)["head"])
+LOOK["race_beastkin"] = {"head": LOOK["race_beastkin"]}
+LOOK["race_beastkin_accent"] = face(["..vvvv..", ".vvvvvv.", ".vveevv.", "..vVVv.."], 21, 18)
+# A lizard's snout jutting from the lower face, a crest of spines along
+# the top of the head and scales on the cheeks.
+LOOK["race_lizardfolk"] = merged(
+    face(["..o...o...o.", ".oMo.oMo.oMo", "oMMdoMMdoMMd"], 9, 16)["head"],
+    face([".oooooooo.", "oMMMMMMmmo", "oMdMMMMdmo", "omMMMMMmmo", ".oommmmoo."], 21, 17)["head"],
+    face(["d.d", ".d."], 17, 15)["head"], face(["d.d", ".d."], 17, 26)["head"])
+LOOK["race_lizardfolk"] = {"head": LOOK["race_lizardfolk"]}
 LOOK["race_fairy_accent"] = face(["p......p", "pp....pp"], 21, 17)
-LOOK["race_stoneborn"] = face(["D...", ".D..", ".D..", "..D."], 13, 16)
+# Stone: a heavy brow, cracks across the face, chipped cheeks.
+LOOK["race_stoneborn"] = merged(face(["xxxx....xxxx"], 18, 16)["head"], face(["x...", "x...", ".x..", ".x.x"], 13, 17)["head"],
+                                face(["..x", "..x", ".x.", ".x."], 21, 25)["head"], face(["D.", "DD"], 22, 15)["head"])
+LOOK["race_stoneborn"] = {"head": LOOK["race_stoneborn"]}
 LOOK["race_stoneborn_accent"] = face(["..77..", ".7887."], 11, 18)
 LOOK["race_vampire"] = face(["D....D", ".D..D.", "..DD.."], 13, 19)
+LOOK["race_vampire_accent"] = face(["i..i"], 23, 20)
 LOOK["race_merfolk"] = pair([
     "o....",
     "oMo..",
@@ -1342,6 +1363,90 @@ LOOK["neck_5"] = body_look([  # Bandolier
     ".......oLLo.",
     "........oo..",
 ], 24, 16, fit=False)
+
+# Garments over the tunic, in the clothes colour (greys take its tones).
+LOOK["outfit_1"] = body_look([  # Robe to the ankles, with a gold sash
+    ".oooooooooooo.",
+    "oMMMMdddMMMmmo",
+    "oMMMMMddMMMmmo",
+    "oMMMMMMMMMMmmo",
+    "oMMMMMMMMMMmmo",
+    "oyyyyyyyyyyYYo",
+    "oMMMMMMMMMMmmo",
+    "oMMMMMdMMMMmmo",
+    "oMMMMMdMMMMmmo",
+    ".oMMMMdMMMmmo.",
+    ".oMMMMdMMMmmo.",
+    ".oMMMMdMMMmmo.",
+    ".oMMMMdMMMmmo.",
+    ".oMMMMdMMmmmo.",
+    ".oddddddddddo.",
+    ".oooooooooooo.",
+], 24, 15)
+LOOK["outfit_2"] = body_look([  # Open vest over the shirt
+    ".oooo....oooo.",
+    "oMMmo....oMmmo",
+    "oMMmo....oMmmo",
+    "oMMMmo..oMMmmo",
+    "oMMMmo..oMMmmo",
+    "oMMMMo..oMMmmo",
+    "oMMMMmooMMMmmo",
+    "oddddddddddddo",
+    ".oooooooooooo.",
+], 24, 15)
+LOOK["outfit_3"] = body_look([  # Long coat with a high collar and buttons
+    "oooo......oooo",
+    "oMMMoo..ooMmmo",
+    "oMMMMMooMMMmmo",
+    "oMMMMMyoMMMmmo",
+    "oMMMMMMoMMMmmo",
+    "oMMMMMyoMMMmmo",
+    "oMMMMMMoMMMmmo",
+    "oMMMMMyoMMMmmo",
+    "oMMMMMMoMMMmmo",
+    ".oMMMMMoMMMmo.",
+    ".oMMMMdodMMmo.",
+    ".oMMMdd.ddMmo.",
+    ".ooooo...oooo.",
+], 23, 15)
+LOOK["outfit_4"] = body_look([  # Jerkin: crossed straps and studs
+    ".oooooooooooo.",
+    "oMMMMMMMMMMmmo",
+    "oMyMMMMMMMMmyo",
+    "oMMMdMMMMdMmmo",
+    "oMMMMdMMdMMmmo",
+    "oMMMMMddMMMmmo",
+    "oMMMMdMMdMMmmo",
+    "oddddddddddddo",
+    ".oooooooooooo.",
+], 24, 15)
+LOOK["outfit_5"] = body_look([  # Dress: a fitted bodice and a full skirt
+    "..oooooooooooo..",
+    ".oMMMMMMMMMMmmo.",
+    ".oMMMMMMMMMMmmo.",
+    "..oMMMMMMMMmmo..",
+    "..oMMMMMMMMmmo..",
+    "..oyyyyyyyyYYo..",
+    ".oMMMMMMMMMMmmo.",
+    ".oMMMMdMMdMMmmo.",
+    "oMMMMMdMMdMMmmmo",
+    "oMMMMdMMMMdMmmmo",
+    "oMMMMdMMMMdMmmmo",
+    "oMMMdMMMMMMdmmmo",
+    "odddddddddddddo.",
+    ".oooooooooooooo.",
+], 24, 14)
+LOOK["outfit_6"] = body_look([  # Rags: patched and torn at the hem
+    ".oooooooooooo.",
+    "oMMMMMMdMMMmmo",
+    "oMMdMMMMMMMmmo",
+    "oMMMMMMMMMdmmo",
+    "oMMMMdMMMMMmmo",
+    "oMMMMMMMMMMmmo",
+    "oMMdMMMMMdMmmo",
+    "oMoMMoMMoMMmmo",
+    ".o.oo.oo.oooo.",
+], 24, 15)
 
 # Capes hang behind: the body is drawn over them, so only the edges and
 # the hem show round the figure.

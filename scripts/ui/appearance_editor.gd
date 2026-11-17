@@ -10,17 +10,16 @@ signal changed(appearance: Dictionary)
 
 const TABS: Array[Array] = [
 	["Race", []],
-	["Body", ["skin", "height", "build"]],
+	["Body", ["skin"]],
 	["Hair", ["hair_style", "hair", "beard"]],
-	["Face", ["eyes", "mark", "ears"]],
-	["Extras", ["horns", "tail", "wings"]],
-	["Clothes", ["clothes", "trousers", "dye"]],
+	["Face", ["eyes", "mark"]],
+	["Clothes", ["outfit", "clothes", "trousers", "dye"]],
 	["Wear", ["hat", "accessory", "neck", "cape"]],
 ]
 ## Rows drawn as pictures; the rest of the shape rows are named buttons.
-const PICTURED: Array[String] = ["hair_style", "beard", "mark", "ears", "horns", "tail", "wings", "hat", "accessory", "neck", "cape"]
+const PICTURED: Array[String] = ["hair_style", "beard", "mark", "ears", "horns", "tail", "wings", "hat", "accessory", "neck", "cape", "outfit"]
 ## Rows whose pictures show the whole figure rather than the head.
-const WHOLE: Array[String] = ["tail", "wings", "neck", "cape"]
+const WHOLE: Array[String] = ["tail", "wings", "neck", "cape", "outfit"]
 const THUMB := 62.0
 
 var appearance: Dictionary = Appearance.DEFAULT.duplicate()

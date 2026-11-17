@@ -95,6 +95,14 @@ const MARKS: Array[Dictionary] = [
 	{"name": "Woad", "sheet": "mark_9", "color": Color.WHITE}, {"name": "Star", "sheet": "mark_10", "color": Color.WHITE},
 	{"name": "Gold paint", "sheet": "mark_11", "color": Color.WHITE}, {"name": "Third eye", "sheet": "mark_12", "color": Color.WHITE},
 ]
+## Garments over the body, in the clothes colour (the plain tunic is the body's own).
+const OUTFITS: Array[Dictionary] = [
+	{"name": "Tunic", "sheet": ""}, {"name": "Robe", "sheet": "outfit_1"}, {"name": "Open vest", "sheet": "outfit_2"},
+	{"name": "Long coat", "sheet": "outfit_3"}, {"name": "Jerkin", "sheet": "outfit_4"}, {"name": "Dress", "sheet": "outfit_5"},
+	{"name": "Rags", "sheet": "outfit_6"},
+]
+## Given by the race and not chosen: its ears, horns, tail, wings, height and build.
+const RACE_FIXED: Array[String] = ["ears", "horns", "tail", "wings", "height", "build"]
 ## Things worn: "dyed" ones take the chosen dye colour, the rest keep their own.
 const HATS: Array[Dictionary] = [
 	{"name": "None", "sheet": ""}, {"name": "Hood", "sheet": "hat_1", "dyed": true}, {"name": "Bandana", "sheet": "hat_2", "dyed": true},
@@ -165,7 +173,7 @@ const OPTIONS: Array[Array] = [
 	["hair_style", "Hair", "HAIR_STYLES", "shape"], ["hair", "Hair colour", "HAIR", "colour"], ["beard", "Beard", "BEARDS", "shape"],
 	["eyes", "Eyes", "EYES", "colour"], ["mark", "Face", "MARKS", "shape"], ["ears", "Ears", "EARS", "shape"], ["horns", "Horns", "HORNS", "shape"],
 	["tail", "Tail", "TAILS", "shape"], ["wings", "Wings", "WINGS", "shape"],
-	["clothes", "Clothes", "CLOTHES", "colour"], ["trousers", "Trousers", "TROUSERS", "colour"],
+	["outfit", "Outfit", "OUTFITS", "shape"], ["clothes", "Clothes", "CLOTHES", "colour"], ["trousers", "Trousers", "TROUSERS", "colour"],
 	["hat", "Hat", "HATS", "shape"], ["accessory", "Accessory", "ACCESSORIES", "shape"], ["neck", "Neck", "NECKWEAR", "shape"],
 	["cape", "Cape", "CAPES", "shape"], ["dye", "Dye", "DYES", "colour"],
 ]
@@ -183,17 +191,18 @@ const LOOKS := {
 		"hair": 2, "clothes": 6, "trousers": 4},
 }
 const DEFAULT := {"race": "human", "skin": 0, "hair": 0, "hair_style": 0, "beard": 0, "eyes": 0, "ears": 0, "horns": 0, "tail": 0, "wings": 0, "mark": 0,
-	"height": 2, "build": 1, "clothes": 0, "trousers": 0, "look": "wanderer", "hat": 0, "accessory": 0, "neck": 0, "cape": 0, "dye": 0}
+	"height": 2, "build": 1, "clothes": 0, "trousers": 0, "look": "wanderer", "hat": 0, "accessory": 0, "neck": 0, "cape": 0, "dye": 0, "outfit": 0}
 ## Slots for feature layers, back to front: [slot, appearance key, list, drawn behind the body].
 const FEATURES: Array[Array] = [
 	["tail", "tail", "TAILS", true], ["wings", "wings", "WINGS", true], ["cape", "cape", "CAPES", true], ["ears", "ears", "EARS", false], ["eyes", "eyes", "", false],
+	["outfit", "outfit", "OUTFITS", false],
 	["mark", "mark", "MARKS", false], ["neck", "neck", "NECKWEAR", false], ["face", "accessory", "ACCESSORIES", false], ["beard", "beard", "BEARDS", false],
 	["hair", "hair_style", "HAIR_STYLES", false], ["horns", "horns", "HORNS", false], ["hat", "hat", "HATS", false],
 ]
 ## Layers every race has of its own (not chosen in the creator).
 const RACE_LAYERS: Array[String] = ["race", "race_accent"]
 ## Every look layer in drawing order, back to front: [slot, behind body].
-const LAYER_ORDER: Array[Array] = [["tail", true], ["wings", true], ["cape", true], ["ears", false], ["race", false], ["eyes", false], ["mark", false],
+const LAYER_ORDER: Array[Array] = [["tail", true], ["wings", true], ["cape", true], ["ears", false], ["race", false], ["outfit", false], ["eyes", false], ["mark", false],
 	["race_accent", false], ["neck", false], ["face", false], ["beard", false], ["hair", false], ["horns", false], ["hat", false]]
 
 const SHADER := """
@@ -257,6 +266,7 @@ static func list(list_name: String) -> Array:
 		"MARKS": return MARKS
 		"HEIGHTS": return HEIGHTS
 		"BUILDS": return BUILDS
+		"OUTFITS": return OUTFITS
 	return []
 
 
@@ -288,10 +298,14 @@ static func resolved(appearance: Dictionary) -> Dictionary:
 	for key: String in ["skin", "hair", "clothes", "trousers"]:
 		if look.has(key):
 			result[key] = look[key]
-	for row in OPTIONS:
-		result[row[0]] = clampi(int(result[row[0]]), 0, list(row[2]).size() - 1)
 	if not RACES.has(result["race"]):
 		result["race"] = "human"
+	# What the race is born with is not a choice.
+	var born: Dictionary = RACES[result["race"]]["look"]
+	for key: String in RACE_FIXED:
+		result[key] = born.get(key, DEFAULT[key])
+	for row in OPTIONS:
+		result[row[0]] = clampi(int(result[row[0]]), 0, list(row[2]).size() - 1)
 	return result
 
 
@@ -362,29 +376,47 @@ static func layers(appearance: Dictionary) -> Dictionary:
 		var slot: String = feature[0]
 		if slot == "eyes":
 			if worn["eyes"] > 0:
-				result[slot] = {"sheet": "eyes", "tint": Color(EYES[worn["eyes"]][0])}
+				result[slot] = {"sheet": "eyes", "tint": Color(EYES[worn["eyes"]][0]), "ramp": EYES[worn["eyes"]]}
 			continue
 		var choice: Dictionary = list(feature[2])[worn[feature[1]]]
 		if choice["sheet"] == "":
 			continue
 		var tint := Color.WHITE
+		var ramp: Array = []
 		if choice.get("dyed", false):
-			tint = Color(DYES[worn["dye"]][0])
+			ramp = DYES[worn["dye"]]
+		elif slot == "outfit":
+			ramp = CLOTHES[worn["clothes"]]
 		elif slot in ["hair", "beard"] or choice.get("tint", "") == "hair":
-			tint = hair
+			ramp = HAIR[worn["hair"]]
 		elif slot == "ears" or choice.get("tint", "") == "skin":
-			tint = skin
+			ramp = SKIN_TONES[worn["skin"]]
 		elif choice.has("color"):
 			tint = choice["color"]
-		result[slot] = {"sheet": choice["sheet"], "tint": tint}
+		if not ramp.is_empty():
+			tint = Color(ramp[0])
+		result[slot] = {"sheet": choice["sheet"], "tint": tint, "ramp": ramp.slice(0, 3)}
 	# Each race's own details: one layer in the skin's colours, one that
 	# keeps its own (tusks, embers, moss, fin glints...).
 	var race: String = str(worn.get("race", "human"))
 	if ResourceLoader.exists("res://assets/sprites/looks/race_%s.png" % race):
-		result["race"] = {"sheet": "race_" + race, "tint": skin}
+		result["race"] = {"sheet": "race_" + race, "tint": skin, "ramp": (SKIN_TONES[worn["skin"]] as Array).slice(0, 3)}
 	if ResourceLoader.exists("res://assets/sprites/looks/race_%s_accent.png" % race):
 		result["race_accent"] = {"sheet": "race_%s_accent" % race, "tint": Color.WHITE}
 	return result
+
+
+## Colours a look layer: with a ramp, its greys take that colour's own
+## three tones exactly; otherwise it is simply tinted.
+static func apply_tint(material: ShaderMaterial, feature: Dictionary) -> void:
+	material.set_shader_parameter("tint", feature["tint"])
+	var ramp: Array = feature.get("ramp", [])
+	if ramp.size() >= 3:
+		material.set_shader_parameter("tint_mid", Color(ramp[1]))
+		material.set_shader_parameter("tint_dark", Color(ramp[2]))
+		material.set_shader_parameter("use_ramp", 1.0)
+	else:
+		material.set_shader_parameter("use_ramp", 0.0)
 
 
 static func make_material(appearance: Dictionary) -> ShaderMaterial:

@@ -72,7 +72,7 @@ func show_look(appearance: Dictionary) -> void:
 		sprite.visible = features.has(slot)
 		if sprite.visible:
 			BodyFit.wear(sprite, "looks/" + features[slot]["sheet"], "look_" + slot, _appearance)
-			(sprite.material as ShaderMaterial).set_shader_parameter("tint", features[slot]["tint"])
+			Appearance.apply_tint(sprite.material as ShaderMaterial, features[slot])
 	_place()
 
 

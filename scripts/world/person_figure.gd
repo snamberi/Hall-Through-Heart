@@ -61,7 +61,7 @@ func dress(appearance: Dictionary, size: float = 1.0) -> void:
 		sprite.visible = features.has(slot)
 		if sprite.visible:
 			BodyFit.wear(sprite, "looks/" + features[slot]["sheet"], "look_" + slot, fitted)
-			(sprite.material as ShaderMaterial).set_shader_parameter("tint", features[slot]["tint"])
+			Appearance.apply_tint(sprite.material as ShaderMaterial, features[slot])
 	_body.play("idle")
 	_sync()
 
