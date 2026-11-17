@@ -171,7 +171,7 @@ func _echo(tile: Vector2i) -> void:
 		var site: Dictionary = structures.site_for(_world.cell_to_chunk(tile))
 		if not site.is_empty() and site["kind"] in ["ruin", "graveyard", "watchtower", "library"] \
 				and Vector2(tile).distance_to(Vector2(site["cell"] as Vector2i)) < 8.0 and randf() < 0.5:
-			DamageNumber.spawn_text(get_parent(), _world.cell_to_world(site["cell"]) + Vector2(randf_range(-60, 60), -50), ECHOES.pick_random(), Color(0.75, 0.8, 0.95, 0.7), 12)
+			DamageNumber.spawn_text(get_parent(), _world.cell_to_world(site["cell"]) + Vector2(randf_range(-60, 60), -20), ECHOES.pick_random(), Color(0.75, 0.8, 0.95, 0.7), 12)
 
 
 ## Puts scars and Sorrow Blooms in the world near a place, once each.
@@ -340,6 +340,7 @@ class SorrowBloom:
 			Events.announcement.emit("", "The flowers have nothing more to say today.")
 			return
 		player.set_meta("sorrow_day", day)
+		Events.codex_event.emit("sorrow", 1)
 		player.buffs.add("sorrows_lesson", "Sorrow's Lesson", 600.0, {"physical_damage": {"percent": 0.12}, "critical_chance": {"flat": 0.04}})
 		Events.announcement.emit("SORROW'S LESSON", "You remember how you fell here. You will not fall the same way again.")
 

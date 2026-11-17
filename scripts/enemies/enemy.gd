@@ -79,6 +79,22 @@ var target: Player
 ## How far off this monster notices the player, as a share of AGGRO_RADIUS
 ## (more where magic still hums in the air; see WorldMemory).
 var senses := 1.0
+## Its faction (see Factions), "" for beasts and the factionless.
+var faction := ""
+## How its faction believes the player fights ("melee", "ranged", "magic"
+## or ""): a blow of another kind catches it off guard (False Reputation).
+var expected := ""
+## Comes spread out and weaving (its faction knows the player shoots).
+var spread := false
+## Damage shrugged off, by element or "magic", 0 to 1 (its faction's lessons).
+var wards: Dictionary = {}
+## Running for its life to tell its faction what it saw.
+var fleeing := false
+## What it has learned of the player: {"styles": {style: n}, "elements": {element: n}}.
+var _lessons := {"styles": {}, "elements": {}}
+var _warned: Dictionary = {}
+var _surprised := false
+var _flee_checked := false
 var state := State.WANDER
 ## Roughly how wide the enemy is; used for hits and for spacing from others.
 var body_radius := 13.0
@@ -245,7 +261,7 @@ func _ready() -> void:
 ## Experience this enemy is worth at its level and rank.
 func xp_value() -> int:
 	var value: float = _data["xp"] * RANK_DATA[rank]["xp"] * pow(level, XP_LEVEL_EXPONENT) * (1.0 + REWARD_PER_MODIFIER * modifiers.size())
-	return maxi(roundi(value * (0.3 if is_fragment else 1.0) * Difficulty.value("xp") * (1.5 if DayNight.blood_moon else 1.0)), 1)
+	return maxi(roundi(value * (0.3 if is_fragment else 1.0) * Difficulty.value("xp") * (1.5 if DayNight.blood_moon else 1.0) * (1.5 if fleeing else 1.0)), 1)
 
 
 func has_trait(id: String) -> bool:
@@ -298,6 +314,9 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
+	if fleeing:
+		_flee(delta, to_target, distance)
+		return
 	# Back above ground if a burrow was cut short.
 	if state != State.WINDUP and _visual.modulate.a < 1.0 and _attack["kind"] == "burrow":
 		_visual.modulate.a = 1.0
@@ -566,6 +585,9 @@ func take_damage(
 	if element != "":
 		# Elemental damage riding on a blow: its own coloured number, and no
 		# extra shove, dodge, or thorns.
+		amount *= 1.0 - float(wards.get(element, 0.0))
+		_learn("elements", element)
+		_warn(element, "%s! Scatter!" % element.capitalize())
 		if shield > 0.0:
 			var soaked := minf(shield, amount)
 			shield -= soaked
@@ -577,6 +599,25 @@ func take_damage(
 		return health.take_damage(amount)
 	if has_trait("armored"):
 		amount *= 0.65
+	var style := Factions.style_of(weapon_type)
+	if style != "":
+		if style == "magic":
+			amount *= 1.0 - float(wards.get("magic", 0.0))
+		# False Reputation: ready for one way of fighting, met with another.
+		if expected != "" and style != expected and not _surprised:
+			_surprised = true
+			amount *= Factions.SURPRISE
+			DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -24), "Caught off guard!", Color(1.0, 0.85, 0.4), 13)
+			Events.codex_event.emit("off_guard", 1)
+		_learn("styles", style)
+		match style:
+			"ranged":
+				_warn("ranged", "Archer! Spread out!")
+			"magic":
+				_warn("magic", "Sorcery! Ward yourselves!")
+			_:
+				if int(_lessons["styles"].get("melee", 0)) >= 2:
+					_warn("melee", "Shields up!")
 	if "evasive" in modifiers and state != State.WINDUP and randf() < EVADE_CHANCE:
 		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -30), "Evaded", Color(0.85, 0.85, 0.95), 13)
 		velocity = knockback.normalized().rotated(PI / 2.0 * (1 if randf() < 0.5 else -1)) * 260.0
@@ -606,6 +647,7 @@ func take_damage(
 	_animator.scale = Vector2(1.18, 0.84)
 	if health.is_dead():
 		return dealt
+	_maybe_flee()
 	if _hurt_quiet <= 0.0:
 		_hurt_quiet = 0.18
 		_voice("hurt", -4.0)
@@ -895,9 +937,9 @@ func _chase_velocity(to_target: Vector2, distance: float, delta: float) -> Vecto
 	# Ranged enemies back away when the player gets too close.
 	if _attack["kind"] in ["shoot", "spit"] and distance < _attack["range"] * 0.45:
 		heading = -heading
-	if has_trait("erratic"):
-		_weave += delta * 7.0
-		heading = heading.rotated(sin(_weave) * 0.9)
+	if has_trait("erratic") or spread:
+		_weave += delta * (7.0 if has_trait("erratic") else 4.5)
+		heading = heading.rotated(sin(_weave) * (0.9 if has_trait("erratic") else 0.7))
 	return heading * _speed * _speed_multiplier() + _separation()
 
 
@@ -1054,6 +1096,109 @@ func _pick_wander() -> void:
 
 
 ## Small push away from nearby enemies so a pack does not stack on one spot.
+## What a blow taught it.
+func _learn(group: String, key: String) -> void:
+	var seen: Dictionary = _lessons[group]
+	seen[key] = int(seen.get(key, 0)) + 1
+
+
+## Shouts what it learned to its kin nearby (now and then), who take it to
+## heart and get ready for it.
+func _warn(kind: String, words: String) -> void:
+	if faction == "" or state == State.DEAD:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - float(_warned.get(kind, -99.0)) < 6.0:
+		return
+	var heard := false
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var other := node as Enemy
+		if other and other != self and other.faction == faction and other.state != State.DEAD \
+				and other.global_position.distance_to(global_position) < 340.0:
+			other.hear_warning(kind, _lessons)
+			heard = true
+	if not heard:
+		return
+	_warned[kind] = now
+	DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -14), words, Factions.LIST[faction]["color"], 12)
+
+
+## Kin warned it: it learns what the warner learned and gets ready.
+func hear_warning(kind: String, lessons: Dictionary) -> void:
+	for group: String in lessons:
+		for key: String in lessons[group]:
+			var seen: Dictionary = _lessons[group]
+			seen[key] = maxi(int(seen.get(key, 0)), 1)
+	match kind:
+		"ranged":
+			spread = true
+		"melee":
+			if shield <= 0.0:
+				shield_max = maxf(shield_max, health.max_health * 0.2)
+				shield = shield_max
+				if not "shielded" in modifiers:
+					modifiers.append("shielded")
+				RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), MODIFIERS["shielded"]["color"], 36.0)
+				queue_redraw()
+		_:
+			# Sorcery or an element: brace against it, and scatter.
+			wards[kind] = maxf(float(wards.get(kind, 0.0)), 0.25)
+			spread = true
+
+
+## Allies who saw it die learn how it was killed.
+func _witnessed() -> void:
+	var style := Factions.style_of(_last_weapon_type)
+	if faction == "" or style == "":
+		return
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var other := node as Enemy
+		if other and other != self and other.faction == faction and other.global_position.distance_to(global_position) < 300.0:
+			other._learn("styles", style)
+
+
+## A badly hurt monster of a faction may run for it, to carry word home.
+func _maybe_flee() -> void:
+	if _flee_checked or fleeing or faction == "" or rank >= Rank.MINIBOSS or boss_id != "" or is_fragment \
+			or lair_home != Vector2.INF or health.current > health.max_health * 0.25:
+		return
+	_flee_checked = true
+	if randf() < 0.45:
+		fleeing = true
+		state = State.CHASE
+		_visual.modulate = _tint
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -14), "Flees!", Color(0.9, 0.9, 0.75), 12)
+
+
+func _flee(delta: float, to_target: Vector2, distance: float) -> void:
+	velocity = -to_target.normalized() * _speed * 1.15 * _ground_speed if distance > 0.0 else Vector2.ZERO
+	velocity += _separation() * 0.3
+	if absf(velocity.x) > 1.0:
+		_visual.scale.x = absf(_visual.scale.x) * signf(velocity.x)
+	move_and_slide()
+	_avoid_getting_stuck(delta)
+	if distance > 620.0:
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -10), "Escaped", Color(0.8, 0.8, 0.7), 12)
+		escape()
+		queue_free()
+
+
+## It got away alive: its faction hears all it learned.
+func escape() -> void:
+	if faction == "" or state == State.DEAD:
+		return
+	var told := false
+	for group: String in _lessons:
+		if not (_lessons[group] as Dictionary).is_empty():
+			told = true
+	if not told:
+		return
+	var factions: Factions = get_tree().get_first_node_in_group("factions")
+	if factions:
+		factions.report(faction, _lessons)
+		_lessons = {"styles": {}, "elements": {}}
+
+
 func _separation() -> Vector2:
 	var push := Vector2.ZERO
 	for node in get_tree().get_nodes_in_group("enemies"):
@@ -1061,7 +1206,8 @@ func _separation() -> Vector2:
 		if other == null or other == self:
 			continue
 		var offset := global_position - other.global_position
-		var spacing := body_radius + other.body_radius + 8.0
+		# Monsters who know the player shoots keep well apart.
+		var spacing := body_radius + other.body_radius + (64.0 if spread and other.faction == faction else 8.0)
 		if offset.length() < spacing and offset.length() > 0.01:
 			push += offset.normalized() * (spacing - offset.length()) * 6.0
 	return push
@@ -1111,6 +1257,11 @@ func _on_died() -> void:
 		get_parent(), global_position + Vector2(0, -24), "+%d XP" % xp, Color(0.45, 0.7, 1.0), 12
 	)
 	died.emit(self)
+	_witnessed()
+	if fleeing:
+		# Cut down before it could warn its faction.
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -16), "Silenced", Color(1.0, 0.85, 0.4), 13)
+		Events.codex_event.emit("silenced", 1)
 	Events.enemy_killed.emit({
 		"id": enemy_id,
 		"name": display_name,

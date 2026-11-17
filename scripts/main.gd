@@ -55,6 +55,11 @@ func _ready() -> void:
 	trial.name = "FlightTrial"
 	add_child(trial)
 	trial.setup(_player, _instances, _world, _spawner)
+	# The monsters' factions and what they have learned of the player.
+	var factions := Factions.new()
+	factions.name = "Factions"
+	add_child(factions)
+	factions.setup(_day_night)
 	# The world's memory of what was done in it (trails, clearings, scars).
 	var memory := WorldMemory.new()
 	memory.name = "WorldMemory"

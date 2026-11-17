@@ -431,6 +431,11 @@ func _build(center: Vector2i) -> Array:
 			var said: Array[String] = LINES.duplicate()
 			for rumour: String in memory.rumours(center):
 				said.append_array([rumour, rumour])
+			# And what the monsters are saying about the player.
+			var factions: Factions = get_parent().get_node_or_null("Factions")
+			if factions:
+				for line: String in factions.rumours():
+					said.append(line)
 			villager.lines = said
 		villager.villager_name = person["name"]
 		villager.job = person["job"]

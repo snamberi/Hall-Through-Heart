@@ -48,6 +48,10 @@ func spawn_at(
 	enemy.is_fragment = fragment
 	enemy.extra_modifiers = forced_modifiers.duplicate()
 	enemy.configure(level, rank, enemy_id)
+	# It comes ready for what its faction has learned of the player.
+	var factions: Factions = get_tree().get_first_node_in_group("factions")
+	if factions:
+		factions.adapt(enemy)
 	enemy.died.connect(_on_enemy_died)
 	enemy.wants_minion.connect(_on_wants_minion)
 	add_child(enemy)
@@ -85,6 +89,8 @@ func _physics_process(delta: float) -> void:
 		var far := enemy.global_position.distance_to(_player.global_position)
 		var wounded := enemy.health.current < enemy.health.max_health and enemy._since_hurt < Enemy.WOUNDS_LAST
 		if enemy.lair_home == Vector2.INF and far > despawn_distance and (not wounded or far > despawn_distance * 2.6):
+			# Left behind alive, it carries what it learned back to its faction.
+			enemy.escape()
 			enemy.queue_free()
 
 	# More things stir after dark.

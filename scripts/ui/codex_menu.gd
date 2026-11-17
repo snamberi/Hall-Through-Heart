@@ -37,7 +37,7 @@ func _build() -> void:
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.add_theme_constant_override("separation", 8)
 	content.add_child(tabs)
-	for tab: Array in [["bestiary", "Bestiary"], ["achievements", "Achievements"], ["collection", "Collection"]]:
+	for tab: Array in [["bestiary", "Bestiary"], ["factions", "Factions"], ["achievements", "Achievements"], ["collection", "Collection"]]:
 		var button := UITheme.button(tab[1], func() -> void:
 			_tab = tab[0]
 			_picked = ""
@@ -117,6 +117,8 @@ func refresh() -> void:
 			_bestiary(codex)
 		"achievements":
 			_achievements(codex)
+		"factions":
+			_factions(codex)
 		_:
 			_collection(codex)
 
@@ -513,6 +515,90 @@ func _achievements(codex: Codex) -> void:
 			SaveGame.request_save()
 		)
 		_right.add_child(_title_pick)
+
+
+## The monsters' factions and what each believes about how the player
+## fights (see Factions): pick one for what it knows and how it readies.
+func _factions(codex: Codex) -> void:
+	var factions: Factions = player.get_parent().get_node_or_null("Factions")
+	if factions == null:
+		return
+	_left.add_child(UITheme.label("What the monsters have learned of you", 15, UITheme.TEXT))
+	for id: String in Factions.LIST:
+		var data: Dictionary = Factions.LIST[id]
+		var met := (data["members"] as Array).any(func(kind: String) -> bool: return codex.kills_of(kind) > 0)
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(520, 58)
+		for state: String in ["normal", "pressed"]:
+			button.add_theme_stylebox_override(state, UITheme.card("card_selected" if id == _picked else ("card" if met else "card_dim"), 8))
+		button.add_theme_stylebox_override("hover", UITheme.card("card_selected" if id == _picked else "card_hover", 8))
+		button.add_theme_stylebox_override("focus", UITheme.focus_box())
+		button.pressed.connect(func() -> void:
+			_picked = id
+			refresh()
+		)
+		var lines := VBoxContainer.new()
+		lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lines.add_theme_constant_override("separation", 0)
+		lines.position = Vector2(12, 6)
+		button.add_child(lines)
+		var name := UITheme.strong(data["name"] if met else "An unknown faction", 16, data["color"] if met else UITheme.DIM)
+		name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lines.add_child(name)
+		var view := UITheme.label(factions.describe(id) if met else "Meet its kind to learn of it.", 13, UITheme.TEXT if met else UITheme.DIM)
+		view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lines.add_child(view)
+		_left.add_child(button)
+	if not Factions.LIST.has(_picked):
+		_right.add_child(UITheme.heading("Word gets around", 20))
+		_say("Monsters remember the blows they live through, and warn their kin nearby. Those that [color=#%s]get away alive[/color] tell their faction, and the next ones come ready:" % UITheme.GOLD.to_html(false))
+		_say("· Up close: more come [color=#8cc8ff]shielded[/color].\n· From afar: they come [color=#8cc8ff]spread out[/color], weaving.\n· Sorcery or an element: they come [color=#8cc8ff]warded[/color] against it.")
+		_say("Hunt down the ones that flee, or let them go on purpose: a faction only knows what it was shown. Ready for an archer, it is [color=#%s]caught off guard[/color] by a blade (and the other way about)." % UITheme.GOLD.to_html(false))
+		_say("[color=#%s]Keep away from a faction and it forgets: a quarter of what it knows for every day you do not meet.[/color]" % UITheme.DIM.to_html(false))
+		return
+	var data: Dictionary = Factions.LIST[_picked]
+	_right.add_child(UITheme.heading(data["name"], 20))
+	var kinds: PackedStringArray = []
+	for kind: String in data["members"]:
+		kinds.append(EnemyDB.ENEMIES[kind]["name"] if codex.kills_of(kind) > 0 else "???")
+	_say("[color=#%s]%s[/color]" % [UITheme.DIM.to_html(false), ", ".join(kinds)])
+	_say(factions.describe(_picked))
+	_right.add_child(UITheme.heading("How they think you fight", 16))
+	for style: String in Factions.STYLES:
+		_knowledge_bar("Fights %s" % Factions.STYLE_NAMES[style], factions.knows(_picked, "styles", style), data["color"])
+	var elements: Array = []
+	for element: String in Elements.LIST + ["storm"]:
+		if factions.knows(_picked, "elements", element) > 0.0:
+			elements.append(element)
+	if not elements.is_empty():
+		_right.add_child(UITheme.heading("What they fear", 16))
+		for element: String in elements:
+			_knowledge_bar(element.capitalize(), factions.knows(_picked, "elements", element), Elements.color(element))
+	var belief := factions.belief(_picked)
+	if belief != "":
+		var other: Array = Factions.STYLES.filter(func(style: String) -> bool: return style != belief)
+		_say("[color=#%s]Fight them %s or %s and the first blow on each catches them off guard.[/color]" % [UITheme.GOLD.to_html(false), Factions.STYLE_NAMES[other[0]], Factions.STYLE_NAMES[other[1]]])
+
+
+## A labelled bar showing how sure a faction is of something.
+func _knowledge_bar(title: String, share: float, tint: Color) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var name := UITheme.label(title, 14, UITheme.TEXT)
+	name.custom_minimum_size.x = 150.0
+	row.add_child(name)
+	var back := ColorRect.new()
+	back.color = Color(0.05, 0.06, 0.1)
+	back.custom_minimum_size = Vector2(160, 10)
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var fill := ColorRect.new()
+	fill.color = tint
+	fill.size = Vector2(roundf(158.0 * share), 8)
+	fill.position = Vector2(1, 1)
+	back.add_child(fill)
+	row.add_child(back)
+	row.add_child(UITheme.label("%d%%" % roundi(share * 100.0), 13, UITheme.DIM))
+	_right.add_child(row)
 
 
 func _collection(codex: Codex) -> void:

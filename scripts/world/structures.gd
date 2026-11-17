@@ -400,6 +400,7 @@ func _resonance(cell: Vector2i, key: String, level: int, placed: Array) -> void:
 				used[solved] = true
 				SaveGame.request_save()
 				LightPillar.spawn(get_parent(), stair_at, Color(0.8, 0.85, 1.0))
+				Events.codex_event.emit("resonance", 1)
 				Events.announcement.emit("THE RUIN ANSWERS", "The song is whole again. A stair opens in the floor: a hidden chamber below.")
 				var stair: Prop = open_stair.call()
 				placed.append(stair)

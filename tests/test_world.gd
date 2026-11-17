@@ -501,3 +501,56 @@ func test_the_world_remembers(t: TestContext) -> void:
 	for node: Node in placed:
 		node.queue_free()
 	t.close_game()
+
+
+func test_factions_learn_how_you_fight(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var spawner: EnemySpawner = main.get_node("Enemies")
+	var factions: Factions = main.get_node("Factions")
+	var at := player.global_position + Vector2(400, 0)
+	t.equal(Factions.of("husk"), "hollow", "husks are of the Hollow Host")
+	t.equal(Factions.of("deer"), "", "deer belong to no faction")
+	# One shot with a bow, and it gets away: the Host hears of an archer.
+	var scout := spawner.spawn_at(at, 1, Enemy.Rank.NORMAL, "husk")
+	scout.take_damage(1.0, Vector2.ZERO, false, "bows")
+	scout.escape()
+	t.check(factions.knows("hollow", "styles", "ranged") > 0.0, "an escaped husk tells of the bow")
+	t.equal(factions.knows("feral", "styles", "ranged"), 0.0, "other factions know nothing of it")
+	scout.queue_free()
+	factions.report("hollow", {"styles": {"ranged": 9}})
+	t.equal(factions.belief("hollow"), "ranged", "the Hollow Host now believe you an archer")
+	# Their next come ready for arrows (spread out), not for blades.
+	var spread := 0
+	var fresh: Array[Enemy] = []
+	for i in 8:
+		var husk := spawner.spawn_at(at + Vector2(i * 70, 200), 1, Enemy.Rank.NORMAL, "husk")
+		fresh.append(husk)
+		if husk.spread:
+			spread += 1
+	t.check(spread >= 3, "most come spread out (%d of 8)" % spread)
+	t.equal(fresh[0].expected, "ranged", "and expect a bow")
+	# False Reputation: a sword catches them off guard.
+	var before := fresh[0].health.current
+	fresh[0].take_damage(10.0, Vector2.ZERO, false, "swords")
+	t.check(is_equal_approx(before - fresh[0].health.current, 10.0 * Factions.SURPRISE), "the first sword blow lands harder (%.1f)" % (before - fresh[0].health.current))
+	before = fresh[0].health.current
+	fresh[0].take_damage(10.0, Vector2.ZERO, false, "swords")
+	t.check(is_equal_approx(before - fresh[0].health.current, 10.0), "only the first")
+	# Warnings: fire makes kin brace; blades make them raise shields.
+	var a := spawner.spawn_at(at + Vector2(0, 400), 1, Enemy.Rank.NORMAL, "husk")
+	var b := spawner.spawn_at(at + Vector2(60, 400), 1, Enemy.Rank.NORMAL, "husk")
+	a.take_damage(2.0, Vector2.ZERO, false, "", "fire")
+	t.check(float(b.wards.get("fire", 0.0)) > 0.0 and b.spread, "a husk burned shouts a warning: its kin brace against fire")
+	a.take_damage(1.0, Vector2.ZERO, false, "axes")
+	a.take_damage(1.0, Vector2.ZERO, false, "axes")
+	t.check(b.shield > 0.0, "struck twice up close, it calls shields up")
+	# Knowledge fades while the player keeps away.
+	var sure := factions.knows("hollow", "styles", "ranged")
+	(factions.known["hollow"] as Dictionary)["day"] = int((factions.known["hollow"] as Dictionary)["day"]) - 3
+	t.check(factions.knows("hollow", "styles", "ranged") < sure * 0.5, "three days away and they forget much of it")
+	t.check(not factions.rumours().is_empty() or factions.belief("hollow") == "", "villagers repeat what the monsters say")
+	t.check(factions.save_data()["known"].has("hollow"), "faction knowledge is kept in the save")
+	for enemy: Enemy in fresh + [a, b]:
+		enemy.queue_free()
+	t.close_game()
