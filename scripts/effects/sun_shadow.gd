@@ -44,7 +44,8 @@ static func _make_material() -> ShaderMaterial:
 
 ## Moves every shadow to suit the hour. `time` runs 0 to 1 through the day.
 static func update(time: float, darkness: float, indoors: bool, lightning: float) -> void:
-	if indoors:
+	# Sun shadows come with enhanced lighting and up (graphics settings).
+	if indoors or GameSettings.lighting < 2:
 		shared.set_shader_parameter("strength", 0.0)
 		return
 	var skew := 0.45

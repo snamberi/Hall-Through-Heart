@@ -66,7 +66,7 @@ static func _frames_for(sheet_kind: String) -> SpriteFrames:
 
 func _process(delta: float) -> void:
 	var height := float(SHEETS[kind][0].get_height())
-	if randf() < delta * (2.0 + size * 4.0) and _sparks.size() < 6:
+	if randf() < delta * (2.0 + size * 4.0) * GameSettings.particles and _sparks.size() < 6:
 		_sparks.append([Vector2(randi_range(-3, 3) * size, -height * 0.6), 0.0, randf_range(0.5, 1.1), randf_range(-10.0, 10.0)])
 	if smoke and size >= 0.9 and randf() < delta * 1.6 and _smoke.size() < 5:
 		_smoke.append([Vector2(randi_range(-2, 2), -height), 0.0, randf_range(1.4, 2.2), randf_range(2.0, 3.0)])

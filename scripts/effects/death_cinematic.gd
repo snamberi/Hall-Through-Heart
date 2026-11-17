@@ -102,7 +102,7 @@ func _real_seconds(seconds: float) -> Signal:
 
 func _spawn_death_motes(player: Player) -> void:
 	var motes := CPUParticles2D.new()
-	motes.amount = 28
+	motes.amount = GameSettings.particle_amount(28)
 	motes.lifetime = 1.6
 	motes.one_shot = true
 	motes.explosiveness = 0.1

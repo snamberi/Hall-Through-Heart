@@ -9,7 +9,7 @@ extends VBoxContainer
 
 signal closed
 
-const TABS: Array[String] = ["Audio", "Display", "Interface", "Comfort", "Controls"]
+const TABS: Array[String] = ["Audio", "Display", "Graphics", "Interface", "Comfort", "Controls"]
 const FRAME := Vector2(760.0, 440.0)
 ## Controls, grouped: [heading, actions].
 const GROUPS := [
@@ -43,7 +43,7 @@ func _ready() -> void:
 	tabs.add_theme_constant_override("separation", 8)
 	add_child(tabs)
 	for tab in TABS:
-		var button := UITheme.button(tab, show_tab.bind(tab), 140.0)
+		var button := UITheme.button(tab, show_tab.bind(tab), 118.0)
 		button.toggle_mode = true
 		button.custom_minimum_size.y = 38.0
 		tabs.add_child(button)
@@ -64,6 +64,21 @@ func _ready() -> void:
 		_check(page, "vsync", "Vertical sync (smoother, may limit frame rate)")
 		_slider(page, "ui_scale", "Interface size", 0.7, 1.3, true)
 		_text_size(page)
+	)
+	_pages["Graphics"] = _scroll_page(holder, func(page: VBoxContainer) -> void:
+		_preset_row(page)
+		_choice(page, "world_detail", "World detail", [[0, "Minimal"], [1, "Medium"], [2, "High"], [3, "Maximum"]], 112.0)
+		_choice(page, "particles", "Particles", [[0.25, "25%"], [0.5, "50%"], [1.0, "100%"], [1.5, "150%"]], 112.0)
+		_choice(page, "shaders", "Shaders", [["off", "Off"], ["basic", "Basic"], ["full", "Full"]], 112.0)
+		_choice(page, "lighting", "Lighting", [[0, "Simple"], [1, "Normal"], [2, "Enhanced"], [3, "Maximum"]], 112.0)
+		_choice(page, "weather_fx", "Weather effects", [[0, "Minimal"], [1, "Medium"], [2, "Full"]], 112.0)
+		_choice(page, "grass_density", "Grass density", [[0.25, "25%"], [0.5, "50%"], [1.0, "100%"], [1.5, "150%"]], 112.0)
+		_choice(page, "view_distance", "View distance", [[0, "Short"], [1, "Medium"], [2, "Long"], [3, "Maximum"]], 112.0)
+		_choice(page, "fps_limit", "FPS limit", [[30, "30"], [60, "60"], [120, "120"], [144, "144"], [0, "None"]], 86.0)
+		_check(page, "bloom", "Bloom (a soft glow round fire and magic)")
+		_check(page, "fog", "Fog and haze")
+		_check(page, "screen_shake", "Screen shake")
+		_check(page, "damage_numbers", "Damage numbers")
 	)
 	_pages["Interface"] = _page(holder, func(page: VBoxContainer) -> void:
 		_choice(page, "hud_layout", "Ability slots", [["compact", "By the hotbar"], ["classic", "Column on the left"]])
@@ -139,6 +154,44 @@ func _input(event: InputEvent) -> void:
 	_listening = ""
 	GameSettings.rebind(action, event)
 	_binding_buttons[action].grab_focus()
+
+
+## A page that scrolls, for one with more rows than the frame holds.
+func _scroll_page(holder: Control, fill: Callable) -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	holder.add_child(scroll)
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", 10)
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(page)
+	fill.call(page)
+	return scroll
+
+
+## The four presets, and which is in use ("Custom" once a value is changed alone).
+func _preset_row(page: Control) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	page.add_child(row)
+	var label := UITheme.strong("Preset", 17, UITheme.GOLD)
+	label.custom_minimum_size.x = 220.0
+	row.add_child(label)
+	var buttons: Dictionary = {}
+	for preset: String in ["low", "normal", "high", "ultra"]:
+		var button := UITheme.button(preset.capitalize(), func() -> void: GameSettings.apply_preset(preset), 112.0)
+		button.toggle_mode = true
+		row.add_child(button)
+		buttons[preset] = button
+	var custom := UITheme.label("", 15, UITheme.DIM)
+	row.add_child(custom)
+	var show := func() -> void:
+		for preset: String in buttons:
+			(buttons[preset] as Button).set_pressed_no_signal(GameSettings.graphics_preset == preset)
+		custom.text = "Custom" if GameSettings.graphics_preset == "custom" else ""
+	show.call()
+	GameSettings.changed.connect(show)
 
 
 func _page(holder: Control, fill: Callable) -> VBoxContainer:
@@ -229,12 +282,15 @@ func _check(page: Control, setting: String, title: String) -> CheckBox:
 	box.button_pressed = GameSettings.get(setting)
 	box.focus_mode = Control.FOCUS_ALL
 	box.toggled.connect(func(on: bool) -> void: GameSettings.set_value(setting, on))
+	# Kept true to the setting when it is changed elsewhere (the same
+	# toggle can be on two tabs).
+	GameSettings.changed.connect(func() -> void: box.set_pressed_no_signal(GameSettings.get(setting)))
 	page.add_child(box)
 	return box
 
 
 ## A row of buttons for a setting with a few named values.
-func _choice(page: Control, setting: String, title: String, options: Array) -> void:
+func _choice(page: Control, setting: String, title: String, options: Array, width: float = 150.0) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	page.add_child(row)
@@ -247,11 +303,16 @@ func _choice(page: Control, setting: String, title: String, options: Array) -> v
 			GameSettings.set_value(setting, option[0])
 			for other in buttons:
 				other.set_pressed_no_signal(other.text == option[1])
-		, 150.0)
+		, width)
 		button.toggle_mode = true
 		button.set_pressed_no_signal(GameSettings.get(setting) == option[0])
 		row.add_child(button)
 		buttons.append(button)
+	# A preset changes many at once: keep the buttons showing the values.
+	GameSettings.changed.connect(func() -> void:
+		for index in buttons.size():
+			buttons[index].set_pressed_no_signal(GameSettings.get(setting) == options[index][0])
+	)
 
 
 func _controls_page(holder: Control) -> Control:

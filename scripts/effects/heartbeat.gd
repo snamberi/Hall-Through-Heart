@@ -79,7 +79,7 @@ func _process(delta: float) -> void:
 			Audio.play("heartbeat", lerpf(-22.0, -3.0, tension), 0.02)
 	var life := _player.health.current / maxf(_player.health.max_health, 1.0)
 	var danger := 0.0 if _player.is_dead() else clampf((0.4 - life) / 0.4, 0.0, 1.0)
-	_rect.visible = danger > 0.01
+	_rect.visible = danger > 0.01 and GameSettings.shader_level() >= 1
 	if _rect.visible:
 		_material.set_shader_parameter("danger", danger)
 		_material.set_shader_parameter("pulse", pulse)

@@ -126,6 +126,14 @@ func _ready() -> void:
 	add_child(heart)
 	move_child(heart, $Atmosphere.get_index() + 1)
 	heart.setup(_player)
+	# Only the world round the player thinks and moves (graphics settings).
+	var active := ActiveArea.new()
+	active.name = "ActiveArea"
+	add_child(active)
+	active.setup(_player)
+	var bloom := Bloom.new()
+	bloom.name = "Bloom"
+	add_child(bloom)
 	var ambience := Ambience.new()
 	ambience.name = "Ambience"
 	add_child(ambience)

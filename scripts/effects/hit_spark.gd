@@ -17,7 +17,7 @@ static func spawn(parent: Node, at: Vector2, color: Color = Color(1.0, 0.95, 0.8
 	parent.add_child(spark)
 
 	var chips := CPUParticles2D.new()
-	chips.amount = 10 if big else 6
+	chips.amount = GameSettings.particle_amount(10 if big else 6)
 	chips.lifetime = 0.3
 	chips.one_shot = true
 	chips.explosiveness = 1.0

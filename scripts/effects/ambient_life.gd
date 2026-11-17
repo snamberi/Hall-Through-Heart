@@ -98,7 +98,8 @@ func _populate() -> void:
 			elif critter["kind"] != "perched":
 				critter["gone"] = true
 	for kind: String in wanted:
-		var missing: int = wanted[kind] - _count(kind)
+		# Fewer about on lower world detail (graphics settings).
+		var missing: int = roundi(wanted[kind] * GameSettings.detail_share()) - _count(kind)
 		for i in mini(missing, 3):
 			_spawn(kind, center)
 	# Now and then a flock crosses the sky.

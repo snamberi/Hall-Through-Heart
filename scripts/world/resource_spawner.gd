@@ -182,11 +182,12 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 			if used.has(cell):
 				continue
 			_cover_tile(cover, cell, Vector2i(x, y), tile, biome, type_at, sites, trees_at, random)
+	_thin(cover, origin)
 	add_child(cover)
 	placed.append(cover)
 
 	# A little wildlife.
-	for i in CRITTERS_PER_CHUNK:
+	for i in roundi(CRITTERS_PER_CHUNK * minf(GameSettings.detail_share(), 1.0)):
 		var cell := origin + Vector2i(random.randi_range(0, World.CHUNK_SIZE - 1), random.randi_range(0, World.CHUNK_SIZE - 1))
 		var biome: Dictionary = Flora.BIOMES.get(generator.tile_type_at(cell), {})
 		if biome.is_empty() or biome["critters"].is_empty() or random.randf() < 0.4:
@@ -242,3 +243,25 @@ func _on_chunk_freed(chunk: Vector2i) -> void:
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
+
+
+## Grass and flowers as thick as the graphics settings ask (fewer, or some
+## doubled beside themselves), and ground detail likewise.
+func _thin(cover: GroundCover, origin: Vector2i) -> void:
+	var random := RandomNumberGenerator.new()
+	random.seed = hash(Vector3i(origin.x, origin.y, 404))
+	cover.plants = _scaled_list(cover.plants, GameSettings.grass_density, random)
+	cover.decals = _scaled_list(cover.decals, GameSettings.detail_share(), random)
+
+
+static func _scaled_list(list: Array, share: float, random: RandomNumberGenerator) -> Array:
+	if is_equal_approx(share, 1.0):
+		return list
+	var out: Array = []
+	for entry: Array in list:
+		if share < 1.0 and random.randf() > share:
+			continue
+		out.append(entry)
+		if share > 1.0 and random.randf() < share - 1.0:
+			out.append([(entry[0] as Vector2) + Vector2(random.randf_range(-12.0, 12.0), random.randf_range(-8.0, 8.0)), entry[1], not entry[2]])
+	return out

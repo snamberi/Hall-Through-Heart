@@ -201,7 +201,10 @@ func _process(delta: float) -> void:
 	_density = lerpf(_density, _target_density, 0.6 * delta)
 	_tint = _tint.lerp(_target_tint, 0.6 * delta)
 	var t := Time.get_ticks_msec() / 1000.0
-	_material.set_shader_parameter("density", _density)
+	# Fog and its edge darkening are full-shader effects; fog can also be
+	# turned off alone (graphics settings).
+	_fog.visible = GameSettings.shader_level() >= 2
+	_material.set_shader_parameter("density", _density if GameSettings.fog else 0.0)
 	_material.set_shader_parameter("tint", _tint)
 	# The fog drifts slowly, and is pinned to the land rather than the screen.
 	_material.set_shader_parameter("drift", Vector2(t * 0.006, t * 0.002))
@@ -215,7 +218,7 @@ func _process(delta: float) -> void:
 	_haze_density = lerpf(_haze_density, _haze_target, 0.5 * delta)
 	_haze.density = _haze_density
 	_haze.tint = _tint
-	_mist_material.set_shader_parameter("density", _haze_density * 0.5)
+	_mist_material.set_shader_parameter("density", _haze_density * 0.5 if GameSettings.fog and GameSettings.shader_level() >= 2 else 0.0)
 	_mist_material.set_shader_parameter("tint", _tint.lightened(0.1))
 	if camera:
 		var view := get_viewport().get_visible_rect().size / camera.zoom
@@ -263,7 +266,7 @@ func _read_place() -> void:
 	if kind == "":
 		return
 	var settings: Dictionary = PARTICLES[kind]
-	_particles.amount = settings["amount"]
+	_particles.amount = maxi(1, roundi(float(settings["amount"]) * GameSettings.weather_share()))
 	_particles.color = settings["color"]
 	_particles.gravity = settings["gravity"]
 	_particles.initial_velocity_min = settings["speed"] * 0.5

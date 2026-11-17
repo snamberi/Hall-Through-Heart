@@ -16,7 +16,7 @@ static func spawn(parent: Node, at: Vector2, color: Color = Color(1.0, 0.9, 0.6)
 	parent.add_child(pillar)
 
 	var motes := CPUParticles2D.new()
-	motes.amount = 36
+	motes.amount = GameSettings.particle_amount(36)
 	motes.lifetime = 1.4
 	motes.one_shot = true
 	motes.explosiveness = 0.2

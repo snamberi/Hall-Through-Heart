@@ -4,6 +4,8 @@ extends Node
 ## every save.
 
 signal changed
+## The look of the world changed (a preset, shaders, fog...): redraw it.
+signal graphics_changed
 
 const PATH := "user://settings.json"
 ## Settings saved by name, with their defaults.
@@ -28,7 +30,33 @@ const DEFAULTS := {
 	"reduce_flashes": false,
 	"sprint_mode": "toggle",
 	"controls_version": 0,
+	"graphics_preset": "high",
+	"world_detail": 2,
+	"particles": 1.0,
+	"shaders": "full",
+	"lighting": 2,
+	"weather_fx": 2,
+	"grass_density": 1.0,
+	"view_distance": 2,
+	"bloom": false,
+	"fog": true,
+	"fps_limit": 0,
 }
+
+## The four graphics presets. Each sets these; changing any one alone makes
+## the preset "custom".
+const PRESETS := {
+	"low": {"world_detail": 0, "particles": 0.25, "shaders": "off", "lighting": 0, "weather_fx": 0, "grass_density": 0.25, "view_distance": 0},
+	"normal": {"world_detail": 1, "particles": 0.5, "shaders": "basic", "lighting": 1, "weather_fx": 1, "grass_density": 0.5, "view_distance": 1},
+	"high": {"world_detail": 2, "particles": 1.0, "shaders": "full", "lighting": 2, "weather_fx": 2, "grass_density": 1.0, "view_distance": 2},
+	"ultra": {"world_detail": 3, "particles": 1.5, "shaders": "full", "lighting": 3, "weather_fx": 2, "grass_density": 1.5, "view_distance": 3},
+}
+const PRESET_KEYS: Array[String] = ["world_detail", "particles", "shaders", "lighting", "weather_fx", "grass_density", "view_distance"]
+## Chunks loaded round the player, by view distance (Short .. Maximum).
+const LOAD_RADIUS: Array[int] = [1, 2, 3, 4]
+## How far out (world pixels) creatures and things keep moving, by view
+## distance; past it they sleep until the player comes near.
+const ACTIVE_RADIUS: Array[float] = [900.0, 1250.0, 1650.0, 2100.0]
 ## Raised whenever the default keys change, so old saved bindings are dropped
 ## once and everyone starts from the new layout.
 const CONTROLS_VERSION := 2
@@ -103,6 +131,25 @@ var reduce_flashes := false
 ## The sprint key: "toggle" (press to switch) or "hold" (sprint while held).
 var sprint_mode := "toggle"
 var controls_version := 0
+var graphics_preset := "high"
+## 0 Minimal, 1 Medium, 2 High, 3 Maximum: small things on the ground.
+var world_detail := 2
+## Share of particles drawn (0.25 .. 1.5).
+var particles := 1.0
+## "off", "basic" (ground and wind) or "full" (also haze, fog, glows).
+var shaders := "full"
+## 0 Simple, 1 Normal, 2 Enhanced, 3 Maximum.
+var lighting := 2
+## 0 Minimal, 1 Medium, 2 Full.
+var weather_fx := 2
+## Share of grass and flowers (0.25 .. 1.5).
+var grass_density := 1.0
+## 0 Short, 1 Medium, 2 Long, 3 Maximum.
+var view_distance := 2
+var bloom := false
+var fog := true
+## Frames a second at most (0: no limit).
+var fps_limit := 0
 ## action -> saved events, each {"key": physical keycode} or {"mouse": button}.
 var bindings: Dictionary = {}
 
@@ -159,6 +206,14 @@ func _ready() -> void:
 		tracker_mode = "full"
 	if not sprint_mode in ["toggle", "hold"]:
 		sprint_mode = "toggle"
+	if not shaders in ["off", "basic", "full"]:
+		shaders = "full"
+	world_detail = clampi(world_detail, 0, 3)
+	lighting = clampi(lighting, 0, 3)
+	weather_fx = clampi(weather_fx, 0, 2)
+	view_distance = clampi(view_distance, 0, 3)
+	particles = clampf(particles, 0.25, 1.5)
+	grass_density = clampf(grass_density, 0.25, 1.5)
 	if controls_version < CONTROLS_VERSION:
 		# The key layout changed: drop bindings saved for the old one.
 		bindings.clear()
@@ -172,9 +227,71 @@ func _ready() -> void:
 ## Changes a setting by name (see DEFAULTS).
 func set_value(setting: String, value: Variant) -> void:
 	set(setting, value)
+	if setting in PRESET_KEYS:
+		graphics_preset = _matching_preset()
 	_apply()
 	_save()
 	changed.emit()
+	if setting in PRESET_KEYS or setting in ["fog", "bloom"]:
+		graphics_changed.emit()
+
+
+## Sets every graphics value from a preset ("low", "normal", "high", "ultra").
+func apply_preset(preset: String) -> void:
+	if not PRESETS.has(preset):
+		return
+	for key: String in PRESETS[preset]:
+		set(key, PRESETS[preset][key])
+	graphics_preset = preset
+	_apply()
+	_save()
+	changed.emit()
+	graphics_changed.emit()
+
+
+func _matching_preset() -> String:
+	for preset: String in PRESETS:
+		var same := true
+		for key: String in PRESETS[preset]:
+			var want: Variant = PRESETS[preset][key]
+			var have: Variant = get(key)
+			if want is String:
+				same = same and have == want
+			else:
+				same = same and is_equal_approx(float(have), float(want))
+		if same:
+			return preset
+	return "custom"
+
+
+# --- what the graphics settings mean to the things that draw
+
+## How many of `amount` particles to make.
+func particle_amount(amount: int) -> int:
+	return maxi(1, roundi(amount * particles))
+
+
+## 0: no decorative shaders, 1: ground and wind, 2: all.
+func shader_level() -> int:
+	return {"off": 0, "basic": 1, "full": 2}.get(shaders, 2)
+
+
+func load_radius() -> int:
+	return LOAD_RADIUS[view_distance]
+
+
+func active_radius() -> float:
+	return ACTIVE_RADIUS[view_distance]
+
+
+## Share of weather particles drawn.
+func weather_share() -> float:
+	return [0.3, 0.65, 1.0][weather_fx] * clampf(particles, 0.5, 1.2)
+
+
+## Share of small things (decals, critters, pebbles) on the ground.
+func detail_share() -> float:
+	return [0.3, 0.65, 1.0, 1.3][world_detail]
 
 
 ## Binds an action to a single key or mouse button, replacing what it had.
@@ -343,6 +460,7 @@ func _apply() -> void:
 		if DisplayServer.window_get_mode() != mode:
 			DisplayServer.window_set_mode(mode)
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = fps_limit
 
 
 func _save() -> void:

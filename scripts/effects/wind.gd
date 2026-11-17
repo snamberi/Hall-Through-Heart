@@ -80,6 +80,9 @@ static func _make(code: String) -> ShaderMaterial:
 
 ## How hard it blows: about 2 on a fair day, 6 in a storm.
 static func set_strength(strength: float) -> void:
+	# Shaders off (graphics settings): nothing sways.
+	if GameSettings.shader_level() == 0:
+		strength = 0.0
 	material.set_shader_parameter("strength", strength)
 	grass.set_shader_parameter("strength", strength * 0.8)
 

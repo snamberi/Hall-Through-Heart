@@ -42,7 +42,7 @@ func setup(noise: Texture2D) -> void:
 
 
 func _process(_delta: float) -> void:
-	visible = density > 0.005
+	visible = density > 0.005 and GameSettings.fog and GameSettings.shader_level() >= 2
 	if not visible:
 		return
 	_material.set_shader_parameter("density", density)

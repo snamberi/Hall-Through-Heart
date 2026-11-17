@@ -81,6 +81,9 @@ static var _ground_material: ShaderMaterial
 ## plain stretch of one terrain never looks like the same tile repeated:
 ## soft lighter and darker reaches with a faint warm or cool cast.
 static func ground_material() -> ShaderMaterial:
+	# Shaders off (graphics settings): the ground drawn plain.
+	if GameSettings.shader_level() == 0:
+		return null
 	if _ground_material == null:
 		var shader := Shader.new()
 		shader.code = """

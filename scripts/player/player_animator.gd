@@ -289,7 +289,7 @@ func _spawn_ripple() -> void:
 
 func _on_splash(at: Vector2) -> void:
 	var drops := CPUParticles2D.new()
-	drops.amount = 16
+	drops.amount = GameSettings.particle_amount(16)
 	drops.lifetime = 0.5
 	drops.one_shot = true
 	drops.explosiveness = 1.0

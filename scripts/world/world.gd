@@ -46,6 +46,21 @@ func _ready() -> void:
 func setup(world_seed: int) -> void:
 	generator = WorldGenerator.new(world_seed)
 	_tile_set = TerrainTiles.build_tileset()
+	load_radius = GameSettings.load_radius()
+	if not GameSettings.graphics_changed.is_connected(_on_graphics_changed):
+		GameSettings.graphics_changed.connect(_on_graphics_changed)
+
+
+## The graphics settings changed: load as far as the view distance says and
+## build every chunk again in the new detail.
+func _on_graphics_changed() -> void:
+	load_radius = GameSettings.load_radius()
+	for chunk: Vector2i in _chunks.keys():
+		_chunks[chunk].queue_free()
+		_chunks.erase(chunk)
+		chunk_freed.emit(chunk)
+	if target != null:
+		_recenter(cell_to_chunk(world_to_cell(target.global_position)))
 
 
 func world_to_cell(world_position: Vector2) -> Vector2i:
@@ -76,10 +91,17 @@ func loaded_chunk_count() -> int:
 ## Builds every chunk around a position immediately. Use after teleporting
 ## so the target never stands on missing ground.
 func load_around_now(world_position: Vector2) -> void:
-	_recenter(cell_to_chunk(world_to_cell(world_position)))
+	var center := cell_to_chunk(world_to_cell(world_position))
+	_recenter(center)
+	# The near ones now; any further out (long view distances) over the
+	# next frames.
+	var later: Array[Vector2i] = []
 	for chunk in _queue:
-		_build_chunk(chunk)
-	_queue.clear()
+		if _chunk_distance(chunk, center) <= 2:
+			_build_chunk(chunk)
+		else:
+			later.append(chunk)
+	_queue = later
 
 
 func _process(_delta: float) -> void:

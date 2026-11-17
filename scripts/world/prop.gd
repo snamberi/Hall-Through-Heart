@@ -197,6 +197,12 @@ func add_light(strength: float = 0.9, reach: float = 1.6, tint := Color(1.0, 0.8
 		flame.smoke = entry[2]
 		flame.kind = entry[3]
 		add_child(flame)
+	# Simple lighting (graphics settings): the flame, but no glow round it.
+	if GameSettings.lighting == 0:
+		return
+	if GameSettings.lighting >= 3:
+		strength *= 1.12
+		reach *= 1.15
 	var light := FlickerLight.new()
 	light.texture = LIGHT
 	light.texture_scale = reach

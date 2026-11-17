@@ -73,7 +73,7 @@ func _particles(amount: int, lifetime: float, speed_min: float, speed_max: float
 	var particles := CPUParticles2D.new()
 	particles.emitting = false
 	particles.one_shot = true
-	particles.amount = amount
+	particles.amount = GameSettings.particle_amount(amount)
 	particles.lifetime = lifetime
 	particles.explosiveness = 0.7
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
@@ -125,7 +125,7 @@ func play_weapon(type: String, element: String, direction: Vector2, radius: floa
 			echo.tween_callback(_echo.hide)
 	if ELEMENTS.has(element):
 		var look: Array = ELEMENTS[element]
-		_element.amount = look[2]
+		_element.amount = GameSettings.particle_amount(look[2])
 		_burst(_element, Vector2(radius * 0.7, 0), look[0], Vector2(0, look[1]), look[2])
 		_element.emission_sphere_radius = radius * 0.35
 
@@ -134,7 +134,7 @@ func _burst(particles: CPUParticles2D, at: Vector2, color: Color, gravity: Vecto
 	particles.position = at
 	particles.color = color
 	particles.gravity = gravity.rotated(-rotation)
-	particles.amount = maxi(1, amount)
+	particles.amount = GameSettings.particle_amount(maxi(1, amount))
 	particles.restart()
 	particles.emitting = true
 
