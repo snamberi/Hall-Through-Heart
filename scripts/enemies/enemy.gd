@@ -224,7 +224,10 @@ func _ready() -> void:
 		health.max_health *= BossDB.BOSSES[boss_id]["health"]
 		health.current = health.max_health
 	body_radius = _data["radius"] * size
-	_visual.scale = Vector2(size, size)
+	# Animals are drawn at their own size (tools/generate_animals.py): only a
+	# rank or a giant's growth is added on top, and plain ones stay crisp.
+	var shown := size / float(_data["size"]) if enemy_id in NATIVE_SIZE else size
+	_visual.scale = Vector2(shown, shown)
 	_visual.modulate = _tint
 	_animator.sheet = EnemyDB.sheet(enemy_id)
 	_animator.rebuild()
@@ -420,6 +423,9 @@ func _draw() -> void:
 ## edged brighter as it nears. Areas are rings, swipes cones, lunges and
 ## charges lanes, pounces a landing ring and shots an aiming line.
 const TELEGRAPH := Color(1.0, 0.24, 0.2)
+## Beasts whose sheets are drawn at the size they are shown.
+const NATIVE_SIZE: Array[String] = ["deer", "wild_hare", "wild_pig", "mountain_goat", "pheasant", "desert_lizard", "snow_fox",
+	"shore_crab", "marsh_toad", "sheep", "cow", "chicken", "lamb", "calf", "chick", "bear", "grey_wolf", "giant_spider", "web_spider"]
 
 
 func _draw_telegraph() -> void:

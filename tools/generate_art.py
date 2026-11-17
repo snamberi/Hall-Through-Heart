@@ -3179,11 +3179,11 @@ def main():
     os.makedirs(os.path.join(ROOT, "sprites", "enemies"), exist_ok=True)
     for name, (rig, order, animations) in MONSTERS.items():
         draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
-    for name, (rig, order, animations) in WILDLIFE.items():
-        draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
-    os.makedirs(os.path.join(ROOT, "sprites", "mounts"), exist_ok=True)
-    for name, (rig, order, animations) in MOUNTS.items():
-        draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "mounts", name + ".png"))
+    # Animals and mounts are drawn at their shown size by their own tools.
+    import generate_animals
+    generate_animals.main()
+    import generate_mounts
+    generate_mounts.main()
     import generate_people
     generate_people.main()
     draw_terrain()

@@ -82,7 +82,8 @@ func _ready() -> void:
 func _dress() -> void:
 	var sheet := EnemyDB.sheet(info()["baby"] if is_baby() else species)
 	_sprite.sprite_frames = SheetAnimations.build(sheet, 96, EnemyAnimator.ROWS)
-	_sprite.scale = Vector2.ONE * float(info()["size"]) * (1.0 if is_baby() else 1.0)
+	# Drawn at their own size (tools/generate_animals.py): never stretched.
+	_sprite.scale = Vector2.ONE
 	_sprite.play("idle")
 
 

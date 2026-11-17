@@ -22,6 +22,10 @@ const ROWS: Array[Dictionary] = [
 	{"name": "death", "frames": 8, "fps": 10.0, "loop": false},
 	{"name": "rebirth", "frames": 8, "fps": 8.0, "loop": false},
 	{"name": "ride", "frames": 4, "fps": 5.0, "loop": true},
+	{"name": "thrust", "frames": 6, "fps": 15.0, "loop": false},
+	{"name": "smash", "frames": 7, "fps": 13.0, "loop": false},
+	{"name": "shoot", "frames": 6, "fps": 13.0, "loop": false},
+	{"name": "cast", "frames": 6, "fps": 13.0, "loop": false},
 ]
 ## Below this speed the player walks rather than runs, in pixels/second.
 const RUN_SPEED := 150.0
@@ -433,11 +437,34 @@ func _update_hood() -> void:
 	hood_material.set_shader_parameter("glow", 0.0)
 
 
-## Plays the swing, fitted into `duration` seconds. `heavy` uses the bigger
-## wind-up meant for abilities.
+## Each kind of weapon's own blow: [quick attack, heavy attack]. Swords and
+## the like keep the plain swing and the big wind-up.
+const ATTACK_ROWS := {
+	"spears": ["thrust", "thrust"], "daggers": ["thrust", "attack"], "axes": ["attack", "smash"],
+	"greatswords": ["attack", "smash"], "bows": ["shoot", "shoot"], "staves": ["cast", "cast"],
+	# By the weapon's own look, where it differs from its kind.
+	"halberd": ["thrust", "smash"], "club": ["smash", "smash"],
+}
+
+
+## Plays the blow for what is in hand, fitted into `duration` seconds.
+## `heavy` uses the bigger wind-up meant for abilities.
 func play_attack(duration: float, heavy: bool = false) -> void:
-	_busy = "heavy" if heavy else "attack"
+	var rows: Array = ATTACK_ROWS.get(_held_type(), ["attack", "heavy"])
+	_busy = rows[1] if heavy else rows[0]
+	if not sprite_frames or not sprite_frames.has_animation(_busy):
+		_busy = "heavy" if heavy else "attack"
 	_play_for(_busy, duration, true)
+
+
+func _held_type() -> String:
+	if _player == null or _player.equipment == null or _player.equipment.weapon() == null:
+		return ""
+	var definition := _player.equipment.weapon().definition()
+	var look := str(definition.get("visual", ""))
+	if ATTACK_ROWS.has(look):
+		return look
+	return str(definition.get("weapon", {}).get("type", ""))
 
 
 func play_hurt() -> void:

@@ -386,7 +386,63 @@ ANIMATIONS = [
         F(),
     ]),
     ("ride", [F(body=(0, 2 + b), crouch=2, legs="ride", arm_r=("fwd_down", 0, 0), weapon=90) for b in (0, 1, 1, 0)]),
+    # Each weapon family's own attack (the plain swing is "attack" above).
+    # A thrust: drawn back, then a lunge with the point straight ahead.
+    ("thrust", [
+        F(body=(-1, 0), arm_r=("fwd", -2, 0), weapon=90, leg_l=(0, -1)),
+        F(body=(-1, 0), arm_r=("fwd", -2, 0), weapon=90, leg_l=(0, -1), arm_l=("fwd_down", -1, 0)),
+        F(body=(2, 0), arm_r=("fwd", 2, 0), weapon=90, leg_r=(0, 1)),
+        F(body=(3, 0), arm_r=("fwd", 3, 0), weapon=90, leg_r=(0, 2), arm_l=("out", 0, 0)),
+        F(body=(1, 0), arm_r=("fwd", 1, 0), weapon=90, leg_r=(0, 1)),
+        F(arm_r=("down", 0, 0), weapon=60),
+    ]),
+    # A smash: raised high overhead in both hands, then brought down hard.
+    ("smash", [
+        F(body=(-1, 0), arm_r=("up", 0, 0), arm_l=("up", 0, 0), weapon=-40),
+        F(body=(-2, -1), arm_r=("up", -1, -1), arm_l=("up", -1, -1), weapon=-80),
+        F(body=(-1, -1), arm_r=("up", 0, -1), arm_l=("up", 0, -1), weapon=-20),
+        F(body=(1, 0), arm_r=("fwd_up", 0, 0), arm_l=("fwd_up", 0, 0), weapon=50),
+        F(body=(2, 2), arm_r=("fwd_down", 0, 1), arm_l=("fwd_down", 0, 1), weapon=140, crouch=2, leg_r=(0, 1)),
+        F(body=(2, 2), arm_r=("fwd_down", 0, 1), arm_l=("fwd_down", 0, 1), weapon=150, crouch=2, leg_r=(0, 1)),
+        F(arm_r=("down", 0, 0), weapon=45),
+    ]),
+    # A shot: the bow held out, the string drawn to the cheek, loosed.
+    ("shoot", [
+        F(arm_r=("fwd", 0, 0), arm_l=("fwd", 0, 0), weapon=8),
+        F(body=(-1, 0), arm_r=("fwd", 0, 0), arm_l=("fwd", -2, 0), weapon=8),
+        F(body=(-1, 0), arm_r=("fwd", 0, 0), arm_l=("fwd", -4, 0), weapon=8),
+        F(body=(-1, 0), arm_r=("fwd", 0, 0), arm_l=("fwd", -4, 0), weapon=8),
+        F(body=(1, 0), arm_r=("fwd", 1, 0), arm_l=("out", 0, 0), weapon=8),
+        F(arm_r=("down", 0, 0), weapon=15),
+    ]),
+    # A cast: the staff raised high, then swept forward to send the spell.
+    ("cast", [
+        F(arm_r=("fwd_up", 0, 0), arm_l=("fwd_up", 0, 0), weapon=0),
+        F(body=(0, -1), arm_r=("up", 0, 0), arm_l=("up", 0, 0), weapon=-8),
+        F(body=(0, -1), arm_r=("up", 0, -1), arm_l=("up", 0, -1), weapon=-8),
+        F(body=(1, 0), arm_r=("fwd", 0, 0), arm_l=("fwd", 0, 0), weapon=60),
+        F(body=(1, 0), arm_r=("fwd", 1, 0), arm_l=("out", 0, 0), weapon=75),
+        F(arm_r=("down", 0, 0), weapon=10),
+    ]),
 ]
+
+# How each family carries its weapon when not attacking: [weapon angle].
+# 0 points straight up, 90 ahead, 180 down.
+GRIPS = {
+    "upright": (8, ["spear", "heartpiercer", "sunfang", "halberd", "staff", "ember_staff", "wispkeeper", "rod"]),
+    "bow": (14, ["bow", "heartstring", "splitshot"]),
+    "dagger": (140, ["dagger", "fang", "frostbite"]),
+    # Heavy arms hang low at the side, head down, ready to swing up.
+    "low": (158, ["greatsword", "executioner", "pulsebrand", "axe", "reaver", "bloodthirst", "club"]),
+}
+GRIP_ROWS = ("idle", "walk", "run", "hurt")
+
+
+def grip_angle(name):
+    for _family, (angle, names) in GRIPS.items():
+        if name in names:
+            return angle
+    return None
 
 
 # --------------------------------------------------------------- drawing
@@ -1864,8 +1920,16 @@ def main():
         write_layer({"trouser": look["leg"]}, "layers", name)
     for name, look in BOOT_LOOKS.items():
         write_layer({"boot": look["boot"]}, "layers", name)
+    row_of = {id(frame): row for row, frames in ANIMATIONS for frame in frames}
     for name, parts in GA.WEAPONS.items():
-        save(sheet(lambda frame: weapon_frame(parts, frame, AVERAGE_HEIGHT, AVERAGE_BUILD)), "weapons", name + ".png")
+        angle = grip_angle(name)
+
+        def carried(frame, angle=angle):
+            # Out of the attack rows, the weapon sits in its family's grip.
+            if angle is not None and row_of.get(id(frame)) in GRIP_ROWS:
+                return dict(frame, weapon=angle)
+            return frame
+        save(sheet(lambda frame, parts=parts, carried=carried: weapon_frame(parts, carried(frame), AVERAGE_HEIGHT, AVERAGE_BUILD)), "weapons", name + ".png")
     write_npcs()
     write_frames_table()
 

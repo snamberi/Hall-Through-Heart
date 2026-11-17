@@ -12,7 +12,7 @@ const AVERAGE_HEIGHT := 2
 const AVERAGE_BUILD := 1
 const HEIGHT_ROWS: Array[int] = [2, 3, 4, 5, 6]
 const ARM_OUT: Array[int] = [-1, 0, 1]
-const TURNS := {"idle": [0, 0, 0, 0], "walk": [0, 0, 0, 0, 0, 0, 0, 0], "run": [0, 0, 0, 0, 0, 0, 0, 0], "attack": [0, 0, 0, 0, 0, 0], "heavy": [0, 0, 0, 0, 0, 0, 0, 0], "dodge": [0, 1, 2, 3, 0, 0, 0], "hurt": [0, 0, 0], "death": [0, 0, 0, 0, 0, 3, 3, 3], "rebirth": [3, 3, 0, 0, 0, 0, 0, 0], "ride": [0, 0, 0, 0]}
+const TURNS := {"idle": [0, 0, 0, 0], "walk": [0, 0, 0, 0, 0, 0, 0, 0], "run": [0, 0, 0, 0, 0, 0, 0, 0], "attack": [0, 0, 0, 0, 0, 0], "heavy": [0, 0, 0, 0, 0, 0, 0, 0], "dodge": [0, 1, 2, 3, 0, 0, 0], "hurt": [0, 0, 0], "death": [0, 0, 0, 0, 0, 3, 3, 3], "rebirth": [3, 3, 0, 0, 0, 0, 0, 0], "ride": [0, 0, 0, 0], "thrust": [0, 0, 0, 0, 0, 0], "smash": [0, 0, 0, 0, 0, 0, 0], "shoot": [0, 0, 0, 0, 0, 0], "cast": [0, 0, 0, 0, 0, 0]}
 
 
 ## Pixels a layer moves up for a height (taller legs lift everything).
