@@ -26,8 +26,8 @@ func setup(player: Player) -> void:
 	for entry: Array in [[_health_bar, 12.0, 22.0], [_mana_bar, 42.0, 20.0], [_stamina_bar, 70.0, 20.0]]:
 		(entry[0] as Control).position = Vector2(44.0, entry[1])
 		(entry[0] as Control).size = Vector2(280.0, entry[2])
-	_xp_bar.position = Vector2(44.0, 120.0)
-	_xp_bar.size = Vector2(210.0, 8.0)
+	_xp_bar.position = Vector2(44.0, 119.0)
+	_xp_bar.size = Vector2(210.0, 10.0)
 	_level_label.position = Vector2(336.0, 8.0)
 	_bind(_health_bar, Color(0.72, 0.13, 0.17), 35, func() -> float:
 		return player.health.current / player.health.max_health, func() -> String:
@@ -86,10 +86,6 @@ func setup(player: Player) -> void:
 	var feed := PickupFeed.new()
 	feed.name = "PickupFeed"
 	add_child(feed)
-	var compass := CompassStrip.new()
-	compass.name = "Compass"
-	add_child(compass)
-	compass.setup(player)
 	_boss_bar.draw.connect(_draw_boss_bar)
 	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
 		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
@@ -341,7 +337,7 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 		var size := bar.size
 		var share := clampf(fraction.call(), 0.0, 1.0)
 		trail["value"] = maxf(share, move_toward(trail["value"], share, get_process_delta_time() * 0.6))
-		var inner := Rect2(Vector2(3, 3), size - Vector2(6, 6))
+		var inner := Rect2(Vector2(3, 3), size - Vector2(6, 6)) if size.y >= 16.0 else Rect2(Vector2(1, 1), size - Vector2(2, 2))
 		bar.draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.02, 0.04, 0.92))
 		bar.draw_rect(inner, fill.darkened(0.82))
 		bar.draw_rect(Rect2(inner.position, Vector2(inner.size.x * trail["value"], inner.size.y)), Color(1.0, 0.92, 0.8, 0.55))
@@ -358,7 +354,12 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 		for tick in range(1, 10):
 			var tx := inner.position.x + inner.size.x * tick / 10.0
 			bar.draw_line(Vector2(tx, inner.end.y - 3.0), Vector2(tx, inner.end.y), Color(0, 0, 0, 0.45), 1.0)
-		bar.draw_style_box(_bar_frame, Rect2(Vector2(-3, -3), size + Vector2(6, 6)))
+		if size.y >= 16.0:
+			bar.draw_style_box(_bar_frame, Rect2(Vector2(-3, -3), size + Vector2(6, 6)))
+		else:
+			# A slim bar gets a slim frame: the slot frame's lip would cover it.
+			bar.draw_rect(Rect2(Vector2(-1, -1), size + Vector2(2, 2)), Color("8a6234"), false, 1.0)
+			bar.draw_rect(Rect2(Vector2(0, 0), Vector2(size.x, 1)), Color(1, 0.9, 0.6, 0.25))
 		if icon >= 0:
 			var medal := Vector2(-16.0, size.y / 2.0)
 			var radius := maxf(size.y / 2.0 + 3.0, 11.0)

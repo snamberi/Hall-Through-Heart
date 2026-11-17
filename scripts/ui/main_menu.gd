@@ -146,18 +146,11 @@ func _home_page() -> Control:
 	var buttons := VBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
 	panel.add_child(buttons)
-	var last := GameSettings.last_slot
-	if SaveGame.has_slot(last):
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(SaveGame.DIRECTORY.path_join(last + ".json")))
-		var meta: Dictionary = parsed.get("meta", {}) if parsed is Dictionary else {}
-		var resume := UITheme.primary_button("Continue  ·  %s" % meta.get("name", "your world"), _play.bind(last), 320.0)
-		buttons.add_child(resume)
-	if not SaveGame.list_slots().is_empty():
-		buttons.add_child(UITheme.button("Load a World", show_page.bind("load"), 320.0))
-	if SaveGame.has_slot(last):
-		buttons.add_child(UITheme.button("New World", show_page.bind("new"), 320.0))
-	else:
-		buttons.add_child(UITheme.primary_button("New World", show_page.bind("new"), 320.0))
+	# One way in: Play opens your worlds, with a new one at the bottom.
+	var play := UITheme.primary_button("PLAY", show_page.bind("load"), 320.0)
+	play.custom_minimum_size.y = 56.0
+	UITheme.font_size(play, 24)
+	buttons.add_child(play)
 	buttons.add_child(UITheme.button("Settings", show_page.bind("settings"), 320.0))
 	buttons.add_child(UITheme.button("Quit", get_tree().quit, 320.0))
 	return box
@@ -177,15 +170,22 @@ func _load_page() -> Control:
 	_save_list.add_theme_constant_override("separation", 8)
 	_save_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_save_list)
-	var back := UITheme.button("Back", show_page.bind("home"), 200.0)
-	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	box.add_child(back)
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 12)
+	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(bottom)
+	bottom.add_child(UITheme.button("Back", show_page.bind("home"), 160.0))
+	bottom.add_child(UITheme.primary_button("+  Create New World", show_page.bind("new"), 300.0))
 	return _framed(box)
 
 
 func _fill_save_list() -> void:
 	for child in _save_list.get_children():
 		child.queue_free()
+	if SaveGame.list_slots().is_empty():
+		var none := UITheme.label("No worlds yet. Create one below.", 16, UITheme.DIM)
+		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_save_list.add_child(none)
 	for slot in SaveGame.list_slots():
 		var meta: Dictionary = slot["meta"]
 		var card := UITheme.inset_panel()
@@ -518,7 +518,7 @@ func _show_step(step: String) -> void:
 		_step_pages[id].visible = id == step
 		_step_buttons[id].set_pressed_no_signal(id == step)
 	_next_button.text = "Create World  >" if step == "world" else "Next  >"
-	_back_button.text = "<  Title" if step == "look" else "<  Back"
+	_back_button.text = "<  Worlds" if step == "look" else "<  Back"
 	if step == "world":
 		_update_summary()
 
@@ -534,7 +534,7 @@ func _step_next() -> void:
 func _step_back() -> void:
 	var index := STEPS.map(func(s: Array) -> String: return s[0]).find(_step)
 	if index <= 0:
-		show_page("home")
+		show_page("load")
 	else:
 		_show_step(STEPS[index - 1][0])
 

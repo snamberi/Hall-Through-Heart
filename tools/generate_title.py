@@ -50,12 +50,14 @@ GLYPHS = {
     " ": [".....", ".....", ".....", ".....", ".....", ".....", "....."],
 }
 
-BRONZE = [C("fff0c0"), C("f2c86e"), C("d8a04a"), C("b07834"), C("7e5024")]   # hi, light, mid, shade, deep
+# Old, tarnished bronze: the hall is long dead.
+BRONZE = [C("f0d8a0"), C("d4a858"), C("b07a38"), C("845426"), C("4e2e14")]   # hi, light, mid, shade, deep
 DEPTH = [C("6a4220"), C("5a361a"), C("4a2c16"), C("3a2212"), C("2c1a0e"), C("22140c")]
 HEART_FACE = [C("ffb0b8"), C("f05a6a"), C("d03848"), C("a02436"), C("6e1424")]
 OUTLINE = C("0a0c16")
-MOSS = [C("8ad05a"), C("5aa040"), C("3e7a32"), C("2a5228")]
-VINE = [C("4a8a3a"), C("2e5a2a")]
+MOSS = [C("8aa850"), C("5e7a36"), C("3e5a2a"), C("283c1e")]
+VINE = [C("4a5e30"), C("2e3c20")]
+BLOOD = [C("e04050"), C("a01828"), C("6a0c18")]
 
 
 def letters(text, block, gap):
@@ -168,6 +170,41 @@ def outline(img, keep_out=()):
                 img.putpixel((x, y), OUTLINE)
 
 
+def bleed(img, face1, face2):
+    """Blood: drips running off the bottoms of the letters and the heart,
+    each ending in a drop, and spatter across HEART."""
+    r = random.Random(66)
+    w, h = img.size
+    faces = dict(face1)
+    faces.update(face2)
+    bottoms = sorted(p for p in faces if (p[0], p[1] + 1) not in faces)
+    for (x, y) in bottoms:
+        heart = faces[(x, y)] == "heart"
+        if r.random() > (0.5 if heart else 0.09):
+            continue
+        # Below the dropped face of the letter.
+        y0 = y + 1
+        while y0 < h and img.getpixel((x, y0))[3] > 0:
+            y0 += 1
+        length = r.randint(2, 8 if not heart else 10)
+        for k in range(length):
+            if y0 + k < h:
+                img.putpixel((x, y0 + k), BLOOD[1] if k < length - 1 else BLOOD[2])
+        if y0 + length < h - 1:
+            img.putpixel((x, y0 + length), BLOOD[1])
+            if x + 1 < w:
+                img.putpixel((x + 1, y0 + length), BLOOD[2])
+        # The face it runs from is stained.
+        img.putpixel((x, y), BLOOD[1])
+        if (x, y - 1) in faces:
+            img.putpixel((x, y - 1), BLOOD[0] if r.random() < 0.5 else BLOOD[1])
+    for _ in range(14):
+        x, y = r.choice(sorted(face2))
+        for dx, dy in ((0, 0), (1, 0), (0, 1), (-1, 1), (2, -1))[:r.randint(2, 5)]:
+            if (x + dx, y + dy) in faces:
+                img.putpixel((x + dx, y + dy), BLOOD[r.randint(0, 2)])
+
+
 def logo():
     w, h = 236, 74
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
@@ -181,6 +218,7 @@ def logo():
     for (p, c) in vines1 + vines2:
         if 0 <= p[0] < w and 0 <= p[1] < h and img.getpixel(p)[3] == 0:
             img.putpixel(p, c)
+    bleed(img, face1, face2)
     outline(img)
     # Grass blades stand over the outline, thin and unoutlined.
     for (p, c) in blades1 + blades2:
