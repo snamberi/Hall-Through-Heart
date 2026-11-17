@@ -11,7 +11,8 @@ const T := TerrainTiles.Type
 ## Chance per chunk of each structure, checked in this order.
 const CHANCES: Array[Array] = [["ruin", 0.07], ["shrine", 0.03], ["cave", 0.035], ["lair", 0.03], ["portal", 0.02], ["dungeon", 0.014], ["boss", 0.009],
 	["camp", 0.04], ["waystone", 0.025], ["obelisk", 0.015], ["merchant", 0.015],
-	["watchtower", 0.02], ["graveyard", 0.02], ["henge", 0.015], ["farmstead", 0.02], ["library", 0.012], ["dojo", 0.006]]
+	["watchtower", 0.02], ["graveyard", 0.02], ["henge", 0.015], ["farmstead", 0.02], ["library", 0.012], ["dojo", 0.006],
+	["colossus", 0.016], ["arches", 0.022]]
 ## Notes left in abandoned camps.
 const NOTES: Array[String] = [
 	"Day nine. The husks came again at dusk. We burned the fence to keep them back. No fence now.",
@@ -176,7 +177,7 @@ const SITE_NAMES := {"ruin": "Ruins", "shrine": "Shrine", "cave": "Cave", "lair"
 	"boss": "Boss Arena", "camp": "Abandoned Camp", "waystone": "Waystone", "obelisk": "Obelisk", "merchant": "Merchant's Camp",
 	"watchtower": "Watchtower", "graveyard": "Graveyard", "henge": "Standing Stones", "farmstead": "Farmstead", "library": "Library",
 	"dojo": "Dojo", "shipwreck": "Shipwreck", "altar": "Altar of Magic", "village": "Village", "orphanage": "Saint Lull's House",
-	"bunker": "Grassy Hatch", "promise_stone": "Promise Stone"}
+	"bunker": "Grassy Hatch", "promise_stone": "Promise Stone", "colossus": "Fallen Colossus", "arches": "Broken Arches"}
 
 
 ## The nearest places to a tile: up to `count` of {"kind", "name", "cell",
@@ -875,11 +876,70 @@ func _build_henge(cell: Vector2i, _key: String, _level: int, random: RandomNumbe
 	placed.append(stone)
 
 
+## Where a statue of the god fell: its face sunk to the jaw in the earth,
+## its hand open beside it, a column toppled, stones of its plinth about.
+## The setting on its brow is empty.
+const COLOSSUS_WORDS := [
+	"A face of the god, as tall as a house, sunk to the jaw in the earth. Its eyes are closed, as if it only sleeps.",
+	"The setting on its brow is empty. A red stone was there once; a thin red line still runs from it, like a tear.",
+	"Lichen fills the cracks. Something under the ground beats, slow, and the stone hums with it.",
+]
+
+
+func _build_colossus(cell: Vector2i, key: String, _level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	_floor(placed, cell, 3, "ruin")
+	# (In an array: a lambda keeps its own copy of a plain number.)
+	var words := [0]
+	var face := Prop.create_ruin(Prop.Ruin.COLOSSUS_FACE, _at(cell + Vector2i(-1, 0)), 34.0, "Look upon the fallen face")
+	face.on_interact = func(_player: Player) -> void:
+		Events.announcement.emit("THE FALLEN COLOSSUS", COLOSSUS_WORDS[words[0] % COLOSSUS_WORDS.size()])
+		words[0] += 1
+		if not used.has(key):
+			used[key] = true
+			Events.codex_event.emit("colossus_seen", 1)
+	placed.append(face)
+	placed.append(Prop.create_ruin(Prop.Ruin.COLOSSUS_HAND, _at(cell + Vector2i(3, 2)), 26.0))
+	placed.append(Prop.create_ruin(Prop.Ruin.COLUMN_DRUM, _at(cell + Vector2i(-4, 3)), 14.0))
+	placed.append(Prop.create_ruin(Prop.Ruin.FALLEN_STONES, _at(cell + Vector2i(1, -3)), 10.0))
+	for k in random.randi_range(3, 5):
+		var spot := cell + Vector2i(random.randi_range(-5, 5), random.randi_range(-3, 4))
+		if spot.distance_to(cell) > 2.5:
+			_decor(placed, Prop.Decor.RUBBLE if random.randf() < 0.6 else Prop.Decor.STONE_SHARD, spot, 0.0, false, Vector2(random.randf_range(-8, 8), random.randf_range(-6, 6)))
+
+
+## A road of the old god's city, its arches fallen: one still standing on
+## one side, the stumps of another, the stones of a third in a heap; what a
+## traveller left in the shelter of the arch.
+func _build_arches(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	for dx in range(-6, 7):
+		for dy in range(-1, 2):
+			if random.randf() < 0.78:
+				_decor(placed, Prop.Decor.FLOOR, cell + Vector2i(dx, dy))
+	placed.append(Prop.create_ruin(Prop.Ruin.BROKEN_ARCH, _at(cell + Vector2i(0, 0)), 0.0))
+	# The piers are solid; the way under the arch is open.
+	for side: int in [-1, 1]:
+		var pier := StaticBody2D.new()
+		pier.position = _at(cell, Vector2(side * 34.0, -2.0))
+		var shape := CollisionShape2D.new()
+		var circle := CircleShape2D.new()
+		circle.radius = 11.0
+		shape.shape = circle
+		pier.add_child(shape)
+		placed.append(pier)
+	placed.append(Prop.create_ruin(Prop.Ruin.ARCH_STUMPS, _at(cell + Vector2i(5, 0)), 12.0))
+	placed.append(Prop.create_ruin(Prop.Ruin.FALLEN_STONES, _at(cell + Vector2i(-5, 1)), 10.0))
+	if random.randf() < 0.6:
+		placed.append(Prop.create_ruin(Prop.Ruin.COLUMN_DRUM, _at(cell + Vector2i(2, 3)), 14.0))
+	placed.append(_chest(cell + Vector2i(1, 1), key, level, 0.8))
+	for k in random.randi_range(2, 4):
+		_decor(placed, Prop.Decor.RUBBLE, cell + Vector2i(random.randi_range(-6, 6), random.randi_range(-2, 3)), 0.0, false, Vector2(random.randf_range(-8, 8), random.randf_range(-6, 6)))
+
+
 ## An abandoned farmstead: a cottage, plots gone to weeds, a scarecrow, a
 ## well and a tipped cart, with seed and food left in the store.
 func _build_farmstead(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
 	var house := Prop.create(Prop.Art.HOUSE, _at(cell + Vector2i(-2, -2)), 30.0, "Enter the farmhouse", func(_p: Player) -> void:
-		_instances.enter_dwelling("cottage", "Farmhouse", level, hash(key), used.has(key + ":inside"), func() -> void: used[key + ":inside"] = true)
+		_instances.enter_dwelling("cottage", "Farmhouse", level, hash(key), used.has(key + ":inside"), func() -> void: used[key + ":inside"] = true, "farmer")
 	)
 	HouseStyles.dress(house, _world.generator.tile_type_at(cell))
 	placed.append(house)

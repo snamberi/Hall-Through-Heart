@@ -425,6 +425,13 @@ func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 	if outer_right:
 		_corner(at, tops, bottoms, false, wall)
 	_cliff_trim(at, tops, bottoms, stones, grass, rocky, random)
+	match _variant(above, x, y):
+		"mossy":
+			_mossy(at, tops, bottoms, random)
+		"rooted":
+			_rooted(at, tops, bottoms, random)
+		"ore":
+			_ore(at, tops, bottoms, above, random)
 
 
 ## The end of a face at an outer corner: the plateau's side wall coming
@@ -599,3 +606,195 @@ func _cliff_trim(at: Vector2, tops: Array[float], bottoms: Array[float], stones:
 			var c := random.randi_range(0, 20)
 			draw_rect(Rect2(at.x + c * 2.0, bottoms[c] - 4.0, 2.0, 4.0), grass.darkened(0.1))
 			draw_rect(Rect2(at.x + c * 2.0 + 2.0, bottoms[c] - 2.0, 2.0, 2.0), grass)
+
+
+# --- three looks a cliff can take, a stretch at a time
+
+## Moss: [shade, base, light, highlight].
+const MOSS := [Color("2c4a22"), Color("3f6a2c"), Color("5e8e36"), Color("8cb84a")]
+## Roots: [dark, base, light, highlight].
+const ROOT := [Color("2a1810"), Color("4a2e1a"), Color("6c4428"), Color("8e6038")]
+## Ore in the rock, by the land above: [dark, base, light, glint].
+const ORES := {
+	"iron": [Color("4a2010"), Color("8a3e1c"), Color("c06a34"), Color("f0b070")],
+	"copper": [Color("1e4a40"), Color("2e7a68"), Color("54b096"), Color("a8ecd2")],
+	"gold": [Color("6a4a14"), Color("a8822a"), Color("e0c050"), Color("fff0a8")],
+	"ember": [Color("5a160a"), Color("a8341a"), Color("f07a2c"), Color("ffd27a")],
+	"void": [Color("2e1658"), Color("5e34a0"), Color("9a6ae8"), Color("e6d4ff")],
+	"salt": [Color("6a7684"), Color("a4b2c0"), Color("dce6ee"), Color("ffffff")],
+}
+
+
+## Which look this stretch of cliff has. Neighbouring faces share it, so a
+## cliff is mossy (or rooted, or veined) for a run of several tiles.
+func _variant(above: int, x: int, y: int) -> String:
+	var wx := origin.x + x
+	var wy := origin.y + y
+	var region := Vector2i(floori(wx / 6.0), floori(wy / 4.0))
+	var roll := posmod(hash(Vector3i(region.x, region.y, 4471)), 100)
+	if above in [T.DARK_GRASS, T.BOG, T.FUNGAL, T.FROSTPINE]:
+		return "mossy" if roll < 42 else "rooted" if roll < 70 else ""
+	if above in [T.DEAD_GRASS, T.THORN, T.CRIMSON, T.MUD]:
+		return "rooted" if roll < 40 else "mossy" if roll < 58 else ""
+	if above in [T.ROCK, T.PEAK, T.ASH, T.CINDER, T.SAND, T.SALT, T.VOIDSCAR]:
+		return "ore" if roll < 45 else "mossy" if roll < 55 and above == T.ROCK else ""
+	return ""
+
+
+## Moss over the lip and the stones: caps hanging in strands of different
+## lengths, cushions on the faces, damp streaks under them, ferns at the foot.
+func _mossy(at: Vector2, tops: Array[float], bottoms: Array[float], random: RandomNumberGenerator) -> void:
+	var world_x := float(origin.x) * TILE + at.x
+	for c in 22:
+		var top: float = tops[c] + 6.0
+		var room: float = bottoms[c] - top - 4.0
+		if room <= 0.0:
+			continue
+		var px := at.x + c * 2.0
+		# A cap of moss along the lip, hanging further here and there.
+		var hang := 2.0 + maxf(_wave(world_x + c * 2.0, 6.3, 6.0), 0.0)
+		if random.randf() < 0.18:
+			hang += float(random.randi_range(2, 5)) * 2.0
+		hang = minf(hang, room)
+		var y0 := top
+		while y0 < top + hang:
+			var step := (y0 - top) / maxf(hang, 1.0)
+			var colour: Color = MOSS[3] if y0 == top else MOSS[2] if step < 0.35 else MOSS[1] if step < 0.8 else MOSS[0]
+			draw_rect(Rect2(px, y0, 2.0, 2.0), colour)
+			y0 += 2.0
+		# The damp it leaves running down the stone.
+		if hang > 6.0 and random.randf() < 0.5:
+			var streak := minf(float(random.randi_range(2, 5)) * 2.0, room - hang)
+			if streak > 0.0:
+				draw_rect(Rect2(px, top + hang, 2.0, streak), Color(0.02, 0.05, 0.03, 0.28))
+	# Cushions of moss on the face, lit from the upper left.
+	for k in random.randi_range(2, 4):
+		var c := random.randi_range(1, 18)
+		var w := random.randi_range(2, 4)
+		var cy: float = tops[c] + 14.0 + float(random.randi_range(0, 5)) * 2.0
+		if cy + 6.0 > bottoms[c] - 2.0:
+			continue
+		for i in w:
+			var px := at.x + (c + i) * 2.0
+			var h := 4.0 if i == 0 or i == w - 1 else 6.0
+			draw_rect(Rect2(px, cy + (2.0 if h < 6.0 else 0.0), 2.0, h - 2.0), MOSS[1])
+			draw_rect(Rect2(px, cy + (2.0 if h < 6.0 else 0.0), 2.0, 2.0), MOSS[2] if i < w - 1 else MOSS[1])
+			draw_rect(Rect2(px, cy + h, 2.0, 2.0), MOSS[0])
+		draw_rect(Rect2(at.x + c * 2.0 + 2.0, cy, 2.0, 2.0), MOSS[3])
+	# Little ferns against the foot.
+	for k in random.randi_range(1, 3):
+		var c := random.randi_range(1, 19)
+		var fx := at.x + c * 2.0
+		var fy: float = bottoms[c] - 2.0
+		draw_rect(Rect2(fx, fy - 4.0, 2.0, 4.0), MOSS[1])
+		draw_rect(Rect2(fx - 2.0, fy - 6.0, 2.0, 2.0), MOSS[2])
+		draw_rect(Rect2(fx + 2.0, fy - 6.0, 2.0, 2.0), MOSS[2])
+		draw_rect(Rect2(fx, fy - 8.0, 2.0, 2.0), MOSS[3])
+
+
+## Roots of whatever grows above, broken out through the face: thick and
+## lit along one side, thinning as they go, a few rootlets off them, and
+## where they reach the foot, arching back into the ground.
+func _rooted(at: Vector2, tops: Array[float], bottoms: Array[float], random: RandomNumberGenerator) -> void:
+	for k in random.randi_range(1, 2):
+		var c := random.randi_range(2, 18)
+		var y: float = tops[c] + 6.0
+		var width := 2
+		var steps := 0
+		while c >= 0 and c < 21 and y < bottoms[c] - 4.0 and steps < 30:
+			var px := at.x + c * 2.0
+			for i in width:
+				var colour: Color = ROOT[2] if i == 0 else ROOT[1]
+				draw_rect(Rect2(px + i * 2.0, y, 2.0, 2.0), colour)
+			# Lit on the left, in shadow on the right.
+			draw_rect(Rect2(px - 2.0, y, 2.0, 2.0), Color(ROOT[3], 0.55))
+			draw_rect(Rect2(px + width * 2.0, y, 2.0, 2.0), ROOT[0])
+			# A rootlet now and then.
+			if steps > 2 and random.randf() < 0.18:
+				var side := -1 if random.randf() < 0.5 else 1
+				var rx := px + (side * 2.0 if side < 0 else width * 2.0)
+				for r in random.randi_range(2, 4):
+					rx += side * 2.0
+					draw_rect(Rect2(rx, y + r * 2.0, 2.0, 2.0), ROOT[1] if r < 2 else ROOT[0])
+			y += 2.0
+			steps += 1
+			if random.randf() < 0.3:
+				c = clampi(c + (1 if random.randf() < 0.5 else -1), 1, 19)
+			if steps == 8 and random.randf() < 0.6:
+				width = 1
+		# Into the ground at the foot: an arch over the soil.
+		if steps > 4 and c > 1 and c < 19:
+			var foot: float = bottoms[c]
+			var px := at.x + c * 2.0
+			draw_rect(Rect2(px, foot - 2.0, 2.0, 2.0), ROOT[1])
+			draw_rect(Rect2(px + 2.0, foot - 4.0, 4.0, 2.0), ROOT[2])
+			draw_rect(Rect2(px + 2.0, foot - 2.0, 4.0, 2.0), ROOT[0])
+			draw_rect(Rect2(px + 6.0, foot - 2.0, 2.0, 2.0), ROOT[1])
+			draw_rect(Rect2(px + 2.0, foot, 6.0, 2.0), Color(0, 0, 0, 0.3))
+	# A knot where a root broke off.
+	if random.randf() < 0.6:
+		var c := random.randi_range(3, 17)
+		var ky: float = tops[c] + 12.0 + float(random.randi_range(0, 4)) * 2.0
+		if ky + 6.0 < bottoms[c]:
+			var kx := at.x + c * 2.0
+			draw_rect(Rect2(kx, ky, 4.0, 4.0), ROOT[1])
+			draw_rect(Rect2(kx, ky, 2.0, 2.0), ROOT[3])
+			draw_rect(Rect2(kx + 2.0, ky + 2.0, 2.0, 2.0), ROOT[0])
+			draw_rect(Rect2(kx + 4.0, ky + 2.0, 2.0, 2.0), Color(0, 0, 0, 0.35))
+
+
+## A vein of ore running through the face: a jagged line of it crossing the
+## stones, bright where it catches the light, and a few nuggets or crystals
+## standing out of the rock.
+func _ore(at: Vector2, tops: Array[float], bottoms: Array[float], above: int, random: RandomNumberGenerator) -> void:
+	var kind := "iron"
+	match above:
+		T.SAND:
+			kind = "gold"
+		T.ASH, T.CINDER:
+			kind = "ember"
+		T.VOIDSCAR:
+			kind = "void"
+		T.SALT:
+			kind = "salt"
+		_:
+			kind = "copper" if posmod(hash(Vector2i(origin.x / 8, origin.y / 8)), 3) == 0 else "iron"
+	var ore: Array = ORES[kind]
+	# The vein: wandering down and across the face.
+	var c := random.randi_range(0, 8)
+	var y: float = tops[c] + 8.0
+	var going := 1 if random.randf() < 0.7 else -1
+	var steps := 0
+	while c >= 0 and c < 22 and y < bottoms[c] - 4.0 and steps < 26:
+		var px := at.x + c * 2.0
+		draw_rect(Rect2(px, y, 2.0, 2.0), ore[1])
+		draw_rect(Rect2(px, y + 2.0, 2.0, 2.0), ore[0])
+		if random.randf() < 0.22:
+			draw_rect(Rect2(px, y, 2.0, 2.0), ore[3] if random.randf() < 0.4 else ore[2])
+		if random.randf() < 0.6:
+			c += going
+		else:
+			y += 2.0
+		if random.randf() < 0.12:
+			y += 2.0
+		steps += 1
+	# Nuggets (or crystals) standing out of the rock.
+	for k in random.randi_range(1, 3):
+		var nc := random.randi_range(2, 18)
+		var ny: float = tops[nc] + 12.0 + float(random.randi_range(0, 6)) * 2.0
+		if ny + 8.0 > bottoms[nc]:
+			continue
+		var nx := at.x + nc * 2.0
+		if kind in ["void", "salt"]:
+			# A crystal: a point of light, a lit face and a shaded one.
+			draw_rect(Rect2(nx, ny, 2.0, 2.0), ore[3])
+			draw_rect(Rect2(nx - 2.0, ny + 2.0, 2.0, 4.0), ore[2])
+			draw_rect(Rect2(nx, ny + 2.0, 2.0, 4.0), ore[1])
+			draw_rect(Rect2(nx + 2.0, ny + 4.0, 2.0, 2.0), ore[0])
+			draw_rect(Rect2(nx - 2.0, ny + 6.0, 6.0, 2.0), Color(0, 0, 0, 0.35))
+		else:
+			draw_rect(Rect2(nx, ny, 4.0, 4.0), ore[1])
+			draw_rect(Rect2(nx, ny, 2.0, 2.0), ore[3])
+			draw_rect(Rect2(nx + 2.0, ny, 2.0, 2.0), ore[2])
+			draw_rect(Rect2(nx + 2.0, ny + 2.0, 2.0, 2.0), ore[0])
+			draw_rect(Rect2(nx, ny + 4.0, 4.0, 2.0), Color(0, 0, 0, 0.35))

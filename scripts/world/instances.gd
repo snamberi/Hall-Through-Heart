@@ -614,11 +614,65 @@ func _spawn_wave_boss() -> void:
 ## a bed, a fire in the hearth, a table and chairs, shelves and a
 ## cupboard). Its chest or cupboard has loot only while `looted` is false;
 ## `on_loot` is called when it is first opened.
-func enter_dwelling(kind: String, title: String, level: int, dwelling_seed: int, looted: bool, on_loot: Callable) -> void:
+## Who lives in a house, and what that fills it with: [title, pieces],
+## each piece [decor, cell, solid radius, lit, offset]. The room is 7 x 5
+## tiles; the bed is always in the far left corner, the hearth in the middle
+## of the far wall, the cupboard by the door on the left, and the way from
+## the door kept clear.
+const HOUSEHOLDS := {
+	"family": ["A family's house", [
+		[Prop.Decor.CRADLE, Vector2i(1, 0), 12.0, false, Vector2.ZERO], [Prop.Decor.POTS_RACK, Vector2i(4, 0), 0.0, false, Vector2(0, -18)],
+		[Prop.Decor.DRESSER, Vector2i(5, 0), 12.0, false, Vector2.ZERO], [Prop.Decor.CANDLES, Vector2i(6, 0), 0.0, true, Vector2.ZERO],
+		[Prop.Decor.RUG, Vector2i(2, 2), 0.0, false, Vector2.ZERO], [Prop.Decor.TABLE, Vector2i(5, 2), 14.0, false, Vector2.ZERO],
+		[Prop.Decor.CHAIR, Vector2i(4, 2), 0.0, false, Vector2.ZERO], [Prop.Decor.STOOL, Vector2i(6, 2), 0.0, false, Vector2.ZERO],
+		[Prop.Decor.PLANT_POT, Vector2i(6, 3), 8.0, false, Vector2.ZERO], [Prop.Decor.BARREL, Vector2i(0, 2), 10.0, false, Vector2.ZERO]]],
+	"scholar": ["The scholar's house", [
+		[Prop.Decor.SHELF, Vector2i(1, 0), 12.0, false, Vector2.ZERO], [Prop.Decor.SHELF, Vector2i(5, 0), 12.0, false, Vector2.ZERO],
+		[Prop.Decor.CANDLES, Vector2i(6, 0), 0.0, true, Vector2.ZERO], [Prop.Decor.WRITING_DESK, Vector2i(5, 2), 14.0, false, Vector2.ZERO],
+		[Prop.Decor.CHAIR, Vector2i(4, 2), 0.0, false, Vector2.ZERO], [Prop.Decor.RUG, Vector2i(2, 2), 0.0, false, Vector2.ZERO],
+		[Prop.Decor.CRATE, Vector2i(6, 3), 10.0, false, Vector2.ZERO], [Prop.Decor.CANDLES, Vector2i(0, 2), 0.0, true, Vector2.ZERO],
+		[Prop.Decor.PLANT_POT, Vector2i(6, 1), 8.0, false, Vector2.ZERO]]],
+	"herbalist": ["The herbalist's house", [
+		[Prop.Decor.JAR_SHELF, Vector2i(1, 0), 12.0, false, Vector2.ZERO], [Prop.Decor.HERB_RACK, Vector2i(5, 0), 10.0, false, Vector2.ZERO],
+		[Prop.Decor.CAULDRON, Vector2i(4, 1), 14.0, true, Vector2.ZERO], [Prop.Decor.TABLE, Vector2i(6, 2), 14.0, false, Vector2.ZERO],
+		[Prop.Decor.STOOL, Vector2i(5, 2), 0.0, false, Vector2.ZERO], [Prop.Decor.PLANT_POT, Vector2i(0, 2), 8.0, false, Vector2.ZERO],
+		[Prop.Decor.PLANT_POT, Vector2i(6, 3), 8.0, false, Vector2.ZERO], [Prop.Decor.CANDLES, Vector2i(6, 0), 0.0, true, Vector2.ZERO],
+		[Prop.Decor.RUG, Vector2i(2, 2), 0.0, false, Vector2.ZERO]]],
+	"weaver": ["The weaver's house", [
+		[Prop.Decor.SHELF, Vector2i(1, 0), 12.0, false, Vector2.ZERO], [Prop.Decor.LOOM, Vector2i(5, 0), 14.0, false, Vector2.ZERO],
+		[Prop.Decor.SPINNING_WHEEL, Vector2i(4, 2), 12.0, false, Vector2.ZERO], [Prop.Decor.YARN_BASKET, Vector2i(5, 2), 8.0, false, Vector2.ZERO],
+		[Prop.Decor.STOOL, Vector2i(6, 2), 0.0, false, Vector2.ZERO], [Prop.Decor.RUG, Vector2i(2, 2), 0.0, false, Vector2.ZERO],
+		[Prop.Decor.CANDLES, Vector2i(6, 0), 0.0, true, Vector2.ZERO], [Prop.Decor.CRATE, Vector2i(6, 3), 10.0, false, Vector2.ZERO],
+		[Prop.Decor.YARN_BASKET, Vector2i(0, 2), 8.0, false, Vector2.ZERO]]],
+	"hunter": ["The hunter's lodge", [
+		[Prop.Decor.ANTLER_MOUNT, Vector2i(1, 0), 0.0, false, Vector2(0, -20)], [Prop.Decor.WEAPON_RACK, Vector2i(5, 0), 10.0, false, Vector2.ZERO],
+		[Prop.Decor.FIREWOOD, Vector2i(6, 0), 10.0, false, Vector2.ZERO], [Prop.Decor.PELT_RUG, Vector2i(3, 2), 0.0, false, Vector2.ZERO],
+		[Prop.Decor.TABLE, Vector2i(5, 2), 14.0, false, Vector2.ZERO], [Prop.Decor.STOOL, Vector2i(6, 2), 0.0, false, Vector2.ZERO],
+		[Prop.Decor.BARREL, Vector2i(6, 3), 10.0, false, Vector2.ZERO], [Prop.Decor.CANDLES, Vector2i(0, 2), 0.0, true, Vector2.ZERO]]],
+	"farmer": ["The farmer's house", [
+		[Prop.Decor.FIREWOOD, Vector2i(1, 0), 10.0, false, Vector2.ZERO], [Prop.Decor.GRAIN_SACKS, Vector2i(5, 0), 12.0, false, Vector2.ZERO],
+		[Prop.Decor.TOOL_RACK, Vector2i(6, 0), 0.0, false, Vector2(0, -16)], [Prop.Decor.TABLE, Vector2i(4, 2), 14.0, false, Vector2.ZERO],
+		[Prop.Decor.CHAIR, Vector2i(5, 2), 0.0, false, Vector2.ZERO], [Prop.Decor.BARREL, Vector2i(6, 2), 10.0, false, Vector2.ZERO],
+		[Prop.Decor.CRATE, Vector2i(6, 3), 10.0, false, Vector2.ZERO], [Prop.Decor.CANDLES, Vector2i(0, 2), 0.0, true, Vector2.ZERO],
+		[Prop.Decor.RUG, Vector2i(2, 2), 0.0, false, Vector2.ZERO]]],
+}
+
+
+## Who lives in the house with this seed.
+static func household_for(dwelling_seed: int) -> String:
+	var kinds := HOUSEHOLDS.keys()
+	return kinds[posmod(dwelling_seed, kinds.size())]
+
+
+func enter_dwelling(kind: String, title: String, level: int, dwelling_seed: int, looted: bool, on_loot: Callable, household: String = "") -> void:
 	prepare_room()
 	var random := RandomNumberGenerator.new()
 	random.seed = dwelling_seed
 	var tent := kind == "tent"
+	if not tent and household == "":
+		household = household_for(dwelling_seed)
+	if not tent and title == "A villager's house":
+		title = HOUSEHOLDS[household][0]
 	var size := Vector2i(5, 4) if tent else Vector2i(7, 5)
 	var home := Room.new()
 	home.wall_style = "cloth" if tent else "wood"
@@ -655,13 +709,14 @@ func enter_dwelling(kind: String, title: String, level: int, dwelling_seed: int,
 	else:
 		home.add_prop(Prop.create(Prop.Art.BED, home.cell_position(Vector2i(0, 0)), 13.0))
 		place.call(Prop.Decor.FIREPLACE, Vector2i(size.x / 2, 0), 20.0, true)
-		place.call(Prop.Decor.SHELF, Vector2i(size.x - 1, 0), 12.0)
-		place.call(Prop.Decor.TABLE, Vector2i(size.x - 2, 2), 14.0)
-		place.call(Prop.Decor.CHAIR, Vector2i(size.x - 3, 2))
-		place.call(Prop.Decor.RUG, Vector2i(size.x / 2, 2))
-		place.call(Prop.Decor.BARREL, Vector2i(0, size.y - 2), 10.0)
-		place.call(Prop.Decor.PLANT_POT, Vector2i(size.x - 1, size.y - 2), 8.0)
-		place.call(Prop.Decor.CANDLES, Vector2i(2, 1), 0.0, true)
+		# What the household keeps: theirs, not loot to smash.
+		for piece: Array in HOUSEHOLDS[household][1]:
+			var prop := Prop.create_decor(piece[0], home.cell_position(piece[1]) + (piece[4] as Vector2), piece[2])
+			prop.hits_left = 0
+			prop.remove_from_group("breakables")
+			if piece[3]:
+				prop.add_light(0.9, 1.4)
+			home.add_prop(prop)
 		if not looted:
 			for id: String in ["bread", "wild_berries", "health_potion", "torch", "bandage"]:
 				if random.randf() < 0.6:

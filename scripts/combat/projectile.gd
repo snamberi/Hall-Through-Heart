@@ -99,6 +99,8 @@ func _finish() -> void:
 	var blast: float = _config.get("explode", 0.0)
 	if blast > 0.0:
 		RingBurst.spawn(get_parent(), global_position, color, blast)
+		var status: String = str((_config.get("status", {}) as Dictionary).get("status", "")) if _config.get("status") is Dictionary else ""
+		FightMarks.leave(get_tree(), FightMarks.for_blast(status, color), global_position + Vector2(0, 12))
 		_player.shake_camera(6.0)
 		var caught: Array = _hit.duplicate()
 		_player.strike_circle(global_position, blast, _multiplier, _config.get("knockback", 200.0), caught)

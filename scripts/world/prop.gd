@@ -7,14 +7,16 @@ const SHEET: Texture2D = preload("res://assets/sprites/props.png")
 const FRAMES := 14
 const REACH := 70.0
 const DECOR: Texture2D = preload("res://assets/sprites/decor.png")
-const DECOR_FRAMES := 60
+const DECOR_FRAMES := 76
 enum Decor { FLOOR, RUBBLE, STATUE, BRAZIER, BANNER, BONES, CRATE, BARREL, WELL, FENCE, LANTERN, STALL, SIGNPOST,
 	RUG, SHELF, PLANT_POT, TABLE, CHAIR, CANDLES, CAGE, TENT, OBELISK, PALISADE, SPIKE_TRAP, BALLISTA, SOIL, SCARECROW,
 	TORCH, FIREPLACE, WAYSTONE, WAYSTONE_LIT, GRAVESTONE, RUINED_TOWER, CART,
 	ROOT_CUTTER, ROOT_DELVER, ROOT_TENDER, ROOT_HOLLOW, FARMHOUSE, FURNACE, TROPHY_STAND,
 	ANVIL, WEAPON_RACK, BENCH, HAY_BALE, FLOWER_BED, CUPBOARD, FOUNTAIN, STONE_PLANTER,
 	STANDING_STONE, CARVED_PILLAR, RUNE_STELE, CHIME_STONE, STONE_PEDESTAL, STONE_SHARD,
-	MANOR, IRON_GATE, CARRIAGE, HATCH, HORN_POST }
+	MANOR, IRON_GATE, CARRIAGE, HATCH, HORN_POST,
+	WRITING_DESK, CAULDRON, HERB_RACK, JAR_SHELF, LOOM, SPINNING_WHEEL, GRAIN_SACKS, TOOL_RACK,
+	PELT_RUG, ANTLER_MOUNT, STOOL, FIREWOOD, DRESSER, CRADLE, POTS_RACK, YARN_BASKET }
 static var LIGHT: Texture2D = _make_light()
 ## Frame numbers in the sheet.
 enum Art { PILLAR, WALL, CHEST, CHEST_OPEN, ALTAR, CAVE, PORTAL, LADDER, TABLE, BED, DOOR, CAMPFIRE, TOTEM, HOUSE }
@@ -69,7 +71,7 @@ static func create(art: Art, at: Vector2, solid: float = 0.0, prompt: String = "
 
 ## Things lying flat on the floor cast no shadow.
 const FLAT_ART: Array[int] = [Art.CAVE, Art.LADDER, Art.DOOR, Art.PORTAL]
-const FLAT_DECOR: Array[int] = [Decor.FLOOR, Decor.RUBBLE, Decor.BONES, Decor.RUG, Decor.SOIL, Decor.SPIKE_TRAP]
+const FLAT_DECOR: Array[int] = [Decor.FLOOR, Decor.RUBBLE, Decor.BONES, Decor.RUG, Decor.SOIL, Decor.SPIKE_TRAP, Decor.PELT_RUG]
 
 
 func _ready() -> void:
@@ -82,13 +84,33 @@ func _ready() -> void:
 	if not _sprite.frame in flat:
 		SunShadow.cast(_sprite)
 		ContactShadow.under(_sprite)
-		_sprite.material = Wind.still
+		# Snow settles on it (unless it was given its own, like a roof's).
+		if _sprite.material == null:
+			_sprite.material = Wind.still
 	if _sprite.texture == DECOR and _sprite.frame == Decor.BANNER:
 		_sprite.material = Wind.material
 	elif _sprite.texture == SHEET and _sprite.frame == Art.PORTAL:
 		var swirl := PortalFX.new()
 		swirl.position = Vector2(0, -24)
 		add_child(swirl)
+
+
+## The ruins of the dead god (tools/generate_ruins.py): big pieces, each
+## in a 160 x 144 cell standing on its bottom.
+const RUINS: Texture2D = preload("res://assets/sprites/ruins.png")
+enum Ruin { COLOSSUS_FACE, COLOSSUS_HAND, BROKEN_ARCH, ARCH_STUMPS, COLUMN_DRUM, FALLEN_STONES }
+
+
+static func create_ruin(index: int, at: Vector2, solid: float = 0.0, prompt: String = "", action: Callable = Callable()) -> Prop:
+	var prop := create(Art.PILLAR, at, solid, prompt, action)
+	prop._sprite.texture = RUINS
+	prop._sprite.hframes = 1
+	prop._sprite.frame = 0
+	prop._sprite.region_enabled = true
+	prop._sprite.region_rect = Rect2(index * 160, 0, 160, 144)
+	prop._sprite.position.y = -64.0
+	prop.reach = 70.0
+	return prop
 
 
 ## A prop drawn from the decor sheet (tools/generate_flora.py) instead.

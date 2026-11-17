@@ -301,13 +301,17 @@ class Stump:
 func _scenery(look: int, at: Vector2, solid: float) -> Node2D:
 	var holder := Node2D.new()
 	holder.position = at
+	holder.add_to_group("reflects")
 	var sprite := Sprite2D.new()
 	sprite.texture = Flora.TALL
 	sprite.region_enabled = true
 	sprite.region_rect = Flora.tall_region(look)
 	sprite.position.y = -42.0
 	sprite.flip_h = hash(at) % 2 == 0
-	sprite.material = Wind.material
+	sprite.material = Seasons.material_for(look)
+	if Seasons.is_leafy(look):
+		holder.add_to_group("leafy_trees")
+		holder.set_meta("tall", look)
 	holder.add_child(sprite)
 	SunShadow.cast(sprite)
 	if solid > 0.0:

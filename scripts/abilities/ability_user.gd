@@ -474,6 +474,8 @@ func _blink(ability: Dictionary, damage: float) -> void:
 	_player.grant_invulnerability(0.3)
 	RingBurst.spawn(_player.get_parent(), landing + Vector2(0, -14), _color(ability), 50.0)
 	if float(ability.get("radius", 0.0)) > 0.0 and float(ability.get("damage", 0.0)) > 0.0:
+		# Landing hard enough to hurt cracks the ground.
+		FightMarks.leave(get_tree(), FightMarks.for_blast(str(ability.get("status", "")), _color(ability)), landing)
 		var hit: Array = []
 		_player.strike_circle(landing, ability["radius"], damage, ability["knockback"], hit)
 		_apply_status(ability, hit, damage)
@@ -576,6 +578,7 @@ func _color(ability: Dictionary) -> Color:
 
 ## A ground blast: ring, shake, and damage around a point.
 func _blast(center: Vector2, ability: Dictionary, damage: float) -> void:
+	FightMarks.leave(get_tree(), FightMarks.for_blast(str(ability.get("status", "")), _color(ability)), center + Vector2(0, 14))
 	RingBurst.spawn(_player.get_parent(), center, _color(ability), ability["radius"])
 	RingBurst.spawn(_player.get_parent(), center, Color(0.9, 0.85, 0.7), ability["radius"] * 0.6)
 	HitSpark.spawn(_player.get_parent(), center, _color(ability), true)

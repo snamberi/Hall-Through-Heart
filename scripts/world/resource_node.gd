@@ -53,11 +53,16 @@ func _ready() -> void:
 		var sprite := Sprite2D.new()
 		sprite.texture = Flora.TALL
 		sprite.region_enabled = true
-		sprite.region_rect = Flora.tall_region(tall_look if tall_look >= 0 else _data["tall"])
+		var look: int = tall_look if tall_look >= 0 else _data["tall"]
+		sprite.region_rect = Flora.tall_region(look)
 		sprite.position.y = -42.0
 		sprite.flip_h = hash(cell) % 2 == 0
 		sprite.add_to_group("occluders")
-		sprite.material = Wind.material
+		# Broadleaf trees and bushes turn with the seasons.
+		sprite.material = Seasons.material_for(look)
+		if Seasons.is_leafy(look):
+			add_to_group("leafy_trees")
+			set_meta("tall", look)
 		add_child(sprite)
 		SunShadow.cast(sprite)
 		solid = 9.0 if _data["kind"] == "tree" else 0.0

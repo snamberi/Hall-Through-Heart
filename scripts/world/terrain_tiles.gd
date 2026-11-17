@@ -89,6 +89,8 @@ static func ground_material() -> ShaderMaterial:
 		shader.code = """
 shader_type canvas_item;
 varying vec2 world_pos;
+// The grass in the season: fresh (spring), yellowing (autumn), frosted (winter).
+uniform vec3 season_grass = vec3(0.0);
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
@@ -111,12 +113,29 @@ void fragment() {
 	float v = n - 0.5;
 	c.rgb *= 1.0 + v * 0.24;
 	c.rgb += vec3(0.014, 0.008, -0.012) * v * 2.0;
+	if (c.g > c.r * 1.08 && c.g > c.b * 1.08) {
+		float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+		c.g *= 1.0 + season_grass.x * 0.06;
+		c.r += (c.g - c.r) * season_grass.y * 0.45;
+		c.b *= 1.0 - season_grass.y * 0.25;
+		c.rgb = mix(c.rgb, vec3(l) * vec3(0.92, 1.0, 1.12) * 1.18, season_grass.z * 0.42);
+	}
 	COLOR = c;
 }
 """
 		_ground_material = ShaderMaterial.new()
 		_ground_material.shader = shader
 	return _ground_material
+
+
+## Turns the grass with the year (see Seasons).
+static func set_season(day: int, time: float) -> void:
+	if _ground_material == null:
+		return
+	var looks: Array[Vector3] = [Vector3(1.0, 0.0, 0.0), Vector3.ZERO, Vector3(0.0, 1.0, 0.0), Vector3(0.0, 0.3, 1.0)]
+	var now := Seasons.index(day, time)
+	var tint := looks[now].lerp(looks[(now + 1) % 4], Seasons.turning(day, time))
+	_ground_material.set_shader_parameter("season_grass", tint)
 
 
 static func display_name(type: int) -> String:

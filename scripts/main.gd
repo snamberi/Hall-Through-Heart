@@ -185,6 +185,21 @@ func _ready() -> void:
 	ground_fx.name = "GroundFX"
 	add_child(ground_fx)
 	ground_fx.setup(_player, _world, _day_night)
+	# What fights leave on the ground.
+	var marks := FightMarks.new()
+	marks.name = "FightMarks"
+	add_child(marks)
+	marks.setup(_player)
+	# The wind made visible, and the year turning.
+	var wind_fx := WindFX.new()
+	wind_fx.name = "WindFX"
+	add_child(wind_fx)
+	wind_fx.setup(_player, _world, _day_night)
+	# What stands by still water, held upside down in it.
+	var reflections := Reflections.new()
+	reflections.name = "Reflections"
+	add_child(reflections)
+	reflections.setup(_player, _world, ground_fx)
 	$Npcs.setup(_world)
 	var villages: Villages = $Villages
 	_world.levelled = func(cell: Vector2i) -> bool: return _structures.is_reserved(cell) or villages.is_built_up(cell)

@@ -54,7 +54,9 @@ func _process(delta: float) -> void:
 			if near and _awake():
 				_raise_the_dead()
 		"risen":
-			_risen = _risen.filter(func(e: Enemy) -> bool: return is_instance_valid(e) and e.state != Enemy.State.DEAD)
+			# Untyped on purpose: a corpse may already be freed (its chunk
+			# unloaded), and a freed one cannot be passed as an Enemy.
+			_risen = _risen.filter(func(e: Variant) -> bool: return is_instance_valid(e) and (e as Enemy).state != Enemy.State.DEAD)
 			if _risen.is_empty():
 				_stage = "rooting"
 				_raise_the_corpse()

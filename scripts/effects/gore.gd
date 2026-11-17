@@ -39,10 +39,14 @@ static func spray(parent: Node, at: Vector2, monster: String, direction: Vector2
 		var speed := randf_range(60.0, 170.0)
 		gore._drops.append({"pos": Vector2(0, -16), "vel": Vector2.from_angle(angle) * speed + Vector2(0, -randf_range(20, 80)), "size": randf_range(1.2, 2.6), "landed": false})
 	gore._life = 0.6
-	if splat and matter[1] in ["blood", "slime"]:
-		gore._splat_life = 6.0
-		for k in 7:
-			gore._splat.append(Vector2(randf_range(-12, 12), randf_range(-5, 5)))
+	# What it leaves on the ground (FightMarks): a pool on a heavy blow or a
+	# death, now and then a few drops on a lighter one.
+	if not monster.begins_with("_"):
+		var mark := FightMarks.for_matter(matter[1], matter[0])
+		if mark != "" and (splat or randf() < 0.35):
+			if mark in ["blood"] and not splat:
+				mark = "drip"
+			FightMarks.leave(parent.get_tree() if parent.is_inside_tree() else null, mark, at + direction * randf_range(4.0, 12.0) + Vector2(0, 4))
 	parent.add_child(gore)
 
 

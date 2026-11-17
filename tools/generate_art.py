@@ -2338,12 +2338,14 @@ def _fringe_family(row):
     return "plain"
 
 
-def _edge_pixel(family, s, t, x, y, tile, colours, pebbles, blades):
+def _edge_pixel(family, s, t, x, y, tile, colours, pebbles, blades, row=0):
     """The colour of a pixel `s` pixels beyond a fringe's edge (s >= 0), at
     `t` along it, or None to leave the terrain below showing. Each family
-    ends differently: grass in blades with a shadow under them, dust in a
-    dithered fade, stony ground in a line of pebbles, wet ground in a dark
-    rim, void ground in a violet glow."""
+    ends differently: grass in blades with a shadow under them, then little
+    tufts creeping out and thinning away; dust, sand and snow in a long
+    dithered fade (snow with a cool rim and a faint shadow); stony ground in
+    a line of pebbles; wet ground in a dark rim; void ground in a violet
+    glow."""
     base, light, dark, accent = colours
     if family == "grass":
         for t0, h, lit in blades:
@@ -2351,10 +2353,32 @@ def _edge_pixel(family, s, t, x, y, tile, colours, pebbles, blades):
                 return light if s >= h - 1.2 and lit else base if s < 1 else _shift_rgb(base, 10)
         if s < 1.4:
             return (0, 0, 0, 70)
+        # Tufts creeping out over the ground beyond, two pixels tall, fewer
+        # the further out: the grass thins away rather than stopping.
+        if s < 10.0:
+            clump = _hash2(int(t) // 2 + row * 131, int(s) // 2 + 7) / 65535.0
+            density = (1.0 - s / 10.0) ** 1.5 * 0.72
+            if clump < density:
+                top = int(s) % 2 == 0
+                return _shift_rgb(light, -8) if top else _shift_rgb(base, -6)
         return None
     if family == "powder":
-        if s < 4.5 and BAYER[y % 4][x % 4] / 16.0 < 1.0 - s / 4.5:
-            return tile.getpixel((x % N, y % N))
+        snowy = TILES[row][1] == "snow"
+        reach = 9.0
+        if s < reach:
+            # A long ordered dither: solid, then half, then the odd grain.
+            keep = (1.0 - s / reach) ** 1.35
+            # Ordered dither broken up by little clumps, so the edge thins
+            # out like drifted grains rather than a printed pattern.
+            clump = _hash2(x // 2 + row * 57, y // 2 + 3) / 65535.0
+            if (BAYER[y % 4][x % 4] / 16.0) * 0.55 + clump * 0.45 < keep:
+                colour = tile.getpixel((x % N, y % N))
+                if snowy and s < 2.0:
+                    # The rim of a drift, in the cool of its own shadow.
+                    return _shift_rgb(colour, -26)[:3] + (255,)
+                return colour
+        if snowy and s < 3.5:
+            return (20, 30, 60, 40)
         return None
     if family == "stone":
         for t0, s0, rw, rh in pebbles:
@@ -2403,8 +2427,8 @@ def draw_fringes():
         depth, depths = 9, []
         swell = r.uniform(0.0, math.tau)
         for x in range(N):
-            depth = max(4, min(14, depth + r.choice((-2, -1, -1, 0, 0, 1, 1, 2))))
-            depths.append(max(3, min(16, depth + int(round(3.0 * math.sin(swell + x * 0.16))))))
+            depth = max(4, min(12, depth + r.choice((-2, -1, -1, 0, 0, 1, 1, 2))))
+            depths.append(max(3, min(13, depth + int(round(3.0 * math.sin(swell + x * 0.16))))))
         # Ease the ends so strips meet neighbours of any depth without a step.
         for x in range(6):
             depths[x] = min(depths[x], 5 + x)
@@ -2426,7 +2450,7 @@ def draw_fringes():
             if s < 0.0:
                 sheet.putpixel((px, row * N + py), tile.getpixel((px % N, py % N)))
                 return
-            colour = _edge_pixel(family, s, t, px, py, tile, colours, pebbles, blades)
+            colour = _edge_pixel(family, s, t, px, py, tile, colours, pebbles, blades, row)
             if colour is not None:
                 sheet.putpixel((px, row * N + py), colour)
 
@@ -2449,7 +2473,7 @@ def draw_fringes():
                 angle = math.atan2(y, N - 1 - x)
                 reach = reach_by_angle[min(23, int(angle / (math.pi / 2) * 23))]
                 s = dist - reach
-                if s > 6:
+                if s > 10:
                     continue
                 paint(N + x, y, s, angle * reach)
         # Column 2: the cliff face a high terrain shows on the tile below it.
@@ -2964,7 +2988,14 @@ MAP_ICONS = [
                 ("stone_m", "ring", (9, 12, 12, 15), 1)]),
     ("promise_stone", [("porcelain_m", "poly", [(6, 19), (6, 6), (10.5, 1), (15, 6), (15, 19)]), ("coin", "rect", (8, 7, 13, 7)), ("coin", "rect", (8, 10, 12, 10)),
                        ("coin", "rect", (9, 13, 13, 13)), ("night", "rect", (10, 3, 11, 5)), ("stone_m", "rect", (4, 18, 17, 20))]),
+    # The Fallen Colossus: the god's face sunk in the earth, the red setting on its brow.
+    ("colossus", [("god_m", "ellipse", (4, 2, 17, 21)), ("night", "rect", (7, 10, 9, 10)), ("night", "rect", (12, 10, 14, 10)),
+                  ("god_m", "rect", (10, 9, 11, 14)), ("night", "rect", (8, 16, 13, 16)), ("red", "rect", (10, 5, 11, 6)), ("grass_m", "rect", (2, 18, 19, 21))]),
+    # The Broken Arches: an arch standing on one side, fallen from the other.
+    ("arches", [("god_m", "rect", (3, 7, 6, 20)), ("god_m", "rect", (15, 11, 18, 20)), ("god_m", "poly", [(3, 7), (5, 3), (10, 1), (13, 2), (12, 5), (9, 4), (7, 6), (6, 8)]),
+                ("god_m", "rect", (8, 18, 11, 20)), ("grass_m", "rect", (2, 19, 19, 21))]),
 ]
+ICON_PALETTE.update({"god_m": ["e4dccb", "b4aa96", "7a7262"]})
 ICON_PALETTE.update({"porcelain_m": ["fbf8f0", "e2dcd0", "a8a090"], "slate_m": ["7a8090", "5a6070", "3e4452"]})
 
 

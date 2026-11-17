@@ -1,8 +1,9 @@
 class_name GroundFX
 extends Node2D
-## Life on the ground around the player: foam lapping at every shore, sun
-## glinting and small waves moving on open water, rain splashing, and snow
-## that settles in drifts during snowfall and melts away after.
+## Life on the ground around the player: waves breaking on every shore and
+## the sky held in open water (WaterSurface), sun glinting and small waves
+## moving on it, rain splashing and puddles gathering, and snow that
+## settles in drifts during snowfall and melts away after.
 
 ## Half the size of the area kept up to date around the player, in tiles.
 const WINDOW := Vector2i(17, 11)
@@ -45,6 +46,10 @@ void fragment() {
 
 ## How deep the snow lies, 0 to 1. Shared so the minimap or others can ask.
 static var snow := 0.0
+## How much rain lies in puddles, 0 to 1, and how damp the ground still is.
+static var wet := 0.0
+static var damp := 0.0
+
 ## How much ash has settled on things during ashfall, 0 to 1.
 static var ash := 0.0
 
@@ -53,8 +58,6 @@ var _world: World
 var _day_night: DayNight
 var _center := Vector2i(999999, 999999)
 var _tiles: Dictionary = {}
-## [rect, side, phase] for each water tile edge that meets land.
-var _foam: Array = []
 var _water: Array[Vector2i] = []
 var _land: Array[Vector2i] = []
 ## [position, age, life, size]
@@ -71,6 +74,8 @@ var _snow_material: ShaderMaterial
 var _snow_drawn := false
 var _mask: ImageTexture
 var _mask_rect := Rect2()
+var _wave_time := 0.0
+var _cloud_drift := Vector2.ZERO
 
 
 func setup(player: Player, world: World, day_night: DayNight) -> void:
@@ -102,6 +107,17 @@ func setup(player: Player, world: World, day_night: DayNight) -> void:
 	add_child(_snow_layer)
 
 
+
+## The land mask round the player (one texel a tile, white on land) and
+## where it lies, for others drawing on the water (Reflections).
+func mask_texture() -> Texture2D:
+	return _mask
+
+
+func mask_rect() -> Rect2:
+	return _mask_rect
+
+
 func _tile(cell: Vector2i) -> int:
 	if not _tiles.has(cell):
 		if _tiles.size() > 6000:
@@ -111,11 +127,9 @@ func _tile(cell: Vector2i) -> int:
 
 
 func _rescan() -> void:
-	_foam.clear()
 	_water.clear()
 	_land.clear()
 	var size := float(TerrainTiles.TILE_SIZE)
-	var sides: Array[Vector2i] = [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
 	for y in range(_center.y - WINDOW.y, _center.y + WINDOW.y + 1):
 		for x in range(_center.x - WINDOW.x, _center.x + WINDOW.x + 1):
 			var cell := Vector2i(x, y)
@@ -124,10 +138,6 @@ func _rescan() -> void:
 					_land.append(cell)
 				continue
 			_water.append(cell)
-			var rect := Rect2(Vector2(cell) * size, Vector2(size, size))
-			for side in 4:
-				if not TerrainTiles.is_water(_tile(cell + sides[side])):
-					_foam.append([rect, side, absi(hash(cell * 7 + Vector2i(side, 0))) % 628 / 100.0])
 	# The land mask the snow shader reads.
 	var span := WINDOW * 2 + Vector2i.ONE
 	var image := Image.create(span.x, span.y, false, Image.FORMAT_L8)
@@ -156,6 +166,8 @@ func _process(delta: float) -> void:
 		_center = here
 		_rescan()
 	_settle_snow(delta)
+	_settle_rain(delta)
+	_update_surface(delta)
 	var daylight := 1.0 - _day_night.darkness()
 	var size := float(TerrainTiles.TILE_SIZE)
 	# Sun (or moon) glinting on the water.
@@ -214,8 +226,11 @@ func _settle_snow(delta: float) -> void:
 		_:
 			ash = maxf(ash - delta * 0.006, 0.0)
 	# What has settled shows along the tops of trees, bushes and props.
+	var frost := 0.0
+	if Seasons.index(_day_night.day, _day_night.time) == 3:
+		frost = 0.28 * (1.0 - Seasons.turning(_day_night.day, _day_night.time))
 	if snow >= ash:
-		Wind.set_dusting(Color(0.94, 0.96, 1.0), minf(snow * 1.4, 1.0))
+		Wind.set_dusting(Color(0.94, 0.96, 1.0), maxf(minf(snow * 1.4, 1.0), frost))
 	else:
 		Wind.set_dusting(Color(0.76, 0.74, 0.72), minf(ash * 1.3, 1.0))
 	_snow_layer.visible = snow > 0.005
@@ -244,61 +259,75 @@ func _draw() -> void:
 			var at := here + Vector2(wrapf(drifted.x - here.x, -CLOUD_FIELD.x / 2.0, CLOUD_FIELD.x / 2.0), wrapf(drifted.y - here.y, -CLOUD_FIELD.y / 2.0, CLOUD_FIELD.y / 2.0))
 			var radius: float = cloud[1]
 			draw_texture_rect(Prop.LIGHT, Rect2(at - Vector2(radius * 1.5, radius), Vector2(radius * 3.0, radius * 2.0)), false, Color(0.0, 0.0, 0.05, 0.3 * daylight))
-	# Foam lapping in and out along each shore.
-	for edge: Array in _foam:
-		var rect: Rect2 = edge[0]
-		var phase: float = edge[2]
-		var reach := 7.0 + sin(t * 1.4 + phase) * 3.0
-		_foam_line(rect, edge[1], reach, phase, t, Color(0.93, 0.97, 1.0, 0.62), 2.0)
-		_foam_line(rect, edge[1], reach + 6.0 + sin(t * 1.1 + phase * 2.0) * 1.5, phase + 1.7, t, Color(0.85, 0.94, 1.0, 0.26), 1.5)
-	# Small wave crests drifting with the current.
+	# Small wave crests drifting with the current: short pale dashes.
 	for wave: Array in _waves:
 		var share: float = wave[1] / wave[2]
-		var alpha := sin(share * PI) * 0.32
-		var at: Vector2 = wave[0] + Vector2(share * 6.0, 0.0)
-		draw_arc(at, wave[3], PI * 1.15, PI * 1.85, 8, Color(0.86, 0.94, 1.0, alpha), 1.5)
-	# Glints of light.
+		var alpha := sin(share * PI) * 0.34
+		var at := _snap(wave[0] + Vector2(share * 6.0, 0.0))
+		var length := 2.0 * roundf(wave[3] * 0.5 + 1.0)
+		draw_rect(Rect2(at, Vector2(length, 2.0)), Color(WaterSurface.FOAM_MID, alpha))
+		draw_rect(Rect2(at + Vector2(2.0, -2.0), Vector2(maxf(length - 4.0, 2.0), 2.0)), Color(WaterSurface.FOAM_HI, alpha * 0.7))
+	# Glints of light: a little cross of whole pixels.
 	var glint_color := Color(1.0, 0.98, 0.88) if daylight > 0.4 else Color(0.75, 0.85, 1.0)
 	for glint: Array in _glints:
 		var share: float = glint[1] / glint[2]
 		var power := sin(share * PI)
-		var reach: float = glint[3] * power
 		var color := Color(glint_color, power * (0.45 + daylight * 0.5))
-		var at: Vector2 = glint[0]
-		draw_line(at - Vector2(reach, 0), at + Vector2(reach, 0), color, 1.0)
-		draw_line(at - Vector2(0, reach * 0.7), at + Vector2(0, reach * 0.7), color, 1.0)
-		draw_rect(Rect2(at - Vector2(0.5, 0.5), Vector2(1.5, 1.5)), color)
-	# Raindrops striking the ground.
+		var at := _snap(glint[0])
+		draw_rect(Rect2(at, Vector2(2, 2)), color)
+		if power > 0.55 and glint[3] > 2.0:
+			var arm := Color(color, color.a * 0.55)
+			for step: Vector2 in [Vector2(-2, 0), Vector2(2, 0), Vector2(0, -2), Vector2(0, 2)]:
+				draw_rect(Rect2(at + step, Vector2(2, 2)), arm)
+	# Raindrops striking the ground: a ring of whole pixels widening out.
 	for splash: Array in _splashes:
 		var share: float = splash[1] / 0.32
-		var at: Vector2 = splash[0]
-		var color := Color(0.8, 0.88, 1.0, 0.55 * (1.0 - share))
-		var radius := 1.0 + share * (6.0 if splash[2] else 4.0)
-		draw_set_transform(at, 0.0, Vector2(1.0, 0.45))
-		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 12, color, 1.0)
-		draw_set_transform(Vector2.ZERO)
+		var at := _snap(splash[0])
+		var color := Color(0.78, 0.86, 0.98, 0.6 * (1.0 - share))
+		var radius := 2.0 * roundf(1.0 + share * (3.0 if splash[2] else 2.0))
+		for k in 8:
+			var spot := _snap(at + Vector2.from_angle(k * TAU / 8.0) * Vector2(radius, radius * 0.5))
+			draw_rect(Rect2(spot, Vector2(2, 2)), color)
 		if share < 0.5 and not splash[2]:
-			draw_rect(Rect2(at + Vector2(-3.0, -2.0 - share * 8.0), Vector2(1, 1)), color)
-			draw_rect(Rect2(at + Vector2(2.0, -1.0 - share * 7.0), Vector2(1, 1)), color)
+			draw_rect(Rect2(at + Vector2(-4.0, -2.0 - _snap(Vector2(0, share * 8.0)).y), Vector2(2, 2)), color)
+			draw_rect(Rect2(at + Vector2(2.0, -2.0 - _snap(Vector2(0, share * 6.0)).y), Vector2(2, 2)), color)
 
 
-## A broken, wavy line of foam parallel to one side of a water tile,
-## `reach` in from it: bright where the wave breaks, gone in the gaps.
-func _foam_line(rect: Rect2, side: int, reach: float, phase: float, t: float, color: Color, width: float) -> void:
-	var points := PackedVector2Array()
-	for k in 9:
-		var along := k / 8.0
-		var wobble := sin(along * 9.0 + phase * 3.0 + t * 0.8) * 1.5
-		match side:
-			0:
-				points.append(Vector2(rect.position.x + along * rect.size.x, rect.position.y + reach + wobble))
-			1:
-				points.append(Vector2(rect.end.x - reach - wobble, rect.position.y + along * rect.size.y))
-			2:
-				points.append(Vector2(rect.position.x + along * rect.size.x, rect.end.y - reach - wobble))
-			_:
-				points.append(Vector2(rect.position.x + reach + wobble, rect.position.y + along * rect.size.y))
-	for k in points.size() - 1:
-		var strength := 0.5 + 0.5 * sin(k * 1.9 + phase * 2.3 + t * 1.2)
-		if strength > 0.22:
-			draw_line(points[k], points[k + 1], Color(color, color.a * strength), width)
+## On the 2px grid the ground is drawn on.
+static func _snap(at: Vector2) -> Vector2:
+	return (at / 2.0).floor() * 2.0
+
+
+## Rain fills the hollows; after it, they shrink and the ground dries.
+func _settle_rain(delta: float) -> void:
+	match Atmosphere.weather:
+		"Rain":
+			wet = minf(wet + delta * 0.022, 1.0)
+		"Thunderstorm":
+			wet = minf(wet + delta * 0.04, 1.0)
+		_:
+			wet = maxf(wet - delta * (0.004 + 0.006 * (1.0 - _day_night.darkness())), 0.0)
+	damp = maxf(wet, damp - delta * 0.0035)
+
+
+func _update_surface(delta: float) -> void:
+	_wave_time = fmod(_wave_time + delta, 5.5 * 600.0)
+	var raining := Atmosphere.weather in ["Rain", "Thunderstorm"]
+	var overcast := Atmosphere.weather != "" and Atmosphere.weather not in ["Dust", "Fog"]
+	_cloud_drift += Vector2(9.0, 3.0) * delta
+	var tint: Color = _day_night.color
+	var light := tint.r * 0.3 + tint.g * 0.5 + tint.b * 0.2
+	var camera := get_viewport().get_camera_2d()
+	var view := get_viewport_rect().size / maxf(_zoom(), 0.1)
+	var centre := camera.get_screen_center_position() if camera else _player.global_position
+	var m := WaterSurface.shared_material()
+	m.set_shader_parameter("wave_time", _wave_time)
+	m.set_shader_parameter("daylight", 1.0 - _day_night.darkness())
+	m.set_shader_parameter("star_boost", clampf(0.95 / maxf(light, 0.2), 1.0, 3.5))
+	m.set_shader_parameter("moon_x", roundf(centre.x + view.x * 0.2))
+	m.set_shader_parameter("moon", WaterSurface.BLOOD_MOON if DayNight.blood_moon else WaterSurface.MOON)
+	m.set_shader_parameter("cloud_drift", _cloud_drift)
+	m.set_shader_parameter("clear_sky", 0.0 if overcast else 1.0)
+	m.set_shader_parameter("wet", wet)
+	m.set_shader_parameter("damp", damp)
+	m.set_shader_parameter("rain", 1.0 if raining else 0.0)

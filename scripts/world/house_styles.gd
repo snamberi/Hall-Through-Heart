@@ -36,6 +36,8 @@ static func dress(house: Prop, tile: int, style: String = "") -> void:
 		style = style_for(tile)
 	var colours: Array = STYLES[style]
 	house.sprite().modulate = colours[2]
+	# Snow settles on the roof and icicles hang from the eaves.
+	house.sprite().material = Wind.roof
 	if style == "igloo":
 		house.sprite().texture = IGLOO
 		house.sprite().hframes = 1

@@ -132,7 +132,7 @@ func _draw() -> void:
 	# The day count and time of day, just under the map.
 	if _day_night:
 		var font := UITheme.get_theme().default_font
-		var text := "Day %d  -  %s" % [_day_night.day, _day_night.phase()]
+		var text := "%s  -  Day %d  -  %s" % [Seasons.name_of(_day_night.day, _day_night.time), _day_night.day, _day_night.phase()]
 		draw_string_outline(font, Vector2(0, size.y + 16.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, 4, Color.BLACK)
 		draw_string(font, Vector2(0, size.y + 16.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, UITheme.HEADING)
 		# Weather and blood moons, in a line of their own over the map.

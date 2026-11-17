@@ -1948,6 +1948,288 @@ def decor(kind):
             c.fill("rect", (x, 36, x + 1, 38), cloth[1])
         c.shade("rect", (26, 42, 38, 47), bronze)
         c.fill("line", (28, 44, 36, 44), C("5a4020"), 1)
+    elif kind == "writing_desk":
+        # A scholar's desk: a slanted top with an open book, an inkpot and a
+        # quill, a candle stub, a drawer, and papers piled to one side.
+        wood = ramp("a07a54", "74563a", "4e3826")
+        c.shade("rect", (8, 40, 56, 44), wood)
+        c.fill("line", (8, 40, 56, 40), C("c49a6c"))
+        for x in (10, 52):
+            c.shade("rect", (x, 44, x + 3, 61), wood)
+        c.shade("rect", (36, 45, 50, 52), wood)
+        c.fill("rect", (42, 48, 43, 49), BRASS[0])
+        # The open book: two pages, lines of writing.
+        c.shade("poly", [(14, 38), (27, 35), (27, 39), (14, 41)], ramp("f6eedc", "e0d4b8", "b8a888"), dither=False)
+        c.shade("poly", [(27, 35), (40, 38), (40, 41), (27, 39)], ramp("f0e6d0", "d8ccae", "b0a080"), dither=False)
+        for y in (37, 39):
+            c.fill("line", (16, y + 1, 25, y), C("6a5a4a"))
+            c.fill("line", (29, y, 38, y + 1), C("6a5a4a"))
+        # Inkpot and quill.
+        c.shade("rect", (44, 34, 48, 39), ramp("4a4a5a", "2a2a36", "14141c"), dither=False)
+        c.fill("line", (46, 34, 51, 24), C("f2f0ea"))
+        c.fill("line", (47, 34, 52, 25), C("c8c4bc"))
+        # Papers and a candle.
+        c.shade("rect", (49, 36, 55, 39), ramp("f0e8d4", "d8ccb0", "a89a7c"), dither=False)
+        c.shade("rect", (10, 31, 12, 39), ramp("f4ecd8", "dcd0b4", "b0a488"), dither=False)
+        c.put(11, 29, C("ffd27a"))
+        c.put(11, 30, C("ff9a3a"))
+    elif kind == "cauldron":
+        # A black iron cauldron on three legs over glowing coals, a green
+        # brew in it, bubbles breaking, a ladle leaning out.
+        iron = ramp("6a6a78", "3a3a46", "1e1e26")
+        c.shadow(32, 60, 22, 3, 70)
+        for x in (18, 31, 44):
+            c.fill("rect", (x, 52, x + 2, 60), iron[2])
+        for x in range(20, 45, 3):
+            c.put(x, 59, C("ff7a2a") if x % 2 else C("c03a1a"))
+        c.shade("ellipse", (12, 28, 52, 58), iron)
+        c.fill("ellipse", (14, 26, 50, 36), iron[2])
+        c.shade("ellipse", (16, 28, 48, 35), ramp("a6e070", "5ca838", "2e6a22"), dither=False)
+        for (x, y) in ((24, 30), (36, 31), (30, 29)):
+            c.fill("ellipse", (x - 1, y - 1, x + 2, y + 1), C("c8f090"))
+        c.fill("line", (12, 31, 52, 31), iron[0])
+        c.fill("line", (40, 30, 48, 14), C("8a6a4a"), 2)
+        for (x, y) in ((22, 22), (30, 18), (38, 22)):
+            c.put(x, y, C("b8e090"))
+    elif kind == "herb_rack":
+        # A wooden rack with bundles of herbs hung upside down to dry:
+        # green, lavender, yellow flowers, each tied with twine.
+        wood = ramp("a07a54", "74563a", "4e3826")
+        for x in (8, 54):
+            c.shade("rect", (x, 12, x + 3, 61), wood)
+        c.shade("rect", (8, 12, 57, 15), wood)
+        bundles = [(14, "7aa84a", "4e7a2e"), (22, "b090e0", "7a5aa8"), (30, "e0c050", "a88a2a"), (38, "8ab858", "5a8a34"), (46, "a080d0", "6e4ea0")]
+        for x, light, dark in bundles:
+            c.fill("line", (x, 15, x, 19), C("c8a870"))
+            c.shade("poly", [(x - 1, 19), (x + 1, 19), (x + 4, 34), (x - 4, 34)], ramp(light, light, dark), dither=False)
+            r = random.Random(x)
+            for _ in range(8):
+                px, py = x + r.randrange(-3, 4), r.randrange(24, 35)
+                if (px, py) in c.filled:
+                    c.put(px, py, C(dark))
+            c.fill("line", (x - 1, 20, x + 1, 20), C("c8a870"))
+        # A basket of cuttings at the foot.
+        c.shade("ellipse", (18, 48, 42, 61), ramp("c49a5a", "94703c", "64482a"))
+        for x in range(20, 41, 3):
+            c.fill("line", (x, 50, x, 59), C("6a4a2a"))
+        for (x, y) in ((24, 47), (30, 46), (36, 48)):
+            c.fill("ellipse", (x - 2, y - 2, x + 2, y + 1), C("6a9a3a"))
+    elif kind == "jar_shelf":
+        # A low shelf of jars and bottles (amber, green, blue, with corks),
+        # a mortar and pestle on top.
+        wood = ramp("9a7450", "6e5034", "4a3422")
+        c.shade("rect", (6, 26, 58, 61), wood)
+        c.fill("rect", (9, 29, 55, 41), C("3a2a1c"))
+        c.fill("rect", (9, 45, 55, 58), C("3a2a1c"))
+        c.shade("rect", (6, 42, 58, 44), wood)
+        glass = [("e8a840", "a86a1a"), ("70c070", "3a7a3a"), ("70a0e0", "3a5a9a"), ("e07070", "9a3a3a"), ("d0c8e8", "8a80a8")]
+        x = 11
+        for i, (light, dark) in enumerate(glass * 2):
+            h = [9, 6, 10, 7, 8][i % 5]
+            row = 41 if i < 5 else 58
+            c.shade("rect", (x, row - h, x + 5, row), ramp("ffffff", light, dark), dither=False)
+            c.fill("rect", (x + 1, row - h - 2, x + 4, row - h), C("b08a5a"))
+            c.put(x + 1, row - h + 2, C("ffffff"))
+            x += 9 if i != 4 else -36
+        c.shade("ellipse", (36, 18, 50, 27), ramp("c4c0cc", "8e8a98", "5a5664"))
+        c.fill("line", (45, 20, 50, 12), C("b8b4c0"), 2)
+    elif kind == "loom":
+        # A weaver's loom: a heavy frame, warp threads, cloth half woven in a
+        # red pattern, a shuttle on the beam.
+        wood = ramp("a07a54", "74563a", "4e3826")
+        for x in (8, 52):
+            c.shade("rect", (x, 8, x + 4, 61), wood)
+        for y in (8, 30, 54):
+            c.shade("rect", (8, y, 56, y + 3), wood)
+        for x in range(14, 51, 2):
+            c.fill("line", (x, 11, x, 30), C("e8e0cc"))
+        cloth = ramp("e06a5a", "b03a3a", "7a2028")
+        c.shade("rect", (13, 33, 51, 52), cloth, dither=False)
+        for y in range(35, 52, 4):
+            for x in range(14, 51, 4):
+                c.put(x + (y // 4) % 2 * 2, y, C("f0c860"))
+        c.shade("rect", (24, 27, 40, 30), ramp("d8b880", "a8844c", "7a5a30"), dither=False)
+    elif kind == "spinning_wheel":
+        # A spinning wheel: the wheel and its spokes, the treadle, a distaff
+        # wound with wool.
+        wood = ramp("a07a54", "74563a", "4e3826")
+        c.shade("rect", (10, 50, 54, 54), wood)
+        for x in (14, 48):
+            c.shade("rect", (x, 54, x + 2, 61), wood)
+        c.fill("ellipse", (8, 12, 40, 44), wood[1])
+        c.fill("ellipse", (11, 15, 37, 41), (0, 0, 0, 0))
+        img = c.img
+        for (x, y) in list(c.filled):
+            if 11 < x < 37 and 15 < y < 41 and (x - 24) ** 2 + (y - 28) ** 2 < 12 ** 2:
+                img.putpixel((x, y), (0, 0, 0, 0))
+                c.filled.discard((x, y))
+        for a in range(0, 360, 45):
+            ex, ey = 24 + math.cos(math.radians(a)) * 13, 28 + math.sin(math.radians(a)) * 13
+            c.fill("line", (24, 28, ex, ey), wood[2])
+        c.shade("ellipse", (21, 25, 27, 31), wood)
+        c.fill("line", (24, 28, 24, 50), wood[2], 2)
+        c.fill("line", (40, 50, 46, 22), wood[1], 2)
+        c.shade("ellipse", (40, 10, 54, 26), ramp("f6f2ea", "dcd4c4", "aaa090"))
+        c.fill("line", (36, 28, 44, 20), C("e8e0d0"))
+    elif kind == "grain_sacks":
+        # Three sacks of grain, tied at the neck, one slumped, a little
+        # grain spilled before them.
+        sack = ramp("d8c08a", "b09868", "7e6a44")
+        for (x0, y0, x1, y1) in ((6, 30, 30, 61), (30, 26, 54, 61), (20, 40, 42, 62)):
+            c.shade("ellipse", (x0, y0, x1, y1), sack)
+            mid = (x0 + x1) // 2
+            c.fill("rect", (mid - 3, y0 - 3, mid + 3, y0 + 1), sack[1])
+            c.fill("line", (mid - 3, y0 + 1, mid + 3, y0 + 1), C("6a4a2a"))
+            c.fill("line", (mid - 4, y0 - 4, mid + 4, y0 - 4), sack[0])
+            c.fill("line", (x0 + 4, (y0 + y1) // 2, x1 - 4, (y0 + y1) // 2 + 1), sack[2])
+        r = random.Random(71)
+        for _ in range(20):
+            x, y = r.randrange(16, 48), r.randrange(60, 64)
+            c.put(x, y, C("e8d080") if r.random() < 0.5 else C("c0a050"))
+    elif kind == "tool_rack":
+        # A rack of farm tools against the wall: pitchfork, scythe, rake,
+        # a hoe, on pegs.
+        wood = ramp("a07a54", "74563a", "4e3826")
+        c.shade("rect", (6, 12, 58, 16), wood)
+        c.shade("rect", (6, 50, 58, 53), wood)
+        for x in (14, 26, 38, 50):
+            c.fill("line", (x, 12, x, 60), C("8e6a44"), 2)
+            c.fill("line", (x - 1, 12, x - 1, 60), C("c49a6c"))
+        # Pitchfork tines.
+        for dx in (-3, 0, 3):
+            c.fill("line", (14 + dx, 4, 14 + dx, 12), IRON[1])
+        c.fill("line", (11, 12, 17, 12), IRON[2])
+        # Scythe blade.
+        c.shade("poly", [(26, 6), (40, 2), (44, 6), (30, 9)], IRON, dither=False)
+        c.fill("line", (27, 7, 42, 4), C("e8ecf2"))
+        # Rake head.
+        c.fill("line", (33, 10, 43, 10), IRON[1], 2)
+        for x in range(33, 44, 2):
+            c.put(x, 12, IRON[2])
+        # Hoe.
+        c.shade("rect", (46, 6, 54, 10), IRON, dither=False)
+    elif kind == "pelt_rug":
+        # A bear's pelt laid flat, seen from above: a broad hide with ragged
+        # edges, four legs splayed out to clawed paws, the head at the top
+        # with its muzzle forward, fur in streaks.
+        fur = ramp("8a6444", "5e4028", "3a2616")
+        hide = [(16, 30), (24, 27), (40, 27), (48, 30), (52, 42), (48, 54), (38, 58), (26, 58), (16, 54), (12, 42)]
+        c.shade("poly", hide, fur)
+        for (x0, y0, x1, y1) in ((18, 32, 6, 24), (46, 32, 58, 24), (16, 52, 5, 60), (48, 52, 59, 60)):
+            c.fill("line", (x0, y0, x1, y1), fur[1], 5)
+            c.fill("line", (x0, y0 - 1, x1, y1 - 1), fur[0])
+            for k in range(3):
+                c.put(x1 + (k - 1), y1 + (1 if y1 > y0 else -1) * 2, C("e8dcc8"))
+        # The head: smaller than the hide, the muzzle pointing up.
+        c.shade("ellipse", (25, 14, 39, 30), fur)
+        c.shade("ellipse", (29, 9, 35, 18), ramp("a8805a", "7e5a3a", "54382a"))
+        c.put(31, 9, C("1a1010"))
+        c.put(32, 9, C("1a1010"))
+        c.put(28, 19, C("1a1010"))
+        c.put(36, 19, C("1a1010"))
+        for (x, y) in ((25, 16), (39, 16)):
+            c.shade("ellipse", (x - 2, y - 2, x + 2, y + 2), fur)
+        # Fur: short streaks running down the hide.
+        r = random.Random(73)
+        for _ in range(70):
+            x, y = r.randrange(14, 51), r.randrange(30, 57)
+            if (x, y) in c.filled and (x, y + 1) in c.filled:
+                colour = fur[0] if r.random() < 0.35 else fur[2]
+                c.put(x, y, colour)
+                c.put(x, y + 1, colour)
+    elif kind == "antler_mount":
+        # Antlers on a carved wooden plaque, hung on the wall.
+        c.shade("ellipse", (22, 26, 42, 46), ramp("a07a54", "74563a", "4e3826"))
+        c.fill("ellipse", (26, 30, 38, 42), C("5a4028"))
+        bone = ramp("f0e6cc", "c8b896", "8e7e60")
+        for side in (-1, 1):
+            base = (32 + side * 4, 30)
+            tips = [(32 + side * 20, 6), (32 + side * 24, 18), (32 + side * 12, 4), (32 + side * 26, 28)]
+            c.fill("line", (base[0], base[1], 32 + side * 18, 14), bone[1], 2)
+            for tip in tips:
+                mid = (32 + side * 16, 16)
+                c.fill("line", (mid[0], mid[1], tip[0], tip[1]), bone[1])
+                c.put(tip[0], tip[1], bone[0])
+            c.fill("line", (base[0] + side, base[1] - 1, 32 + side * 17, 13), bone[0])
+    elif kind == "stool":
+        # A three-legged stool with a round seat.
+        wood = ramp("a07a54", "74563a", "4e3826")
+        c.shade("ellipse", (20, 38, 44, 46), wood)
+        c.fill("line", (22, 40, 42, 40), C("c49a6c"))
+        for (x0, x1) in ((24, 20), (32, 32), (40, 44)):
+            c.fill("line", (x0, 46, x1, 60), wood[2], 2)
+        c.fill("line", (22, 54, 42, 54), wood[2])
+    elif kind == "firewood":
+        # Split logs stacked between two posts, their ends showing rings.
+        wood = ramp("a07a54", "74563a", "4e3826")
+        for x in (8, 54):
+            c.shade("rect", (x, 26, x + 3, 61), wood)
+        rings = ramp("e0c08a", "c09a62", "8a6a40")
+        for row, y in enumerate((52, 44, 36, 28)):
+            for k in range(5 - (1 if row % 2 else 0)):
+                x = 15 + k * 9 + (4 if row % 2 else 0)
+                c.shade("ellipse", (x - 4, y - 4, x + 4, y + 4), ramp("6e5034", "4e3822", "34241a"))
+                c.shade("ellipse", (x - 3, y - 3, x + 3, y + 3), rings)
+                c.put(x, y, C("8a6a40"))
+    elif kind == "dresser":
+        # A chest of drawers with brass handles, a jug and a small mirror on top.
+        wood = ramp("9a7450", "6e5034", "4a3422")
+        c.shade("rect", (8, 26, 56, 61), wood)
+        c.fill("line", (8, 26, 56, 26), C("c49a6c"))
+        for y in (30, 40, 50):
+            c.shade("rect", (11, y, 53, y + 8), ramp("a88460", "7a5a3e", "523c28"), dither=False)
+            for x in (22, 42):
+                c.fill("rect", (x, y + 3, x + 2, y + 4), BRASS[0])
+        c.shade("ellipse", (14, 14, 24, 26), ramp("f0f0f0", "c8ccd8", "8890a0"))
+        c.shade("rect", (36, 10, 48, 25), ramp("c0a060", "9a7a40", "6a5228"))
+        c.fill("rect", (38, 12, 46, 23), C("9ab4c8"))
+        c.put(39, 13, C("e8f4ff"))
+    elif kind == "cradle":
+        # A wooden rocking cradle with a quilted blanket.
+        wood = ramp("a07a54", "74563a", "4e3826")
+        c.fill("ellipse", (8, 52, 56, 64), wood[2])
+        c.fill("ellipse", (10, 54, 54, 62), (0, 0, 0, 0))
+        for (x, y) in list(c.filled):
+            if 10 < x < 54 and y > 53 and ((x - 32) / 22.0) ** 2 + ((y - 58) / 4.0) ** 2 < 1.0:
+                c.img.putpixel((x, y), (0, 0, 0, 0))
+                c.filled.discard((x, y))
+        c.shade("rect", (12, 30, 52, 54), wood)
+        c.shade("rect", (10, 22, 16, 54), wood)
+        for x in range(18, 50, 5):
+            c.fill("line", (x, 32, x, 52), wood[2])
+        quilt = ramp("f0c0c8", "c88a98", "8a5a68")
+        c.shade("rect", (16, 30, 50, 38), quilt, dither=False)
+        for x in range(18, 50, 6):
+            c.put(x, 33, C("fff0f4"))
+        c.shade("ellipse", (14, 26, 22, 32), ramp("f8f4ec", "e0d8c8", "b0a898"))
+    elif kind == "pots_rack":
+        # A rack on the wall with copper pots and pans hanging from hooks.
+        wood = ramp("a07a54", "74563a", "4e3826")
+        c.shade("rect", (6, 10, 58, 14), wood)
+        copper = ramp("f0a070", "c06a3a", "7a3a1e")
+        hangs = [(12, "pan"), (26, "pot"), (40, "pan"), (52, "ladle")]
+        for x, what in hangs:
+            c.fill("line", (x, 14, x, 18), IRON[1])
+            if what == "pan":
+                c.fill("line", (x, 18, x, 26), C("4a3a2a"), 2)
+                c.shade("ellipse", (x - 7, 26, x + 7, 40), copper)
+                c.fill("ellipse", (x - 4, 29, x + 4, 37), copper[2])
+            elif what == "pot":
+                c.shade("rect", (x - 7, 20, x + 7, 36), copper)
+                c.fill("line", (x - 8, 20, x + 8, 20), copper[0])
+                c.fill("line", (x - 6, 22, x + 6, 22), copper[2])
+            else:
+                c.fill("line", (x, 18, x, 32), IRON[1])
+                c.shade("ellipse", (x - 3, 31, x + 3, 37), IRON)
+    elif kind == "yarn_basket":
+        # A wicker basket of wool: balls of yarn in three colours, a loose end.
+        c.shade("ellipse", (12, 38, 52, 61), ramp("c49a5a", "94703c", "64482a"))
+        for x in range(14, 51, 3):
+            c.fill("line", (x, 42, x, 59), C("6a4a2a"))
+        for (x, y, colour) in ((22, 38, "d06a6a"), (32, 35, "6a8ad0"), (42, 38, "e0c060")):
+            c.shade("ellipse", (x - 6, y - 6, x + 6, y + 6), ramp(colour, colour, "5a4a5a"))
+            c.fill("line", (x - 4, y - 2, x + 3, y + 3), C("ffffff"))
+        c.fill("line", (46, 40, 54, 52), C("e0c060"))
     c.outline()
     return c.img
 
@@ -2218,7 +2500,10 @@ DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate",
          "root_cutter", "root_delver", "root_tender", "root_hollow", "farmhouse", "furnace", "trophy_stand",
          "anvil", "weapon_rack", "bench", "hay_bale", "flower_bed", "cupboard", "fountain", "stone_planter",
          "standing_stone", "carved_pillar", "rune_stele", "chime_stone", "stone_pedestal", "stone_shard",
-         "manor", "iron_gate", "carriage", "hatch", "horn_post"]
+         "manor", "iron_gate", "carriage", "hatch", "horn_post",
+         # Furnishings for the inside of houses, by who lives there.
+         "writing_desk", "cauldron", "herb_rack", "jar_shelf", "loom", "spinning_wheel", "grain_sacks", "tool_rack",
+         "pelt_rug", "antler_mount", "stool", "firewood", "dresser", "cradle", "pots_rack", "yarn_basket"]
 
 
 def sheet(images, w, h):
