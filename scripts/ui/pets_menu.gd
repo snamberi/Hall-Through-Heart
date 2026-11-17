@@ -467,12 +467,12 @@ func _mount_card(id: String, owned: bool) -> Control:
 	var picture := TextureRect.new()
 	var atlas := AtlasTexture.new()
 	atlas.atlas = load("res://assets/sprites/mounts/%s.png" % data["sheet"])
-	atlas.region = Rect2(20, 24, 56, 54)
+	atlas.region = Rect2(16, 18, 68, 58)
 	picture.texture = atlas
-	picture.modulate = data["tint"] if owned else Color(0.2, 0.2, 0.28)
-	picture.custom_minimum_size = Vector2(60, 56)
+	picture.modulate = Color.WHITE if owned else Color(0.2, 0.2, 0.28)
+	picture.custom_minimum_size = Vector2(68, 58)
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	row.add_child(picture)
 	var words := VBoxContainer.new()

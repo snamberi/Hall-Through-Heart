@@ -200,14 +200,19 @@ func _build_chunk(chunk: Vector2i, announce: bool = true) -> void:
 				if TerrainTiles.priority(other) > rank:
 					fringes[side].set_cell(here, TerrainTiles.FRINGE_SOURCE, Vector2i(1, other), TURNS[side])
 	# Cliffs: the faces, edges and shadows where high ground drops away.
+	var heights: PackedInt32Array = []
+	heights.resize(span * span)
 	var has_high := false
-	for type in types:
-		if type in TerrainTiles.HIGH:
-			has_high = true
-			break
+	for y in span:
+		for x in span:
+			var height := generator.height_at(origin + Vector2i(x - 1, y - 1))
+			heights[y * span + x] = height
+			has_high = has_high or height > 0
 	if has_high:
 		var cliffs := CliffFaces.new()
 		cliffs.types = types
+		cliffs.heights = heights
+		cliffs.stairs = generator.is_stairs
 		cliffs.span = span
 		cliffs.origin = origin
 		cliffs.levelled = levelled

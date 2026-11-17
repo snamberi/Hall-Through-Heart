@@ -718,7 +718,8 @@ func _read_ground() -> void:
 	if swimming != was_swimming:
 		Events.splash.emit(global_position)
 	# Climbing gives a wider view.
-	_height_zoom = 1.5 if tile == TerrainTiles.Type.PEAK else 1.75 if tile == TerrainTiles.Type.ROCK else 2.0
+	var height := _world.generator.height_at(_world.world_to_cell(global_position))
+	_height_zoom = 1.5 if height >= 2 else 1.75 if tile == TerrainTiles.Type.ROCK else 1.85 if height == 1 else 2.0
 
 
 ## A safety net: if the player ever ends up inside a wall (a cave edge,
@@ -952,7 +953,7 @@ func ride(id: String) -> String:
 	mount_id = id
 	_mount.ride(id)
 	stable.apply_riding(true)
-	_visual.position.y = -Mount.SEAT
+	_visual.position.y = -Mount.seat(id)
 	RingBurst.spawn(get_parent(), global_position, Color(0.9, 0.85, 0.7), 40.0)
 	Events.codex_event.emit("mounts", 1)
 	return ""

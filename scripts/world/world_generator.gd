@@ -47,6 +47,7 @@ var _weird := FastNoiseLite.new()
 var _danger := FastNoiseLite.new()
 var _warp := FastNoiseLite.new()
 var _islands := FastNoiseLite.new()
+var _highland := FastNoiseLite.new()
 var _cache: Dictionary = {}
 ## Ground the player has laid or dug (paths, decking, turf, ponds...):
 ## cell -> terrain type, over whatever the world would have there.
@@ -66,6 +67,7 @@ func _init(p_seed: int) -> void:
 	_setup(_danger, p_seed + 2027, 0.004, 1)
 	_setup(_warp, p_seed + 9001, 0.08, 1)
 	_setup(_islands, p_seed + 7717, 0.03, 2)
+	_setup(_highland, p_seed + 3301, 0.012, 2)
 
 
 ## Enemy level for an area. Rises with distance from the start, with pockets
@@ -113,7 +115,39 @@ func is_dry_land(cell: Vector2i) -> bool:
 ## Nearest dry tile to `cell`, searching outward in square rings.
 ## Whether a cliff face stands on this tile: higher ground lies just north.
 func is_cliff_base(cell: Vector2i) -> bool:
-	return CliffFaces.level(tile_type_at(cell + Vector2i.UP)) > CliffFaces.level(tile_type_at(cell)) and not TerrainTiles.is_water(tile_type_at(cell))
+	return height_at(cell + Vector2i.UP) > height_at(cell) and not TerrainTiles.is_water(tile_type_at(cell))
+
+
+## Land on which raised ground (a plateau of its own ground, an earthen
+## face along its south side) can stand. Wet and low places stay low.
+const RAISABLE: Array[int] = [T.DEAD_GRASS, T.DARK_GRASS, T.SNOW, T.FROSTPINE, T.SALT, T.THORN, T.CRIMSON, T.FUNGAL, T.SAND,
+	T.CINDER, T.ASH, T.PATH]
+
+
+## How many steps up the ground stands here: mountains by their rock (1)
+## and peaks (2); out in the open country, plateaus of grass, snow or sand
+## one step up. Never near the Sanctuary, in villages, on islands or water.
+func height_at(cell: Vector2i) -> int:
+	var type := tile_type_at(cell)
+	var base := CliffFaces.level(type)
+	if base > 0 or not type in RAISABLE:
+		return base
+	if Vector2(cell).length() < SANCTUARY_OUTER + 30.0 or village_near(cell) != null:
+		return 0
+	if _highland.get_noise_2d(cell.x, cell.y) <= 0.3 or is_island(cell):
+		return 0
+	return 1
+
+
+## Where a cliff face has steps cut into it, so the high ground can be
+## climbed there: wherever a road meets it, and now and then along a long
+## face (both neighbours faces too).
+func is_stairs(cell: Vector2i) -> bool:
+	if not is_cliff_base(cell) or CliffFaces.level(tile_type_at(cell + Vector2i.UP)) > 0:
+		return false
+	if tile_type_at(cell) == T.PATH or tile_type_at(cell + Vector2i.UP) == T.PATH:
+		return true
+	return posmod(hash(Vector3i(cell.x, cell.y, world_seed + 5)), 9) == 0 and is_cliff_base(cell + Vector2i.LEFT) and is_cliff_base(cell + Vector2i.RIGHT)
 
 
 ## Where the Altar of Magic stands: about MagicDB.ALTAR_DISTANCE tiles out

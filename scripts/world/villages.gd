@@ -251,6 +251,16 @@ func _build(center: Vector2i) -> Array:
 		placed.append(node)
 		return node
 	var tile := _world.generator.tile_type_at(center + Vector2i(3, 3))
+	# Tiles already taken, so the dressing below never piles up or lands on a road.
+	var used := {}
+	for offset: Vector2i in [Vector2i(3, -3), Vector2i(-3, -3), Vector2i(-5, -3), Vector2i(-5, -2), Vector2i(3, 3), Vector2i(-3, -2),
+			Vector2i(-3, 3), Vector2i(-5, 3), Vector2i(5, 4), Vector2i(5, -3), Vector2i(2, -6), Vector2i(-6, -7), Vector2i(-7, 3)]:
+		used[center + offset] = true
+	var decor := func(kind: int, cell: Vector2i, solid: float = 8.0) -> Prop:
+		if used.has(cell) or _world.generator.tile_type_at(cell) == T.PATH or not _world.generator.is_dry_land(cell):
+			return null
+		used[cell] = true
+		return add.call(Prop.create_decor(kind, _at(cell), solid))
 
 	# The square: a well, a market stall, a fire to rest at.
 	add.call(Prop.create_decor(Prop.Decor.WELL, _at(center + Vector2i(3, -3)), 20.0))
@@ -288,6 +298,28 @@ func _build(center: Vector2i) -> Array:
 	var stones: Waystones = get_parent().get_node_or_null("Waystones")
 	if stones:
 		add.call(stones.make_stone("village:%d,%d" % [center.x, center.y], "Village (%d, %d)" % [center.x, center.y], center + Vector2i(5, -3)))
+
+	# The square: benches by the fire, flowers at its corners, hay by the stall.
+	decor.call(Prop.Decor.BENCH, center + Vector2i(5, 2), 8.0)
+	decor.call(Prop.Decor.BENCH, center + Vector2i(2, 5), 8.0)
+	decor.call(Prop.Decor.FLOWER_BED, center + Vector2i(2, 2), 6.0)
+	decor.call(Prop.Decor.FLOWER_BED, center + Vector2i(-2, -2), 6.0)
+	decor.call(Prop.Decor.STONE_PLANTER, center + Vector2i(2, -2), 8.0)
+	decor.call(Prop.Decor.HAY_BALE, center + Vector2i(-6, -4), 10.0)
+	decor.call(Prop.Decor.CART, center + Vector2i(-7, -2), 14.0)
+	# The warden's corner: an anvil and a rack of arms (a full smithy is a
+	# village project).
+	decor.call(Prop.Decor.ANVIL, center + Vector2i(-4, 6), 10.0)
+	decor.call(Prop.Decor.WEAPON_RACK, center + Vector2i(-6, 6), 10.0)
+	# A field outside, its rows tilled, a scarecrow and hay at its edge.
+	var field_quarter: Vector2i = [Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)][random.randi_range(0, 3)]
+	var field := Vector2i(field_quarter.x * 15, field_quarter.y * 15)
+	for row in 3:
+		for column in 4:
+			decor.call(Prop.Decor.SOIL, center + field + Vector2i(column, row), 0.0)
+	decor.call(Prop.Decor.SCARECROW, center + field + Vector2i(2, -1), 6.0)
+	decor.call(Prop.Decor.HAY_BALE, center + field + Vector2i(-1, 1), 10.0)
+	decor.call(Prop.Decor.HAY_BALE, center + field + Vector2i(-1, 2), 10.0)
 
 	# Lanterns along the roads.
 	for distance in [4, 9, 13]:
@@ -356,10 +388,37 @@ func _build(center: Vector2i) -> Array:
 			house.sprite().position.y = -50.0
 			HouseStyles.dress(house, tile)
 			add.call(house)
-			# A yard: fences, a barrel, a plant.
-			add.call(Prop.create_decor(Prop.Decor.FENCE, _at(center + spot + Vector2i(-2, 2)), 0.0))
-			add.call(Prop.create_decor(Prop.Decor.FENCE, _at(center + spot + Vector2i(2, 2)), 0.0))
-			add.call(Prop.create_decor(Prop.Decor.BARREL if random.randf() < 0.5 else Prop.Decor.PLANT_POT, _at(center + spot + Vector2i(2, 1)), 8.0))
+			# Someone is home: smoke from the chimney.
+			if random.randf() < 0.7:
+				var smoke := ChimneySmoke.new()
+				smoke.position = Vector2(16, -92)
+				house.add_child(smoke)
+			for k in range(-1, 2):
+				used[center + spot + Vector2i(k, 0)] = true
+				used[center + spot + Vector2i(k, 1)] = true
+			# A yard: a fence along its front with a gap at the door, a
+			# garden or flowers to one side, barrels and crates to the other,
+			# and a lamp at the gate.
+			for k in [-3, -2, 2, 3]:
+				decor.call(Prop.Decor.FENCE, center + spot + Vector2i(k, 2), 0.0)
+			decor.call(Prop.Decor.FENCE, center + spot + Vector2i(-3, 1), 0.0)
+			decor.call(Prop.Decor.FENCE, center + spot + Vector2i(3, 1), 0.0)
+			match random.randi_range(0, 2):
+				0:
+					decor.call(Prop.Decor.FLOWER_BED, center + spot + Vector2i(-2, 1), 6.0)
+				1:
+					decor.call(Prop.Decor.SOIL, center + spot + Vector2i(-2, 1), 0.0)
+					decor.call(Prop.Decor.SOIL, center + spot + Vector2i(-2, 0), 0.0)
+				_:
+					decor.call(Prop.Decor.PLANT_POT, center + spot + Vector2i(-2, 1), 6.0)
+			decor.call(Prop.Decor.BARREL if random.randf() < 0.5 else Prop.Decor.CRATE, center + spot + Vector2i(2, 1), 8.0)
+			if random.randf() < 0.5:
+				decor.call(Prop.Decor.CRATE, center + spot + Vector2i(2, 0), 8.0)
+			if random.randf() < 0.4:
+				decor.call(Prop.Decor.BENCH, center + spot + Vector2i(-2, 3), 8.0)
+			var lamp: Prop = decor.call(Prop.Decor.LANTERN, center + spot + Vector2i(1, 3), 5.0)
+			if lamp:
+				lamp.add_light(0.8, 1.3)
 
 	# Villagers about the place, each with a name, a trade and a door.
 	for i in random.randi_range(5, 7):
