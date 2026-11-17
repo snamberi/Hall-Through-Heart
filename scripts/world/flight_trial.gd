@@ -263,7 +263,8 @@ func _start(k: int) -> void:
 
 
 func _solve(k: int) -> void:
-	if k != solved:
+	# Only the next puzzle, and only while the trial is laid out.
+	if k != solved or k >= _gates.size():
 		return
 	solved += 1
 	Audio.play("level_up", -6.0)
@@ -487,6 +488,9 @@ func _build_edge() -> void:
 
 
 func _start_fall() -> void:
+	# Only from the Edge, with all ten solved.
+	if solved < PUZZLES.size() or _player == null or _player.flight_unlocked:
+		return
 	var room := Room.new()
 	room.title = "The Trial of Panic"
 	room.wall_style = "void"
