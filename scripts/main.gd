@@ -184,6 +184,19 @@ func _ready() -> void:
 	_spawner.setup(_world, _player)
 	_loot.setup(_player)
 	_hud.setup(_player)
+	# Arrows at the screen's edge, monster cards and the damage meter.
+	var overlay := OverlayHUD.new()
+	overlay.name = "OverlayHUD"
+	add_child(overlay)
+	overlay.setup(_player)
+	# Photo mode, and the log of what was said and seen.
+	var photo := PhotoMode.new()
+	photo.name = "PhotoMode"
+	add_child(photo)
+	photo.setup(_player)
+	var chronicle := Chronicle.new()
+	chronicle.name = "Chronicle"
+	add_child(chronicle)
 	_menus.setup(_player)
 	_debug_hud.setup(_world, _player)
 	_player.died.connect(_on_player_died)

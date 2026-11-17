@@ -459,6 +459,8 @@ const ITEMS := {
 	"aloe_salve": {"name": "Aloe Salve", "icon": 47, "tint": Color("aac87a"), "material_rarity": 0, "use": {"heal": 0.3, "buff": "salve", "name": "Soothed", "duration": 20.0, "mods": {"health_regen": {"flat": 3.0}}}, "text": "Restores 30% health and more over 20 seconds."},
 	"bloodcap_draught": {"name": "Bloodcap Draught", "icon": 47, "tint": Color("c02a3a"), "material_rarity": 2, "use": {"buff": "draught", "name": "Bloodthirst", "duration": 90.0, "mods": {"life_steal": {"flat": 0.05}}}, "text": "Heal for 5% of damage dealt for 90 seconds."},
 	"void_tonic": {"name": "Void Tonic", "icon": 47, "tint": Color("9a6cf0"), "material_rarity": 3, "use": {"buff": "tonic", "name": "Void-touched", "duration": 90.0, "mods": {"magic_power": {"percent": 0.25}}}, "text": "+25% magic damage for 90 seconds."},
+	"bedroll": {"name": "Bedroll", "icon": 57, "tint": Color("b8404a"), "material_rarity": 0, "use": {"sleep": true}, "value": 40,
+		"text": "A rolled blanket on a strap. Use it at night with no monster near to sleep till morning: you wake healed and Well Rested, and if you fall you wake here."},
 	"bandage": {"name": "Bandage", "icon": 43, "tint": Color("f4f2ec"), "material_rarity": 0, "use": {"heal": 0.2}, "value": 8, "text": "Rough cloth and herbs. Restores 20% health."},
 	"torch": {"name": "Torch", "icon": 94, "tint": Color("f08a2e"), "material_rarity": 0, "place": "torch", "value": 4, "text": "Carried, one lights itself in caves and after dark and burns for four minutes. Use it to plant it in the ground as a lasting light."},
 	"venom_sac": {"name": "Venom Sac", "icon": 16, "tint": Color("b06ad0"), "material_rarity": 1, "text": "Handle with care."},

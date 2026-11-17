@@ -142,6 +142,12 @@ func is_night() -> bool:
 	return darkness() > 0.6
 
 
+## The hour of the day as "HH:MM" (midnight at 0).
+func clock() -> String:
+	var minutes := int(time * 24.0 * 60.0) % (24 * 60)
+	return "%02d:%02d" % [minutes / 60, minutes % 60]
+
+
 func phase() -> String:
 	for entry in PHASES:
 		if time < entry[0]:

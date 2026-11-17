@@ -363,6 +363,7 @@ func say(text: String, seconds: float = 3.5) -> void:
 	if _bubble == null:
 		return
 	_bubble.text = text
+	Chronicle.say(get_tree(), "speech", villager_name if villager_name != "" else title_text, text)
 	_bubble.reset_size()
 	_bubble.position.x = -_bubble.get_minimum_size().x / 4.0
 	_bubble.visible = true

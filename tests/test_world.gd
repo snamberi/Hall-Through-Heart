@@ -554,3 +554,54 @@ func test_factions_learn_how_you_fight(t: TestContext) -> void:
 	for enemy: Enemy in fresh + [a, b]:
 		enemy.queue_free()
 	t.close_game()
+
+
+func test_map_pins_recap_bedroll_and_the_log(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var map: MapMenu = main.get_node("Menus").get_menu("map")
+	# Pins are kept in the save with their names, looks and arrows.
+	MapMenu.pins = [{"tile": [10, -4], "name": "Ore vein", "style": 3, "tracked": true}]
+	var saved := map.save_data()
+	MapMenu.pins = []
+	map.load_data(saved)
+	t.equal(MapMenu.pins.size(), 1, "a pin survives saving")
+	t.equal(MapMenu.tracked_pin(), 0, "and keeps its arrow")
+	t.equal(MapMenu.pin_at(Vector2i(10, -4)), 0, "found by its tile")
+	var overlay: OverlayHUD = main.get_node("OverlayHUD")
+	t.check(overlay._targets().any(func(target: Array) -> bool: return target[2] == "Ore vein"), "the tracked pin gets an arrow")
+	MapMenu.pins = []
+	# The death recap names what struck.
+	var husk := (main.get_node("Enemies") as EnemySpawner).spawn_at(player.global_position + Vector2(40, 0), 1, Enemy.Rank.NORMAL, "husk")
+	player.harm_log.clear()
+	player._log_harm(husk.global_position, 12.0, "")
+	player._log_harm(husk.global_position, 8.0, "fire")
+	t.check(player.death_recap().contains("Husk"), "the recap names the husk (%s)" % player.death_recap())
+	husk.queue_free()
+	await t.frames(1)
+	# A bedroll sleeps through the night when nothing is near.
+	var day_night: DayNight = main.get_node("DayNight")
+	day_night.time = 0.9
+	var day := day_night.day
+	t.check(day_night.is_night(), "it is night")
+	t.equal(player.sleep_rough(), "", "the bedroll sleeps")
+	t.check(day_night.day == day + 1 and not day_night.is_night(), "and it is morning")
+	t.check(player.buffs.has("well_rested"), "the player wakes Well Rested")
+	t.check(player.sleep_rough() != "", "but not by day")
+	# The loot filter leaves lesser gear on the ground.
+	GameSettings.loot_filter = 2
+	var common := Pickup.create(player, LootGenerator.make_equipment(1, 0, "sword"))
+	t.check(common.filtered(), "common gear stays on the ground with Rare+ chosen")
+	GameSettings.loot_filter = 0
+	t.check(not common.filtered(), "and is picked up with All")
+	common.free()
+	# Colour-blind warning colours.
+	GameSettings.colorblind = "deuteranopia"
+	t.check(Enemy.telegraph_color() != Enemy.TELEGRAPH, "warnings change colour for red-green colour blindness")
+	GameSettings.colorblind = "off"
+	# The log keeps what was said.
+	var chronicle: Chronicle = main.get_node("Chronicle")
+	Chronicle.say(main.get_tree(), "speech", "Mira", "The well's gone sour again.")
+	t.check(chronicle.entries.back()[4] == "The well's gone sour again." and chronicle.entries.back()[3] == "Mira", "speech goes into the log")
+	t.check(chronicle.save_data()["entries"].size() > 0, "the log is kept in the save")
+	t.close_game()

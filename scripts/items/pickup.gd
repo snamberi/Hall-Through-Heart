@@ -40,8 +40,8 @@ func _ready() -> void:
 		if ItemIcons.has(item.id):
 			_sprite.scale = Vector2(0.5, 0.5)
 	else:
-		# A bigger heap for a bigger purse.
-		_sprite.scale = Vector2.ONE * clampf(0.85 + log(maxf(gold, 1)) * 0.08, 0.85, 1.35)
+		# Gold lies at its own size (no stretched pixels).
+		_sprite.scale = Vector2.ONE
 	add_child(_sprite)
 
 
@@ -62,10 +62,20 @@ func _physics_process(delta: float) -> void:
 	if _age < 0.35 or _blocked_left > 0.0 or _player.is_dead():
 		return
 	var offset := _player.global_position - global_position
+	# Gear below the loot filter's rarity stays put until picked by hand.
+	if filtered():
+		if offset.length() < 44.0 and Input.is_action_just_pressed("interact"):
+			_collect()
+		return
 	if offset.length() < COLLECT_RADIUS:
 		_collect()
-	elif offset.length() < MAGNET_RADIUS:
+	elif offset.length() < MAGNET_RADIUS * GameSettings.pickup_radius:
 		global_position += offset.normalized() * MAGNET_SPEED * delta
+
+
+## Whether the loot filter leaves this on the ground.
+func filtered() -> bool:
+	return item != null and item.is_equipment() and item.rarity < GameSettings.loot_filter
 
 
 ## What lies on the ground shows what it is worth: a column of light in its
@@ -75,6 +85,12 @@ func _physics_process(delta: float) -> void:
 ## pixel steps to match the art.
 func _draw() -> void:
 	var pulse := 0.8 + 0.2 * sin(_age * 3.0)
+	# Filtered gear: a dim mark, and a hint when the player is beside it.
+	if filtered() and _player and _player.global_position.distance_to(global_position) < 44.0:
+		var font := UITheme.body_bold()
+		var words := "%s: pick up" % GameSettings.describe("interact").split(" / ")[0]
+		draw_string_outline(font, Vector2(-30, -26), words, HORIZONTAL_ALIGNMENT_CENTER, 60, 8, 3, Color.BLACK)
+		draw_string(font, Vector2(-30, -26), words, HORIZONTAL_ALIGNMENT_CENTER, 60, 8, UITheme.DIM)
 	if item == null:
 		# Gold: a soft warm pool, and a star-glint that comes and goes.
 		_pixel_pool(Color(1.0, 0.82, 0.3), 7.0, 0.35 * pulse)

@@ -405,3 +405,4 @@ worn_hatchet
 worn_pickaxe
 wraith_cloth
 wrap_briar
+bedroll

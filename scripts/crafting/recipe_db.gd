@@ -25,9 +25,10 @@ const TOOL_TIERS: Array[Array] = [
 	["mithril", 40, "mithril_ingot", "ancient_wood"], ["adamantite", 65, "adamantite_ingot", "ancient_wood"],
 ]
 ## Recipes that can be made with bare hands, away from a crafting table.
-const NO_TABLE: Array[String] = ["crafting_table", "bandage", "torch", "wooden_club", "bindle", "rope_belt"]
+const NO_TABLE: Array[String] = ["crafting_table", "bandage", "torch", "wooden_club", "bindle", "rope_belt", "bedroll"]
 const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "crafting_table", "profession": "building", "level": 1, "inputs": {"oak_wood": 6, "stone": 4}, "item": "crafting_table", "count": 1, "xp": 20.0},
+	{"id": "bedroll", "profession": "building", "level": 1, "inputs": {"wool": 3, "leather": 1}, "item": "bedroll", "count": 1, "xp": 8.0},
 	{"id": "bandage", "profession": "alchemy", "level": 1, "inputs": {"healing_herb": 1, "husk_fragment": 1}, "item": "bandage", "count": 2, "xp": 6.0},
 	{"id": "torch", "profession": "building", "level": 1, "inputs": {"oak_wood": 1}, "item": "torch", "count": 3, "xp": 3.0},
 	{"id": "wooden_club", "profession": "blacksmithing", "level": 1, "inputs": {"oak_wood": 4}, "equipment": "club", "item_level": 1, "xp": 8.0},

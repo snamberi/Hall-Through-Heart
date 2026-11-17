@@ -492,6 +492,22 @@ func _draw_ward(tint: Color) -> void:
 ## edged brighter as it nears. Areas are rings, swipes cones, lunges and
 ## charges lanes, pounces a landing ring and shots an aiming line.
 const TELEGRAPH := Color(1.0, 0.24, 0.2)
+
+
+## The colour of attack warnings, told apart with colour blindness: amber
+## for red-green (deuteranopia, protanopia), hot pink for blue-yellow.
+static func telegraph_color() -> Color:
+	match GameSettings.colorblind:
+		"deuteranopia", "protanopia":
+			return Color(1.0, 0.72, 0.0)
+		"tritanopia":
+			return Color(1.0, 0.18, 0.55)
+	return TELEGRAPH
+
+
+## The colour of a safe place inside a warning (green normally).
+static func safe_color() -> Color:
+	return Color(0.6, 1.0, 0.6) if GameSettings.colorblind == "off" else Color(0.75, 0.9, 1.0)
 ## Beasts whose sheets are drawn at the size they are shown.
 const NATIVE_SIZE: Array[String] = ["deer", "wild_hare", "wild_pig", "mountain_goat", "pheasant", "desert_lizard", "snow_fox",
 	"shore_crab", "marsh_toad", "sheep", "cow", "chicken", "lamb", "calf", "chick", "bear", "grey_wolf", "giant_spider", "web_spider"]
@@ -501,7 +517,7 @@ func _draw_telegraph() -> void:
 	var progress := clampf(1.0 - _state_time_left / maxf(windup_time, 0.01), 0.0, 1.0)
 	var now := Time.get_ticks_msec() / 1000.0
 	# Hotter and brighter as the blow comes; a flash in the last moment.
-	var hot := TELEGRAPH.lerp(Color(1.0, 0.86, 0.55), progress * 0.55)
+	var hot := telegraph_color().lerp(Color(1.0, 0.86, 0.55) if GameSettings.colorblind == "off" else Color.WHITE, progress * 0.55)
 	var flash := 1.0 if progress > 0.88 and fmod(now * 14.0, 1.0) < 0.5 else 0.0
 	var facing := _direction if _direction != Vector2.ZERO else Vector2.RIGHT
 	match _attack["kind"]:

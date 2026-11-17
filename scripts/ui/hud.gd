@@ -205,6 +205,10 @@ func show_death(xp_lost: int, respawn_name: String) -> void:
 		_death_summary.text = "Nothing lost: %s keeps your progress.\nYou keep your gear, gold and bag.  ·  Waking at %s" % [Difficulty.display_name(), respawn_name]
 	else:
 		_death_summary.text = "Lost %s XP: %d%% of your progress toward level %d.\nYou keep your level, gear, gold and bag.  ·  Waking at %s" % [InventoryMenu._thousands(xp_lost), share, _player.leveling.level + 1, respawn_name]
+	var recap := _player.death_recap()
+	if recap != "":
+		_death_summary.text += "\n\n" + recap
+	_player.harm_log.clear()
 	_death_message.visible = true
 
 

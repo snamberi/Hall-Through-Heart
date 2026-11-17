@@ -419,6 +419,7 @@ const INDEX := {
 	"worn_pickaxe": 404,
 	"wraith_cloth": 405,
 	"wrap_briar": 406,
+	"bedroll": 407,
 }
 
 static func has(id: String) -> bool:

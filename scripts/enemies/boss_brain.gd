@@ -223,6 +223,9 @@ func _update_meteors(delta: float) -> void:
 func draw() -> void:
 	var e := _enemy
 	var color: Color = data["color"]
+	# With a colour-blind setting, warnings use a colour that stands out.
+	if GameSettings.colorblind != "off":
+		color = Enemy.telegraph_color()
 	# A smouldering aura under the boss, brighter as it grows desperate.
 	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0)
 	e.draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.42))
@@ -255,8 +258,8 @@ func draw() -> void:
 		"nova":
 			e.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.7))
 			e.draw_arc(Vector2.ZERO, 300.0, 0.0, TAU, 64, Color(color, 0.9), 3.0)
-			e.draw_arc(Vector2.ZERO, 90.0, 0.0, TAU, 32, Color(0.6, 1.0, 0.6, 0.9), 2.5)
-			e.draw_circle(Vector2.ZERO, 90.0, Color(0.6, 1.0, 0.6, 0.12))
+			e.draw_arc(Vector2.ZERO, 90.0, 0.0, TAU, 32, Color(Enemy.safe_color(), 0.9), 2.5)
+			e.draw_circle(Vector2.ZERO, 90.0, Color(Enemy.safe_color(), 0.12))
 			e.draw_set_transform(Vector2.ZERO)
 		_:
 			e.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.7))

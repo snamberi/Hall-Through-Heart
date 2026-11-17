@@ -2262,6 +2262,27 @@ def bandage_icon():
     return icon
 
 
+# ======================================================================
+# Things added with the comforts, the orphanage, the monster town and the
+# gates (one builder for all of them, by item id)
+# ======================================================================
+
+def new_thing_icon(kind):
+    icon = Icon()
+    if kind == "bedroll":
+        # A blanket rolled tight, tied with two leather straps, a carry loop.
+        icon.ellipse((3, 11, 13, 25), ramp(CLOTH_RED))
+        icon.poly([(8, 11), (25, 9), (29, 17), (26, 25), (8, 25)], ramp(CLOTH_RED))
+        icon.ellipse((24, 9, 30, 25), ramp("d86a6a"))
+        icon.ellipse((25, 13, 29, 21), ramp("8a2c37"))
+        for x in (12, 20):
+            icon.rect((x, 10, x + 2, 26), ramp(DARK_LEATHER))
+            icon.put(x + 1, 18, c(BRONZE))
+        icon.line([(13, 10), (16, 4), (21, 4), (21, 10)], 1, ramp(LEATHER))
+        icon.line([(6, 14), (6, 22)], 1, [c("f0c8b0")] * 5)
+    return icon
+
+
 def treat_icon():
     icon = Icon()
     icon.ellipse((2, 6, 13, 17), ramp("d8a060"))
@@ -2830,6 +2851,7 @@ ITEMS = {
     "treasure_map": map_icon,
     "rowboat": boat_icon,
     "bandage": bandage_icon,
+    "bedroll": lambda: new_thing_icon("bedroll"),
     "taming_treat": treat_icon,
     # --- walls
     **{k: (lambda k=k: wall_icon(k)) for k in WALLS},

@@ -42,6 +42,30 @@ const SIDE := 290.0
 static var hidden_groups: Dictionary = {}
 ## The player's waypoint in world pixels, or null: shown here and on the minimap.
 static var waypoint: Variant = null
+## The player's own pins: [{"tile": [x, y], "name", "style", "tracked"}].
+static var pins: Array = []
+## Where the player last fell (world pixels), or null once they have been back.
+static var last_death: Variant = null
+## Pin looks: [name, colour].
+const PIN_STYLES := [["Star", Color("f4d27a")], ["Danger", Color("e0524a")], ["Home", Color("6aa8f0")], ["Loot", Color("7ad07a")],
+	["Quest", Color("c08ae8")], ["Note", Color("e8e4dc")]]
+
+
+## The pin on a tile, as an index into `pins`, or -1.
+static func pin_at(tile: Vector2i) -> int:
+	for index in pins.size():
+		var spot: Array = pins[index]["tile"]
+		if Vector2i(int(spot[0]), int(spot[1])) == tile:
+			return index
+	return -1
+
+
+## The pin chosen to show an arrow at the screen's edge, or -1.
+static func tracked_pin() -> int:
+	for index in pins.size():
+		if pins[index].get("tracked", false):
+			return index
+	return -1
 
 var _view: Control
 var _hover: Label
@@ -52,6 +76,12 @@ var _pick_name: Label
 var _pick_text: Label
 var _pick_distance: Label
 var _waypoint_button: Button
+var _pin_name: LineEdit
+var _pin_button: Button
+var _track_button: Button
+var _travel_button: Button
+var _pin_style := 0
+var _style_buttons: Array[Button] = []
 ## What was clicked: {"tile": Vector2i, "name": String, "kind": String}.
 var _picked: Dictionary = {}
 var _press_at := Vector2.ZERO
@@ -81,9 +111,15 @@ static func focus_on(world_position: Vector2, place: String) -> void:
 
 
 func _build() -> void:
-	# The waypoint and the legend's filters belong to this world.
+	# The waypoint, pins and the legend's filters belong to this world.
 	waypoint = null
+	pins = []
+	last_death = null
 	hidden_groups = {}
+	Events.player_died.connect(func(_xp: int) -> void:
+		if not player.indoors:
+			last_death = player.global_position
+	)
 	SaveGame.register("map", self)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 12)
@@ -185,6 +221,48 @@ func _build() -> void:
 	var fill := Control.new()
 	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(fill)
+	# Travel straight to a woken waystone picked on the map.
+	_travel_button = UITheme.primary_button("Travel here", _travel, SIDE - 24.0)
+	_travel_button.visible = false
+	box.add_child(_travel_button)
+	# Your own pins: a name, a look, and whether it gets an arrow.
+	_pin_name = LineEdit.new()
+	_pin_name.placeholder_text = "Name a pin..."
+	_pin_name.max_length = 28
+	_pin_name.custom_minimum_size = Vector2(SIDE - 24.0, 30)
+	UITheme.font_size(_pin_name, 15)
+	box.add_child(_pin_name)
+	var styles := HBoxContainer.new()
+	styles.add_theme_constant_override("separation", 4)
+	box.add_child(styles)
+	for index in PIN_STYLES.size():
+		var choice := Button.new()
+		choice.custom_minimum_size = Vector2(38, 26)
+		choice.toggle_mode = true
+		choice.tooltip_text = PIN_STYLES[index][0]
+		choice.pressed.connect(func() -> void:
+			_pin_style = index
+			var at := pin_at(_picked.get("tile", Vector2i(1 << 30, 0))) if not _picked.is_empty() else -1
+			if at >= 0:
+				pins[at]["style"] = index
+				SaveGame.request_save()
+			_show_picked()
+			_view.queue_redraw()
+		)
+		var pin_look := Control.new()
+		pin_look.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pin_look.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		pin_look.draw.connect(func() -> void: _draw_pin_shape(pin_look, pin_look.size / 2.0 + Vector2(0, 4), index, 0.8))
+		choice.add_child(pin_look)
+		styles.add_child(choice)
+		_style_buttons.append(choice)
+	var pin_row := HBoxContainer.new()
+	pin_row.add_theme_constant_override("separation", 6)
+	box.add_child(pin_row)
+	_pin_button = UITheme.button("Pin here", _toggle_pin, 130.0)
+	pin_row.add_child(_pin_button)
+	_track_button = UITheme.button("Show arrow", _toggle_track, 130.0)
+	pin_row.add_child(_track_button)
 	_waypoint_button = UITheme.primary_button("Set waypoint", _toggle_waypoint, SIDE - 24.0)
 	box.add_child(_waypoint_button)
 	box.add_child(UITheme.label("Click: select   Right-click: waypoint", 14, UITheme.DIM))
@@ -234,6 +312,9 @@ static func _small_button(text: String, action: Callable) -> Button:
 func _show_picked() -> void:
 	_zoom_label.text = "Zoom %d / %d" % [_zoom_index + 1, ZOOMS.size()]
 	if _picked.is_empty():
+		_pin_button.disabled = true
+		_track_button.disabled = true
+		_travel_button.visible = false
 		_pick_name.text = "Nothing selected"
 		_pick_text.text = "Click a marker or a spot on the map to see what it is and how far."
 		_pick_distance.text = ""
@@ -252,6 +333,106 @@ func _show_picked() -> void:
 	var on_it := waypoint != null and _world.world_to_cell(waypoint) == tile
 	_waypoint_button.text = "Clear waypoint" if on_it else "Set waypoint here"
 	_waypoint_button.disabled = false
+	var pinned := pin_at(tile)
+	_pin_button.text = "Remove pin" if pinned >= 0 else "Pin here"
+	_pin_button.disabled = false
+	_track_button.disabled = pinned < 0
+	_track_button.text = "Hide arrow" if pinned >= 0 and pins[pinned].get("tracked", false) else "Show arrow"
+	for index in _style_buttons.size():
+		_style_buttons[index].set_pressed_no_signal(index == (int(pins[pinned]["style"]) if pinned >= 0 else _pin_style))
+	if pinned >= 0 and not _pin_name.has_focus():
+		_pin_name.text = str(pins[pinned]["name"])
+	var stone := _waystone_key(tile)
+	_travel_button.visible = stone != "" and not player.indoors
+	if stone != "":
+		var stones: Waystones = player.get_parent().get_node_or_null("Waystones")
+		_travel_button.text = "Travel here  (%d gold)" % stones.fee(stone) if stones else "Travel here"
+
+
+## The key of the woken waystone on a tile, or "".
+func _waystone_key(tile: Vector2i) -> String:
+	var stones: Waystones = player.get_parent().get_node_or_null("Waystones")
+	if stones == null:
+		return ""
+	for key: String in stones.known:
+		if key.begins_with("waystone:") and stones.cell_of(key) == tile:
+			return key
+	return ""
+
+
+func _travel() -> void:
+	var key := _waystone_key(_picked.get("tile", Vector2i(1 << 30, 0)))
+	var stones: Waystones = player.get_parent().get_node_or_null("Waystones")
+	if key == "" or stones == null:
+		return
+	var problem := stones.travel(key)
+	if problem != "":
+		_pick_text.text = problem
+		return
+	player.get_parent().get_node("Menus").close()
+
+
+func _toggle_pin() -> void:
+	if _picked.is_empty():
+		return
+	var tile: Vector2i = _picked["tile"]
+	var at := pin_at(tile)
+	if at >= 0:
+		pins.remove_at(at)
+	else:
+		var name := _pin_name.text.strip_edges()
+		if name == "":
+			name = str(_picked.get("name", "Pin"))
+		pins.append({"tile": [tile.x, tile.y], "name": name, "style": _pin_style, "tracked": false})
+		_pin_name.text = ""
+	SaveGame.request_save()
+	_dirty = true
+	_show_picked()
+	_view.queue_redraw()
+
+
+## One pin at a time gets an arrow at the edge of the game screen.
+func _toggle_track() -> void:
+	var at := pin_at(_picked.get("tile", Vector2i(1 << 30, 0)))
+	if at < 0:
+		return
+	var on: bool = not pins[at].get("tracked", false)
+	for pin: Dictionary in pins:
+		pin["tracked"] = false
+	pins[at]["tracked"] = on
+	SaveGame.request_save()
+	_show_picked()
+
+
+## A map pin: a round head in its colour on a short dark point, with a
+## mark of its kind in the head.
+static func _draw_pin_shape(canvas: CanvasItem, at: Vector2, style: int, scale: float = 1.0) -> void:
+	var color: Color = PIN_STYLES[style][1]
+	var head := at + Vector2(0, -12) * scale
+	canvas.draw_colored_polygon(PackedVector2Array([head + Vector2(-5, 3) * scale, head + Vector2(5, 3) * scale, at]), Color(0.05, 0.04, 0.06))
+	canvas.draw_circle(head, 7.5 * scale, Color(0.05, 0.04, 0.06))
+	canvas.draw_circle(head, 6.0 * scale, color)
+	canvas.draw_circle(head + Vector2(-2, -2) * scale, 2.0 * scale, color.lightened(0.45))
+	var ink := Color(0.08, 0.06, 0.1)
+	match style:
+		0:
+			canvas.draw_colored_polygon(PackedVector2Array([head + Vector2(0, -3.5) * scale, head + Vector2(1.2, -0.8) * scale, head + Vector2(3.5, -0.8) * scale,
+				head + Vector2(1.6, 1.0) * scale, head + Vector2(2.3, 3.5) * scale, head + Vector2(0, 2.0) * scale, head + Vector2(-2.3, 3.5) * scale,
+				head + Vector2(-1.6, 1.0) * scale, head + Vector2(-3.5, -0.8) * scale, head + Vector2(-1.2, -0.8) * scale]), ink)
+		1:
+			canvas.draw_line(head + Vector2(-3, -3) * scale, head + Vector2(3, 3) * scale, ink, 1.6 * scale)
+			canvas.draw_line(head + Vector2(3, -3) * scale, head + Vector2(-3, 3) * scale, ink, 1.6 * scale)
+		2:
+			canvas.draw_colored_polygon(PackedVector2Array([head + Vector2(0, -4) * scale, head + Vector2(4, 0) * scale, head + Vector2(2.5, 0) * scale,
+				head + Vector2(2.5, 3.5) * scale, head + Vector2(-2.5, 3.5) * scale, head + Vector2(-2.5, 0) * scale, head + Vector2(-4, 0) * scale]), ink)
+		3:
+			canvas.draw_rect(Rect2(head + Vector2(-3.5, -2) * scale, Vector2(7, 5) * scale), ink)
+			canvas.draw_rect(Rect2(head + Vector2(-0.8, -1) * scale, Vector2(1.6, 2) * scale), color)
+		4:
+			canvas.draw_rect(Rect2(head + Vector2(-0.9, -4) * scale, Vector2(1.8, 5) * scale), ink)
+			canvas.draw_rect(Rect2(head + Vector2(-0.9, 2.2) * scale, Vector2(1.8, 1.6) * scale), ink)
+		_:
+			canvas.draw_circle(head, 2.0 * scale, ink)
 
 
 func _toggle_waypoint() -> void:
@@ -305,13 +486,22 @@ func _on_view_input(event: InputEvent) -> void:
 
 
 func save_data() -> Dictionary:
-	return {"waypoint": [waypoint.x, waypoint.y] if waypoint != null else [], "hidden": hidden_groups.keys()}
+	return {"waypoint": [waypoint.x, waypoint.y] if waypoint != null else [], "hidden": hidden_groups.keys(), "pins": pins.duplicate(true),
+		"last_death": [last_death.x, last_death.y] if last_death != null else []}
 
 
 func load_data(data: Dictionary) -> void:
 	var spot: Variant = data.get("waypoint", [])
 	waypoint = Vector2(float(spot[0]), float(spot[1])) if spot is Array and spot.size() == 2 else null
 	hidden_groups = {}
+	var saved_pins: Variant = data.get("pins", [])
+	pins = []
+	if saved_pins is Array:
+		for pin: Variant in saved_pins:
+			if pin is Dictionary and pin.get("tile") is Array and (pin["tile"] as Array).size() == 2:
+				pins.append({"tile": pin["tile"], "name": str(pin.get("name", "Pin")), "style": clampi(int(pin.get("style", 0)), 0, PIN_STYLES.size() - 1), "tracked": bool(pin.get("tracked", false))})
+	var fell: Variant = data.get("last_death", [])
+	last_death = Vector2(float(fell[0]), float(fell[1])) if fell is Array and fell.size() == 2 else null
 	var hidden: Variant = data.get("hidden", [])
 	if hidden is Array:
 		for group: Variant in hidden:
@@ -328,7 +518,12 @@ func _select_at(point: Vector2) -> void:
 			best_distance = distance
 			best = icon
 	if not best.is_empty():
-		_picked = {"tile": best[2], "name": marker_name(best[1]), "kind": best[1]}
+		var named := marker_name(best[1])
+		if str(best[1]).begins_with("pin:"):
+			named = str(pins[int(str(best[1]).get_slice(":", 1))]["name"])
+		elif best[1] == "fell":
+			named = "Where you fell"
+		_picked = {"tile": best[2], "name": named, "kind": best[1]}
 	else:
 		var tile := Vector2i((_map_at(point) * Exploration.CELL).floor())
 		_picked = {"tile": tile, "name": TerrainTiles.display_name(_world.generator.tile_type_at(tile)) if _exploration.is_tile_seen(tile) else "Unexplored", "kind": ""}
@@ -350,7 +545,12 @@ func _describe(point: Vector2) -> void:
 	var text := "%s   -   area level %d   -   %d, %d" % [TerrainTiles.display_name(_world.generator.tile_type_at(tile)), _world.generator.enemy_level_at(tile), tile.x, tile.y]
 	for icon: Array in _icons:
 		if (icon[0] as Vector2).distance_to(point) < 12.0:
-			text = "%s   -   %s" % [marker_name(icon[1]), text]
+			var named := marker_name(icon[1])
+			if str(icon[1]).begins_with("pin:"):
+				named = str(pins[int(str(icon[1]).get_slice(":", 1))]["name"])
+			elif icon[1] == "fell":
+				named = "Where you fell"
+			text = "%s   -   %s" % [named, text]
 	_hover.text = text
 
 
@@ -481,9 +681,26 @@ func _collect_icons(origin: Vector2i, cells: Vector2i, offset: Vector2, scale: f
 	if bounties:
 		for bounty: Dictionary in bounties.active:
 			_add_icon(to_view, bounties.cell_of(bounty), "bounty")
+	for index in pins.size():
+		var spot: Array = pins[index]["tile"]
+		_icons.append([to_view.call(Vector2i(int(spot[0]), int(spot[1]))), "pin:%d" % index, Vector2i(int(spot[0]), int(spot[1]))])
+	if last_death != null:
+		_icons.append([to_view.call(_world.world_to_cell(last_death)), "fell", _world.world_to_cell(last_death)])
 	var buildings: Buildings = player.get_parent().get_node("Buildings")
 	if not buildings.home.is_empty():
 		_add_icon(to_view, _world.world_to_cell(Vector2(buildings.home["position"][0], buildings.home["position"][1])), "home")
+
+
+## Where you fell: a small pale skull.
+static func _draw_skull(canvas: CanvasItem, at: Vector2, scale: float) -> void:
+	var bone := Color("ece4d2")
+	var ink := Color(0.08, 0.05, 0.07)
+	canvas.draw_circle(at + Vector2(0, 1) * scale, 8.0 * scale, Color(0, 0, 0, 0.5))
+	canvas.draw_circle(at + Vector2(0, -1) * scale, 6.0 * scale, bone)
+	canvas.draw_rect(Rect2(at + Vector2(-3.5, 2) * scale, Vector2(7, 4) * scale), bone)
+	canvas.draw_circle(at + Vector2(-2.3, -1) * scale, 1.7 * scale, ink)
+	canvas.draw_circle(at + Vector2(2.3, -1) * scale, 1.7 * scale, ink)
+	canvas.draw_rect(Rect2(at + Vector2(-0.6, 4) * scale, Vector2(1.2, 2) * scale), ink)
 
 
 ## A small compass rose: north is up.
@@ -512,6 +729,19 @@ static func group_of(kind: String) -> String:
 
 
 func _draw_icon(at: Vector2, kind: String) -> void:
+	if kind.begins_with("pin:"):
+		var index := int(kind.get_slice(":", 1))
+		if index < pins.size():
+			_draw_pin_shape(_view, at + Vector2(0, 8), int(pins[index]["style"]))
+			if _scale() >= 2.0:
+				var font := UITheme.body_bold()
+				var words := str(pins[index]["name"])
+				_view.draw_string_outline(font, at + Vector2(10, -6), words, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color.BLACK)
+				_view.draw_string(font, at + Vector2(10, -6), words, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, PIN_STYLES[int(pins[index]["style"])][1])
+		return
+	if kind == "fell":
+		_draw_skull(_view, at, 1.0)
+		return
 	# A dark pad under each picture keeps it clear of the land's colours.
 	var size := 24.0 if kind in ["village", "temple", "boss", "home"] else 20.0
 	_view.draw_circle(at + Vector2(0, 1), size * 0.5, Color(0, 0, 0, 0.45))

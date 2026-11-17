@@ -209,6 +209,15 @@ func _fill_save_list() -> void:
 		var play := UITheme.button("Play", _play.bind(slot["id"]), 100.0)
 		play.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(play)
+		var backups := SaveGame.backups_for(slot["id"])
+		var history := UITheme.button("Backups (%d)" % backups.size(), func() -> void:
+			_backups_open = "" if _backups_open == slot["id"] else slot["id"]
+			_fill_save_list()
+		, 120.0)
+		history.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		history.disabled = backups.is_empty()
+		history.tooltip_text = "Copies of this world saved every ten minutes of play. The newest five are kept."
+		row.add_child(history)
 		var delete := UITheme.button("Delete", func() -> void: _delete(slot["id"]), 100.0)
 		delete.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		delete.name = "Delete"
@@ -216,6 +225,34 @@ func _fill_save_list() -> void:
 		if _armed_delete == slot["id"]:
 			delete.text = "Sure?"
 			delete.add_theme_color_override("font_color", UITheme.BAD)
+		# The world's backups, each with a button to bring it back.
+		if _backups_open == slot["id"]:
+			var list := VBoxContainer.new()
+			list.add_theme_constant_override("separation", 4)
+			_save_list.add_child(list)
+			for backup: Dictionary in backups:
+				var line := HBoxContainer.new()
+				line.add_theme_constant_override("separation", 10)
+				list.add_child(line)
+				var words := UITheme.label("      %s   -   Level %d  -  Day %d" % [backup["when"], backup["level"], backup["day"]], 15, UITheme.TEXT)
+				words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				line.add_child(words)
+				var key := "%s|%s" % [slot["id"], backup["file"]]
+				var restore := UITheme.button("Sure? Restore" if _armed_restore == key else "Restore", func() -> void:
+					if _armed_restore != key:
+						_armed_restore = key
+					else:
+						_armed_restore = ""
+						SaveGame.restore_backup(slot["id"], backup["file"])
+						_backups_open = ""
+					_fill_save_list()
+				, 130.0)
+				line.add_child(restore)
+
+
+## The world whose backups are listed, and a restore waiting to be confirmed.
+var _backups_open := ""
+var _armed_restore := ""
 
 
 func _delete(id: String) -> void:

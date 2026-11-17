@@ -31,6 +31,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions, mounts", "side": true, "group": "Collection"},
 	{"id": "relics", "title": "Relics", "icon": 102, "text": "Boss relics and powers", "side": true, "group": "Collection"},
 	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours", "side": true, "group": "Collection"},
+	{"id": "log", "title": "Log", "icon": 41, "text": "What was said and seen", "side": true, "group": "System"},
 	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options and saving", "side": true, "group": "System"},
 ]
 ## Screens with a key of their own (rebindable): action -> screen id.
@@ -159,8 +160,19 @@ func setup(player: Player) -> void:
 		open("furnace")
 	)
 	_add("map", MapMenu.new())
+	_add("log", LogMenu.new())
 	_add("pause", PauseMenu.new())
 	_add("settings", SettingsMenu.new())
+
+
+## Losing the window's focus pauses the game (Settings: pause when unfocused).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and GameSettings.pause_unfocused and _player != null and not is_open():
+		var photo: Node = get_parent().get_node_or_null("PhotoMode")
+		if photo and photo.active:
+			return
+		if not _player.is_dead():
+			open("pause")
 
 
 func is_open() -> bool:

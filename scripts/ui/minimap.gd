@@ -118,6 +118,16 @@ func _draw() -> void:
 			point = middle + way * reach
 		draw_colored_polygon(PackedVector2Array([point + Vector2(0, -6), point + Vector2(5, 0), point + Vector2(0, 6), point + Vector2(-5, 0)]), Color(0, 0, 0, 0.8))
 		draw_colored_polygon(PackedVector2Array([point + Vector2(0, -4), point + Vector2(3.5, 0), point + Vector2(0, 4), point + Vector2(-3.5, 0)]), UITheme.GOLD)
+	# Your pins, and where you last fell.
+	for pin: Dictionary in MapMenu.pins:
+		var spot := Vector2(float(pin["tile"][0]), float(pin["tile"][1])) * TerrainTiles.TILE_SIZE + Vector2.ONE * TerrainTiles.TILE_SIZE / 2.0
+		var point := middle + (spot - origin) / TerrainTiles.TILE_SIZE * SCALE
+		if inner.has_point(point):
+			MapMenu._draw_pin_shape(self, point + Vector2(0, 4), int(pin["style"]), 0.6)
+	if MapMenu.last_death != null:
+		var point := middle + (MapMenu.last_death as Vector2 - origin) / TerrainTiles.TILE_SIZE * SCALE
+		if inner.has_point(point):
+			MapMenu._draw_skull(self, point, 0.6)
 	MapIcons.draw_player(self, middle, _player.facing, 14.0)
 	# The day count and time of day, just under the map.
 	if _day_night:

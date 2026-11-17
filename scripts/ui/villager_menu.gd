@@ -46,6 +46,7 @@ func _build() -> void:
 	right.add_child(buttons)
 	buttons.add_child(UITheme.button("Ask about the area", func() -> void:
 		_words.text = "\"%s\"" % _line()
+		Chronicle.say(get_tree(), "speech", npc.villager_name if npc else "", _words.text.trim_prefix("\"").trim_suffix("\""))
 	, 210.0))
 	buttons.add_child(UITheme.button("Goodbye", func() -> void:
 		player.get_parent().get_node("Menus").close()
@@ -68,6 +69,7 @@ func refresh() -> void:
 	_friend.text = "" if helped == 0 else "%s  Friend: helped %d time%s" % ["♥".repeat(mini(helped, 5)), helped, "" if helped == 1 else "s"]
 	_figure.show_look(npc.look)
 	_words.text = "\"%s\"" % _line()
+	Chronicle.say(get_tree(), "speech", npc.villager_name if npc else "", _words.text.trim_prefix("\"").trim_suffix("\""))
 	_message.text = ""
 	_fill_errand()
 

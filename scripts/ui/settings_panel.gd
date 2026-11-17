@@ -16,6 +16,7 @@ const GROUPS := [
 	["Movement", ["move_up", "move_down", "move_left", "move_right", "dodge", "sprint", "mount"]],
 	["Combat", ["attack", "parry", "ability_1", "ability_2", "ability_3", "ability_4", "ability_swap", "relic_ability", "quick_use", "loadout_next"]],
 	["World", ["interact", "build_mode", "recall_home"]],
+	["Interface", ["photo_mode", "mark_junk", "lock_item"]],
 	["Hotbar", ["hotbar_1", "hotbar_2", "hotbar_3", "hotbar_4", "hotbar_5", "hotbar_6", "hotbar_7", "hotbar_8", "hotbar_9", "hotbar_10"]],
 	["Menus", ["toggle_menu", "open_inventory", "open_quests", "open_map"]],
 ]
@@ -85,21 +86,29 @@ func _ready() -> void:
 		_check(page, "screen_shake", "Screen shake")
 		_check(page, "damage_numbers", "Damage numbers")
 	)
-	_pages["Interface"] = _page(holder, func(page: VBoxContainer) -> void:
+	_pages["Interface"] = _scroll_page(holder, func(page: VBoxContainer) -> void:
 		_choice(page, "hud_layout", "Ability slots", [["compact", "By the hotbar"], ["classic", "Column on the left"]])
 		_choice(page, "tracker_mode", "Quest tracker", [["full", "Full"], ["compact", "Compact"], ["off", "Off"]])
 		_check(page, "show_worn", "Show worn armour on the hotbar")
 		_check(page, "show_minimap", "Show the minimap")
 		_check(page, "damage_numbers", "Show damage numbers")
 		_choice(page, "wing_display", "Wings of flight", [["flight", "While flying"], ["always", "Always"], ["never", "Never"]], 130.0)
+		_check(page, "quest_arrows", "Arrows at the screen's edge to the waypoint, pins, bounties and treasure")
+		_check(page, "enemy_info", "Show what a monster is when the mouse rests on it")
+		_check(page, "dps_meter", "Damage-per-second meter")
+		_choice(page, "pickup_radius", "Loot pulled in from", [[0.5, "Close"], [1.0, "Normal"], [1.5, "Far"], [2.0, "Very far"]], 112.0)
+		_choice(page, "loot_filter", "Pick gear up by walking over", [[0, "All"], [1, "Uncommon+"], [2, "Rare+"], [3, "Epic+"]], 112.0)
+		_check(page, "auto_junk", "Mark plain common gear as junk when it is picked up")
 	)
-	_pages["Comfort"] = _page(holder, func(page: VBoxContainer) -> void:
+	_pages["Comfort"] = _scroll_page(holder, func(page: VBoxContainer) -> void:
 		_choice(page, "sprint_mode", "Sprint key", [["toggle", "Press to toggle"], ["hold", "Hold to sprint"]])
 		_check(page, "screen_shake", "Screen shake")
 		_slider(page, "shake_strength", "Shake strength", 0.0, 1.5)
 		_slider(page, "damage_number_size", "Damage number size", 0.7, 1.6)
 		_check(page, "high_contrast", "High contrast text (brighter quiet text, outlined letters)")
 		_check(page, "reduce_flashes", "Reduce flashes (lightning and other bright bursts)")
+		_choice(page, "colorblind", "Attack warning colours", [["off", "Standard"], ["deuteranopia", "Deuteranopia"], ["protanopia", "Protanopia"], ["tritanopia", "Tritanopia"]], 112.0)
+		_check(page, "pause_unfocused", "Pause when the game window loses focus")
 	)
 	_pages["Controls"] = _controls_page(holder)
 

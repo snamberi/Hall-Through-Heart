@@ -170,6 +170,8 @@ var mount_id := ""
 ## What last hurt the player: an element, a status, or "blow". Shapes the
 ## words on the death screen.
 var last_harm := "blow"
+## The blows taken lately, for the death recap: [time, what struck, amount, element].
+var harm_log: Array = []
 ## The sprint key toggles between walking and sprinting (or, with the
 ## "hold" setting, sprints while held); sprinting burns stamina.
 var sprinting := false
@@ -604,6 +606,8 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 
 ## Uses a consumable from the bag. Returns "" on success or why it failed.
 func use_item(item: Item) -> String:
+	if item.id == "bedroll" and item in inventory.items:
+		return sleep_rough()
 	if item.definition().has("satchel") and item in inventory.items:
 		return inventory.bind_satchel(item)
 	if item.definition().has("boat") and item in inventory.items:
@@ -891,6 +895,7 @@ func take_damage(amount: float, source_position: Vector2, attacker_level: int = 
 		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -40), "Unbreakable", UITheme.GOLD, 14)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(0.95, 0.3, 0.3))
 	last_harm = element if element != "" else "blow"
+	_log_harm(source_position, amount, element)
 	health.take_damage(amount)
 	DamageNumber.spawn(get_parent(), global_position, amount, Color(0.95, 0.3, 0.3))
 	if health.is_dead():
@@ -1114,6 +1119,79 @@ func take_up_magic(school: String) -> String:
 
 func save_data() -> Dictionary:
 	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate(), "flight_unlocked": flight_unlocked, "pinned_recipe": pinned_recipe}
+
+
+## Sleeps on a bedroll till morning, if it is night and no monster is
+## near: healed, Well Rested (a little more experience and faster healing
+## for ten minutes), and this spot is where you wake if you fall.
+func sleep_rough() -> String:
+	var day_night: DayNight = get_parent().get_node_or_null("DayNight")
+	if day_night == null:
+		return "You cannot sleep here."
+	if not day_night.is_night():
+		return "You are not tired yet. Sleep comes after dark."
+	if indoors and not get_parent().get_node("Instances").room.has_meta("house"):
+		return "Not here: it is too dangerous to sleep."
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy and not enemy.is_wild() and enemy.state != Enemy.State.DEAD and enemy.global_position.distance_to(global_position) < 560.0:
+			return "You cannot sleep with monsters near."
+	if mount_id != "":
+		dismount()
+	day_night.time = 0.3
+	if day_night.day > 0:
+		day_night.day += 1
+	health.heal_full()
+	stamina.fill()
+	mana.fill()
+	buffs.add("well_rested", "Well Rested", 600.0, {"xp_gain": {"flat": 0.1}, "health_regen": {"flat": 2.0}})
+	Events.checkpoint_set.emit(global_position, "your bedroll")
+	Events.announcement.emit("MORNING", "You sleep under the stars and wake rested. If you fall, you wake here.")
+	SaveGame.request_save()
+	return ""
+
+
+## Notes a blow for the death recap: who struck it (the monster nearest
+## to where it came from), how hard, and with what.
+func _log_harm(source_position: Vector2, amount: float, element: String) -> void:
+	var who := "Something unseen"
+	var best := 90.0
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy == null:
+			continue
+		var distance := enemy.global_position.distance_to(source_position)
+		if distance < best:
+			best = distance
+			who = ("Lv %d %s%s" % [enemy.level, Enemy.RANK_DATA[enemy.rank]["title"], enemy.display_name])
+	if best >= 90.0 and element != "":
+		who = element.capitalize()
+	harm_log.append([Time.get_ticks_msec() / 1000.0, who, amount, element])
+	if harm_log.size() > 12:
+		harm_log.pop_front()
+
+
+## How the player died, in a few lines: the last blows, who dealt the most
+## in the last ten seconds and how much was taken in all.
+func death_recap() -> String:
+	if harm_log.is_empty():
+		return ""
+	var now: float = harm_log.back()[0]
+	var recent := harm_log.filter(func(entry: Array) -> bool: return now - float(entry[0]) <= 10.0)
+	var total := 0.0
+	var by_who := {}
+	for entry: Array in recent:
+		total += float(entry[2])
+		by_who[entry[1]] = float(by_who.get(entry[1], 0.0)) + float(entry[2])
+	var worst := ""
+	for who: String in by_who:
+		if worst == "" or float(by_who[who]) > float(by_who[worst]):
+			worst = who
+	var blows: PackedStringArray = []
+	for entry: Array in harm_log.slice(maxi(harm_log.size() - 4, 0)):
+		blows.append("%s %d%s" % [entry[1], roundi(float(entry[2])), " (%s)" % entry[3] if str(entry[3]) != "" else ""])
+	var last: Array = harm_log.back()
+	return "Slain by %s.  %d damage taken in the last 10 s, most of it from %s.\nLast blows: %s" % [last[1], roundi(total), worst, ",  ".join(blows)]
 
 
 ## Takes to the air, or lands. Flight is won in the Trial of Panic.

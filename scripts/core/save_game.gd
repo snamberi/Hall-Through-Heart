@@ -10,6 +10,10 @@ extends Node
 const VERSION := 2
 const AUTOSAVE_SECONDS := 30.0
 const DIRECTORY := "user://saves"
+## Timestamped copies of each world, the newest few kept.
+const BACKUPS := "user://saves/backups"
+const BACKUP_EVERY := 600.0
+const BACKUPS_KEPT := 5
 ## Where the single save lived before slots existed.
 const OLD_PATH := "user://save.json"
 
@@ -27,11 +31,15 @@ var _data: Dictionary = {}
 var _targets: Dictionary[String, Node] = {}
 var _autosave_left := AUTOSAVE_SECONDS
 var _dirty := false
+## Seconds of play until the next backup copy (the first save of a session
+## makes one at once).
+var _backup_left := 0.0
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	DirAccess.make_dir_recursive_absolute(DIRECTORY)
+	DirAccess.make_dir_recursive_absolute(BACKUPS)
 	_migrate_old_save()
 
 
@@ -135,6 +143,54 @@ func save_now() -> void:
 	meta["class"] = str(get_section("character").get("class_id", "adventurer"))
 	_data["meta"] = meta
 	_write()
+	if _backup_left <= 0.0 and slot_id != "" and last_error == "":
+		_backup_left = BACKUP_EVERY
+		make_backup()
+
+
+## Copies the world's save to a timestamped backup and keeps only the
+## newest BACKUPS_KEPT of them.
+func make_backup() -> void:
+	if slot_id == "" or not FileAccess.file_exists(path):
+		return
+	var stamp := Time.get_datetime_string_from_system().replace(":", "-").replace("T", "_")
+	var copy := BACKUPS.path_join("%s__%s.json" % [slot_id, stamp])
+	DirAccess.copy_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(copy))
+	var old := backups_for(slot_id)
+	for index in range(BACKUPS_KEPT, old.size()):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(BACKUPS.path_join(old[index]["file"])))
+
+
+## A world's backups, newest first: [{"file", "when", "level", "day"}].
+func backups_for(id: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for file in DirAccess.get_files_at(BACKUPS):
+		if not file.begins_with(id + "__") or not file.ends_with(".json"):
+			continue
+		var when := file.trim_prefix(id + "__").trim_suffix(".json")
+		var meta := {}
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(BACKUPS.path_join(file)))
+		if parsed is Dictionary and parsed.get("meta") is Dictionary:
+			meta = parsed["meta"]
+		out.append({"file": file, "when": when.replace("_", "  ").replace("-", ":").replace("::", "-"), "stamp": when, "level": int(meta.get("level", 1)), "day": int(meta.get("day", 1))})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return str(a["stamp"]) > str(b["stamp"]))
+	return out
+
+
+## Puts a backup back in place of the world's save (the save being
+## replaced is itself kept as a backup first).
+func restore_backup(id: String, file: String) -> bool:
+	var source := BACKUPS.path_join(file)
+	if not FileAccess.file_exists(source):
+		return false
+	var target := _slot_path(id)
+	if FileAccess.file_exists(target):
+		var stamp := Time.get_datetime_string_from_system().replace(":", "-").replace("T", "_")
+		DirAccess.copy_absolute(ProjectSettings.globalize_path(target), ProjectSettings.globalize_path(BACKUPS.path_join("%s__%s.json" % [id, stamp + "-before-restore"])))
+	DirAccess.copy_absolute(ProjectSettings.globalize_path(source), ProjectSettings.globalize_path(target))
+	if slot_id == id:
+		reload()
+	return true
 
 
 ## Empties the current slot (used by tests and by starting over in place).
@@ -149,6 +205,7 @@ func delete_save() -> void:
 func _process(delta: float) -> void:
 	if _targets.is_empty():
 		return
+	_backup_left -= delta
 	_autosave_left -= delta
 	if _dirty or _autosave_left <= 0.0:
 		save_now()
