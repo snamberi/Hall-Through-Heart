@@ -33,6 +33,15 @@ const TALENTS := {
 }
 ## What gear a pet can wear: a collar and a charm.
 const GEAR_SLOTS := ["collar", "charm"]
+## A Named monster evolves as it grows: [level, title, tint, text].
+const STAGES: Array[Array] = [
+	[0, "Named", Color(1.0, 1.0, 1.0), "Bound to you by a Name."],
+	[15, "Risen", Color(1.08, 1.02, 1.16), "Taller in itself, and its blows land harder."],
+	[30, "Exalted", Color(1.18, 1.1, 0.92), "A glow it did not have before. It thinks, now."],
+	[45, "Ascendant", Color(1.2, 0.98, 1.26), "Something more than its kind ever was."],
+]
+## How much of their mana a Name costs (all of it, and a weariness after).
+const NAME_MANA := 0.5
 
 signal changed
 
@@ -150,6 +159,63 @@ func rename(index: int, new_name: String) -> void:
 		SaveGame.request_save()
 
 
+## Gives a monster a Name: it is bound to you, grows a little at once, and
+## from then on it evolves as it levels (Risen, Exalted, Ascendant). Naming
+## takes all your mana and leaves you weary for a while. Returns "" or why not.
+func give_name(index: int, new_name: String) -> String:
+	if index < 0 or index >= pets.size():
+		return ""
+	var pet: Dictionary = pets[index]
+	if pet["kind"] != "monster":
+		return "Only a monster can be given a Name."
+	if pet.get("named", false):
+		return "%s already has a Name." % pet["name"]
+	if _player.mana.current < _player.mana.max_value * NAME_MANA:
+		return "A Name takes a great deal of you. Rest until your mana is at least half full."
+	if new_name.strip_edges() != "":
+		pet["name"] = new_name.strip_edges().left(20)
+	_player.mana.current = 0.0
+	_player.buffs.add("name_weary", "Name-weary", 120.0, {"physical_damage": {"percent": -0.15}, "magic_power": {"percent": -0.15}})
+	pet["named"] = true
+	pet["stage"] = 0
+	for k in 3:
+		if int(pet["level"]) < MAX_LEVEL:
+			pet["level"] = int(pet["level"]) + 1
+	Events.codex_event.emit("names_given", 1)
+	Voices.heart(get_tree(), "A Name is given: %s." % pet["name"], "It is bound to you now, and it will grow into something more.")
+	RingBurst.spawn(get_parent(), global_position + Vector2(0, -16), Color(1.0, 0.85, 0.5), 80.0)
+	_evolve_check(pet)
+	_refresh_look()
+	changed.emit()
+	SaveGame.request_save()
+	return ""
+
+
+## A Named monster's stage, and the next it will reach (or -1).
+func stage(pet: Dictionary) -> int:
+	return int(pet.get("stage", 0)) if pet.get("named", false) else -1
+
+
+func next_stage_level(pet: Dictionary) -> int:
+	var at := stage(pet)
+	if at < 0 or at + 1 >= STAGES.size():
+		return -1
+	return STAGES[at + 1][0]
+
+
+## Evolves a Named monster that has grown enough.
+func _evolve_check(pet: Dictionary) -> void:
+	if not pet.get("named", false):
+		return
+	while next_stage_level(pet) > 0 and int(pet["level"]) >= next_stage_level(pet):
+		pet["stage"] = int(pet.get("stage", 0)) + 1
+		var data: Array = STAGES[pet["stage"]]
+		Events.codex_event.emit("evolutions", 1)
+		Voices.heart(get_tree(), "%s has evolved: %s %s." % [pet["name"], data[1], EnemyDB.ENEMIES[pet["species"]]["name"]], str(data[3]))
+		if pet == current():
+			RingBurst.spawn(get_parent(), global_position + Vector2(0, -16), (data[2] as Color).darkened(0.1), 90.0)
+
+
 func release(index: int) -> void:
 	if index < 0 or index >= pets.size():
 		return
@@ -163,7 +229,9 @@ func release(index: int) -> void:
 
 func damage(pet: Dictionary) -> float:
 	var base := (6.0 + 2.5 * int(pet["level"])) * (1.0 + 0.04 * _player.leveling.level)
-	return base * (1.0 + 0.12 * rank(pet, "ferocity") + gear_value(pet, "damage"))
+	# A Name makes it stronger, and each evolution more so.
+	var named := (0.15 + 0.3 * stage(pet)) if pet.get("named", false) else 0.0
+	return base * (1.0 + 0.12 * rank(pet, "ferocity") + gear_value(pet, "damage") + named)
 
 
 ## Seconds between a fighting pet's blows.
@@ -179,7 +247,7 @@ func rank(pet: Dictionary, talent: String) -> int:
 
 
 func talent_points(pet: Dictionary) -> int:
-	return int(pet["level"]) / LEVELS_PER_POINT
+	return int(pet["level"]) / LEVELS_PER_POINT + maxi(stage(pet), 0)
 
 
 func points_left(pet: Dictionary) -> int:
@@ -336,7 +404,15 @@ func describe(pet: Dictionary) -> String:
 			for kind: String in mods[stat]:
 				parts.append(ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": mods[stat][kind]}))
 		return "Fetches loot. %s (grows with its level)." % ", ".join(parts)
-	return "Fights beside you for %d damage, with a chance to strike twice as hard. Fetches loot." % roundi(damage(pet))
+	var words := "Fights beside you for %d damage, with a chance to strike twice as hard. Fetches loot." % roundi(damage(pet))
+	if pet.get("named", false):
+		var data: Array = STAGES[stage(pet)]
+		words += " %s: %s" % [data[1], data[3]]
+		if next_stage_level(pet) > 0:
+			words += " Evolves at level %d." % next_stage_level(pet)
+	else:
+		words += " Give it a Name and it will evolve as it grows."
+	return words
 
 
 ## Feeds a pet the plainest food in the bag, for experience. Returns "" or why not.
@@ -382,6 +458,7 @@ func _gain(pet: Dictionary, amount: int) -> void:
 		pet["level"] = int(pet["level"]) + 1
 		grew = true
 	if grew:
+		_evolve_check(pet)
 		if pet == current():
 			DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -40), "%s reached level %d" % [pet["name"], pet["level"]], Color(0.6, 1.0, 0.6), 12)
 			RingBurst.spawn(get_parent(), global_position, Color(0.6, 1.0, 0.6), 44.0)
@@ -411,7 +488,7 @@ func _refresh_look() -> void:
 		var size := (0.58 + 0.14 * int(pet["level"]) / float(MAX_LEVEL)) * float(EnemyDB.ENEMIES[pet["species"]].get("size", 1.0))
 		_sprite.scale = Vector2(size, size)
 		_sprite.position = Vector2(0, -23.0 * size)
-		_sprite.modulate = Color.WHITE
+		_sprite.modulate = STAGES[stage(pet)][2] if pet.get("named", false) else Color.WHITE
 		_sprite.play("idle")
 	queue_redraw()
 
@@ -436,6 +513,8 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, 13.0, Color(0, 0, 0, 0.22))
 	draw_arc(Vector2.ZERO, 15.0, 0.0, TAU, 28, Color(0.55, 1.0, 0.6, 0.55 + 0.15 * sin(_bob * 3.0)), 1.5)
 	draw_set_transform(Vector2.ZERO)
+	if pet.get("named", false):
+		_draw_name_mark(pet)
 	var font := UITheme.get_theme().default_font
 	var top := -34.0 if pet["kind"] == "critter" else -52.0 * _sprite.scale.y - 8.0
 	var label := "%s  ·  Lv %d" % [pet["name"], pet["level"]]
@@ -457,6 +536,34 @@ func _draw() -> void:
 		draw_circle(at + Vector2(-2, 0), 2.6, color)
 		draw_circle(at + Vector2(2, 0), 2.6, color)
 		draw_colored_polygon(PackedVector2Array([at + Vector2(-4.4, 1), at + Vector2(4.4, 1), at + Vector2(0, 6)]), color)
+
+
+## The mark of a Name: a small gold diamond over the head, and with each
+## evolution more of a glow: rising motes, then a ring, then a crown of light.
+func _draw_name_mark(pet: Dictionary) -> void:
+	var at_stage := stage(pet)
+	var tint: Color = STAGES[at_stage][2]
+	var glow := Color(minf(tint.r, 1.0), minf(tint.g, 1.0), minf(tint.b, 1.0)).lerp(Color(1.0, 0.85, 0.45), 0.5)
+	var head := Vector2(0, roundf(-52.0 * _sprite.scale.y - 22.0))
+	var bob := roundf(sin(_bob * 2.0) * 1.5)
+	var gem := head + Vector2(0, bob)
+	draw_colored_polygon(PackedVector2Array([gem + Vector2(0, -4), gem + Vector2(3, 0), gem + Vector2(0, 4), gem + Vector2(-3, 0)]), Color(1.0, 0.82, 0.4))
+	draw_rect(Rect2(gem + Vector2(-1, -2), Vector2(1, 1)), Color(1.0, 0.96, 0.8))
+	var t := Time.get_ticks_msec() / 1000.0
+	if at_stage >= 1:
+		for k in 6:
+			var phase := fmod(t * 0.5 + k / 6.0, 1.0)
+			var spot := Vector2(roundf(sin(k * 2.1 + t) * 12.0), roundf(-phase * 40.0))
+			draw_rect(Rect2(spot, Vector2(1, 2)), Color(glow, 0.7 * (1.0 - phase)))
+	if at_stage >= 2:
+		draw_set_transform(Vector2(0, 1), 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, 20.0, 0.0, TAU, 32, Color(glow, 0.5 + 0.2 * sin(t * 3.0)), 1.0)
+		draw_set_transform(Vector2.ZERO)
+	if at_stage >= 3:
+		for k in 5:
+			var x := -8.0 + k * 4.0
+			var tall := 3.0 if k % 2 == 0 else 5.0
+			draw_rect(Rect2(head + Vector2(x, -6.0 - tall + bob), Vector2(2, tall)), Color(1.0, 0.85, 0.45, 0.85))
 
 
 func _physics_process(delta: float) -> void:

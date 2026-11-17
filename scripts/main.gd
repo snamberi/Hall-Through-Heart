@@ -107,6 +107,11 @@ func _ready() -> void:
 	raids.name = "Raids"
 	add_child(raids)
 	raids.setup(_player, settlers, _spawner, _world, _day_night)
+	# Your town of Named monsters, by your home.
+	var town := MonsterTown.new()
+	town.name = "MonsterTown"
+	add_child(town)
+	town.setup(_player, settlers, _day_night)
 	_day_night.day_changed.connect(func(_day: int) -> void:
 		buildings.dry_plots()
 		settlers.morning()
@@ -202,6 +207,21 @@ func _ready() -> void:
 	var chronicle := Chronicle.new()
 	chronicle.name = "Chronicle"
 	add_child(chronicle)
+	# The Heart's voice and your own, over the screen.
+	var voices := Voices.new()
+	voices.name = "Voices"
+	add_child(voices)
+	voices.setup(_player)
+	# The Maw: remnants to devour, and the Echoes they give.
+	var echoes := Echoes.new()
+	echoes.name = "Echoes"
+	add_child(echoes)
+	echoes.setup(_player)
+	# Your presence, let loose.
+	var aura := DreadAura.new()
+	aura.name = "DreadAura"
+	_player.add_child(aura)
+	aura.setup(_player)
 	_menus.setup(_player)
 	_debug_hud.setup(_world, _player)
 	_player.died.connect(_on_player_died)

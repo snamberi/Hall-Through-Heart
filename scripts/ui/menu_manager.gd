@@ -27,8 +27,10 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "mastery", "title": "Mastery", "icon": 0, "text": "Weapon skill", "side": true, "group": "Character"},
 	{"id": "evolution", "title": "Evolution", "icon": 39, "text": "Your race's paths", "side": true, "group": "Character"},
 	{"id": "runes", "title": "Runes", "icon": 156, "text": "Bind runes into gear", "side": true, "group": "Character"},
+	{"id": "echoes", "title": "Echoes", "icon": 123, "text": "What you have devoured", "side": true, "group": "Character"},
 	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary and feats", "side": true, "group": "Collection"},
 	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions, mounts", "side": true, "group": "Collection"},
+	{"id": "town", "title": "Town", "icon": 56, "text": "Your monster citizens", "side": true, "group": "Collection"},
 	{"id": "relics", "title": "Relics", "icon": 102, "text": "Boss relics and powers", "side": true, "group": "Collection"},
 	{"id": "wardrobe", "title": "Wardrobe", "icon": 7, "text": "Looks and colours", "side": true, "group": "Collection"},
 	{"id": "log", "title": "Log", "icon": 41, "text": "What was said and seen", "side": true, "group": "System"},
@@ -163,6 +165,8 @@ func setup(player: Player) -> void:
 	_add("log", LogMenu.new())
 	_add("dialogue", DialogueMenu.new())
 	_add("cipher", CipherMenu.new())
+	_add("echoes", EchoesMenu.new())
+	_add("town", TownMenu.new())
 	_add("pause", PauseMenu.new())
 	_add("settings", SettingsMenu.new())
 

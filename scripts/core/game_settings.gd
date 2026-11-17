@@ -50,6 +50,9 @@ const DEFAULTS := {
 	"colorblind": "off",
 	"pause_unfocused": true,
 	"enemy_info": true,
+	"inner_voice": true,
+	"remnants": true,
+	"system_window": true,
 }
 
 ## The four graphics presets. Each sets these; changing any one alone makes
@@ -83,10 +86,11 @@ const REBINDABLE: Array[Array] = [
 	["open_inventory", "Open inventory"], ["open_quests", "Open quest book"], ["open_map", "Open map"],
 	["loadout_next", "Wear next saved set"],
 	["photo_mode", "Photo mode (hide the interface)"], ["mark_junk", "Mark hovered item as junk"], ["lock_item", "Lock hovered item"],
+	["release_aura", "Release your aura (scares weaker monsters)"], ["open_system", "Open the System window"], ["shadow_swap", "Swap places with a shadow"],
 ]
 ## Actions the game adds itself when it starts (not in the project file):
 ## action -> default physical key (KEY_NONE for pad-only actions).
-const EXTRA_ACTIONS := {"toggle_flight": KEY_T, "open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L, "photo_mode": KEY_F10, "mark_junk": KEY_DELETE, "lock_item": KEY_K}
+const EXTRA_ACTIONS := {"toggle_flight": KEY_T, "open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L, "photo_mode": KEY_F10, "mark_junk": KEY_DELETE, "lock_item": KEY_K, "release_aura": KEY_U, "open_system": KEY_P, "shadow_swap": KEY_Y}
 ## Gamepad layout, kept alongside whatever keys are bound: action ->
 ## [JOY_BUTTON_*] or ["axis", JOY_AXIS_*, direction].
 const PAD := {
@@ -180,6 +184,12 @@ var colorblind := "off"
 var pause_unfocused := true
 ## Hovering a monster shows its resistances, faction and what it expects.
 var enemy_info := true
+## The Still Voice: a quiet line now and then sizing up monsters and dangers.
+var inner_voice := true
+## Fallen monsters leave a remnant to devour (once the gift has woken).
+var remnants := true
+## The System's daily training and its messages.
+var system_window := true
 ## action -> saved events, each {"key": physical keycode} or {"mouse": button}.
 var bindings: Dictionary = {}
 

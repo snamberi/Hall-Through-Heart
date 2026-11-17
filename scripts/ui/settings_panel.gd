@@ -14,11 +14,11 @@ const FRAME := Vector2(760.0, 440.0)
 ## Controls, grouped: [heading, actions].
 const GROUPS := [
 	["Movement", ["move_up", "move_down", "move_left", "move_right", "dodge", "sprint", "mount"]],
-	["Combat", ["attack", "parry", "ability_1", "ability_2", "ability_3", "ability_4", "ability_swap", "relic_ability", "quick_use", "loadout_next"]],
+	["Combat", ["attack", "parry", "ability_1", "ability_2", "ability_3", "ability_4", "ability_swap", "relic_ability", "quick_use", "loadout_next", "release_aura", "shadow_swap"]],
 	["World", ["interact", "build_mode", "recall_home"]],
 	["Interface", ["photo_mode", "mark_junk", "lock_item"]],
 	["Hotbar", ["hotbar_1", "hotbar_2", "hotbar_3", "hotbar_4", "hotbar_5", "hotbar_6", "hotbar_7", "hotbar_8", "hotbar_9", "hotbar_10"]],
-	["Menus", ["toggle_menu", "open_inventory", "open_quests", "open_map"]],
+	["Menus", ["toggle_menu", "open_inventory", "open_quests", "open_map", "open_system"]],
 ]
 ## Pairs that share a key on purpose (one works in a menu, one in the world).
 const SHARED_OK := [["attack", "interact"]]
@@ -95,6 +95,9 @@ func _ready() -> void:
 		_choice(page, "wing_display", "Wings of flight", [["flight", "While flying"], ["always", "Always"], ["never", "Never"]], 130.0)
 		_check(page, "quest_arrows", "Arrows at the screen's edge to the waypoint, pins, bounties and treasure")
 		_check(page, "enemy_info", "Show what a monster is when the mouse rests on it")
+		_check(page, "inner_voice", "The Still Voice: quiet advice and analysis of monsters")
+		_check(page, "remnants", "Fallen monsters leave remnants to devour")
+		_check(page, "system_window", "The System: daily training and its messages")
 		_check(page, "dps_meter", "Damage-per-second meter")
 		_choice(page, "pickup_radius", "Loot pulled in from", [[0.5, "Close"], [1.0, "Normal"], [1.5, "Far"], [2.0, "Very far"]], 112.0)
 		_choice(page, "loot_filter", "Pick gear up by walking over", [[0, "All"], [1, "Uncommon+"], [2, "Rare+"], [3, "Epic+"]], 112.0)

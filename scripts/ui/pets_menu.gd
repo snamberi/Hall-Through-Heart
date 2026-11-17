@@ -232,7 +232,10 @@ func _inspector(index: int) -> void:
 	)
 	name_field.focus_exited.connect(func() -> void: pets.rename(index, name_field.text))
 	words.add_child(name_field)
-	words.add_child(UITheme.label("%s  ·  level %d of %d" % [_species(pet), pet["level"], Pets.MAX_LEVEL], 15, UITheme.TEXT))
+	var title_line := "%s  ·  level %d of %d" % [_species(pet), pet["level"], Pets.MAX_LEVEL]
+	if pet.get("named", false):
+		title_line = "%s %s  ·  level %d of %d" % [Pets.STAGES[pets.stage(pet)][1], _species(pet), pet["level"], Pets.MAX_LEVEL]
+	words.add_child(UITheme.label(title_line, 15, UITheme.GOLD if pet.get("named", false) else UITheme.TEXT))
 	words.add_child(UITheme.badge("Following you" if following else "At home", "good" if following else "plain"))
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
@@ -274,6 +277,28 @@ func _inspector(index: int) -> void:
 		refresh()
 	, 170.0))
 	row.add_child(UITheme.danger_button("Release", func() -> void: _confirm_release(index), 170.0))
+	# A monster can be given a Name (the one in the box above); a Named one
+	# can go to live in your town.
+	if pet["kind"] == "monster":
+		var bond := HBoxContainer.new()
+		bond.add_theme_constant_override("separation", 8)
+		_detail.add_child(bond)
+		if not pet.get("named", false):
+			var naming := UITheme.primary_button("Give it a Name", func() -> void:
+				_message.text = pets.give_name(index, name_field.text)
+				refresh()
+			, 348.0)
+			naming.tooltip_text = "Takes all your mana and leaves you weary for two minutes. A Named monster evolves as it grows."
+			bond.add_child(naming)
+		else:
+			var town: MonsterTown = player.get_parent().get_node_or_null("MonsterTown")
+			var settle := UITheme.button("Settle in your town", func() -> void:
+				_message.text = town.settle(index) if town else ""
+				refresh()
+			, 348.0)
+			settle.tooltip_text = "It will live by your home, work a job, and speak for its kind."
+			settle.disabled = town == null
+			bond.add_child(settle)
 
 
 ## The chosen pet's talents and gear: a collar and a charm to put on from

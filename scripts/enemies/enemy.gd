@@ -152,6 +152,9 @@ var _mask_facing := Vector2.LEFT
 var _glanced := false
 var _fed := 0
 var _mask_said := 0.0
+## Seconds left cowering from a released aura.
+var cowed := 0.0
+var _analysed := false
 var _blink_left := 3.0
 var _aura_left := 0.0
 ## Seconds until a hit can interrupt this enemy again.
@@ -331,14 +334,20 @@ func _physics_process(delta: float) -> void:
 	if fleeing:
 		_flee(delta, to_target, distance)
 		return
+	if cowed > 0.0:
+		_cower(delta, to_target, distance)
+		return
 	# Back above ground if a burrow was cut short.
 	if state != State.WINDUP and _visual.modulate.a < 1.0 and _attack["kind"] == "burrow":
 		_visual.modulate.a = 1.0
 	match state:
 		State.WANDER:
 			velocity = _direction * _speed * 0.4 * _ground_speed
-			if has_target and distance < AGGRO_RADIUS * senses and (not Difficulty.monsters_passive() or _since_hurt < 30.0) and not target.buffs.has("night_veil"):
+			if has_target and distance < AGGRO_RADIUS * senses and (not Difficulty.monsters_passive() or _since_hurt < 30.0) and not target.buffs.has("night_veil") and not _at_peace():
 				state = State.CHASE
+				if not _analysed:
+					_analysed = true
+					Voices.analyse(self)
 				# A boss turning on you is a moment worth saving before.
 				if rank >= Rank.BOSS and not _engaged:
 					_engaged = true
@@ -653,12 +662,38 @@ func _tele_shot(direction: Vector2, length: float, progress: float, hot: Color, 
 		draw_line(end + dir * (size + 5.0), end + dir * (size + 10.0), Color(hot, 0.8), 2.0)
 
 
+## Whether this monster's faction is at peace with the player (and it has
+## not been struck lately).
+func _at_peace() -> bool:
+	if faction == "" or _since_hurt < 30.0:
+		return false
+	var factions: Factions = get_tree().get_first_node_in_group("factions")
+	return factions != null and factions.at_peace(faction)
+
+
+## Cowering from an aura: backing away from it, head down, no blows.
+func _cower(delta: float, to_target: Vector2, distance: float) -> void:
+	cowed = maxf(cowed - delta, 0.0)
+	if state == State.WINDUP or state == State.LUNGE:
+		_pick_wander()
+	velocity = (-to_target.normalized() * _speed * 0.8 if distance > 0.0 and distance < 340.0 else Vector2.ZERO) * _ground_speed
+	velocity += _separation() * 0.3
+	if absf(velocity.x) > 1.0:
+		_visual.scale.x = absf(_visual.scale.x) * signf(velocity.x)
+	move_and_slide()
+
+
 ## Returns the health actually removed, so callers can reward real damage only.
 func take_damage(
 	amount: float, knockback: Vector2, critical: bool = false, weapon_type: String = "", element: String = ""
 ) -> float:
 	if state == State.DEAD:
 		return 0.0
+	# Striking one of a faction at peace ends the treaty.
+	if faction != "" and element == "":
+		var factions: Factions = get_tree().get_first_node_in_group("factions")
+		if factions and factions.at_peace(faction):
+			factions.break_treaty(faction)
 	if revive_shield > 0.0:
 		return 0.0
 	if element != "":

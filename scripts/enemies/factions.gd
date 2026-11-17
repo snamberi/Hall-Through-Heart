@@ -53,6 +53,15 @@ const SURPRISE := 1.35
 
 ## faction -> {"styles": {style: points}, "elements": {element: points}, "day": day last updated}
 var known: Dictionary = {}
+## Treaties: faction -> the day it was made. A faction at peace leaves you
+## be (unless you strike one of them, which ends it) and sends gifts to your
+## town. The Lull Court makes no treaties.
+var treaties: Dictionary = {}
+## Factions that broke with you: faction -> the day; no new treaty for a while.
+var grudges: Dictionary = {}
+const NO_TREATY: Array[String] = ["lull"]
+const TREATY_BASE_COST := 300
+const GRUDGE_DAYS := 5
 
 var _day_night: DayNight
 
@@ -202,10 +211,58 @@ func rumours() -> Array[String]:
 	return out
 
 
+# --- treaties
+
+func at_peace(faction: String) -> bool:
+	return faction != "" and treaties.has(faction)
+
+
+func treaty_cost() -> int:
+	return TREATY_BASE_COST * (treaties.size() + 1)
+
+
+## Why a treaty with a faction cannot be made now, or "". One of their own
+## kind, Named and living in your town, must speak for you.
+func treaty_problem(faction: String, town: Node, player: Player) -> String:
+	if faction in NO_TREATY:
+		return "The Court does not make treaties with food."
+	if treaties.has(faction):
+		return "You are already at peace."
+	if grudges.has(faction) and _today() - int(grudges[faction]) < GRUDGE_DAYS:
+		return "They remember the last treaty you broke. (%d more days)" % (GRUDGE_DAYS - (_today() - int(grudges[faction])))
+	if town == null or not town.has_speaker(faction):
+		return "One of their kind, Named and living in your town, must speak for you."
+	if player.inventory.gold < treaty_cost():
+		return "The tribute is %d gold." % treaty_cost()
+	return ""
+
+
+func sign_treaty(faction: String, player: Player) -> void:
+	player.inventory.add_gold(-treaty_cost())
+	treaties[faction] = _today()
+	known.erase(faction)
+	Events.codex_event.emit("treaties", 1)
+	Voices.heart(get_tree(), "A treaty is made with %s." % LIST[faction]["name"], "Their kind will leave you be, and send gifts to your town. Strike one of them and it ends.")
+	SaveGame.request_save()
+
+
+## A member of a faction at peace was struck: the treaty is over.
+func break_treaty(faction: String) -> void:
+	if not treaties.has(faction):
+		return
+	treaties.erase(faction)
+	grudges[faction] = _today()
+	report(faction, {"styles": {"melee": 3}})
+	Voices.heart(get_tree(), "The treaty with %s is broken." % LIST[faction]["name"], "They will remember this.")
+	SaveGame.request_save()
+
+
 func save_data() -> Dictionary:
-	return {"known": known}
+	return {"known": known, "treaties": treaties, "grudges": grudges}
 
 
 func load_data(data: Dictionary) -> void:
 	var saved: Variant = data.get("known", {})
 	known = saved if saved is Dictionary else {}
+	treaties = data.get("treaties", {}) if data.get("treaties") is Dictionary else {}
+	grudges = data.get("grudges", {}) if data.get("grudges") is Dictionary else {}

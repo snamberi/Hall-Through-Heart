@@ -210,3 +210,128 @@ func test_informers_wear_the_charm_and_can_be_named(t: TestContext) -> void:
 	lull.stage = 0
 	lull.suspicion = 0.0
 	t.close_game()
+
+
+func test_devouring_copies_echoes_that_can_be_worn_and_fused(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var echoes: Echoes = main.get_node("Echoes")
+	echoes.awake = true
+	echoes.learned.clear()
+	echoes.worn.clear()
+	echoes.hunger.clear()
+	t.check(Echoes.of_monster("crag_golem").has("stone_skin"), "a golem carries Stoneskin")
+	for id: String in Echoes.LIST:
+		for monster: String in Echoes.LIST[id].get("from", []):
+			t.check(EnemyDB.ENEMIES.has(monster), "%s comes from a real monster (%s)" % [id, monster])
+	for fusion: Array in Echoes.FUSIONS:
+		t.check(Echoes.LIST.has(fusion[0]) and Echoes.LIST.has(fusion[1]) and int(Echoes.LIST[fusion[2]]["tier"]) == 2, "fusion %s is whole" % fusion[2])
+	# A kill leaves a remnant; devouring it surely gives the Echo in the end.
+	echoes._on_kill({"id": "crag_golem", "name": "Crag Golem", "rank": "normal", "position": player.global_position + Vector2(30, 0)})
+	await t.frames(1)
+	var remnants := main.get_tree().get_nodes_in_group("props").filter(func(n: Node) -> bool: return n is Echoes.Remnant)
+	t.equal(remnants.size(), 1, "a fallen golem leaves its remnant")
+	for k in Echoes.SURE_AFTER:
+		var remnant := Echoes.Remnant.new()
+		remnant.setup(echoes, "crag_golem", 0, "Crag Golem", 9.0)
+		main.add_child(remnant)
+		echoes.devour(remnant)
+		if "stone_skin" in echoes.learned:
+			break
+	t.check("stone_skin" in echoes.learned, "devouring golems gives Stoneskin, sooner or later")
+	t.check("stone_skin" in echoes.worn, "worn at once while a slot is free")
+	var speed_worn := player.stats.get_stat("move_speed")
+	echoes.toggle("stone_skin")
+	t.check(player.stats.get_stat("move_speed") > speed_worn, "its gifts come off with it (Stoneskin slows)")
+	echoes.toggle("stone_skin")
+	(remnants[0] as Node).queue_free()
+	echoes.learn("gel_body")
+	t.check(not echoes.fusions_ready().is_empty(), "Gel Body and Stoneskin can fuse")
+	t.equal(echoes.fuse("gel_body", "stone_skin"), "", "they fuse")
+	t.check("living_bulwark" in echoes.learned and not "gel_body" in echoes.learned and not "stone_skin" in echoes.learned, "into Living Bulwark, using both")
+	for id: String in ["pack_howl", "bone_aim", "night_wings", "thorn_hide", "ash_veil", "void_sight"]:
+		echoes.learn(id)
+	t.check(echoes.worn.size() <= echoes.slots(), "never more worn than slots (%d)" % echoes.slots())
+	t.check(echoes.toggle("void_sight") != "" or "void_sight" in echoes.worn, "a full set of slots refuses another")
+	var data := echoes.save_data()
+	echoes.load_data({})
+	t.check(echoes.learned.is_empty(), "a fresh start")
+	echoes.load_data(data)
+	t.check("living_bulwark" in echoes.learned, "and the save keeps them")
+	t.close_game()
+
+
+func test_names_evolve_towns_grow_and_treaties_hold(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var pets: Pets = player.pets
+	var town: MonsterTown = main.get_node("MonsterTown")
+	var factions: Factions = main.get_node("Factions")
+	var buildings: Buildings = main.get_node("Buildings")
+	pets.pets.clear()
+	pets._adopt("rot_hound", "monster", "Gruk")
+	player.mana.current = 0.0
+	t.check(pets.give_name(0, "Gruk") != "", "with no mana there is no Name")
+	player.mana.current = player.mana.max_value
+	var weak := pets.damage(pets.pets[0])
+	t.equal(pets.give_name(0, "Gruk"), "", "a Name is given")
+	t.check(pets.pets[0]["named"] and player.mana.current == 0.0 and player.buffs.has("name_weary"), "it takes all your mana and leaves you weary")
+	t.check(pets.damage(pets.pets[0]) > weak, "a Named monster hits harder")
+	pets._gain(pets.pets[0], 200000)
+	t.equal(pets.stage(pets.pets[0]), 3, "growing, it evolves to Ascendant")
+	# A home, then the town.
+	buildings.home = {"position": [player.global_position.x + 200.0, player.global_position.y]}
+	t.equal(town.settle(0), "", "a Named monster settles in town")
+	t.equal(town.citizens.size(), 1, "one citizen")
+	t.check(pets.pets.is_empty(), "no longer a pet")
+	t.check(town.has_speaker("feral"), "it speaks for the Feral Packs")
+	town.set_job(0, "forager")
+	town._on_morning(2)
+	t.check(not town.store.is_empty(), "work brings things to the store")
+	# A treaty through it.
+	player.inventory.add_gold(5000)
+	t.equal(factions.treaty_problem("feral", town, player), "", "a treaty can be offered")
+	t.check(factions.treaty_problem("lull", town, player) != "", "never with the Court")
+	factions.sign_treaty("feral", player)
+	t.check(factions.at_peace("feral"), "at peace with the Feral Packs")
+	var spawner: EnemySpawner = main.get_node("Enemies")
+	var hound := spawner.spawn_at(player.global_position + Vector2(120, 0), 3, Enemy.Rank.NORMAL, "rot_hound")
+	await t.frames(2)
+	hound._since_hurt = 99.0
+	t.check(hound._at_peace(), "a hound leaves you be")
+	hound.take_damage(1.0, Vector2(10, 0))
+	t.check(not factions.at_peace("feral"), "strike one, and the treaty is broken")
+	hound.queue_free()
+	# The festival.
+	town.citizens.append({"id": 999, "species": "crag_golem", "kind": "monster", "name": "Tor", "level": 3, "xp": 0, "named": true, "stage": 0, "job": "miner"})
+	var level_before := int(town.citizens[1]["level"])
+	t.equal(town.hold_festival(), "", "the Festival of Rising")
+	t.equal(int(town.citizens[1]["level"]), level_before + MonsterTown.FESTIVAL_LEVELS, "everyone grows")
+	t.check(player.buffs.has("risen"), "and you are Risen")
+	t.check(town.hold_festival() != "", "once a week")
+	t.close_game()
+
+
+func test_the_aura_cows_the_weak_and_not_the_great(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var aura: DreadAura = player.get_node("DreadAura")
+	var spawner: EnemySpawner = main.get_node("Enemies")
+	var weakling := spawner.spawn_at(player.global_position + Vector2(100, 0), 1, Enemy.Rank.NORMAL, "husk")
+	var boss := spawner.spawn_at(player.global_position + Vector2(-100, 0), 1, Enemy.Rank.MINIBOSS, "husk")
+	await t.frames(2)
+	aura.toggle()
+	t.check(not aura.active, "asleep until the gift wakes")
+	aura._on_level_up(DreadAura.WAKE_LEVEL)
+	player.mana.current = player.mana.max_value
+	aura.toggle()
+	t.check(aura.active, "released")
+	aura._physics_process(0.1)
+	t.check(weakling.cowed > 0.0, "the weak cower")
+	t.equal(boss.cowed, 0.0, "the great do not")
+	player.mana.current = 0.0
+	aura._physics_process(0.1)
+	t.check(not aura.active, "no mana, no aura")
+	weakling.queue_free()
+	boss.queue_free()
+	t.close_game()

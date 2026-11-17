@@ -7,7 +7,7 @@ extends Node
 
 const KEEP := 300
 ## Kinds of entry, for the Log's filters.
-const KINDS := {"speech": "Speech", "event": "Events", "fight": "Battles", "quest": "Quests"}
+const KINDS := {"speech": "Speech", "event": "Events", "fight": "Battles", "quest": "Quests", "voice": "Voices"}
 
 ## [day, hour text, kind, who, text]
 var entries: Array = []
