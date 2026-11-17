@@ -1,4 +1,4 @@
-# Builds test copies of the game for Windows and Android.
+# Builds test copies of the game for Windows (with its server program) and Android.
 # Run it from GitHub: Actions > Build test copies > Run workflow.
 name: Build test copies
 
@@ -57,6 +57,11 @@ jobs:
           ./godot --headless --path . --export-release "Windows Desktop" build/windows/HallThroughHeart.exe
           test -f build/windows/HallThroughHeart.exe
 
+      - name: Export the server program (Windows)
+        run: |
+          ./godot --headless --path . --export-release "Windows Server" build/windows/HTH_Server.exe
+          test -f build/windows/HTH_Server.exe
+
       - name: Export for Android
         run: |
           mkdir -p build/android
@@ -66,7 +71,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: HallThroughHeart-Windows
-          path: build/windows/HallThroughHeart.exe
+          path: |
+            build/windows/HallThroughHeart.exe
+            build/windows/HTH_Server.exe
 
       - uses: actions/upload-artifact@v4
         with:

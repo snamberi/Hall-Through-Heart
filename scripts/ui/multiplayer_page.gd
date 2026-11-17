@@ -1,11 +1,14 @@
 class_name MultiplayerPage
 extends PanelContainer
-## Play Together, from the title screen: on the same Wi-Fi or cable, one
+## Multiplayer, from the title screen: on the same Wi-Fi or cable, one
 ## player hosts one of their worlds and the others join it, each bringing a
 ## character from a world of their own. Games being hosted nearby show up
-## by themselves; an address can be typed too.
+## by themselves; an address (and a password, if it has one) can be typed
+## too. My Servers keeps worlds hosted in the background.
 
 signal back
+## Open My Servers.
+signal servers
 ## A world to load: the slot, and whether as a guest in someone else's.
 signal play(slot_id: String, as_guest: bool)
 
@@ -14,6 +17,7 @@ var _character: OptionButton
 var _slots: Array[Dictionary] = []
 var _games: VBoxContainer
 var _address: LineEdit
+var _password: LineEdit
 var _status: Label
 var _host_button: Button
 var _seen := ""
@@ -25,10 +29,10 @@ func _ready() -> void:
 	box.add_theme_constant_override("separation", 10)
 	box.custom_minimum_size.x = 720.0
 	add_child(box)
-	var title := UITheme.heading("PLAY TOGETHER", 30)
+	var title := UITheme.heading("MULTIPLAYER", 30)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
-	var line := UITheme.label("On the same Wi-Fi or network cable. One hosts a world; the others join with a character of their own.", 15, UITheme.DIM)
+	var line := UITheme.label("On the same Wi-Fi or network cable, or by address. One hosts a world; the others join with a character of their own.", 15, UITheme.DIM)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(line)
@@ -64,7 +68,15 @@ func _ready() -> void:
 	host_text.add_child(UITheme.label("Opens the chosen character's world to friends nearby.%s" % (("  Your address: " + ", ".join(addresses)) if not addresses.is_empty() else ""), 14, UITheme.DIM))
 	_host_button = UITheme.primary_button("Host this world", _host, 200.0)
 	_host_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_host_button.tooltip_text = "Hosting stops when you leave the world. For a world that stays up, use My Servers."
 	host_row.add_child(_host_button)
+	var mine := UITheme.button("My Servers", func() -> void:
+		Net.stop_listening()
+		servers.emit()
+	, 150.0)
+	mine.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	mine.tooltip_text = "Worlds hosted in the background: they keep running when the game is closed."
+	host_row.add_child(mine)
 	box.add_child(UITheme.rule())
 	# Join.
 	box.add_child(UITheme.heading("Join", 20))
@@ -85,6 +97,13 @@ func _ready() -> void:
 	_address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_address.text_submitted.connect(func(_text: String) -> void: _join(_address.text))
 	by_hand.add_child(_address)
+	by_hand.add_child(UITheme.label("Password", 16))
+	_password = LineEdit.new()
+	_password.secret = true
+	_password.placeholder_text = "if it has one"
+	_password.custom_minimum_size.x = 150.0
+	_password.text_submitted.connect(func(_text: String) -> void: _join(_address.text))
+	by_hand.add_child(_password)
 	by_hand.add_child(UITheme.button("Join", func() -> void: _join(_address.text), 110.0))
 	_status = UITheme.label("", 15, UITheme.INFO)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -114,25 +133,32 @@ func _back() -> void:
 
 
 func _fill_characters() -> void:
-	_character.clear()
-	_slots.clear()
+	_slots = fill_characters(_character)
+	_host_button.disabled = _slots.is_empty()
+
+
+## Fills a picker with the characters that can go visiting (a hardcore
+## life is lived in its own world), the last played chosen. Returns the
+## slots in the picker's order.
+static func fill_characters(picker: OptionButton) -> Array[Dictionary]:
+	var slots: Array[Dictionary] = []
+	picker.clear()
 	for slot: Dictionary in SaveGame.list_slots():
 		var meta: Dictionary = slot["meta"]
 		if meta.get("hardcore", false):
-			# A hardcore life is lived in its own world.
 			continue
-		_slots.append(slot)
+		slots.append(slot)
 		var race := str(Appearance.RACES.get(str((meta.get("appearance", {}) as Dictionary).get("race", "human")), Appearance.RACES["human"])["name"])
 		var calling := str(HeroClasses.CLASSES.get(str(meta.get("class", meta.get("class_id", "warrior"))), HeroClasses.CLASSES["warrior"])["name"])
-		_character.add_item("%s %s, level %d   (%s)" % [race, calling, int(meta.get("level", 1)), str(meta.get("name", "World"))])
-	if _slots.is_empty():
-		_character.add_item("No characters yet: make one under Play first")
-		_character.disabled = true
+		picker.add_item("%s %s, level %d   (%s)" % [race, calling, int(meta.get("level", 1)), str(meta.get("name", "World"))])
+	if slots.is_empty():
+		picker.add_item("No characters yet: make one under Play first")
+		picker.disabled = true
 	else:
-		_character.disabled = false
-		var last := _slots.map(func(s: Dictionary) -> String: return s["id"]).find(GameSettings.last_slot)
-		_character.select(maxi(last, 0))
-	_host_button.disabled = _slots.is_empty()
+		picker.disabled = false
+		var last := slots.map(func(s: Dictionary) -> String: return s["id"]).find(GameSettings.last_slot)
+		picker.select(maxi(last, 0))
+	return slots
 
 
 func _chosen() -> Dictionary:
@@ -141,7 +167,9 @@ func _chosen() -> Dictionary:
 
 
 func _info(slot: Dictionary) -> Dictionary:
-	return Net.describe_character(slot.get("meta", {}), "Wanderer")
+	var info := Net.describe_character(slot.get("meta", {}), "Wanderer")
+	info["password_hash"] = ServerStore.hash_password(_password.text)
+	return info
 
 
 func _host() -> void:
@@ -157,8 +185,12 @@ func _host() -> void:
 	play.emit(slot["id"], false)
 
 
-func _join(address: String, port: int = Net.PORT) -> void:
+func _join(address: String, port: int = Net.PORT, locked: bool = false) -> void:
 	address = address.strip_edges()
+	if locked and _password.text == "":
+		_status.text = "That game has a password: type it beside the address, then Join."
+		_password.grab_focus()
+		return
 	if address.count(":") == 1:
 		# "192.168.1.20:24680"
 		port = int(address.get_slice(":", 1)) if address.get_slice(":", 1).is_valid_int() else port
@@ -203,9 +235,14 @@ func _process(_delta: float) -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		card.add_child(row)
-		var words := UITheme.label("%s's world  %s   -   %d/%d players   -   %s" % [game["name"], game["world"], game["players"], game["most"], game["address"]], 15)
+		var owner := ("%s (server)" % game["name"]) if game.get("dedicated", false) else ("%s's world" % game["name"])
+		var words := UITheme.label("%s  %s   -   %d/%d players   -   %s" % [owner, game["world"], game["players"], game["most"], game["address"]], 15)
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(words)
-		var join := UITheme.button("Join", _join.bind(str(game["address"]), int(game["port"])), 100.0)
+		if game.get("dedicated", false):
+			row.add_child(UITheme.badge("Server", "info"))
+		if game.get("locked", false):
+			row.add_child(UITheme.badge("Password", "gold"))
+		var join := UITheme.button("Join", _join.bind(str(game["address"]), int(game["port"]), bool(game.get("locked", false))), 100.0)
 		join.disabled = int(game["players"]) >= int(game["most"])
 		row.add_child(join)

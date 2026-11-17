@@ -38,7 +38,9 @@ func _ready() -> void:
 	if visiting:
 		# Someone else's world: their seed, their rules, their hour.
 		_active_seed = int(Net.world.get("seed", _active_seed))
-		Difficulty.hardcore = bool(Net.world.get("hardcore", false))
+		# Never hardcore as a guest: a death in someone else's world must not
+		# delete the visitor's own (a server's permadeath bars them instead).
+		Difficulty.hardcore = false
 		Difficulty.current = str(Net.world.get("difficulty", "normal"))
 		saved_world = {"day": int(Net.world.get("day", 1)), "time": float(Net.world.get("time", 0.3))}
 	_day_night.day = maxi(int(saved_world.get("day", 1)), 1)

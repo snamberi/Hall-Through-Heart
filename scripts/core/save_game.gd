@@ -127,6 +127,10 @@ func get_section(section: String) -> Dictionary:
 func register(section: String, target: Node) -> void:
 	_targets[section] = target
 	if guest and not section in CARRIED:
+		# The world's own things, as its host shares them (what is built).
+		var shared: Variant = Net.world.get("sections", {}).get(section) if Net.world.get("sections") is Dictionary else null
+		if shared is Dictionary:
+			target.load_data(shared)
 		return
 	if _data.has(section):
 		target.load_data(get_section(section))

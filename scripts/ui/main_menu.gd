@@ -33,6 +33,12 @@ var _class_buttons: Dictionary[String, Button] = {}
 var _class_text: RichTextLabel
 var _figure: LookPreview
 var _editor: AppearanceEditor
+var _servers: ServersPage
+## "Your server is running": shown on the title while one of ours is up.
+var _running_banner: PanelContainer
+var _running_text: Label
+var _running_id := ""
+var _banner_left := 0.0
 
 
 func _ready() -> void:
@@ -51,11 +57,13 @@ func _ready() -> void:
 	_pages["new"] = _new_page()
 	var together := MultiplayerPage.new()
 	together.back.connect(show_page.bind("home"))
-	together.play.connect(func(id: String, as_guest: bool) -> void:
-		SaveGame.use_slot(id, as_guest)
-		get_tree().change_scene_to_file(GAME)
-	)
+	together.play.connect(_enter_world)
+	together.servers.connect(show_page.bind("servers"))
 	_pages["together"] = together
+	_servers = ServersPage.new()
+	_servers.back.connect(show_page.bind("together"))
+	_servers.play.connect(_enter_world)
+	_pages["servers"] = _servers
 	var settings := SettingsPanel.new()
 	settings.closed.connect(show_page.bind("home"))
 	_pages["settings"] = _framed(settings)
@@ -63,6 +71,11 @@ func _ready() -> void:
 		center.add_child(page)
 	stack.queue_free()
 	show_page("home")
+
+
+func _enter_world(id: String, as_guest: bool) -> void:
+	SaveGame.use_slot(id, as_guest)
+	get_tree().change_scene_to_file(GAME)
 
 
 func show_page(page: String) -> void:
@@ -109,7 +122,49 @@ static func _beat(now: float) -> float:
 	return maxf(exp(-pow((t - 0.1) / 0.06, 2.0)), 0.7 * exp(-pow((t - 0.32) / 0.06, 2.0)))
 
 
-func _process(_delta: float) -> void:
+## A server of ours is up (perhaps from before the game was opened): say
+## so, with a way straight back in.
+func _running_banner_panel() -> PanelContainer:
+	_running_banner = PanelContainer.new()
+	_running_banner.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_running_banner.visible = false
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	_running_banner.add_child(row)
+	var words := VBoxContainer.new()
+	row.add_child(words)
+	words.add_child(UITheme.heading("Your Server Is Running", 18))
+	_running_text = UITheme.label("", 14, UITheme.DIM)
+	words.add_child(_running_text)
+	var rejoin := UITheme.primary_button("Rejoin", func() -> void:
+		show_page("servers")
+		_servers.rejoin(_running_id)
+	, 120.0)
+	rejoin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(rejoin)
+	var manage := UITheme.button("Manage", show_page.bind("servers"), 110.0)
+	manage.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(manage)
+	return _running_banner
+
+
+func _refresh_banner() -> void:
+	var server := ServerStore.running()
+	_running_banner.visible = not server.is_empty()
+	if server.is_empty():
+		_running_id = ""
+		return
+	_running_id = server["id"]
+	var status: Dictionary = server["status"]
+	_running_text.text = "%s  -  world %s  -  %d/%d players  -  day %d" % [server["config"]["name"], server["config"]["world_name"],
+		int(status.get("player_count", 0)), int(status.get("max_players", 8)), int(status.get("day", 1))]
+
+
+func _process(delta: float) -> void:
+	_banner_left -= delta
+	if _banner_left <= 0.0 and _pages.has("home") and _pages["home"].visible:
+		_banner_left = 2.0
+		_refresh_banner()
 	queue_redraw()
 	# A page too big for a small window (or a large interface size) shrinks to fit.
 	var room := get_viewport().get_visible_rect().size - Vector2(24.0, 24.0)
@@ -148,6 +203,7 @@ func _home_page() -> Control:
 	var gap := Control.new()
 	gap.custom_minimum_size.y = 24.0
 	box.add_child(gap)
+	box.add_child(_running_banner_panel())
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(panel)
@@ -159,7 +215,7 @@ func _home_page() -> Control:
 	play.custom_minimum_size.y = 56.0
 	UITheme.font_size(play, 24)
 	buttons.add_child(play)
-	buttons.add_child(UITheme.button("Play Together (LAN)", show_page.bind("together"), 320.0))
+	buttons.add_child(UITheme.button("Multiplayer", show_page.bind("together"), 320.0))
 	buttons.add_child(UITheme.button("Settings", show_page.bind("settings"), 320.0))
 	buttons.add_child(UITheme.button("Quit", get_tree().quit, 320.0))
 	return box

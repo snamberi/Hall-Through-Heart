@@ -320,7 +320,7 @@ func place(kind: String, at: Vector2, item_id: String = "", flip: bool = false) 
 	if not kind in ["ground", "wall"]:
 		Events.codex_event.emit("built", 1)
 	var where := current_place()
-	var record := {"id": _next_id, "kind": kind, "where": where, "x": at.x, "y": at.y, "items": []}
+	var record := {"id": _new_id(), "kind": kind, "where": where, "x": at.x, "y": at.y, "items": []}
 	if flip:
 		record["flip"] = true
 	if kind in ["ground", "wall"]:
@@ -343,6 +343,7 @@ func place(kind: String, at: Vector2, item_id: String = "", flip: bool = false) 
 		records.append(record)
 		_instances.room.set_tile(cell, record["tile"])
 		_player.professions.add_xp("building", 2.0)
+		_share("build", record)
 		SaveGame.request_save()
 		return
 	if where != "world":
@@ -352,6 +353,7 @@ func place(kind: String, at: Vector2, item_id: String = "", flip: bool = false) 
 	_next_id += 1
 	records.append(record)
 	_spawn(record)
+	_share("build", record)
 	_player.professions.add_xp("building", 15.0 if kind != "house" else 80.0)
 	if kind == "house":
 		Events.codex_event.emit("houses", 1)
@@ -360,7 +362,7 @@ func place(kind: String, at: Vector2, item_id: String = "", flip: bool = false) 
 
 ## Lays ground or raises a wall on one outdoor cell.
 func _place_tile(kind: String, cell: Vector2i, item_id: String) -> void:
-	var record := {"id": _next_id, "kind": kind, "where": "world", "x": cell.x, "y": cell.y, "items": [], "item": item_id}
+	var record := {"id": _new_id(), "kind": kind, "where": "world", "x": cell.x, "y": cell.y, "items": [], "item": item_id}
 	_next_id += 1
 	if kind == "ground":
 		# New ground replaces what was laid there, and hands it back.
@@ -379,6 +381,7 @@ func _place_tile(kind: String, cell: Vector2i, item_id: String) -> void:
 		_rebuild_walls(cell)
 		_player.professions.add_xp("building", 4.0)
 	Events.codex_event.emit("built_tiles", 1)
+	_share("build", record)
 	SaveGame.request_save()
 
 
@@ -483,6 +486,7 @@ func take_down(record: Dictionary) -> String:
 	var problem := take_down_problem(record)
 	if problem != "":
 		return problem
+	_share("unbuild", {"id": record["id"]})
 	if record["kind"] == "house":
 		# Floors and upgrades are lost with the house.
 		records = records.filter(func(r: Dictionary) -> bool: return r["where"] != "house:%d" % record["id"])
@@ -580,9 +584,11 @@ func save_data() -> Dictionary:
 func load_data(data: Dictionary) -> void:
 	records.clear()
 	_next_id = maxi(int(data.get("next_id", 1)), 1)
-	recall_left = maxf(float(data.get("recall_left", 0.0)), 0.0)
-	var saved_home: Variant = data.get("home", {})
-	home = saved_home if saved_home is Dictionary else {}
+	if not SaveGame.guest:
+		# A guest keeps no home in someone else's world.
+		recall_left = maxf(float(data.get("recall_left", 0.0)), 0.0)
+		var saved_home: Variant = data.get("home", {})
+		home = saved_home if saved_home is Dictionary else {}
 	for saved: Variant in data.get("records", []):
 		if saved is Dictionary and KINDS.has(saved.get("kind", "")):
 			var record: Dictionary = saved
@@ -833,3 +839,78 @@ func _use(player: Player, record: Dictionary) -> void:
 			Events.checkpoint_set.emit(at, "home")
 			Events.announcement.emit("HOME SET", "Press H to recall here")
 			SaveGame.request_save()
+
+
+# --- a shared world (Net): what is built is built for everyone
+
+## A record's id: counted up alone; in a shared world, drawn at random from
+## a range of its own, so two players never give the same one.
+func _new_id() -> int:
+	if Net.online():
+		return (1 << 40) + randi() % (1 << 30) * 1024 + randi() % 1024
+	return _next_id
+
+
+## Tells the world's host what was built or taken down here.
+func _share(op: String, record: Dictionary) -> void:
+	if Net.online():
+		var mine := record.duplicate(true)
+		mine["owner"] = str(Net.me.get("name", ""))
+		Net.world_op({"op": op, "record": mine})
+
+
+func _record_by_id(id: int) -> Dictionary:
+	for record in records:
+		if int(record["id"]) == id:
+			return record
+	return {}
+
+
+## Something someone else built or took down, as the host has agreed it:
+## built or taken down here too (no items change hands).
+func apply_remote(op: Dictionary) -> void:
+	var record: Dictionary = op.get("record", {})
+	if record.is_empty() or not KINDS.has(str(record.get("kind", ""))) and op.get("op") == "build":
+		return
+	var id := int(record.get("id", 0))
+	match str(op.get("op", "")):
+		"build":
+			if not _record_by_id(id).is_empty():
+				return
+			var made := record.duplicate(true)
+			made["id"] = id
+			if not made.get("items") is Array:
+				made["items"] = []
+			records.append(made)
+			match str(made["kind"]):
+				"ground":
+					var cell := Vector2i(int(made["x"]), int(made["y"]))
+					_world().generator.overrides[cell] = int(made["tile"])
+					_world().refresh_cells([cell])
+				"wall":
+					_rebuild_walls(Vector2i(int(made["x"]), int(made["y"])))
+				"floor":
+					if _instances.room and current_place() == str(made["where"]):
+						_instances.room.set_tile(Vector2i(int(made["x"]), int(made["y"])), int(made["tile"]))
+				_:
+					if made["where"] == "world" or current_place() == str(made["where"]):
+						_spawn(made)
+		"unbuild":
+			var gone := _record_by_id(id)
+			if gone.is_empty():
+				return
+			if gone["kind"] == "house":
+				records = records.filter(func(r: Dictionary) -> bool: return r["where"] != "house:%d" % id)
+			records.erase(gone)
+			match str(gone["kind"]):
+				"ground":
+					var cell := Vector2i(int(gone["x"]), int(gone["y"]))
+					_world().generator.overrides.erase(cell)
+					_world().generator.forget(cell)
+					_world().refresh_cells([cell])
+				"wall":
+					_rebuild_walls(Vector2i(int(gone["x"]), int(gone["y"])))
+				_:
+					if is_instance_valid(_props.get(id)):
+						(_props[id] as Node).queue_free()
+					_props.erase(id)

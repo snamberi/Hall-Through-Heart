@@ -39,6 +39,9 @@ func _ready() -> void:
 	Net.roster_changed.connect(_on_roster)
 	Net.clock_received.connect(_on_clock)
 	Net.kill_shared.connect(_on_kill_shared)
+	Net.op_requested.connect(_on_op_requested)
+	Net.op_applied.connect(_on_op_applied)
+	Events.player_died.connect(func(_xp: int) -> void: Net.send_deed("died"))
 	Net.deed_received.connect(_on_deed)
 	Net.left_game.connect(_on_left)
 	Events.enemy_killed.connect(_on_local_kill)
@@ -60,15 +63,47 @@ func _welcome_line() -> String:
 	if Net.is_host():
 		var where := ", ".join(Net.local_addresses())
 		return "Hosting %s. Friends on this network can join from Multiplayer%s. Enter to chat." % [_world_name, (" (address: %s)" % where) if where != "" else ""]
+	if Net.world.get("dedicated", false):
+		return "You are on %s, in the world %s. What you carry and learn goes home with you. Enter to chat." % [Net.world.get("host_name", "a server"), Net.world.get("name", "")]
 	return "You are in %s's world. What you carry and learn goes home with you. Enter to chat." % Net.name_of(1)
 
 
-## What a joining player needs to walk this world: told by the host.
-func world_now() -> Dictionary:
+## What a joining player needs to walk this world: told by the host. What
+## is built in it comes too, so everyone sees the same houses and walls.
+func world_now(_peer: int = 0, _info: Dictionary = {}) -> Dictionary:
 	var meta := SaveGame.get_section("meta")
-	return {"seed": _seed(), "name": _world_name, "difficulty": Difficulty.current, "hardcore": Difficulty.hardcore,
-		"day": _day_night.day, "time": _day_night.time, "spawn": _player.global_position if not _instances.is_inside() else _instances.return_position(),
-		"meta_name": str(meta.get("name", ""))}
+	var built: Dictionary = _buildings().save_data() if _buildings() else {}
+	built.erase("home")
+	built.erase("recall_left")
+	return {"seed": _seed(), "name": _world_name, "difficulty": Difficulty.current, "hardcore": false,
+		"day": _day_night.day, "time": _day_night.time, "storminess": Atmosphere._storminess,
+		"spawn": _player.global_position if not _instances.is_inside() else _instances.return_position(),
+		"meta_name": str(meta.get("name", "")), "host_name": Net.name_of(1), "sections": {"buildings": built}}
+
+
+func _buildings() -> Buildings:
+	return get_parent().get_node_or_null("Buildings") as Buildings
+
+
+## The host's game decides on a change to the shared world: something built
+## or taken down. Checked, made here, and then made everywhere.
+func _on_op_requested(op: Dictionary, peer: int) -> void:
+	var buildings := _buildings()
+	if buildings == null:
+		return
+	var record: Dictionary = op.get("record", {})
+	if not str(op.get("op", "")) in ["build", "unbuild"] or record.is_empty():
+		return
+	if op["op"] == "build" and not Buildings.KINDS.has(str(record.get("kind", ""))):
+		return
+	if peer != Net.my_id():
+		buildings.apply_remote(op)
+	Net.broadcast_op(op)
+
+
+func _on_op_applied(op: Dictionary) -> void:
+	if _buildings():
+		_buildings().apply_remote(op)
 
 
 func _seed() -> int:
@@ -93,7 +128,7 @@ func _process(delta: float) -> void:
 		_clock_left -= delta
 		if _clock_left <= 0.0:
 			_clock_left = CLOCK_EVERY
-			Net.send_clock(_day_night.day, _day_night.time)
+			Net.send_clock(_day_night.day, _day_night.time, Atmosphere._storminess)
 	var inside := _instances.is_inside()
 	for peer in players:
 		(players[peer] as RemotePlayer).local_inside = inside
@@ -120,9 +155,15 @@ func _on_roster() -> void:
 			players.erase(peer)
 
 
-func _on_clock(day: int, time: float) -> void:
+func _on_clock(day: int, time: float, storminess: int = -1) -> void:
 	if Net.is_host():
 		return
+	# The host's weather: the same storms for everyone.
+	if storminess >= 0:
+		Atmosphere._storminess = storminess
+		var atmosphere := get_parent().get_node_or_null("Atmosphere")
+		if atmosphere:
+			atmosphere.set("_front_left", 9999.0)
 	_day_night.day = day
 	# Follow the host's hour, smoothly unless it is far off.
 	var gap := time - _day_night.time
@@ -159,7 +200,7 @@ func _on_left(reason: String) -> void:
 	chat.add_line("", reason, UITheme.BAD)
 	if SaveGame.guest:
 		# The world was theirs: take the character home.
-		Events.announcement.emit("The host has gone", "Taking your character home.")
+		Events.announcement.emit("The server has stopped" if reason.begins_with("The server") else "The host has gone", "Taking your character home.")
 		SaveGame.save_now()
 		await get_tree().create_timer(2.5, true, false, true).timeout
 		SaveGame.guest = false

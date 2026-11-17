@@ -24,8 +24,13 @@ signal roster_changed
 signal chat_received(from_name: String, text: String, colour: Color)
 ## Someone's place and pose, about fifteen times a second.
 signal state_received(peer: int, state: Dictionary)
-## The host's hour, now and then.
-signal clock_received(day: int, time: float)
+## The host's hour, now and then (and its weather: how stormy, -1 unknown).
+signal clock_received(day: int, time: float, storminess: int)
+## The world's authority (the host's game or a dedicated server) is asked
+## to change the shared world: it checks and applies it, then broadcast_op.
+signal op_requested(op: Dictionary, peer: int)
+## A change to the shared world, as the authority agreed it.
+signal op_applied(op: Dictionary)
 ## A monster felled near the player by a friend: experience to share.
 signal kill_shared(peer: int, xp: int, at: Vector2)
 ## A friend did something worth showing (a swing, a dash, a level up).
@@ -50,8 +55,18 @@ var roster: Dictionary = {}
 var found: Dictionary = {}
 ## Who we are to the others (set before hosting or joining).
 var me: Dictionary = {}
-## The host's: a function giving the world as it is now, for a joiner.
+## The host's: a function giving the world as it is now, for a joiner
+## (called with the joiner's peer id and what they said of themselves).
 var world_now: Callable
+## A dedicated server: hosting with no player of its own.
+var dedicated := false
+var max_players := MAX_PLAYERS
+## Joining needs this password (its hash; "" for none).
+var password_hash := ""
+## The host's own extra say on who comes in: returns "" or why not.
+var admit: Callable
+## Whether the game is called out on the network to be found.
+var listed := true
 
 ## Joiners who knocked while the host's world was still loading.
 var _waiting: Dictionary = {}
@@ -59,10 +74,27 @@ var _beacon: PacketPeerUDP
 var _listen: PacketPeerUDP
 var _beacon_left := 0.0
 var _listening := false
+## Why the host is closing, told just before it does.
+var _parting := ""
+
+
+## What this process was started as: "" (the game), or "server",
+## "supervise" or "tray" for a hosted world (with boot_server its id).
+static var boot_role := ""
+static var boot_server := ""
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# Started to host a world in the background: go straight to that.
+	for arg in OS.get_cmdline_user_args():
+		for role: String in ["server", "supervise", "tray"]:
+			if arg.begins_with("--hth-%s=" % role):
+				boot_role = role
+				boot_server = arg.get_slice("=", 1)
+	if boot_role != "":
+		SaveGame.enabled = false
+		get_tree().change_scene_to_file.call_deferred("res://scenes/server.tscn")
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected)
@@ -117,11 +149,35 @@ func host(info: Dictionary, port: int = PORT) -> String:
 		return "Could not open port %d: another game may be hosting on this device." % port
 	multiplayer.multiplayer_peer = peer
 	mode = "host"
+	dedicated = false
+	max_players = MAX_PLAYERS
 	me = info
 	roster = {1: info}
 	_open_beacon()
 	roster_changed.emit()
 	status_changed.emit("Hosting on port %d" % port)
+	return ""
+
+
+## Opens a dedicated server: a world with nobody of its own playing it.
+func host_dedicated(settings: Dictionary) -> String:
+	leave("")
+	var port := int(settings.get("port", PORT))
+	max_players = clampi(int(settings.get("max_players", MAX_PLAYERS)), 2, 20)
+	var peer := ENetMultiplayerPeer.new()
+	var error := peer.create_server(port, max_players)
+	if error != OK:
+		return "Could not open port %d: another program may be using it." % port
+	multiplayer.multiplayer_peer = peer
+	mode = "host"
+	dedicated = true
+	password_hash = str(settings.get("password_hash", ""))
+	listed = str(settings.get("visibility", "lan")) == "lan"
+	me = {"name": str(settings.get("name", "Server"))}
+	roster = {}
+	if listed:
+		_open_beacon()
+	roster_changed.emit()
 	return ""
 
 
@@ -142,10 +198,13 @@ func _open_beacon() -> void:
 
 
 func _call_out() -> void:
-	if _beacon == null or not is_host():
+	if _beacon == null or not is_host() or not listed:
 		return
+	var port := PORT
+	if multiplayer.multiplayer_peer is ENetMultiplayerPeer and (multiplayer.multiplayer_peer as ENetMultiplayerPeer).host:
+		port = (multiplayer.multiplayer_peer as ENetMultiplayerPeer).host.get_local_port()
 	var shout := {"tag": BEACON_TAG, "protocol": PROTOCOL, "name": str(me.get("name", "Host")), "world": str(world.get("name", "")),
-		"port": PORT, "players": roster.size(), "most": MAX_PLAYERS}
+		"port": port, "players": roster.size(), "most": max_players, "locked": password_hash != "", "dedicated": dedicated}
 	_beacon.put_packet(JSON.stringify(shout).to_utf8_buffer())
 
 
@@ -185,6 +244,7 @@ func join(address: String, info: Dictionary, port: int = PORT) -> String:
 		return "Could not reach %s." % address
 	multiplayer.multiplayer_peer = peer
 	mode = "joining"
+	_parting = ""
 	me = info
 	status_changed.emit("Knocking on %s..." % address)
 	return ""
@@ -200,6 +260,11 @@ func leave(reason: String = "") -> void:
 		_beacon.close()
 	_beacon = null
 	mode = "off"
+	dedicated = false
+	password_hash = ""
+	admit = Callable()
+	listed = true
+	max_players = MAX_PLAYERS
 	roster.clear()
 	world.clear()
 	_waiting.clear()
@@ -224,7 +289,7 @@ func _process(delta: float) -> void:
 				var key := "%s:%d" % [from, int(heard.get("port", PORT))]
 				found[key] = {"address": from, "port": int(heard.get("port", PORT)), "name": str(heard.get("name", "")),
 					"world": str(heard.get("world", "")), "players": int(heard.get("players", 1)), "most": int(heard.get("most", MAX_PLAYERS)),
-					"seen": Time.get_ticks_msec()}
+					"locked": bool(heard.get("locked", false)), "dedicated": bool(heard.get("dedicated", false)), "seen": Time.get_ticks_msec()}
 		for key: String in found.keys():
 			if Time.get_ticks_msec() - int(found[key]["seen"]) > 4000:
 				found.erase(key)
@@ -242,7 +307,25 @@ func _on_failed() -> void:
 
 
 func _on_server_gone() -> void:
-	leave("The host closed the game.")
+	var reason := _parting if _parting != "" else "The host closed the game."
+	_parting = ""
+	leave(reason)
+
+
+## Tells everyone why the game is closing, just before it does (sent at
+## once, not left waiting in the queue).
+func farewell(reason: String) -> void:
+	if not is_host() or reason == "":
+		return
+	_farewell.rpc(reason)
+	var peer := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	if peer and peer.host:
+		peer.host.flush()
+
+
+@rpc("authority", "reliable")
+func _farewell(reason: String) -> void:
+	_parting = reason
 
 
 func _on_peer_connected(_peer: int) -> void:
@@ -268,10 +351,22 @@ func _hello(protocol: int, info: Dictionary) -> void:
 	if protocol != PROTOCOL:
 		_refused.rpc_id(peer, "Your game is a different version from the host's.")
 		return
-	if roster.size() >= MAX_PLAYERS:
+	if roster.size() >= max_players:
 		_refused.rpc_id(peer, "The game is full.")
 		return
+	if password_hash != "" and str(info.get("password_hash", "")) != password_hash:
+		_refused.rpc_id(peer, "Wrong password.")
+		return
 	var clean := {"name": str(info.get("name", "Wanderer")).left(20), "look": info.get("look", {}), "class": str(info.get("class", "")), "level": int(info.get("level", 1))}
+	for other: int in roster:
+		if str(roster[other].get("name", "")) == clean["name"]:
+			_refused.rpc_id(peer, "Someone called %s is already in this world." % clean["name"])
+			return
+	if admit.is_valid():
+		var problem: String = admit.call(clean)
+		if problem != "":
+			_refused.rpc_id(peer, problem)
+			return
 	if not world_now.is_valid():
 		# Still loading the world: they are let in once it stands.
 		_waiting[peer] = clean
@@ -281,7 +376,7 @@ func _hello(protocol: int, info: Dictionary) -> void:
 
 func _let_in(peer: int, info: Dictionary) -> void:
 	roster[peer] = info
-	_welcome.rpc_id(peer, world_now.call(), roster)
+	_welcome.rpc_id(peer, world_now.call(peer, info), roster)
 	_arrived.rpc(peer, info)
 
 
@@ -306,7 +401,7 @@ func _welcome(host_world: Dictionary, everyone: Dictionary) -> void:
 	roster = everyone
 	mode = "guest"
 	roster_changed.emit()
-	status_changed.emit("Joined %s." % name_of(1))
+	status_changed.emit("Joined %s." % str(host_world.get("host_name", name_of(1))))
 	welcomed.emit()
 
 
@@ -355,15 +450,45 @@ func _chat(text: String) -> void:
 	chat_received.emit(name_of(peer), text.left(200), colour_of(peer))
 
 
-## The host's clock, for everyone else to follow.
-func send_clock(day: int, time: float) -> void:
+## The host's clock and weather, for everyone else to follow.
+func send_clock(day: int, time: float, storminess: int = -1) -> void:
 	if is_host():
-		_clock.rpc(day, time)
+		_clock.rpc(day, time, storminess)
 
 
 @rpc("authority", "unreliable")
-func _clock(day: int, time: float) -> void:
-	clock_received.emit(day, time)
+func _clock(day: int, time: float, storminess: int) -> void:
+	clock_received.emit(day, time, storminess)
+
+
+# --- the shared world
+
+## Asks for a change to the shared world (building, taking down). The
+## host decides; a host's own change is decided at once.
+func world_op(op: Dictionary) -> void:
+	if not online():
+		return
+	if is_host():
+		op_requested.emit(op, my_id())
+	else:
+		_op.rpc_id(1, op)
+
+
+@rpc("any_peer", "reliable")
+func _op(op: Dictionary) -> void:
+	if is_host():
+		op_requested.emit(op, multiplayer.get_remote_sender_id())
+
+
+## The host has agreed a change: everyone makes it.
+func broadcast_op(op: Dictionary) -> void:
+	if is_host():
+		_op_applied.rpc(op)
+
+
+@rpc("authority", "reliable")
+func _op_applied(op: Dictionary) -> void:
+	op_applied.emit(op)
 
 
 func share_kill(xp: int, at: Vector2) -> void:
