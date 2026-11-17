@@ -55,6 +55,11 @@ func _ready() -> void:
 	trial.name = "FlightTrial"
 	add_child(trial)
 	trial.setup(_player, _instances, _world, _spawner)
+	# Saint Lull's House for Foundlings, out in the wheat.
+	var lull := SaintLull.new()
+	lull.name = "SaintLull"
+	add_child(lull)
+	lull.setup(_player, _world, _instances, _spawner, _day_night)
 	# The monsters' factions and what they have learned of the player.
 	var factions := Factions.new()
 	factions.name = "Factions"

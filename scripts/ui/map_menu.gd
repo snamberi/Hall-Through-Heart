@@ -18,7 +18,8 @@ const ICONS := {
 	"temple": [Color("ffe8a0"), "The Sanctuary"], "home": [Color("8fd66a"), "Home"], "checkpoint": [Color("ffb060"), "Resting place"],
 	"watchtower": [Color("b0acb8"), "Ruined watchtower"], "graveyard": [Color("a0a8b8"), "Graveyard"], "henge": [Color("9ad0c0"), "Standing stones"],
 	"farmstead": [Color("d8b070"), "Abandoned farmstead"], "library": [Color("c8a070"), "Ruined library"],
-	"dojo": [Color("e8a060"), "Dojo"],
+	"dojo": [Color("e8a060"), "Dojo"], "orphanage": [Color("f4f0e8"), "Saint Lull's House"], "bunker": [Color("a08060"), "A grassy hatch"],
+	"promise_stone": [Color("f0e0b0"), "Promise Stone"],
 }
 
 ## A marker kind's name, for any kind (unknown ones are named from their id).
@@ -32,7 +33,7 @@ const GROUPS := [
 	["travel", "Travel", ["waystone", "portal", "checkpoint"]],
 	["danger", "Danger", ["lair", "boss", "bounty", "dungeon", "graveyard"]],
 	["treasure", "Treasure and trade", ["treasure", "shipwreck", "merchant", "altar"]],
-	["sights", "Ruins and sights", ["ruin", "shrine", "cave", "camp", "obelisk", "watchtower", "henge", "library", "dojo", "sky_shrine"]],
+	["sights", "Ruins and sights", ["ruin", "shrine", "cave", "camp", "obelisk", "watchtower", "henge", "library", "dojo", "sky_shrine", "orphanage", "bunker", "promise_stone"]],
 	["life", "Creatures and people", ["monster", "animal", "npc", "pet"]],
 ]
 const VIEW := Vector2(870.0, 492.0)

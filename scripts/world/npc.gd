@@ -11,6 +11,7 @@ const KINDS := {
 	"recruit": {"name": "Wanderer", "prompt": "Talk", "sheet": "res://assets/sprites/npc_warden.png"},
 	"master": {"name": "Master", "prompt": "Speak with the master", "sheet": "res://assets/sprites/npc_warden.png"},
 	"festival": {"name": "Festival Keeper", "prompt": "Visit the festival stall", "sheet": "res://assets/sprites/npc_merchant.png"},
+	"story": {"name": "", "prompt": "Talk", "sheet": "res://assets/sprites/npc_merchant.png"},
 }
 ## A merchant's wares change this often, in seconds.
 const RESTOCK_SECONDS := 1200.0

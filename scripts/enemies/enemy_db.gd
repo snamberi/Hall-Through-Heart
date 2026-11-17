@@ -28,6 +28,7 @@ const TRAITS := {
 	"split": "Bursts into two smaller copies when killed.",
 	"erratic": "Weaves from side to side as it closes in.",
 	"inspire": "Allies near it move and attack faster.",
+	"masked": "Its porcelain mask turns slowly toward you: blows to the face glance off until the mask cracks (critical, heavy or finishing blows crack it). From behind, blows land double. It feeds on deaths nearby.",
 }
 
 const ENEMIES := {
@@ -290,6 +291,20 @@ const ENEMIES := {
 		"radius": 15.0, "size": 1.05, "tiles": [T.BOG, T.MUD, T.FUNGAL], "min_level": 4, "weight": 6.0,
 		"attack": {"kind": "burrow", "range": 220.0, "windup": 1.1, "radius": 72.0, "recover": 1.0, "color": Color(0.5, 0.75, 0.4), "knockback": 300.0},
 		"touch": {"status": "poison", "duration": 4.0, "power": 0.3}, "traits": [],
+	},
+	# --- the Lull Court: never met wild; Saint Lull's places them.
+	"masked_noble": {
+		"active": "night", "name": "Masked Noble", "health": 70.0, "damage": 16.0, "speed": 96.0, "xp": 26, "story": true,
+		"radius": 15.0, "size": 1.0, "tiles": [], "min_level": 1, "weight": 0.0,
+		"attack": {"kind": "swipe", "range": 78.0, "windup": 0.55, "arc": 130.0, "recover": 0.9, "color": Color(0.95, 0.92, 0.88)},
+		"touch": {"status": "bleed", "duration": 3.0, "power": 0.3}, "traits": ["masked"],
+	},
+	"matron": {
+		"active": "always", "name": "The Matron", "health": 120.0, "damage": 20.0, "speed": 82.0, "xp": 40, "story": true,
+		"radius": 16.0, "size": 1.0, "tiles": [], "min_level": 1, "weight": 0.0,
+		"attack": {"kind": "slam", "range": 92.0, "windup": 0.8, "recover": 1.2, "radius": 125.0, "color": Color(1.0, 0.88, 0.6), "knockback": 480.0,
+			"status": {"status": "burn", "duration": 3.0, "power": 0.4}},
+		"traits": ["enrage"],
 	},
 	"storm_harpy": {
 		"active": "day", "name": "Storm Harpy", "health": 24.0, "damage": 11.0, "speed": 170.0, "xp": 13, "flying": true,

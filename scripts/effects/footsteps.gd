@@ -30,7 +30,7 @@ const CREATURE_FEET := {
 	"giant_spider": "dots", "web_spider": "dots", "frost_wolf": "paw", "frost_troll": "big_paw", "dire_boar": "hoof", "treant": "big_paw",
 	"sand_scorpion": "dots", "dune_mummy": "drag", "void_stalker": "paw", "void_eye": "", "crimson_fiend": "claw", "veinheart": "blob",
 	"heartsworn_knight": "boot", "rotten_corpse": "drag", "ghost": "", "magma_slime": "blob", "cinder_imp": "claw", "bog_lurker": "blob",
-	"storm_harpy": "",
+	"storm_harpy": "", "masked_noble": "boot", "matron": "boot",
 }
 
 ## The player's footsteps, which also draw every print near them.

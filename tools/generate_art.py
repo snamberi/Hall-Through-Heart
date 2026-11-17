@@ -24,6 +24,13 @@ def rgba(h):
 # Each material has three shades: light, mid, shadow. Light comes from top-left.
 
 PALETTE = {
+    # The Lull Court's masked nobles and the Matron of Saint Lull's.
+    "porcelain": ["f6f2ea", "dcd6ca", "a8a294"],
+    "noble_robe": ["3a3048", "2a2236", "1a1522"],
+    "noble_trim": ["d8b070", "a8803e", "6e5020"],
+    "antler": ["e0d6c0", "b8ac94", "7e7462"],
+    "dress": ["34323c", "24222c", "16141c"],
+    "apron": ["f2eee6", "d8d2c6", "a8a296"],
     "skin": ["e8c4a0", "c99c7c", "9c7460"],
     "hair": ["6e4a33", "523625", "38241a"],
     "tunic": ["b9ad92", "968a72", "6e6454"],
@@ -985,6 +992,43 @@ SPORE_SHAMBLER = _biped(
     pivots={"head": (22, 23)},
 )
 
+# A noble of the Lull Court: very tall, in a long robe with bronze trim,
+# a porcelain mask with one upright slit and red tears painted under it,
+# antlers through the hood, long fingers ending in claws.
+MASKED_NOBLE = _biped(
+    back_arm=[("noble_robe", [(11, 2), (15, 2), (14, 25), (10, 25)]), ("porcelain", [(10, 25), (14, 25), (13, 29), (11, 29)]),
+              ("bone", [(10, 29), (11, 29), (10.5, 34)]), ("bone", [(12, 29), (13, 29), (12.8, 34.5)]), ("bone", [(13.2, 28.5), (14, 28.5), (14.5, 33)])],
+    leg_l=[("dress", R(17, 34, 20, 41)), ("dark", R(16, 40, 20.5, 41))],
+    leg_r=[("dress", R(24, 34, 27, 41)), ("dark", R(23.5, 40, 28, 41))],
+    torso=[("noble_robe", [(15, 1), (29, 1), (34, 38), (10, 38)]), ("noble_trim", R(21, 1, 23, 37)),
+           ("noble_trim", [(10, 36), (34, 36), (34, 38), (10, 38)]), ("noble_robe", [(10, 37), (13, 40), (16, 37.5), (19, 40.5), (22, 37.5), (25, 40.5), (28, 37.5), (31, 40), (34, 37)]),
+           ("apron", [(14, 1), (30, 1), (28, 5), (22, 7), (16, 5)]), ("noble_trim", R(15, 16, 29, 17.4)), ("ruby", E(20.6, 15.2, 23.4, 18.2))],
+    head=[("noble_robe", E(12, -24, 32, 2)), ("antler", [(15, -18), (13, -24), (9, -29), (10, -30), (13, -26), (12, -32), (14, -32), (15, -26), (17, -20)]),
+          ("antler", [(29, -18), (31, -24), (35, -29), (34, -30), (31, -26), (32, -32), (30, -32), (29, -26), (27, -20)]),
+          ("porcelain", E(15, -20, 29, -1)), ("void", R(21.3, -16, 22.7, -7)), ("glow_red", R(21.6, -13, 22.4, -11)),
+          ("blood", R(18, -9, 18.8, -4)), ("blood", R(25.2, -9, 26, -4)), ("apron", R(17, -18, 19, -17)),
+          ("dark", R(19, -3.5, 25, -2.8))],
+    front_arm=[("noble_robe", [(29, 2), (33, 2), (34, 25), (30, 25)]), ("porcelain", [(30, 25), (34, 25), (33.5, 29), (30.5, 29)]),
+               ("bone", [(30, 29), (31, 29), (30.5, 35)]), ("bone", [(32, 29), (33, 29), (32.8, 35.5)]), ("bone", [(33.4, 28.5), (34.2, 28.5), (35, 33.5)])],
+    pivots={"head": (22, 1), "back_arm": (13, 4), "front_arm": (31, 4)},
+)
+# The Matron of Saint Lull's: a tidy black dress and white apron, a grey
+# bun, a smile that never moves, keys at her belt and a lantern held up.
+MATRON = _biped(
+    back_arm=[("dress", R(12, 20, 15, 31)), ("skin", R(12, 31, 15, 33))],
+    leg_l=[("dress", R(17.5, 36, 20.5, 41)), ("dark", R(17, 40, 21, 41))],
+    leg_r=[("dress", R(23.5, 36, 26.5, 41)), ("dark", R(23, 40, 27, 41))],
+    torso=[("dress", [(16, 19), (28, 19), (32, 39), (12, 39)]), ("apron", [(18, 22), (26, 22), (28, 38), (16, 38)]),
+           ("apron", [(17, 19), (27, 19), (25, 22), (19, 22)]), ("dress", R(18, 26, 26, 27)), ("gold_m", E(25, 26, 28, 29)),
+           ("gold_m", R(26, 28.5, 26.8, 31))],
+    head=[("skin", E(16, 6, 28, 19)), ("hair", E(15, 2, 29, 11)), ("hair", E(18.5, -3, 25.5, 4)), ("skin", E(17, 8, 27, 18)),
+          ("void", R(18.6, 12, 20.6, 12.6)), ("void", R(23.4, 12, 25.4, 12.6)), ("mouth", [(19.5, 15), (24.5, 15), (23.5, 16.4), (20.5, 16.4)]),
+          ("apron", R(15.5, 5, 28.5, 6))],
+    front_arm=[("dress", R(28, 20, 31, 29)), ("skin", R(28, 29, 31, 31)), ("gold_m", R(30, 22, 30.8, 30)),
+               ("gold_m", [(29, 22), (33, 22), (32.5, 20.5), (29.5, 20.5)]), ("fire", E(29.6, 23, 32.6, 27)), ("fire_core", E(30.4, 24, 31.8, 26.4)),
+               ("gold_m", R(29, 27, 33, 28))],
+)
+
 QUAD_ORDER = ["leg_fl", "leg_bl", "tail", "body", "head", "leg_br", "leg_fr"]
 
 
@@ -1677,6 +1721,8 @@ MONSTERS = {
     "magma_slime": (MAGMA_SLIME, ["body"], SLIME_ANIMATIONS),
     "veinheart": (VEINHEART, FLOAT_ORDER, FLOAT_ANIMATIONS),
     "heartsworn_knight": (HEARTSWORN_KNIGHT, HUSK_ORDER, HUSK_ANIMATIONS),
+    "masked_noble": (MASKED_NOBLE, HUSK_ORDER, HUSK_ANIMATIONS),
+    "matron": (MATRON, HUSK_ORDER, HUSK_ANIMATIONS),
     "rotten_corpse": (ROTTEN_CORPSE, HUSK_ORDER, HUSK_ANIMATIONS),
     "ghost": (GHOST, FLOAT_ORDER, FLOAT_ANIMATIONS),
 }
@@ -2909,7 +2955,37 @@ MAP_ICONS = [
                  ("grass_m", "rect", (13, 6, 14, 10)), ("shell", "rect", (6, 12, 8, 16)), ("danger", "rect", (10, 12, 11, 16)), ("coin", "rect", (13, 13, 15, 16))]),
     ("dojo", [("danger", "rect", (2, 4, 19, 6)), ("danger", "poly", [(0, 4), (21, 4), (19, 2), (2, 2)]), ("danger", "rect", (4, 6, 6, 20)), ("danger", "rect", (15, 6, 17, 20)),
               ("coin", "rect", (3, 9, 18, 10)), ("night", "ellipse", (8, 12, 13, 17)), ("coin", "rect", (10, 13, 11, 16))]),
+    # Saint Lull's: a white house with a bell tower and a red door; the
+    # Benefactor's hatch in its mound; a Promise Stone, white with gilt.
+    ("orphanage", [("porcelain_m", "rect", (2, 10, 19, 19)), ("slate_m", "poly", [(0, 10), (5, 5), (16, 5), (21, 10)]), ("porcelain_m", "rect", (8, 2, 13, 7)),
+                   ("slate_m", "poly", [(7, 3), (10.5, 0), (14, 3)]), ("coin", "rect", (10, 4, 11, 5)), ("danger", "rect", (9, 14, 12, 19)),
+                   ("coin", "rect", (4, 12, 5, 13)), ("coin", "rect", (15, 12, 16, 13)), ("grass_m", "rect", (0, 19, 21, 20))]),
+    ("bunker", [("grass_m", "ellipse", (1, 8, 20, 20)), ("wood", "rect", (5, 10, 16, 17)), ("night", "rect", (5, 13, 16, 13)), ("night", "rect", (10, 10, 10, 17)),
+                ("stone_m", "ring", (9, 12, 12, 15), 1)]),
+    ("promise_stone", [("porcelain_m", "poly", [(6, 19), (6, 6), (10.5, 1), (15, 6), (15, 19)]), ("coin", "rect", (8, 7, 13, 7)), ("coin", "rect", (8, 10, 12, 10)),
+                       ("coin", "rect", (9, 13, 13, 13)), ("night", "rect", (10, 3, 11, 5)), ("stone_m", "rect", (4, 18, 17, 20))]),
 ]
+ICON_PALETTE.update({"porcelain_m": ["fbf8f0", "e2dcd0", "a8a090"], "slate_m": ["7a8090", "5a6070", "3e4452"]})
+
+
+def update_map_icons():
+    """Draws the map icons listed in MAP_ICONS into their cells of
+    assets/icons/map.png (by MapIcons.KINDS), adding cells for new kinds."""
+    import re
+    source = open(os.path.join(ROOT, "..", "scripts", "ui", "map_icons.gd")).read()
+    start = source.index("= [", source.index("const KINDS"))
+    block = source[start:source.index("]", start)]
+    kinds = re.findall(r'"([a-z_]+)"', block)
+    path = os.path.join(ROOT, "icons", "map.png")
+    old = Image.open(path).convert("RGBA")
+    sheet = Image.new("RGBA", (len(kinds) * 22, 22), (0, 0, 0, 0))
+    sheet.paste(old, (0, 0))
+    for name, parts in MAP_ICONS:
+        if name in kinds:
+            index = kinds.index(name)
+            sheet.paste(Image.new("RGBA", (22, 22), (0, 0, 0, 0)), (index * 22, 0))
+            sheet.paste(draw_icon(parts, 22), (index * 22, 0))
+    sheet.save(path)
 
 # Things to gather in the world: 64px frames in one row. Pale parts are
 # tinted in game. Order: rock, ore flecks, tree, herb, fishing ripple.
@@ -3218,5 +3294,7 @@ if __name__ == "__main__":
     import sys
     if sys.argv[1:] == ["tiles"]:
         draw_terrain()  # python3 tools/generate_art.py tiles: just the ground
+    elif sys.argv[1:] == ["map"]:
+        update_map_icons()  # python3 tools/generate_art.py map: the map icons
     else:
         main()

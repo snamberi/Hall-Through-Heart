@@ -142,6 +142,11 @@ func is_night() -> bool:
 	return darkness() > 0.6
 
 
+## Whether it is night out there, even while the player is indoors.
+func is_night_outside() -> bool:
+	return clampf(1.0 - (_sky().r - 0.28) / 0.72, 0.0, 1.0) > 0.6
+
+
 ## The hour of the day as "HH:MM" (midnight at 0).
 func clock() -> String:
 	var minutes := int(time * 24.0 * 60.0) % (24 * 60)

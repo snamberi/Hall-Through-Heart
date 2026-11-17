@@ -439,8 +439,21 @@ func _build(center: Vector2i) -> Array:
 			villager.lines = said
 		villager.villager_name = person["name"]
 		villager.job = person["job"]
-		villager.look = person["look"]
+		villager.look = (person["look"] as Dictionary).duplicate()
 		villager.villager_key = person["key"]
+		# Those who inform for the Lull Court wear a small porcelain charm at
+		# the throat (the pendant), and no one else does. While Saint Lull's
+		# plan is under way they ask where you are going.
+		if SaintLull.is_informer(person["key"]):
+			var lull: SaintLull = get_parent().get_node_or_null("SaintLull")
+			if lull == null or not person["key"] in lull.informers_caught:
+				villager.look["neck"] = 4
+				if lull and lull.stage >= 2 and lull.stage < 5:
+					var probing: Array[String] = villager.lines.duplicate()
+					probing.append_array(SaintLull.INFORMER_LINES)
+					villager.lines = probing
+		elif int(villager.look.get("neck", 0)) == 4:
+			villager.look["neck"] = 1
 		villager.square = _at(center)
 		villager.door = doors[i % doors.size()] if not doors.is_empty() else Vector2.ZERO
 		villager.home = villager.door + Vector2(0, 30) if villager.door != Vector2.ZERO else villager.position

@@ -33,6 +33,12 @@ func _lines() -> Array:
 				steps.append([str(ItemDB.ITEMS[item_id]["name"]), mini(Stash.available(_player, item_id), int(recipe["inputs"][item_id])), int(recipe["inputs"][item_id])])
 			var made_id: String = recipe.get("equipment", recipe.get("item", ""))
 			result.append(["Craft: " + str(ItemDB.ITEMS.get(made_id, {}).get("name", "something")), steps.slice(0, 4), true])
+	# Saint Lull's, while its story is under way.
+	var lull: Node = _player.get_parent().get_node_or_null("SaintLull")
+	if lull:
+		var story: Array = lull.tracker_lines()
+		if not story.is_empty():
+			result.append(story)
 	if _book == null:
 		_book = _player.get_parent().get_node_or_null("QuestBook")
 	if _book:

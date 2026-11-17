@@ -406,3 +406,7 @@ worn_pickaxe
 wraith_cloth
 wrap_briar
 bedroll
+benefactor_pen
+lull_doll
+matron_lantern
+noble_mask

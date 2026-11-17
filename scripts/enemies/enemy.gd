@@ -144,6 +144,14 @@ var _last_weapon_type := ""
 ## Whether this boss has turned on the player yet (for the autosave).
 var _engaged := false
 var _since_hurt := 99.0
+## Masked (the Lull Court): cracks the porcelain can take before it breaks,
+## where the mask is looking, whether the last blow glanced off it, and how
+## many deaths it has fed on.
+var mask_left := 0
+var _mask_facing := Vector2.LEFT
+var _glanced := false
+var _fed := 0
+var _mask_said := 0.0
 var _blink_left := 3.0
 var _aura_left := 0.0
 ## Seconds until a hit can interrupt this enemy again.
@@ -255,6 +263,10 @@ func _ready() -> void:
 	_add_nameplate(rank_data, size)
 	StatusFX.attach(self, func() -> Array: return _statuses.keys(), 40.0 * size, body_radius)
 	health.died.connect(_on_died)
+	if has_trait("masked"):
+		var lull: Node = get_tree().get_first_node_in_group("saint_lull")
+		mask_left = 2 if lull != null and lull.promise_known() else MASK_CRACKS
+		Events.enemy_killed.connect(_on_death_nearby)
 	_pick_wander()
 
 
@@ -297,6 +309,8 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 	if has_trait("regen") and _since_hurt > 2.0:
 		health.heal(health.max_health / WOUNDS_LAST * delta)
+	if mask_left > 0 or has_trait("masked"):
+		_turn_mask(delta)
 	if not modifiers.is_empty():
 		_update_modifiers(delta)
 	if brain and state != State.STAGGER:
@@ -420,6 +434,8 @@ func _draw() -> void:
 		draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
 		draw_arc(Vector2.ZERO, body_radius + 14.0, 0.0, TAU, 32, Color(1.0, 0.8, 0.3, 0.9), 2.5)
 		draw_set_transform(Vector2.ZERO)
+	if has_trait("masked") and state != State.DEAD:
+		_draw_gaze()
 	# A ring in each modifier's colour marks an Elite or Champion.
 	if state != State.DEAD:
 		for index in modifiers.size():
@@ -649,6 +665,8 @@ func take_damage(
 		# Elemental damage riding on a blow: its own coloured number, and no
 		# extra shove, dodge, or thorns.
 		amount *= 1.0 - float(wards.get(element, 0.0))
+		if _glanced:
+			amount *= MASK_GLANCE
 		_learn("elements", element)
 		_warn(element, "%s! Scatter!" % element.capitalize())
 		if shield > 0.0:
@@ -662,6 +680,9 @@ func take_damage(
 		return health.take_damage(amount)
 	if has_trait("armored"):
 		amount *= 0.65
+	_glanced = false
+	if has_trait("masked"):
+		amount = _masked_blow(amount, knockback, critical)
 	var style := Factions.style_of(weapon_type)
 	if style != "":
 		if style == "magic":
@@ -1274,6 +1295,129 @@ func _separation() -> Vector2:
 		if offset.length() < spacing and offset.length() > 0.01:
 			push += offset.normalized() * (spacing - offset.length()) * 6.0
 	return push
+
+
+# --- the Lull Court's masks
+
+const MASK_CRACKS := 3
+## How much of a blow to the face gets through an unbroken mask.
+const MASK_GLANCE := 0.2
+## How fast the mask turns toward its prey (radians a second): slow enough
+## to be got behind.
+const MASK_TURN := 1.7
+## The traits a noble can take from deaths it feeds on.
+const FEEDING_TRAITS: Array[String] = ["regen", "lifesteal", "enrage", "blink"]
+
+
+## The mask turns toward its prey, but not while it is mid-blow.
+func _turn_mask(delta: float) -> void:
+	_mask_said = maxf(_mask_said - delta, 0.0)
+	if state == State.WINDUP or state == State.LUNGE or state == State.STAGGER:
+		return
+	var want := _mask_facing
+	if target and state == State.CHASE:
+		want = global_position.direction_to(target.global_position)
+	elif _direction != Vector2.ZERO:
+		want = _direction
+	var turn := _mask_facing.angle_to(want)
+	_mask_facing = _mask_facing.rotated(clampf(turn, -MASK_TURN * delta, MASK_TURN * delta))
+	queue_redraw()
+
+
+## A blow against a masked noble: from behind it lands double; to the face
+## it glances off, unless it is hard enough to crack the porcelain.
+func _masked_blow(amount: float, knockback: Vector2, critical: bool) -> float:
+	var behind := knockback != Vector2.ZERO and knockback.normalized().dot(_mask_facing) > 0.3
+	if behind:
+		if _mask_said <= 0.0:
+			_mask_said = 3.0
+			DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -34), "From behind!", Color(1.0, 0.85, 0.4), 13)
+		return amount * 2.0
+	if mask_left <= 0:
+		# The bare face beneath: worse to look at, easier to hurt.
+		return amount * 1.25
+	if critical or knockback.length() > 380.0:
+		crack_mask()
+		return amount * 0.6
+	_glanced = true
+	if _mask_said <= 0.0:
+		_mask_said = 3.0
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -34), "Glances off the mask", Color(0.92, 0.9, 0.86), 12)
+	HitSpark.spawn(get_parent(), global_position + Vector2(0, -44), Color(0.95, 0.94, 0.9), false)
+	return amount * MASK_GLANCE
+
+
+## One crack in the mask; the last one breaks it.
+func crack_mask() -> void:
+	if mask_left <= 0:
+		return
+	mask_left -= 1
+	Audio.play_note("hit", 1.8, -6.0)
+	HitSpark.spawn(get_parent(), global_position + Vector2(0, -44), Color.WHITE, true)
+	if mask_left > 0:
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -40), "Mask cracked (%d left)" % mask_left, Color(0.95, 0.94, 0.9), 13)
+	else:
+		break_mask()
+	queue_redraw()
+
+
+## The mask breaks (the last crack, or a finisher): white shards, a scream,
+## and the face beneath takes blows a quarter harder.
+func break_mask() -> void:
+	mask_left = 0
+	_glanced = false
+	RingBurst.spawn(get_parent(), global_position + Vector2(0, -40), Color(0.96, 0.95, 0.92), 70.0)
+	DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -48), "THE MASK SHATTERS", Color(1.0, 0.45, 0.45), 15, true)
+	_voice("hurt", 2.0)
+	_tint = _tint.lerp(Color(1.0, 0.75, 0.75), 0.4)
+	_visual.modulate = _tint
+	Events.codex_event.emit("masks_broken", 1)
+	queue_redraw()
+
+
+## A death close by: a masked noble breathes it in, heals, and grows a
+## little worse (up to three times).
+func _on_death_nearby(info: Dictionary) -> void:
+	if state == State.DEAD or not is_inside_tree():
+		return
+	var at: Vector2 = info.get("position", Vector2.INF)
+	if at.distance_to(global_position) > 320.0 or at.distance_to(global_position) < 1.0:
+		return
+	health.heal(health.max_health * 0.2)
+	if _fed < 3:
+		var options: Array[String] = []
+		for id in FEEDING_TRAITS:
+			if not id in _traits:
+				options.append(id)
+		if not options.is_empty():
+			var gained: String = options.pick_random()
+			_traits.append(gained)
+			_fed += 1
+			DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -52), "Feeds... (%s)" % gained.capitalize(), Color(0.95, 0.5, 0.55), 13)
+			RingBurst.spawn(get_parent(), at + Vector2(0, -10), Color(0.95, 0.4, 0.45), 40.0)
+	Events.codex_event.emit("noble_fed", 1)
+
+
+## Where the mask looks: a faint pale wedge on the ground ahead of it, and
+## the cracks it can still take as porcelain chips at the wedge's edge.
+func _draw_gaze() -> void:
+	var reach := body_radius + 30.0
+	var spread := deg_to_rad(55.0)
+	var base := _mask_facing.angle()
+	draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.5))
+	var points := PackedVector2Array([Vector2.ZERO])
+	for k in 9:
+		points.append(Vector2.from_angle(base - spread + spread * 2.0 * k / 8.0) * reach)
+	draw_colored_polygon(points, Color(0.96, 0.95, 0.9, 0.12 if mask_left > 0 else 0.05))
+	for k in 9:
+		var a := Vector2.from_angle(base - spread + spread * 2.0 * k / 8.0) * reach
+		draw_rect(Rect2(a.round(), Vector2(2, 2)), Color(0.96, 0.95, 0.9, 0.35))
+	for k in MASK_CRACKS:
+		var chip := (Vector2.from_angle(base - 0.3 + 0.3 * k) * (reach + 7.0)).round()
+		var whole := k < mask_left
+		draw_rect(Rect2(chip - Vector2(2, 2), Vector2(5, 5)), Color(0.08, 0.06, 0.1, 0.8))
+		draw_rect(Rect2(chip - Vector2(1, 1), Vector2(3, 3)), Color(0.97, 0.96, 0.92) if whole else Color(0.55, 0.2, 0.25))
+	draw_set_transform(Vector2.ZERO)
 
 
 func _flash() -> void:

@@ -2280,6 +2280,84 @@ def new_thing_icon(kind):
             icon.put(x + 1, 18, c(BRONZE))
         icon.line([(13, 10), (16, 4), (21, 4), (21, 10)], 1, ramp(LEATHER))
         icon.line([(6, 14), (6, 22)], 1, [c("f0c8b0")] * 5)
+    elif kind == "lull_doll":
+        # A rag doll: yarn hair in two plaits, button eyes, a stitched
+        # mouth, a white smock with an apron, and "31" stitched on it.
+        icon.line([(9, 17), (4, 22)], 3, ramp("f0e6d2"))
+        icon.line([(23, 17), (28, 22)], 3, ramp("f0e6d2"))
+        icon.poly([(10, 15), (22, 15), (25, 29), (7, 29)], ramp("f4f0e8"))
+        icon.rect((11, 20, 21, 28), ramp("e0dccf"), rim=False)
+        icon.line([(12, 29), (12, 31)], 2, ramp("f0e6d2"))
+        icon.line([(19, 29), (19, 31)], 2, ramp("f0e6d2"))
+        icon.ellipse((9, 2, 23, 16), ramp("f0e0c8"))
+        icon.line([(9, 6), (7, 14), (8, 18)], 2, ramp("8a5a34"))
+        icon.line([(23, 6), (25, 14), (24, 18)], 2, ramp("8a5a34"))
+        icon.poly([(9, 7), (12, 2), (20, 2), (23, 7), (16, 5)], ramp("8a5a34"))
+        for x in (12, 19):
+            icon.put(x, 9, c("2a2226"))
+            icon.put(x + 1, 9, c("2a2226"))
+            icon.put(x, 10, c("2a2226"))
+            icon.put(x + 1, 10, c("4a4652"))
+        icon.put(15, 13, c("a83040"))
+        icon.put(16, 13, c("a83040"))
+        icon.put(17, 12, c("a83040"))
+        icon.put(14, 12, c("a83040"))
+        # "31", stitched in red on the apron.
+        for x, y in ((13, 22), (14, 22), (15, 23), (14, 24), (15, 25), (13, 26), (14, 26), (18, 22), (18, 23), (18, 24), (18, 25), (18, 26), (17, 23)):
+            icon.put(x, y, c("a83040"))
+        icon.dots([(10, 17), (21, 17)], c("b0aa9c"))
+    elif kind == "noble_mask":
+        # A Court mask: smooth white porcelain, one upright slit for an eye,
+        # red tears painted beneath, gilt at the brow, black ribbons.
+        icon.line([(4, 13), (1, 22)], 2, ramp("2a2632"))
+        icon.line([(28, 13), (31, 22)], 2, ramp("2a2632"))
+        icon.ellipse((5, 2, 27, 31), ramp("f4f0ea"))
+        icon.ellipse((9, 5, 23, 15), ramp("fbf8f2"), rim=False, flat=True)
+        icon.line([(10, 4), (16, 3), (22, 4)], 1, ramp(GOLD))
+        icon.put(16, 4, c("f8e6a0"))
+        icon.line([(16, 9), (16, 19)], 2, [c("141218")] * 5, rim=False)
+        icon.put(16, 8, c("2a2632"))
+        icon.put(16, 20, c("2a2632"))
+        for x, top, bottom in ((12, 18, 26), (20, 18, 25), (14, 21, 28)):
+            icon.line([(x, top), (x, bottom)], 1, [c("b82838")] * 5, rim=False)
+            icon.put(x, bottom + 1, c("8a1c2a"))
+        icon.line([(11, 27), (16, 29), (21, 27)], 1, [c("d8d2c6")] * 5, rim=False)
+        icon.dots([(8, 10), (9, 8)], c("ffffff"))
+    elif kind == "matron_lantern":
+        # The Matron's lantern: a brass cage with four panes, a white-hot
+        # flame, a ring and hook above, and a white ribbon tied on.
+        icon.ring((11, 0, 21, 8), 2, ramp(BRONZE))
+        icon.poly([(8, 9), (24, 9), (21, 6), (11, 6)], ramp(BRONZE))
+        icon.rect((9, 10, 23, 26), ramp("fff0c0"))
+        icon.ellipse((12, 13, 20, 24), ramp("ffe080"), rim=False)
+        icon.poly([(16, 12), (19, 19), (16, 23), (13, 19)], [c("ffffff"), c("fffbe8"), c("fff4c8"), c("ffe8a0"), c("f0c060")], rim=False)
+        icon.put(16, 18, c("ffffff"))
+        for x in (9, 23):
+            icon.line([(x, 10), (x, 26)], 1, ramp(BRONZE))
+        icon.line([(10, 17), (12, 17)], 1, ramp(BRONZE))
+        icon.line([(20, 17), (22, 17)], 1, ramp(BRONZE))
+        icon.rect((7, 25, 25, 29), ramp(BRONZE))
+        icon.line([(8, 26), (24, 26)], 1, [c("f0c878")] * 5, rim=False)
+        icon.line([(23, 11), (28, 15), (27, 20)], 1, ramp("f4f0ea"))
+        icon.line([(23, 11), (26, 17)], 1, ramp("e0dccf"))
+        for x, y in ((4, 14), (28, 5), (5, 27)):
+            icon.sparkle(x, y, (255, 230, 160))
+    elif kind == "benefactor_pen":
+        # The Benefactor's pen: a long black quill with a cut gilt nib, a
+        # drop of ink, and a little brass key tied on with thread.
+        icon.poly([(26, 2), (29, 3), (18, 17), (11, 22), (9, 21), (14, 14)], ramp("3a3644"))
+        icon.line([(27, 3), (11, 21)], 1, ramp("6a6478"))
+        for k in range(4):
+            icon.put(24 - k * 3, 8 + k * 3, c("5a5664"))
+        icon.line([(11, 21), (5, 27)], 2, ramp(GOLD))
+        icon.put(4, 28, c("2a2226"))
+        icon.put(5, 28, c("6a5a2a"))
+        icon.ellipse((2, 28, 6, 32), ramp("1e2a4a"))
+        icon.line([(14, 20), (19, 25)], 1, [c("c8b890")] * 5, rim=False)
+        icon.ring((18, 23, 23, 28), 1, ramp(BRONZE))
+        icon.line([(22, 27), (27, 29)], 2, ramp(BRONZE))
+        icon.put(26, 30, c("8a6030"))
+        icon.put(27, 30, c("8a6030"))
     return icon
 
 
@@ -2852,6 +2930,10 @@ ITEMS = {
     "rowboat": boat_icon,
     "bandage": bandage_icon,
     "bedroll": lambda: new_thing_icon("bedroll"),
+    "lull_doll": lambda: new_thing_icon("lull_doll"),
+    "noble_mask": lambda: new_thing_icon("noble_mask"),
+    "matron_lantern": lambda: new_thing_icon("matron_lantern"),
+    "benefactor_pen": lambda: new_thing_icon("benefactor_pen"),
     "taming_treat": treat_icon,
     # --- walls
     **{k: (lambda k=k: wall_icon(k)) for k in WALLS},

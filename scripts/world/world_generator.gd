@@ -208,6 +208,97 @@ func sky_shrine_cell() -> Vector2i:
 	return _sky_shrine
 
 
+var _landmarks: Dictionary = {}
+
+## Saint Lull's House (see SaintLull): where it stands and how far its
+## grounds reach. Its ground is laid here: a dark lawn inside the wall, a
+## path from the front gate to the door, and withered wheat-land round it.
+const LULL_HOUSE := [7313, 320.0, 15]
+var _lull_home := Vector2i.MAX
+var _finding_lull := false
+
+
+func lull_house_cell() -> Vector2i:
+	if _lull_home == Vector2i.MAX:
+		_finding_lull = true
+		_lull_home = landmark_cell(LULL_HOUSE[0], LULL_HOUSE[1], LULL_HOUSE[2])
+		_finding_lull = false
+		# Ground worked out during the search is the bare land: forget it.
+		for y in range(-LULL_HOUSE[2], LULL_HOUSE[2] + 1):
+			for x in range(-LULL_HOUSE[2], LULL_HOUSE[2] + 1):
+				_cache.erase(_lull_home + Vector2i(x, y))
+	return _lull_home
+
+
+func _house_ground(cell: Vector2i) -> int:
+	if _finding_lull:
+		return -1
+	var at := cell - lull_house_cell()
+	var reach: int = LULL_HOUSE[2] - 1
+	if absi(at.x) > reach or absi(at.y) > reach:
+		return -1
+	# Ragged at the edge, so the wheat-land fades into whatever is round it.
+	if maxi(absi(at.x), absi(at.y)) >= reach - 1 and posmod(hash(Vector3i(cell.x, cell.y, world_seed + 77)), 3) == 0:
+		return -1
+	if absi(at.x) <= 1 and at.y >= 0 and at.y <= 7:
+		return T.PATH
+	if absi(at.x) <= 6 and absi(at.y) <= 6:
+		return T.DARK_GRASS
+	return T.DEAD_GRASS
+
+
+## A fixed place for a landmark of this world: about `distance` tiles out
+## from the temple in a direction `seed_offset` chooses, on the nearest
+## open dry ground with room around it (`room` tiles every way), away from
+## villages. The same for a world; worked out once.
+func landmark_cell(seed_offset: int, distance: float, room: int = 4) -> Vector2i:
+	var key := Vector3i(seed_offset, roundi(distance), room)
+	if _landmarks.has(key):
+		return _landmarks[key]
+	var random := RandomNumberGenerator.new()
+	random.seed = world_seed + seed_offset
+	var target := Vector2i(Vector2.from_angle(random.randf() * TAU) * distance)
+	var found := _open_ground_near(target, room, 150)
+	_landmarks[key] = found
+	return found
+
+
+## The nearest open ground to a cell, for something that belongs beside
+## another landmark (a hatch by the house).
+func landmark_near(target: Vector2i, seed_offset: int, room: int = 2) -> Vector2i:
+	var key := Vector3i(target.x * 7 + seed_offset, target.y, room)
+	if _landmarks.has(key):
+		return _landmarks[key]
+	var found := _open_ground_near(target, room, 60)
+	_landmarks[key] = found
+	return found
+
+
+## Searches out in square rings (every other ring, every other cell, to
+## stay quick) for a cell whose surroundings are dry and away from villages.
+func _open_ground_near(target: Vector2i, room: int, max_radius: int) -> Vector2i:
+	for radius in range(0, max_radius, 2):
+		for y in range(-radius, radius + 1, 2 if radius > 0 else 1):
+			for x in range(-radius, radius + 1, 2 if radius > 0 else 1):
+				if maxi(absi(x), absi(y)) != radius:
+					continue
+				var cell := target + Vector2i(x, y)
+				if _has_room(cell, room):
+					return cell
+	return find_walkable_near(target)
+
+
+func _has_room(cell: Vector2i, room: int) -> bool:
+	if village_near(cell) != null or Vector2(cell).length() < SANCTUARY_OUTER + 30.0:
+		return false
+	var step := maxi(room / 3, 1)
+	for y in range(-room, room + 1, step):
+		for x in range(-room, room + 1, step):
+			if not is_dry_land(cell + Vector2i(x, y)):
+				return false
+	return village_near(cell + Vector2i(room, room)) == null and village_near(cell - Vector2i(room, room)) == null
+
+
 ## Drops a cell's remembered terrain, so it is worked out afresh.
 func forget(cell: Vector2i) -> void:
 	_cache.erase(cell)
@@ -267,6 +358,9 @@ func _compute(cell: Vector2i) -> int:
 	var village: Variant = village_near(cell)
 	if village != null:
 		return _village_tile(cell, village)
+	var grounds := _house_ground(cell)
+	if grounds >= 0:
+		return grounds
 	var natural := _natural(cell)
 	if on_road(cell):
 		# Roads cut through hills and cross shallows on planks; deep water

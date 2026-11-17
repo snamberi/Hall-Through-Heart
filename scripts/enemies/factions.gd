@@ -37,6 +37,8 @@ const LIST := {
 		"members": ["void_stalker", "void_eye"]},
 	"heart": {"name": "The Heartsworn", "color": Color(0.95, 0.3, 0.4),
 		"members": ["veinheart", "heartsworn_knight"]},
+	"lull": {"name": "The Lull Court", "color": Color(0.96, 0.94, 0.9),
+		"members": ["masked_noble", "matron"]},
 }
 const STYLES := ["melee", "ranged", "magic"]
 const STYLE_NAMES := {"melee": "up close", "ranged": "from afar", "magic": "with sorcery"}

@@ -37,7 +37,7 @@ const SCREENS: Array[Dictionary] = [
 ## Screens with a key of their own (rebindable): action -> screen id.
 const SHORTCUTS := {"open_inventory": "inventory", "open_quests": "journal", "open_map": "map"}
 ## Where a screen's Back button leads, when not to the wheel. "" closes.
-const BACK := {"settings": "pause", "teacher": "", "villager": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": "", "trophies": "", "projects": "", "rift": "", "festival": "", "trade_board": "shop"}
+const BACK := {"dialogue": "", "cipher": "", "settings": "pause", "teacher": "", "villager": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": "", "trophies": "", "projects": "", "rift": "", "festival": "", "trade_board": "shop"}
 
 var _menus: Dictionary[String, GameMenu] = {}
 ## "" when closed, "wheel", or a screen id.
@@ -161,6 +161,8 @@ func setup(player: Player) -> void:
 	)
 	_add("map", MapMenu.new())
 	_add("log", LogMenu.new())
+	_add("dialogue", DialogueMenu.new())
+	_add("cipher", CipherMenu.new())
 	_add("pause", PauseMenu.new())
 	_add("settings", SettingsMenu.new())
 
@@ -345,6 +347,11 @@ func badge_total() -> int:
 
 ## Talking to someone opens their screen.
 func _on_npc_interacted(npc: Node) -> void:
+	# Someone in a story: their own conversation.
+	if npc.kind == "story" and (npc.offer.get("talk") as Callable).is_valid():
+		npc.attend(_player.global_position)
+		(npc.offer["talk"] as Callable).call(npc)
+		return
 	if npc.kind == "festival":
 		(_menus["festival"] as FestivalMenu).festival = npc.offer.get("festival", "harvest")
 		open("festival")

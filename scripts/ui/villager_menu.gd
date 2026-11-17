@@ -10,6 +10,7 @@ var _figure: LookPreview
 var _words: Label
 var _errand_box: VBoxContainer
 var _message: Label
+var _accuse: Button
 
 
 func _build() -> void:
@@ -48,6 +49,17 @@ func _build() -> void:
 		_words.text = "\"%s\"" % _line()
 		Chronicle.say(get_tree(), "speech", npc.villager_name if npc else "", _words.text.trim_prefix("\"").trim_suffix("\""))
 	, 210.0))
+	# While Saint Lull's plan is under way: name an informer for the Court.
+	_accuse = UITheme.button("Accuse of informing", func() -> void:
+		var lull: SaintLull = player.get_parent().get_node_or_null("SaintLull")
+		if lull and npc:
+			_words.text = "[%s]" % lull.accuse(npc.villager_key)
+			if npc.villager_key in lull.informers_caught:
+				npc.look["neck"] = 0
+				npc.say("...!", 2.0)
+			_accuse.visible = false
+	, 200.0)
+	buttons.add_child(_accuse)
 	buttons.add_child(UITheme.button("Goodbye", func() -> void:
 		player.get_parent().get_node("Menus").close()
 	, 140.0))
@@ -71,6 +83,10 @@ func refresh() -> void:
 	_words.text = "\"%s\"" % _line()
 	Chronicle.say(get_tree(), "speech", npc.villager_name if npc else "", _words.text.trim_prefix("\"").trim_suffix("\""))
 	_message.text = ""
+	var lull: SaintLull = player.get_parent().get_node_or_null("SaintLull")
+	_accuse.visible = lull != null and lull.stage >= 2 and lull.stage < 5 and not npc.villager_key in lull.informers_caught
+	if lull:
+		lull.heard_by(npc.villager_key)
 	_fill_errand()
 
 

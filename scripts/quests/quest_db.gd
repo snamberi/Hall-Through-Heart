@@ -113,7 +113,7 @@ static func generate(player: Player) -> Dictionary:
 		"kill":
 			var options: Array[String] = []
 			for id: String in EnemyDB.ENEMIES:
-				if EnemyDB.ENEMIES[id]["min_level"] <= maxi(floori(level * 0.7), 1):
+				if EnemyDB.ENEMIES[id]["min_level"] <= maxi(floori(level * 0.7), 1) and not EnemyDB.ENEMIES[id].get("story", false):
 					options.append(id)
 			objective["target"] = options.pick_random()
 			objective["count"] = randi_range(5, 10)

@@ -52,6 +52,10 @@ var _loot: Node2D
 var _instances: Instances
 var _by_chunk: Dictionary = {}
 var _sites: Dictionary = {}
+## The places stories put in the world (Saint Lull's House, its hatch, the
+## Promise Stones), by chunk; worked out on first need.
+var _story_sites: Dictionary = {}
+var _story_ready := false
 
 
 func _ready() -> void:
@@ -119,11 +123,18 @@ func site_for(chunk: Vector2i) -> Dictionary:
 		site = {"kind": "sky_shrine", "cell": shrine, "key": "sky_shrine", "level": _world.generator.enemy_level_at(shrine), "seed": 9091}
 		_sites[chunk] = site
 		return site
+	# And the places of stories.
+	var story := _story_site(chunk)
+	if not story.is_empty():
+		_sites[chunk] = story
+		return story
 	var random := RandomNumberGenerator.new()
 	random.seed = hash(Vector3i(chunk.x, chunk.y, _world.generator.world_seed + 4242))
 	var cell := chunk * World.CHUNK_SIZE + Vector2i(random.randi_range(4, World.CHUNK_SIZE - 5), random.randi_range(4, World.CHUNK_SIZE - 5))
 	var roll := random.randf()
-	if Vector2(cell).length() > CLEAR_RADIUS and _world.generator.is_island(cell) and _clear_ground(cell) and roll < 0.4:
+	if _story_grounds(cell, 8.0):
+		pass
+	elif Vector2(cell).length() > CLEAR_RADIUS and _world.generator.is_island(cell) and _clear_ground(cell) and roll < 0.4:
 		# Islands keep wrecks, and what the sea did not take.
 		site = {"kind": "shipwreck", "cell": cell, "key": "shipwreck:%d,%d" % [chunk.x, chunk.y], "level": _world.generator.enemy_level_at(cell), "seed": random.randi()}
 	elif Vector2(cell).length() > CLEAR_RADIUS and _clear_ground(cell):
@@ -138,11 +149,34 @@ func site_for(chunk: Vector2i) -> Dictionary:
 	return site
 
 
+func _story_site(chunk: Vector2i) -> Dictionary:
+	if not _story_ready:
+		_story_ready = true
+		for site: Dictionary in SaintLull.sites(_world.generator):
+			var home := Vector2i((Vector2(site["cell"]) / World.CHUNK_SIZE).floor())
+			if _story_sites.has(home):
+				continue
+			site["level"] = _world.generator.enemy_level_at(site["cell"])
+			site["seed"] = hash(site["key"])
+			_story_sites[home] = site
+	return _story_sites.get(chunk, {})
+
+
+## Whether a tile lies on a story place's grounds (with `margin` more).
+func _story_grounds(cell: Vector2i, margin: float = 0.0) -> bool:
+	_story_site(Vector2i.ZERO)
+	for site: Dictionary in _story_sites.values():
+		if Vector2(cell - site["cell"]).length() <= float(site.get("grounds", GROUNDS)) + margin:
+			return true
+	return false
+
+
 ## What each kind of place is called on signs and in talk.
 const SITE_NAMES := {"ruin": "Ruins", "shrine": "Shrine", "cave": "Cave", "lair": "Lair", "portal": "Void Portal", "dungeon": "Sealed Crypt",
 	"boss": "Boss Arena", "camp": "Abandoned Camp", "waystone": "Waystone", "obelisk": "Obelisk", "merchant": "Merchant's Camp",
 	"watchtower": "Watchtower", "graveyard": "Graveyard", "henge": "Standing Stones", "farmstead": "Farmstead", "library": "Library",
-	"dojo": "Dojo", "shipwreck": "Shipwreck", "altar": "Altar of Magic", "village": "Village"}
+	"dojo": "Dojo", "shipwreck": "Shipwreck", "altar": "Altar of Magic", "village": "Village", "orphanage": "Saint Lull's House",
+	"bunker": "Grassy Hatch", "promise_stone": "Promise Stone"}
 
 
 ## The nearest places to a tile: up to `count` of {"kind", "name", "cell",
@@ -181,6 +215,8 @@ static func compass(step: Vector2) -> String:
 ## Whether a tile lies on a structure's grounds (the temple counts).
 func is_reserved(cell: Vector2i) -> bool:
 	if Vector2(cell).length() < 10.0:
+		return true
+	if _story_grounds(cell):
 		return true
 	var chunk := Vector2i((Vector2(cell) / World.CHUNK_SIZE).floor())
 	for dy in range(-1, 2):
@@ -435,6 +471,30 @@ func _build_altar(cell: Vector2i, _key: String, _level: int, random: RandomNumbe
 ## The Sky Shrine: a ring of pale standing stones on a floor of old
 ## flagstones, feathers carved in them, round an archway that opens on
 ## Puzzlementson, where flight is won.
+# --- Saint Lull's: built by the story itself.
+
+func _lull() -> SaintLull:
+	return get_tree().get_first_node_in_group("saint_lull") as SaintLull
+
+
+func _build_orphanage(cell: Vector2i, _key: String, _level: int, _random: RandomNumberGenerator, placed: Array) -> void:
+	var lull := _lull()
+	if lull:
+		lull.build_orphanage(self, cell, placed)
+
+
+func _build_bunker(cell: Vector2i, _key: String, _level: int, _random: RandomNumberGenerator, placed: Array) -> void:
+	var lull := _lull()
+	if lull:
+		lull.build_bunker(cell, placed)
+
+
+func _build_promise_stone(cell: Vector2i, key: String, _level: int, _random: RandomNumberGenerator, placed: Array) -> void:
+	var lull := _lull()
+	if lull:
+		lull.build_stone(cell, int(key.get_slice(":", 1)), placed)
+
+
 func _build_sky_shrine(cell: Vector2i, _key: String, _level: int, random: RandomNumberGenerator, placed: Array) -> void:
 	_floor(placed, cell, 4, "shrine")
 	for index in 6:

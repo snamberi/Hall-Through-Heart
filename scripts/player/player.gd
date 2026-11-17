@@ -550,6 +550,9 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 		enemy.exposed_left = 0.0
 		critical = true
 		multiplier *= FINISHER_DAMAGE
+		# Finishers break a Court mask outright.
+		if enemy.mask_left > 0:
+			enemy.break_mask()
 		if enemy.rank < Enemy.Rank.MINIBOSS and enemy.health.current < enemy.health.max_health * 0.3:
 			multiplier = maxf(multiplier, enemy.health.current / maxf(stats.get_stat("physical_damage"), 1.0) * 2.0)
 		DamageNumber.spawn_text(get_parent(), enemy.global_position + Vector2(0, -60), "FINISHER", Color(1.0, 0.6, 0.3), 17)

@@ -420,6 +420,10 @@ const INDEX := {
 	"wraith_cloth": 405,
 	"wrap_briar": 406,
 	"bedroll": 407,
+	"benefactor_pen": 408,
+	"lull_doll": 409,
+	"matron_lantern": 410,
+	"noble_mask": 411,
 }
 
 static func has(id: String) -> bool:

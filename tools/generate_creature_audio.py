@@ -376,6 +376,8 @@ CREATURES = {
     "cinder_imp": ("cackle", {"pitch": 420, "f1": 1000, "f2": 2400}, "paw", 0.7),
     "bog_lurker": ("croak", {"pitch": 70, "f1": 350, "f2": 800}, "squish", 1.3),
     "storm_harpy": ("shriek", {"pitch": 1300, "storm": True}, "wing", 1.0),
+    "masked_noble": ("spirit", {"pitch": 150, "f1": 460, "f2": 1250}, "creak", 1.1),
+    "matron": ("grunt", {"pitch": 215, "f1": 820, "f2": 1950, "rough": 0.15, "chant": True}, "shuffle", 0.9),
 }
 
 

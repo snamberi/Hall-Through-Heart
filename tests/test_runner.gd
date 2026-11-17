@@ -6,6 +6,7 @@ extends Node
 ## Run it from the editor by opening tests/run_tests.tscn and pressing F6,
 ## or from a terminal in the project folder:
 ##     godot --headless --path . res://tests/run_tests.tscn
+## (with TESTS_ONLY=world in the environment to run just test_world.gd).
 ##
 ## Tests that need the running game ask for it with `await t.game()`: the
 ## main scene is loaded once, on a throwaway save file, so a real save is
@@ -25,6 +26,10 @@ func _run() -> void:
 	var files := Array(DirAccess.get_files_at(FOLDER)).filter(func(f: String) -> bool:
 		return f.begins_with("test_") and f.ends_with(".gd") and f != "test_runner.gd" and f != "test_context.gd")
 	files.sort()
+	# TESTS_ONLY=stories runs only the files whose names hold that word.
+	var only := OS.get_environment("TESTS_ONLY")
+	if only != "":
+		files = files.filter(func(f: String) -> bool: return f.contains(only))
 	var passed := 0
 	var failed := 0
 	var started := Time.get_ticks_msec()

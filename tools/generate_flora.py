@@ -1363,6 +1363,136 @@ def decor(kind):
         c.fill("line", (36, 36, 34, 50), C("2a2834"))
         for (x, y) in [(15, 59), (50, 60), (26, 61)]:
             c.shade("ellipse", (x - 3, y - 2, x + 3, y + 1), rock)
+    elif kind == "manor":
+        # Saint Lull's House: a long white house under a slate roof, two
+        # gables, a bell tower between them, rows of warm windows, a red
+        # door up three steps, ivy at one corner. Shown at twice size.
+        plaster, slate = ramp("f2eee4", "d6d0c2", "a8a090"), ramp("5a6070", "3e4452", "262a36")
+        c.shade("rect", (4, 30, 60, 60), plaster, dither=False)
+        c.fill("line", (4, 30, 60, 30), C("fffaf0"))
+        c.shade("poly", [(2, 31), (12, 18), (22, 31)], slate)
+        c.shade("poly", [(42, 31), (52, 18), (62, 31)], slate)
+        c.shade("poly", [(14, 31), (16, 25), (48, 25), (50, 31)], slate)
+        c.shade("rect", (26, 8, 38, 26), plaster, dither=False)
+        c.shade("poly", [(24, 9), (32, 1), (40, 9)], slate)
+        c.fill("rect", (29, 12, 35, 18), C("1a1820"))
+        c.shade("ellipse", (30, 13, 34, 17), ramp("e8c070", "b8863a", "7a5626"))
+        for x in (8, 15, 45, 52):
+            for y in (35, 46):
+                c.fill("rect", (x, y, x + 4, y + 6), C("2a2630"))
+                c.fill("rect", (x + 1, y + 1, x + 3, y + 5), C("f0c060"))
+                c.fill("line", (x + 2, y + 1, x + 2, y + 5), C("8a6a3a"))
+                c.fill("line", (x, y + 7, x + 4, y + 7), C("8a8478"))
+        for x in (22, 38):
+            c.fill("rect", (x, 34, x + 3, 39), C("2a2630"))
+            c.fill("rect", (x + 1, 35, x + 2, 38), C("f0c060"))
+        c.shade("rect", (28, 44, 36, 60), ramp("c04848", "8a2c37", "5c1c28"), dither=False)
+        c.fill("rect", (31, 44, 33, 46), C("f0c060"))
+        c.put(34, 52, C("e8c070"))
+        for i, y in enumerate((60, 61, 62)):
+            c.fill("line", (26 - i, y, 38 + i, y), C("b0aa9c") if i % 2 == 0 else C("8a8478"))
+        r = random.Random(71)
+        for _ in range(40):
+            x, y = r.randrange(4, 11), r.randrange(32, 60)
+            if (x, y) in c.filled:
+                c.put(x, y, C("4f6a34") if r.random() < 0.6 else C("6d8a44"))
+    elif kind == "iron_gate":
+        # The back gate: two white pillars and a gate of black iron bars
+        # with spear points, a chain and a padlock.
+        plaster = ramp("f2eee4", "d6d0c2", "a8a090")
+        for x in (6, 50):
+            c.shade("rect", (x, 14, x + 8, 60), plaster, dither=False)
+            c.shade("rect", (x - 1, 10, x + 9, 14), ramp("e0dace", "bab4a6", "8a8478"))
+        iron = C("1e1c24")
+        for x in range(16, 49, 4):
+            c.fill("line", (x, 18, x, 60), iron)
+            c.put(x, 17, C("6e6a78"))
+            c.put(x, 16, iron)
+        for y in (22, 40, 56):
+            c.fill("line", (14, y, 50, y), iron)
+        c.fill("line", (24, 30, 40, 30), C("6e6a78"))
+        c.shade("rect", (29, 31, 35, 37), ramp("b8b4c0", "8a8692", "5a5664"), dither=False)
+        c.fill("rect", (31, 28, 33, 31), C("5a5664"))
+    elif kind == "carriage":
+        # A black carriage with drawn curtains, gilt trim and tall wheels.
+        black = ramp("3a3644", "24222c", "141218")
+        c.shade("poly", [(10, 22), (52, 22), (55, 46), (8, 46)], black)
+        c.shade("poly", [(8, 22), (31, 14), (54, 22)], black)
+        c.fill("line", (8, 22, 54, 22), C("d8b070"))
+        c.fill("line", (8, 46, 55, 46), C("d8b070"))
+        for x in (16, 36):
+            c.fill("rect", (x, 27, x + 11, 37), C("6a1a24"))
+            c.fill("line", (x, 27, x + 11, 27), C("a8803e"))
+            for k in range(x + 1, x + 11, 3):
+                c.fill("line", (k, 28, k, 37), C("4a1018"))
+        for (cx, cy, rr) in ((16, 50, 9), (47, 50, 9)):
+            c.shade("ellipse", (cx - rr, cy - rr, cx + rr, cy + rr), ramp("4a4652", "2a2830", "18161c"))
+            c.fill("ellipse", (cx - rr + 3, cy - rr + 3, cx + rr - 3, cy + rr - 3), (0, 0, 0, 0))
+            for a in range(0, 360, 45):
+                import math as _m
+                c.fill("line", (cx, cy, cx + _m.cos(_m.radians(a)) * (rr - 2), cy + _m.sin(_m.radians(a)) * (rr - 2)), C("8a8692"))
+            c.fill("ellipse", (cx - 2, cy - 2, cx + 2, cy + 2), C("d8b070"))
+        c.fill("rect", (29, 10, 33, 14), C("d8b070"))
+    elif kind == "hatch":
+        # A hatch of old planks in a grassy mound, banded in iron, with a ring.
+        c.shade("ellipse", (6, 34, 58, 62), ramp("6a7a52", "56663e", "3e4a2e"))
+        c.shade("ellipse", (14, 38, 50, 58), ramp("6a5a44", "54463a", "3e342a"))
+        c.shade("rect", (18, 40, 46, 56), ramp("a07a52", "7a5a3a", "54402a"), dither=False)
+        for x in (25, 32, 39):
+            c.fill("line", (x, 40, x, 56), C("3a2a1c"))
+        for y in (43, 53):
+            c.fill("line", (18, y, 46, y), C("4a4654"))
+        c.shade("ellipse", (29, 46, 35, 52), ramp("b8b4c0", "8a8692", "5a5664"))
+        c.fill("ellipse", (31, 48, 33, 50), C("54402a"))
+    elif kind == "horn_post":
+        # The Reserve's gate post: a weathered post with a crossbar, a long
+        # ivory hunting horn hung on a red cord, a white ribbon, and a
+        # porcelain plaque with one upright slit (the mark of the Court).
+        wood = ramp("8a6a48", "6a5034", "463422")
+        c.shade("rect", (29, 12, 35, 60), wood, dither=False)
+        c.fill("line", (35, 12, 35, 60), C("33251a"))
+        c.shade("rect", (16, 14, 48, 18), wood, dither=False)
+        c.fill("line", (16, 18, 48, 18), C("33251a"))
+        for x in (17, 47):
+            c.put(x, 16, C("a8a4ae"))
+        # The red cord, and the horn curling down from it.
+        c.fill("line", (21, 18, 19, 33), C("8a2c37"))
+        c.fill("line", (43, 18, 44, 30), C("8a2c37"))
+        # The horn: a curve from a wide bell (left) to a gilt mouthpiece
+        # (right), drawn as rings shrinking along it, lit from above.
+        ivory = ramp("fbf4e0", "e2d6b4", "b0a07a")
+        points = []
+        for k in range(0, 41):
+            t = k / 40.0
+            x = (1 - t) ** 2 * 15 + 2 * (1 - t) * t * 30 + t * t * 47
+            y = (1 - t) ** 2 * 33 + 2 * (1 - t) * t * 42 + t * t * 26
+            points.append((round(x), round(y), 4.2 - 3.2 * t))
+        for x, y, r in points:
+            c.fill("ellipse", (x - r, y - r, x + r, y + r), C("7a6a4a"))
+        for x, y, r in points:
+            c.fill("ellipse", (x - r + 0.6, y - r + 0.6, x + r - 0.6, y + r - 0.6), C("e2d6b4"))
+        for x, y, r in points:
+            c.put(x, round(y - r + 1), C("fbf4e0"))
+        for k in (8, 16, 24, 32):
+            x, y, r = points[k]
+            c.fill("line", (x, round(y - r + 1), x, round(y + r - 1)), C("b0a07a"))
+        c.fill("ellipse", (12, 29, 18, 37), C("7a6a4a"))
+        c.fill("ellipse", (13, 30, 17, 36), C("2a2226"))
+        c.fill("rect", (46, 25, 49, 27), C("d8b070"))
+        c.put(49, 26, C("f0d090"))
+        # The ribbon, lifting in the wind.
+        for i, (x, y) in enumerate(((36, 18), (38, 20), (39, 23), (41, 25), (42, 28))):
+            c.put(x, y, C("f6f2ea") if i % 2 == 0 else C("d6d0c2"))
+        # The porcelain plaque on the post.
+        c.shade("ellipse", (27, 40, 37, 52), ramp("fbf8f0", "e8e2d6", "b8b0a2"))
+        c.fill("line", (32, 42, 32, 49), C("1a1820"))
+        c.put(31, 50, C("a83040"))
+        c.put(33, 50, C("a83040"))
+        c.put(31, 51, C("a83040"))
+        c.put(33, 51, C("a83040"))
+        # Trampled earth at its foot.
+        c.shade("ellipse", (20, 57, 44, 62), ramp("6a5a44", "54463a", "3e342a"))
+        c.shade("rect", (29, 52, 35, 60), wood, dither=False)
     elif kind == "palisade":                      # a section of sharpened log wall
         for x in range(6, 60, 9):
             top = 14 + (x * 7) % 6
@@ -1858,6 +1988,140 @@ def _chest_box(c):
         c.put(x + dx * 2, y + 1, BRASS[0])
 
 
+def manor():
+    """Saint Lull's House at its full size (128px, drawn pixel by pixel, never
+    scaled): a long white house of two floors under a slate roof, a bell
+    tower in the middle with a bronze bell, stone quoins and a stone plinth,
+    shuttered windows lit warm with flower boxes, a red door under a little
+    portico up three steps, and ivy up one corner."""
+    c = Canvas(128, 128)
+    plaster = ramp("f6f2e8", "dcd6c8", "aca496")
+    plaster_dark = ramp("d6d0c2", "bab2a2", "8e8676")
+    slate = ramp("6a7282", "4a5262", "2e3442")
+    stone = ramp("c4c0b4", "9a968a", "6c685e")
+    navy = ramp("4a5a8a", "34426a", "222c4a")
+    c.shadow(64, 121, 58, 6, alpha=90)
+    # The plinth and the two floors of wall.
+    c.shade("rect", (8, 62, 119, 116), plaster, dither=False)
+    c.fill("line", (8, 62, 119, 62), C("fffcf4"))
+    c.shade("rect", (6, 112, 121, 120), stone, dither=False)
+    for x in range(8, 120, 9):
+        c.put(x, 116, C("6c685e"))
+    c.fill("line", (6, 112, 121, 112), C("d8d4c8"))
+    # A band between the floors.
+    c.fill("rect", (8, 86, 119, 88), C("e8e2d4"))
+    c.fill("line", (8, 89, 119, 89), C("aca496"))
+    # Stone quoins up the corners.
+    for x0 in (8, 114):
+        for k, y in enumerate(range(64, 112, 6)):
+            w = 6 if k % 2 == 0 else 4
+            x = x0 if x0 == 8 else 119 - w + 1
+            c.shade("rect", (x, y, x + w - 1, y + 4), stone, dither=False)
+    # Faint weathering streaks under the sills.
+    r = random.Random(13)
+    for _ in range(60):
+        x, y = r.randrange(12, 116), r.randrange(66, 110)
+        if c.img.getpixel((x, y))[:3] == plaster[1][:3]:
+            c.put(x, y, plaster_dark[1])
+    # The roof: two slopes of slate in rows, the near face lit.
+    c.shade("poly", [(2, 64), (16, 34), (112, 34), (126, 64)], slate)
+    for row, y in enumerate(range(38, 64, 4)):
+        c.fill("line", (16 - (y - 34) // 2, y, 112 + (y - 34) // 2, y), C("2a303c"))
+        for x in range(18 - (y - 34) // 2 + (row % 2) * 3, 110 + (y - 34) // 2, 6):
+            c.put(x, y + 1, C("2a303c"))
+            c.put(x, y + 2, C("3a4252"))
+    c.fill("line", (16, 34, 112, 34), C("8a92a2"))
+    c.fill("line", (2, 64, 126, 64), C("1e222c"))
+    c.fill("line", (3, 63, 125, 63), C("8a92a2"))
+    # Two dormers in the roof.
+    for x in (24, 92):
+        c.shade("rect", (x, 44, x + 11, 58), plaster, dither=False)
+        c.shade("poly", [(x - 2, 45), (x + 6, 38), (x + 14, 45)], slate, dither=False)
+        c.fill("rect", (x + 3, 48, x + 8, 56), C("2a2630"))
+        c.fill("rect", (x + 4, 49, x + 7, 55), C("f0c060"))
+        c.fill("line", (x + 4, 52, x + 7, 52), C("8a6a3a"))
+        c.fill("line", (x + 5, 49, x + 5, 55), C("8a6a3a"))
+    # Chimneys, one at each end.
+    for x in (12, 106):
+        c.shade("rect", (x, 26, x + 7, 44), ramp("b45a4a", "8a4038", "5a2a26"), dither=False)
+        c.fill("rect", (x - 1, 24, x + 8, 26), C("6c685e"))
+        for y in (30, 35, 40):
+            c.fill("line", (x, y, x + 7, y), C("5a2a26"))
+    # The bell tower.
+    c.shade("rect", (52, 14, 75, 64), plaster, dither=False)
+    c.shade("rect", (50, 12, 77, 16), stone, dither=False)
+    c.shade("poly", [(48, 13), (64, 0), (79, 13)], slate, dither=False)
+    c.fill("line", (64, 0, 64, 4), C("c8904a"))
+    c.put(65, 2, C("e8bc4a"))
+    c.put(66, 2, C("e8bc4a"))
+    # The belfry: an arched opening, a bronze bell hanging in the dark.
+    c.fill("rect", (57, 20, 70, 34), C("1a1820"))
+    c.fill("ellipse", (57, 16, 70, 26), C("1a1820"))
+    c.fill("line", (57, 21, 70, 21), C("3a3644"))
+    c.shade("poly", [(60, 30), (61, 24), (63, 22), (65, 22), (67, 24), (68, 30)], ramp("e8bc4a", "c8904a", "8a5a2a"), dither=False)
+    c.fill("line", (59, 31, 69, 31), C("8a5a2a"))
+    c.put(64, 32, C("c8904a"))
+    # A round window, and a clock-face, in the tower.
+    c.shade("ellipse", (58, 40, 69, 51), stone, dither=False)
+    c.fill("ellipse", (60, 42, 67, 49), C("f6f2e8"))
+    c.fill("line", (63, 43, 63, 46), C("1a1820"))
+    c.fill("line", (63, 46, 65, 46), C("1a1820"))
+    # Windows: two floors of them, shuttered in navy, lit warm, with boxes
+    # of red flowers below the lower ones.
+    for x in (16, 30, 86, 100):
+        for y, tall in ((68, 13), (93, 14)):
+            c.shade("rect", (x - 3, y, x - 1, y + tall), navy, dither=False)
+            c.shade("rect", (x + 10, y, x + 12, y + tall), navy, dither=False)
+            c.fill("rect", (x, y, x + 9, y + tall), C("2a2630"))
+            c.fill("rect", (x + 1, y + 1, x + 8, y + tall - 1), C("f0c060"))
+            c.fill("rect", (x + 1, y + 1, x + 8, y + 3), C("f8dc90"))
+            c.fill("line", (x + 4, y + 1, x + 4, y + tall - 1), C("8a6a3a"))
+            c.fill("line", (x + 1, y + tall // 2, x + 8, y + tall // 2), C("8a6a3a"))
+            c.fill("line", (x - 1, y + tall + 1, x + 10, y + tall + 1), C("aca496"))
+            if y > 80:
+                c.fill("rect", (x, y + tall + 2, x + 9, y + tall + 4), C("6a4a30"))
+                for k in range(x, x + 10, 2):
+                    c.put(k, y + tall + 1, C("c83a3a") if k % 4 else C("e86a5a"))
+                    c.put(k + 1, y + tall + 1, C("4f6a34"))
+    # Two narrow lit windows by the tower.
+    for x in (44, 79):
+        for y in (70, 94):
+            c.fill("rect", (x, y, x + 4, y + 10), C("2a2630"))
+            c.fill("rect", (x + 1, y + 1, x + 3, y + 9), C("f0c060"))
+    # The portico: two white columns, a pediment, the red door up three steps.
+    c.shade("poly", [(50, 84), (64, 76), (77, 84)], plaster, dither=False)
+    c.fill("line", (50, 84, 77, 84), C("aca496"))
+    c.shade("rect", (51, 85, 76, 87), stone, dither=False)
+    for x in (52, 72):
+        c.shade("rect", (x, 88, x + 3, 112), ramp("fffcf4", "e8e2d4", "b8b0a2"), dither=False)
+        c.fill("rect", (x - 1, 88, x + 4, 89), C("d8d4c8"))
+        c.fill("rect", (x - 1, 110, x + 4, 112), C("d8d4c8"))
+    c.fill("rect", (57, 90, 70, 112), C("2a1a1c"))
+    c.fill("ellipse", (57, 86, 70, 96), C("2a1a1c"))
+    c.shade("rect", (58, 92, 69, 112), ramp("c84848", "a03038", "6a1c28"), dither=False)
+    c.shade("ellipse", (58, 88, 69, 98), ramp("c84848", "a03038", "6a1c28"), dither=False)
+    c.fill("line", (63, 89, 63, 112), C("5c1c28"))
+    c.fill("line", (64, 89, 64, 112), C("5c1c28"))
+    for y in (97, 104):
+        c.fill("line", (59, y, 68, y), C("7a2430"))
+    c.put(61, 101, C("e8bc4a"))
+    c.put(66, 101, C("e8bc4a"))
+    c.fill("rect", (62, 92, 65, 93), C("e8bc4a"))
+    for i, y in enumerate((113, 116, 119)):
+        c.shade("rect", (54 - i * 2, y, 73 + i * 2, y + 2), stone, dither=False)
+        c.fill("line", (54 - i * 2, y, 73 + i * 2, y), C("e0dcd0"))
+    # Ivy up the west corner and over the first window.
+    for _ in range(150):
+        x = r.randrange(6, 26)
+        y = r.randrange(66 + max(0, 20 - x) , 116)
+        if (x, y) in c.filled and r.random() < 0.65 - (x - 6) * 0.025:
+            c.put(x, y, C("4f6a34") if r.random() < 0.6 else C("6d8a44"))
+            if r.random() < 0.3:
+                c.put(x + 1, y, C("3a5228"))
+    c.outline()
+    return c.img
+
+
 def chest(open_lid):
     c = Canvas(64, 64)
     if not open_lid:
@@ -1953,7 +2217,8 @@ DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate",
          "palisade", "spike_trap", "ballista", "soil", "scarecrow", "torch", "fireplace", "waystone", "waystone_lit", "gravestone", "ruined_tower", "cart",
          "root_cutter", "root_delver", "root_tender", "root_hollow", "farmhouse", "furnace", "trophy_stand",
          "anvil", "weapon_rack", "bench", "hay_bale", "flower_bed", "cupboard", "fountain", "stone_planter",
-         "standing_stone", "carved_pillar", "rune_stele", "chime_stone", "stone_pedestal", "stone_shard"]
+         "standing_stone", "carved_pillar", "rune_stele", "chime_stone", "stone_pedestal", "stone_shard",
+         "manor", "iron_gate", "carriage", "hatch", "horn_post"]
 
 
 def sheet(images, w, h):
@@ -1968,3 +2233,4 @@ if __name__ == "__main__":
     sheet(SMALL, 32, 32).save(os.path.join(ROOT, "flora_small.png"))
     sheet([critter(k, f) for k in CRITTERS for f in range(CRITTER_FRAMES)], 24, 24).save(os.path.join(ROOT, "critters.png"))
     sheet([decor(k) for k in DECOR], 64, 64).save(os.path.join(ROOT, "decor.png"))
+    manor().save(os.path.join(ROOT, "manor.png"))

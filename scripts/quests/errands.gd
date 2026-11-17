@@ -52,7 +52,7 @@ static func make(key: String, job: String, giver: String, level: int, day: int, 
 		var options: Array[String] = []
 		for id: String in EnemyDB.ENEMIES:
 			var monster: Dictionary = EnemyDB.ENEMIES[id]
-			if monster["min_level"] <= maxi(floori(level * 0.7), 1) and not monster.has("wild") and not monster.get("passive", false):
+			if monster["min_level"] <= maxi(floori(level * 0.7), 1) and not monster.has("wild") and not monster.get("passive", false) and not monster.get("story", false):
 				options.append(id)
 		if options.is_empty():
 			options.append("husk")

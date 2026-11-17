@@ -301,6 +301,13 @@ const ITEMS := {
 	},
 	"voidwalker": {"name": "Voidwalkers", "icon": 9, "tint": Color("b88aff"), "slot": "boots", "unique": "void_rift", "min_rarity": 4, "drop_weight": 0.0, "armor": 3.0,
 		"implicit": [{"stat": "move_speed", "kind": "flat", "base": 10.0, "per_level": 0.1}]},
+	# --- Saint Lull's: the Matron's lantern and the Benefactor's pen.
+	"matron_lantern": {"name": "The Matron's Lantern", "icon": 12, "tint": Color("fff0c0"), "slot": "artifact", "min_rarity": 4, "drop_weight": 0.0,
+		"implicit": [{"stat": "fire_damage", "kind": "flat", "base": 2.0, "per_level": 0.4}, {"stat": "shadow_resist", "kind": "flat", "base": 0.12, "per_level": 0.0}],
+		"text": "It burns white and never goes out. She carried it every night of her life."},
+	"benefactor_pen": {"name": "The Benefactor's Pen", "icon": 12, "tint": Color("3a3644"), "slot": "artifact", "min_rarity": 3, "drop_weight": 0.0,
+		"implicit": [{"stat": "xp_gain", "kind": "flat", "base": 0.06, "per_level": 0.0}, {"stat": "magic_find", "kind": "flat", "base": 0.08, "per_level": 0.0005}],
+		"text": "The pen the Benefactor wrote the journal with, after they got out."},
 	"gravecaller": {"name": "Gravecaller", "icon": 12, "tint": Color("8affb0"), "slot": "artifact", "unique": "spirit_bolt", "min_rarity": 4, "drop_weight": 0.0,
 		"implicit": [{"stat": "shadow_damage", "kind": "flat", "base": 1.0, "per_level": 0.25}]},
 	# --- gems: set into sockets on gear (see Gems). Three of a grade make one of the next.
@@ -459,6 +466,10 @@ const ITEMS := {
 	"aloe_salve": {"name": "Aloe Salve", "icon": 47, "tint": Color("aac87a"), "material_rarity": 0, "use": {"heal": 0.3, "buff": "salve", "name": "Soothed", "duration": 20.0, "mods": {"health_regen": {"flat": 3.0}}}, "text": "Restores 30% health and more over 20 seconds."},
 	"bloodcap_draught": {"name": "Bloodcap Draught", "icon": 47, "tint": Color("c02a3a"), "material_rarity": 2, "use": {"buff": "draught", "name": "Bloodthirst", "duration": 90.0, "mods": {"life_steal": {"flat": 0.05}}}, "text": "Heal for 5% of damage dealt for 90 seconds."},
 	"void_tonic": {"name": "Void Tonic", "icon": 47, "tint": Color("9a6cf0"), "material_rarity": 3, "use": {"buff": "tonic", "name": "Void-touched", "duration": 90.0, "mods": {"magic_power": {"percent": 0.25}}}, "text": "+25% magic damage for 90 seconds."},
+	"lull_doll": {"name": "Number 31's Doll", "icon": 57, "tint": Color("f4f0e8"), "material_rarity": 0, "value": 0, "quest": true,
+		"text": "A rag doll in a white smock, a 31 stitched on its apron. Wren asked you to take it to the back gate after dark."},
+	"noble_mask": {"name": "Porcelain Mask", "icon": 57, "tint": Color("f4f0ea"), "material_rarity": 3, "value": 260,
+		"text": "A Court mask with one upright slit, red tears painted beneath. Collectors pay well, and ask no questions."},
 	"bedroll": {"name": "Bedroll", "icon": 57, "tint": Color("b8404a"), "material_rarity": 0, "use": {"sleep": true}, "value": 40,
 		"text": "A rolled blanket on a strap. Use it at night with no monster near to sleep till morning: you wake healed and Well Rested, and if you fall you wake here."},
 	"bandage": {"name": "Bandage", "icon": 43, "tint": Color("f4f2ec"), "material_rarity": 0, "use": {"heal": 0.2}, "value": 8, "text": "Rough cloth and herbs. Restores 20% health."},
@@ -881,6 +892,9 @@ const LOOT_TABLES := {
 		{"id": "wraith_cloth", "chance": 0.3, "count": [1, 1]}, {"id": "essence", "chance": 0.2, "count": [1, 1]}]},
 	"bog_lurker": {"gold": [0, 2], "gear": [["boots", 0.015]], "materials": [
 		{"id": "lurker_tongue", "chance": 0.35, "count": [1, 1]}, {"id": "slime_gel", "chance": 0.2, "count": [1, 1]}]},
+	"masked_noble": {"gold": [4, 9], "gear": [["necklace", 0.03], ["ring", 0.02]], "materials": [
+		{"id": "noble_mask", "chance": 0.12, "count": [1, 1]}, {"id": "wraith_cloth", "chance": 0.3, "count": [1, 1]}, {"id": "essence", "chance": 0.15, "count": [1, 1]}]},
+	"matron": {"gold": [20, 40], "gear": [], "materials": [{"id": "essence", "chance": 1.0, "count": [2, 3]}]},
 	"storm_harpy": {"gold": [1, 2], "gear": [["bow", 0.025], ["spear", 0.015]], "materials": [
 		{"id": "harpy_feather", "chance": 0.35, "count": [1, 2]}, {"id": "claw", "chance": 0.15, "count": [1, 1]}]},
 	"deer": {"gold": [0, 0], "materials": [{"id": "venison", "chance": 0.9, "count": [1, 2]}, {"id": "deer_hide", "chance": 0.6, "count": [1, 1]}, {"id": "antler", "chance": 0.25, "count": [1, 1]}]},
