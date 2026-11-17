@@ -14,7 +14,7 @@ const ICONS := {
 	"cave": [Color("8a8794"), "Cave"], "lair": [Color("e05a5a"), "Lair"], "portal": [Color("9a6cf0"), "Void portal"],
 	"camp": [Color("c0a080"), "Abandoned camp"], "waystone": [Color("8fe0ff"), "Waystone"], "obelisk": [Color("d0b0ff"), "Obelisk"],
 	"merchant": [Color("ffd060"), "Wandering merchant"], "shipwreck": [Color("a08060"), "Shipwreck"], "treasure": [Color("ff4030"), "Buried treasure"],
-	"boss": [Color("ff4d4d"), "World boss"], "altar": [Color("c08cff"), "Altar of Magic"], "dungeon": [Color("b0a0d0"), "Crypt"], "bounty": [Color("ff8a3a"), "Bounty target"],
+	"boss": [Color("ff4d4d"), "World boss"], "altar": [Color("c08cff"), "Altar of Magic"], "sky_shrine": [Color("a8d8ff"), "Sky Shrine"], "dungeon": [Color("b0a0d0"), "Crypt"], "bounty": [Color("ff8a3a"), "Bounty target"],
 	"temple": [Color("ffe8a0"), "The Sanctuary"], "home": [Color("8fd66a"), "Home"], "checkpoint": [Color("ffb060"), "Resting place"],
 	"watchtower": [Color("b0acb8"), "Ruined watchtower"], "graveyard": [Color("a0a8b8"), "Graveyard"], "henge": [Color("9ad0c0"), "Standing stones"],
 	"farmstead": [Color("d8b070"), "Abandoned farmstead"], "library": [Color("c8a070"), "Ruined library"],
@@ -32,7 +32,7 @@ const GROUPS := [
 	["travel", "Travel", ["waystone", "portal", "checkpoint"]],
 	["danger", "Danger", ["lair", "boss", "bounty", "dungeon", "graveyard"]],
 	["treasure", "Treasure and trade", ["treasure", "shipwreck", "merchant", "altar"]],
-	["sights", "Ruins and sights", ["ruin", "shrine", "cave", "camp", "obelisk", "watchtower", "henge", "library", "dojo"]],
+	["sights", "Ruins and sights", ["ruin", "shrine", "cave", "camp", "obelisk", "watchtower", "henge", "library", "dojo", "sky_shrine"]],
 	["life", "Creatures and people", ["monster", "animal", "npc", "pet"]],
 ]
 const VIEW := Vector2(870.0, 492.0)

@@ -41,6 +41,7 @@ const DEFAULTS := {
 	"bloom": false,
 	"fog": true,
 	"fps_limit": 0,
+	"wing_display": "flight",
 }
 
 ## The four graphics presets. Each sets these; changing any one alone makes
@@ -70,13 +71,13 @@ const REBINDABLE: Array[Array] = [
 	["hotbar_1", "Hotbar 1"], ["hotbar_2", "Hotbar 2"], ["hotbar_3", "Hotbar 3"], ["hotbar_4", "Hotbar 4"], ["hotbar_5", "Hotbar 5"],
 	["hotbar_6", "Hotbar 6"], ["hotbar_7", "Hotbar 7"], ["hotbar_8", "Hotbar 8"], ["hotbar_9", "Hotbar 9"], ["hotbar_10", "Hotbar 10"],
 	["toggle_menu", "Menu wheel"], ["build_mode", "Build mode"], ["mount", "Mount / dismount"], ["recall_home", "Recall home"],
-	["relic_ability", "Relic power"],
+	["relic_ability", "Relic power"], ["toggle_flight", "Fly / land (once flight is won)"],
 	["open_inventory", "Open inventory"], ["open_quests", "Open quest book"], ["open_map", "Open map"],
 	["loadout_next", "Wear next saved set"],
 ]
 ## Actions the game adds itself when it starts (not in the project file):
 ## action -> default physical key (KEY_NONE for pad-only actions).
-const EXTRA_ACTIONS := {"open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L}
+const EXTRA_ACTIONS := {"toggle_flight": KEY_T, "open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L}
 ## Gamepad layout, kept alongside whatever keys are bound: action ->
 ## [JOY_BUTTON_*] or ["axis", JOY_AXIS_*, direction].
 const PAD := {
@@ -150,6 +151,8 @@ var bloom := false
 var fog := true
 ## Frames a second at most (0: no limit).
 var fps_limit := 0
+## The wings of flight: shown "flight" (only while flying), "always" or "never".
+var wing_display := "flight"
 ## action -> saved events, each {"key": physical keycode} or {"mouse": button}.
 var bindings: Dictionary = {}
 

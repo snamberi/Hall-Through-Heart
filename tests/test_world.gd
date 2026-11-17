@@ -394,3 +394,45 @@ func test_graphics_presets_and_the_active_area(t: TestContext) -> void:
 	for node: Node in [area, player, near, far]:
 		node.queue_free()
 	GameSettings.apply_preset(was if was in GameSettings.PRESETS else "high")
+
+
+func test_flight_is_won_in_the_trial_of_panic(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var trial: FlightTrial = main.get_node("FlightTrial")
+	var instances: Instances = main.get_node("Instances")
+	var shrine: Vector2i = (main.get_node("World") as World).generator.sky_shrine_cell()
+	t.check(Vector2(shrine).length() > 700.0, "the Sky Shrine stands far out (%s)" % shrine)
+	trial.enter(player)
+	await t.frames(3)
+	t.check(instances.is_inside() and instances.room.title == "Puzzlementson", "the shrine opens on Puzzlementson")
+	t.equal(trial.solved, 0, "no puzzle solved yet")
+	# Out of order does nothing; dying loses the way.
+	trial._solve(3)
+	t.equal(trial.solved, 0, "puzzles are solved in order")
+	for k in 3:
+		trial._solve(k)
+	t.equal(trial.solved, 3, "three solved")
+	instances.leave()
+	await t.frames(2)
+	t.equal(trial.solved, 0, "leaving (or dying) starts the trial over")
+	t.check(not player.flight_unlocked, "no wings yet")
+	# All ten, the Edge, the fall.
+	trial.enter(player)
+	await t.frames(3)
+	for k in 10:
+		trial._solve(k)
+	t.equal(trial.solved, 10, "all ten puzzles solved")
+	trial._start_fall()
+	await t.frames(3)
+	t.check(player.falling, "the player falls")
+	t.check(instances.room.title == "The Trial of Panic", "into the Trial of Panic")
+	player.global_position = Vector2(player.global_position.x, trial._fall_end + 4.0)
+	await t.frames(4)
+	t.check(player.flight_unlocked, "surviving the fall awakens flight")
+	t.check(player.flying and not instances.is_inside(), "and the player rises into the open sky")
+	t.check(Appearance.layers({"race": "human", "flight_wings": true}).get("wings", {}).get("sheet", "") == "wings_3", "with the wings of flight")
+	player.toggle_flight()
+	t.check(not player.flying and player.collision_mask == 1, "T lands again")
+	t.check(player.save_data().get("flight_unlocked", false), "flight is kept in the save")
+	t.close_game()

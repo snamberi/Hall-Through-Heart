@@ -50,6 +50,11 @@ func _ready() -> void:
 	_world.setup(_active_seed)
 	_instances.setup(_player, _world, _spawner, _loot)
 	_structures.setup(_world, _player, _spawner, _loot, _instances)
+	# The Sky Shrine's trial, where flight is won.
+	var trial := FlightTrial.new()
+	trial.name = "FlightTrial"
+	add_child(trial)
+	trial.setup(_player, _instances, _world, _spawner)
 	if saved_world.has("checkpoint"):
 		var point: Array = saved_world["checkpoint"]
 		_checkpoint = Vector2(point[0], point[1])

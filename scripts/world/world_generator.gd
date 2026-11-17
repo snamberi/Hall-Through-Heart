@@ -179,6 +179,35 @@ func magic_altar_cell() -> Vector2i:
 	return _altar
 
 
+## Where the Sky Shrine stands, the way into Puzzlementson and the Trial of
+## Panic: far out (about SKY_SHRINE_DISTANCE tiles), in a direction the
+## seed chooses, on open dry ground. Found, not shown, on the map.
+const SKY_SHRINE_DISTANCE := 900.0
+var _sky_shrine := Vector2i.ZERO
+var _sky_shrine_found := false
+
+
+func sky_shrine_cell() -> Vector2i:
+	if _sky_shrine_found:
+		return _sky_shrine
+	var random := RandomNumberGenerator.new()
+	random.seed = world_seed + 9091
+	var target := Vector2i(Vector2.from_angle(random.randf() * TAU) * SKY_SHRINE_DISTANCE)
+	_sky_shrine = target
+	for radius in 120:
+		for y in range(-radius, radius + 1):
+			for x in range(-radius, radius + 1):
+				if maxi(absi(x), absi(y)) != radius:
+					continue
+				var cell := target + Vector2i(x, y)
+				if is_dry_land(cell) and height_at(cell) == 0 and is_dry_land(cell + Vector2i(0, 2)) and is_dry_land(cell + Vector2i(0, -2)):
+					_sky_shrine = cell
+					_sky_shrine_found = true
+					return _sky_shrine
+	_sky_shrine_found = true
+	return _sky_shrine
+
+
 ## Drops a cell's remembered terrain, so it is worked out afresh.
 func forget(cell: Vector2i) -> void:
 	_cache.erase(cell)

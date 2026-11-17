@@ -91,6 +91,15 @@ var _unstick_left := 0.0
 var indoors := false
 ## Share of normal speed the ground underfoot allows.
 var _ground_speed := 1.0
+## Won for good in the Trial of Panic (FlightTrial). While flying the
+## player rides the air above the land: faster, over water and cliffs and
+## everything that stands on the ground.
+var flight_unlocked := false
+var flying := false
+## Falling through the Trial of Panic: steered only left and right.
+var falling := false
+const FLIGHT_SPEED := 1.5
+const FALL_SPEED := 300.0
 var _world: World
 ## Consecutive basic attacks, for the mastery combo finisher.
 var _combo_count := 0
@@ -187,7 +196,11 @@ func _ready() -> void:
 			class_id = chosen_class
 			# Class points start to come at the level a class used to be chosen.
 			class_chosen_at = HeroClasses.CHOICE_LEVEL
-	_animator.apply_appearance(appearance)
+	apply_look()
+	GameSettings.changed.connect(func() -> void:
+		if flight_unlocked:
+			apply_look()
+	)
 	stats.setup(attributes, mastery)
 	stats.set_modifiers_quietly("race", Appearance.race_mods(appearance))
 	stats.set_modifiers_quietly("evolution", EvolutionDB.mods(race(), evolution_path, evolution_stage))
@@ -313,6 +326,9 @@ func _physics_process(delta: float) -> void:
 		State.GATHER:
 			_process_gather(delta)
 
+	if flying:
+		# Hovering: lifted off the ground, bobbing gently.
+		_visual.position.y = -14.0 + sin(Time.get_ticks_msec() / 260.0) * 1.5
 	_show_invulnerable(delta)
 	move_and_slide()
 
@@ -682,6 +698,13 @@ func quick_potion() -> void:
 func _read_ground() -> void:
 	if _world == null:
 		_world = get_parent().get_node_or_null("World")
+	if flying and indoors:
+		land()
+	if flying:
+		_ground_speed = FLIGHT_SPEED
+		swimming = false
+		deep_water = false
+		return
 	if _world == null or _world.generator == null or indoors:
 		_ground_speed = 1.0
 		swimming = false
@@ -905,6 +928,8 @@ func apply_status(id: String, duration: float, power: float) -> void:
 func _die() -> void:
 	state = State.DEAD
 	velocity = Vector2.ZERO
+	land()
+	falling = false
 	camera.offset = Vector2.ZERO
 	gather_target = null
 	_afflictions.clear()
@@ -1083,18 +1108,69 @@ func take_up_magic(school: String) -> String:
 
 
 func save_data() -> Dictionary:
-	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate()}
+	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate(), "flight_unlocked": flight_unlocked}
+
+
+## Takes to the air, or lands. Flight is won in the Trial of Panic.
+func toggle_flight() -> void:
+	if not flight_unlocked:
+		return
+	if flying:
+		land()
+		return
+	if indoors or is_dead():
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -50), "No room to fly here", UITheme.BAD, 13)
+		return
+	if mount_id != "":
+		dismount()
+	flying = true
+	# Over the land: nothing on the ground stops you.
+	collision_mask = 0
+	Audio.play("flutter", -4.0)
+	RingBurst.spawn(get_parent(), global_position, Color(0.95, 0.92, 0.8), 36.0)
+	apply_look()
+
+
+func land() -> void:
+	if not flying:
+		return
+	flying = false
+	collision_mask = 1
+	_visual.position.y = -Mount.seat(mount_id) if mount_id != "" else 0.0
+	Audio.play("flutter", -8.0)
+	apply_look()
+
+
+## Whether the wings of flight show now (a setting: only while flying,
+## always, or never).
+func wings_shown() -> bool:
+	if not flight_unlocked:
+		return false
+	match GameSettings.wing_display:
+		"always":
+			return true
+		"never":
+			return false
+	return flying
+
+
+## Redraws the player in their appearance, with the wings of flight when shown.
+func apply_look() -> void:
+	var look := appearance.duplicate()
+	look["flight_wings"] = wings_shown()
+	_animator.apply_appearance(look)
 
 
 ## Changes how the player looks and redraws them.
 func set_appearance(changes: Dictionary) -> void:
 	appearance.merge(changes, true)
-	_animator.apply_appearance(appearance)
+	apply_look()
 	stats.set_modifiers("race", Appearance.race_mods(appearance))
 	SaveGame.request_save()
 
 
 func load_data(data: Dictionary) -> void:
+	flight_unlocked = bool(data.get("flight_unlocked", false))
 	class_id = str(data.get("class_id", class_id))
 	magic_school = str(data.get("magic_school", ""))
 	if not MagicDB.SCHOOLS.has(magic_school):
@@ -1121,13 +1197,19 @@ func load_data(data: Dictionary) -> void:
 		appearance = Appearance.DEFAULT.duplicate()
 		appearance.merge(saved_look, true)
 	if is_node_ready():
-		_animator.apply_appearance(appearance)
+		apply_look()
 		stats.set_modifiers("race", Appearance.race_mods(appearance))
 		_apply_evolution()
 
 
 func _process_move(delta: float) -> void:
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if falling:
+		# The Trial of Panic: the fall carries you down; you can only lean.
+		velocity = Vector2(input.x * 260.0, FALL_SPEED)
+		return
+	if Input.is_action_just_pressed("toggle_flight"):
+		toggle_flight()
 	if input != Vector2.ZERO:
 		facing = input.normalized()
 		_face_visual(input.x)

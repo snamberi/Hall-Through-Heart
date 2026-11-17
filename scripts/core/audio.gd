@@ -71,6 +71,18 @@ func play_creature(creature: String, kind: String, at: Vector2, volume_db: float
 
 
 ## Plays a sound effect. `pitch_spread` varies the pitch so repeats differ.
+## Plays a sound at an exact pitch (bells and chimes that must be told apart).
+func play_note(sound: String, pitch: float, volume_db: float = 0.0) -> void:
+	if not _streams.has(sound):
+		return
+	var player := _players[_next]
+	_next = (_next + 1) % VOICES
+	player.stream = _streams[sound]
+	player.volume_db = volume_db
+	player.pitch_scale = pitch
+	player.play()
+
+
 func play(sound: String, volume_db: float = 0.0, pitch_spread: float = 0.08) -> void:
 	if not _streams.has(sound):
 		return

@@ -396,6 +396,9 @@ static func layers(appearance: Dictionary) -> Dictionary:
 		if not ramp.is_empty():
 			tint = Color(ramp[0])
 		result[slot] = {"sheet": choice["sheet"], "tint": tint, "ramp": ramp.slice(0, 3)}
+	# The wings of flight, won in the Trial of Panic, over any the race has.
+	if appearance.get("flight_wings", false):
+		result["wings"] = {"sheet": "wings_3", "tint": Color.WHITE}
 	# Each race's own details: one layer in the skin's colours, one that
 	# keeps its own (tusks, embers, moss, fin glints...).
 	var race: String = str(worn.get("race", "human"))

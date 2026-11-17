@@ -113,6 +113,12 @@ func site_for(chunk: Vector2i) -> Dictionary:
 		site = {"kind": "altar", "cell": altar, "key": "altar", "level": _world.generator.enemy_level_at(altar), "seed": 7177}
 		_sites[chunk] = site
 		return site
+	# So has the Sky Shrine.
+	var shrine := _world.generator.sky_shrine_cell()
+	if Vector2i((Vector2(shrine) / World.CHUNK_SIZE).floor()) == chunk:
+		site = {"kind": "sky_shrine", "cell": shrine, "key": "sky_shrine", "level": _world.generator.enemy_level_at(shrine), "seed": 9091}
+		_sites[chunk] = site
+		return site
 	var random := RandomNumberGenerator.new()
 	random.seed = hash(Vector3i(chunk.x, chunk.y, _world.generator.world_seed + 4242))
 	var cell := chunk * World.CHUNK_SIZE + Vector2i(random.randi_range(4, World.CHUNK_SIZE - 5), random.randi_range(4, World.CHUNK_SIZE - 5))
@@ -358,6 +364,29 @@ func _build_altar(cell: Vector2i, _key: String, _level: int, random: RandomNumbe
 	var beam := AltarBeam.new()
 	beam.position = _at(cell) + Vector2(0, -30)
 	placed.append(beam)
+
+
+## The Sky Shrine: a ring of pale standing stones on a floor of old
+## flagstones, feathers carved in them, round an archway that opens on
+## Puzzlementson, where flight is won.
+func _build_sky_shrine(cell: Vector2i, _key: String, _level: int, random: RandomNumberGenerator, placed: Array) -> void:
+	_floor(placed, cell, 4, "shrine")
+	for index in 6:
+		var spot := cell + Vector2i(Vector2.from_angle(TAU * index / 6.0 + 0.5) * 3.6)
+		var stone := Prop.create_decor(Prop.Decor.OBELISK, _at(spot), 10.0)
+		stone.sprite().modulate = Color(0.85, 0.92, 1.0)
+		stone.add_light(0.5, 1.0, Color(0.75, 0.9, 1.0))
+		placed.append(stone)
+	for i in 3:
+		_decor(placed, Prop.Decor.RUBBLE, cell + Vector2i(random.randi_range(-3, 3), random.randi_range(3, 4)))
+	var arch := Prop.create(Prop.Art.PORTAL, _at(cell), 0.0, "Enter the Sky Shrine", func(player: Player) -> void:
+		var trial: FlightTrial = get_parent().get_node_or_null("FlightTrial")
+		if trial:
+			trial.enter(player)
+	)
+	arch.sprite().modulate = Color(0.75, 0.9, 1.0)
+	arch.add_light(1.0, 2.2, Color(0.7, 0.85, 1.0))
+	placed.append(arch)
 
 
 ## A standing stone ringed with candles. Praying there blesses the player

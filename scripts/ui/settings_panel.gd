@@ -86,6 +86,7 @@ func _ready() -> void:
 		_check(page, "show_worn", "Show worn armour on the hotbar")
 		_check(page, "show_minimap", "Show the minimap")
 		_check(page, "damage_numbers", "Show damage numbers")
+		_choice(page, "wing_display", "Wings of flight", [["flight", "While flying"], ["always", "Always"], ["never", "Never"]], 130.0)
 	)
 	_pages["Comfort"] = _page(holder, func(page: VBoxContainer) -> void:
 		_choice(page, "sprint_mode", "Sprint key", [["toggle", "Press to toggle"], ["hold", "Hold to sprint"]])

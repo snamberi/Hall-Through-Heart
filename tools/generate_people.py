@@ -1559,6 +1559,19 @@ LOOK["wings_2"] = body_look([  # Bat
     ".oMoMoMMo........oMMoMoMo.",
     "..o.o.oo..........oo.o.o..",
 ], 17, 9, fit=False, behind=True)
+LOOK["wings_3"] = body_look([  # Awakened: pale feathers tipped with gold
+    ".oo........................oo.",
+    "oMMoo....................ooMMo",
+    "oMMMMoo................ooMMMMo",
+    "oMMmMMMoo............ooMMMmMMo",
+    ".oMMmMMMMo..........oMMMMmMMo.",
+    "..oMMmMmMMo........oMMmMmMMo..",
+    "..oMyMmMmMo........oMmMmMyMo..",
+    "...oMyMmmo..........ommMyMo...",
+    "....oMyMo............oMyMo....",
+    ".....oyo..............oyo.....",
+    "......o................o......",
+], 17, 7, fit=False, behind=True)
 
 
 # --------------------------------------------------------------- armour

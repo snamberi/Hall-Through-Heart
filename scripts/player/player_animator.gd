@@ -499,6 +499,14 @@ func play_rebirth() -> void:
 
 
 func _choose_animation(delta: float) -> void:
+	if _player.falling:
+		# Falling: tumbling over and over (the dash's quarter turns).
+		if animation != "dodge":
+			play("dodge")
+		pause()
+		frame = 1 + int(Time.get_ticks_msec() / 110) % 4
+		_busy = ""
+		return
 	match _player.state:
 		Player.State.DEAD, Player.State.REVIVING:
 			return
