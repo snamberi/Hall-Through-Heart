@@ -109,14 +109,11 @@ func _draw() -> void:
 				# Its sides: a rim where it drops away west (lit) or east (shaded).
 				var rim: Color = (TerrainTiles.COLORS[_type(x, y)] as Color).lightened(0.3)
 				if _height(x - 1, y) < mine:
-					draw_rect(Rect2(at, Vector2(2.0, TILE)), Color(rim, 0.7))
+					draw_rect(Rect2(at, Vector2(2.0, TILE)), Color(rim, 0.35))
 				if _height(x + 1, y) < mine:
-					draw_rect(Rect2(at + Vector2(TILE - 2.0, 0), Vector2(2.0, TILE)), Color(rim.darkened(0.45), 0.7))
+					draw_rect(Rect2(at + Vector2(TILE - 2.0, 0), Vector2(2.0, TILE)), Color(rim.darkened(0.45), 0.35))
 			if drop > 0 and _is_face(x, y):
-				if level(above) > 0:
-					_face(at, drop, above, x, y)
-				else:
-					_bank(at, drop, above, x, y)
+				_cliff(at, drop, above, x, y)
 				if _is_stairs(x, y):
 					_steps(at, drop, above, x, y)
 			elif mine > 0:
@@ -129,11 +126,11 @@ func _draw() -> void:
 			if _height(x - 1, y) > mine:
 				for k in 6:
 					draw_rect(Rect2(at.x + k * 2.0, at.y, 2.0, TILE), Color(0, 0, 0, 0.26 * (1.0 - k / 6.0)))
-				draw_rect(Rect2(at.x, at.y, 2.0, TILE), Color(0.12, 0.11, 0.15, 0.6))
+				pass
 			if _height(x + 1, y) > mine:
 				for k in 4:
 					draw_rect(Rect2(at.x + TILE - (k + 1) * 2.0, at.y, 2.0, TILE), Color(0, 0, 0, 0.16 * (1.0 - k / 4.0)))
-				draw_rect(Rect2(at.x + TILE - 2.0, at.y, 2.0, TILE), Color(0.12, 0.11, 0.15, 0.6))
+				pass
 
 
 ## One tile of cliff face, `drop` steps tall, hanging from the high ground above.
@@ -292,3 +289,164 @@ func _foot(at: Vector2, height: float, seam: Color, mid: Color, lip: Color, rand
 		draw_rect(Rect2(sx, sy, stone.x, stone.y), mid)
 		draw_rect(Rect2(sx, sy, stone.x, 1.0), lip)
 		draw_rect(Rect2(sx, sy + stone.y, stone.x, 1.0), Color(0, 0, 0, 0.4))
+
+
+# --- the cliff as stacked stones under a wandering, overhanging lip
+
+## Stone looks: [stone, lit, shade, gap] for each kind of high ground.
+const STONES := {
+	"earth": [Color("8e8270"), Color("b6aa92"), Color("645a4c"), Color("2e2219")],
+	"frozen": [Color("8a8e9c"), Color("b8bece"), Color("62667a"), Color("2a2a36")],
+	"sandstone": [Color("b8955e"), Color("d8b880"), Color("8a6a40"), Color("4a3420")],
+	"ash": [Color("5a5458"), Color("7a7278"), Color("3e3a3e"), Color("1a1618")],
+	"rock": [Color("7a7682"), Color("a8a4b2"), Color("55525e"), Color("24222a")],
+	"peak": [Color("9aa4b8"), Color("d0d8e8"), Color("6a7488"), Color("2e3442")],
+}
+
+
+func _stone_look(above: int) -> Array:
+	if above == T.PEAK:
+		return STONES["peak"]
+	if above == T.ROCK:
+		return STONES["rock"]
+	if above in [T.SNOW, T.FROSTPINE, T.SALT]:
+		return STONES["frozen"]
+	if above == T.SAND:
+		return STONES["sandstone"]
+	if above in [T.ASH, T.CINDER]:
+		return STONES["ash"]
+	return STONES["earth"]
+
+
+## A wandering line, the same wherever it is asked for, so neighbouring
+## tiles join without a seam (in steps of two pixels, as the art is drawn).
+static func _wave(wx: float, seed: float, size: float) -> float:
+	var v := sin(wx * 0.045 + seed) * 0.6 + sin(wx * 0.13 + seed * 2.3) * 0.4
+	return roundf(v * size / 2.0) * 2.0
+
+
+func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
+	var stones := _stone_look(above)
+	var rocky := level(above) > 0
+	# The ground's map colour is darker and duller than it looks: lift it.
+	var base_grass: Color = TerrainTiles.COLORS[above]
+	var grass := Color.from_hsv(base_grass.h, minf(base_grass.s * 1.25, 1.0), clampf(base_grass.v + 0.22, 0.0, 0.92))
+	var random := RandomNumberGenerator.new()
+	random.seed = hash(Vector3i(origin.x + x, origin.y + y, 733))
+	var height := TILE - 4.0 if not rocky else minf(STEP * drop, TILE - 4.0)
+	var world_x := float(origin.x + x) * TILE
+	var open_left := _height(x - 1, y - 1) - _height(x - 1, y) <= 0
+	var open_right := _height(x + 1, y - 1) - _height(x + 1, y) <= 0
+	# Per two-pixel column: where the lip and the foot lie. Ends of a cliff
+	# curve round: the face shrinks toward them instead of stopping square.
+	var tops: Array[float] = []
+	var bottoms: Array[float] = []
+	for c in 22:
+		var cx := c * 2.0
+		var wx := world_x + cx
+		var top := at.y + 2.0 + _wave(wx, 1.7, 6.0)
+		var bottom := at.y + height + _wave(wx, 4.1, 5.0)
+		var shrink := 1.0
+		if open_left and cx < 16.0:
+			shrink = minf(shrink, sqrt(cx / 16.0))
+		if open_right and cx > TILE - 18.0:
+			shrink = minf(shrink, sqrt((TILE - 2.0 - cx) / 16.0))
+		bottom = top + roundf((bottom - top) * shrink / 2.0) * 2.0
+		tops.append(top)
+		bottoms.append(bottom)
+	# The shadow the cliff throws on the ground below.
+	for c in 22:
+		for k in 6:
+			draw_rect(Rect2(at.x + c * 2.0, bottoms[c] + k * 2.0, 2.0, 2.0), Color(0, 0, 0, 0.32 * (1.0 - k / 6.0)))
+	# The soil between the stones.
+	for c in 22:
+		if bottoms[c] > tops[c]:
+			draw_rect(Rect2(at.x + c * 2.0, tops[c], 2.0, bottoms[c] - tops[c]), stones[3])
+	# Stones in staggered courses, each lit along its top and left edge,
+	# shaded along its bottom, some with moss on top.
+	var row_top := at.y - 4.0
+	var course := 0
+	while row_top < at.y + height + 6.0:
+		var row_h := float(random.randi_range(3, 6)) * 2.0
+		var sx := -float(random.randi_range(0, 5)) * 2.0 - (6.0 if course % 2 else 0.0)
+		while sx < TILE:
+			var width := float(random.randi_range(4, 9)) * 2.0
+			var tint: Color = (stones[0] as Color).lerp(stones[1], random.randf() * 0.35).darkened(random.randf() * 0.12)
+			var mossy := not rocky and random.randf() < 0.25
+			for c in range(maxi(0, int(sx / 2.0) + 1), mini(22, int((sx + width) / 2.0))):
+				var y0 := maxf(row_top + 2.0, tops[c] + 4.0)
+				var y1 := minf(row_top + row_h, bottoms[c] - 2.0)
+				if y1 - y0 < 2.0:
+					continue
+				var px := at.x + c * 2.0
+				var first := c == int(sx / 2.0) + 1
+				var last := c == int((sx + width) / 2.0) - 1
+				# Rounded: the corner pixels stay soil.
+				if first or last:
+					y0 += 2.0
+					y1 -= 2.0
+					if y1 - y0 < 2.0:
+						continue
+				draw_rect(Rect2(px, y0, 2.0, y1 - y0), stones[2] if last else (tint.lightened(0.12) if first else tint))
+				draw_rect(Rect2(px, y0, 2.0, 2.0), stones[1] if not mossy else grass.darkened(0.1))
+				draw_rect(Rect2(px, y1 - 2.0, 2.0, 2.0), (stones[2] as Color).darkened(0.15))
+			sx += width + 2.0
+		row_top += row_h
+		course += 1
+	# Roots hanging from the lip over the stones.
+	if not rocky:
+		for k in random.randi_range(1, 3):
+			var c := random.randi_range(1, 20)
+			var ry := tops[c] + 4.0
+			var length := random.randi_range(3, 8)
+			for step in length:
+				if ry > bottoms[c] - 2.0:
+					break
+				draw_rect(Rect2(at.x + c * 2.0, ry, 2.0, 2.0), Color("3a2414"))
+				ry += 2.0
+				if random.randf() < 0.35:
+					c = clampi(c + (1 if random.randf() < 0.5 else -1), 0, 21)
+	# The lip: the ground above, bright along its edge, hanging over the
+	# stones in tufts and clumps; blades standing up along the very edge.
+	for c in 22:
+		var px := at.x + c * 2.0
+		var top := tops[c]
+		if bottoms[c] <= top:
+			continue
+		draw_rect(Rect2(px, top - 2.0, 2.0, 8.0), grass)
+		draw_rect(Rect2(px, top - 2.0, 2.0, 2.0), grass.lightened(0.25))
+		draw_rect(Rect2(px, top + 6.0, 2.0, 2.0), grass.darkened(0.3))
+		if rocky:
+			continue
+		# Tufts and whole clumps of grass hanging over the stones.
+		var hang := 0.0
+		if random.randf() < 0.55:
+			hang = float(random.randi_range(1, 3)) * 2.0
+		if random.randf() < 0.16:
+			hang = float(random.randi_range(4, 7)) * 2.0
+		if hang > 0.0:
+			var room := bottoms[c] - top - 8.0
+			draw_rect(Rect2(px, top + 6.0, 2.0, minf(hang, room)), grass.darkened(0.12))
+			draw_rect(Rect2(px, top + 6.0 + minf(hang, room), 2.0, 2.0), grass.darkened(0.4))
+		if random.randf() < 0.35:
+			draw_rect(Rect2(px, top - 4.0, 2.0, 2.0), grass.lightened(0.12))
+	# The foot: a dark line, fallen boulders half sunk in the ground, and a
+	# little grass growing against the face.
+	for c in 22:
+		if bottoms[c] > tops[c]:
+			draw_rect(Rect2(at.x + c * 2.0, bottoms[c] - 2.0, 2.0, 2.0), stones[3])
+	for k in random.randi_range(0, 2):
+		var c := random.randi_range(2, 18)
+		var bw := float(random.randi_range(3, 5)) * 2.0
+		var bh := float(random.randi_range(2, 3)) * 2.0
+		var bx := at.x + c * 2.0
+		var by := bottoms[c] - bh + 2.0
+		draw_rect(Rect2(bx, by, bw, bh), stones[0])
+		draw_rect(Rect2(bx, by, bw, 2.0), stones[1])
+		draw_rect(Rect2(bx + bw - 2.0, by, 2.0, bh), stones[2])
+		draw_rect(Rect2(bx, by + bh, bw, 2.0), Color(0, 0, 0, 0.35))
+	if not rocky:
+		for k in random.randi_range(1, 3):
+			var c := random.randi_range(0, 20)
+			draw_rect(Rect2(at.x + c * 2.0, bottoms[c] - 4.0, 2.0, 4.0), grass.darkened(0.1))
+			draw_rect(Rect2(at.x + c * 2.0 + 2.0, bottoms[c] - 2.0, 2.0, 2.0), grass)

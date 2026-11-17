@@ -424,41 +424,30 @@ const TELEGRAPH := Color(1.0, 0.24, 0.2)
 
 func _draw_telegraph() -> void:
 	var progress := clampf(1.0 - _state_time_left / maxf(windup_time, 0.01), 0.0, 1.0)
-	var fill := Color(TELEGRAPH, 0.1 + 0.18 * progress)
-	var edge := Color(TELEGRAPH.lerp(Color(1.0, 0.85, 0.6), progress * 0.6), 0.55 + 0.4 * progress)
+	var now := Time.get_ticks_msec() / 1000.0
+	# Hotter and brighter as the blow comes; a flash in the last moment.
+	var hot := TELEGRAPH.lerp(Color(1.0, 0.86, 0.55), progress * 0.55)
+	var flash := 1.0 if progress > 0.88 and fmod(now * 14.0, 1.0) < 0.5 else 0.0
 	var facing := _direction if _direction != Vector2.ZERO else Vector2.RIGHT
 	match _attack["kind"]:
 		"slam", "cloud", "explode", "spin", "burrow":
-			var radius: float = _attack["radius"]
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.75))
-			draw_circle(Vector2.ZERO, radius * progress, fill)
-			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, edge, 2.0)
-			draw_set_transform(Vector2.ZERO)
+			_tele_area(Vector2.ZERO, float(_attack["radius"]), progress, hot, flash, now)
 		"swipe", "thrust", "combo":
 			var reach: float = float(_attack.get("range", 60.0)) + 12.0
 			var arc := deg_to_rad(float(_attack.get("arc", 100.0)))
-			var points := PackedVector2Array([Vector2.ZERO])
-			for i in 13:
-				points.append(Vector2.from_angle(facing.angle() - arc / 2.0 + arc * i / 12.0) * reach * Vector2(1.0, 0.75))
-			draw_colored_polygon(points, fill)
-			points.append(Vector2.ZERO)
-			draw_polyline(points, edge, 2.0)
+			_tele_cone(facing, reach, arc, progress, hot, flash, now)
 		"lunge", "charge", "swoop":
 			var length := maxf(float(_attack.get("range", 0.0)), 70.0) * (2.2 if _attack["kind"] == "charge" else 1.3)
-			var side := facing.orthogonal() * body_radius
-			var tip := facing * length * Vector2(1.0, 0.75)
-			var lane := PackedVector2Array([side, side + tip, -side + tip, -side])
-			draw_colored_polygon(PackedVector2Array([side, side + tip * progress, -side + tip * progress, -side]), fill)
-			lane.append(side)
-			draw_polyline(lane, edge, 2.0)
+			_tele_lane(facing, length, body_radius, progress, hot, flash, now)
 		"pounce":
 			if is_instance_valid(target):
 				var landing := to_local(global_position + (target.global_position - global_position).limit_length(float(_attack["range"]) * 1.15))
-				var radius := float(_attack.get("radius", 40.0))
-				draw_set_transform(landing, 0.0, Vector2(1.0, 0.75))
-				draw_circle(Vector2.ZERO, radius * progress, fill)
-				draw_arc(Vector2.ZERO, radius, 0.0, TAU, 32, edge, 2.0)
-				draw_set_transform(Vector2.ZERO)
+				# A dotted leap arc from here to where it will land.
+				for k in 12:
+					var t := (float(k) + fmod(now * 3.0, 1.0)) / 12.0
+					var at := landing * t + Vector2(0, -sin(t * PI) * 26.0)
+					draw_rect(Rect2(at.round() - Vector2(1, 1), Vector2(2, 2)), Color(hot, 0.5 + 0.4 * t))
+				_tele_area(landing, float(_attack.get("radius", 40.0)), progress, hot, flash, now)
 		"shoot", "spit":
 			if is_instance_valid(target):
 				var aim := global_position.direction_to(target.global_position)
@@ -467,9 +456,94 @@ func _draw_telegraph() -> void:
 				var spread := deg_to_rad(float(_attack.get("spread", 30.0))) if shots > 1 else 0.0
 				for i in shots:
 					var angle := -spread / 2.0 + spread * i / maxf(shots - 1, 1) if shots > 1 else 0.0
-					var line := aim.rotated(angle) * length
-					draw_line(Vector2.ZERO, line * progress, Color(edge, edge.a * 0.9), 2.0)
-					draw_line(line * progress, line, Color(edge, 0.18), 1.0)
+					_tele_shot(aim.rotated(angle), length, progress, hot, flash, now)
+
+
+## The ground a blow will fall on, seen at the world's slant: a dark wash, a
+## brighter fill growing toward the strike, a thick rim with an inner line,
+## and short dashes turning slowly round it.
+func _tele_area(center: Vector2, radius: float, progress: float, hot: Color, flash: float, now: float) -> void:
+	draw_set_transform(center, 0.0, Vector2(1.0, 0.72))
+	draw_circle(Vector2.ZERO, radius, Color(0.08, 0.0, 0.02, 0.22))
+	draw_circle(Vector2.ZERO, radius * progress, Color(hot, 0.16 + 0.14 * progress + 0.2 * flash))
+	draw_arc(Vector2.ZERO, radius * progress, 0.0, TAU, 40, Color(hot.lightened(0.3), 0.55), 1.0)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(0.12, 0.02, 0.04, 0.7), 5.0)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(hot, 0.75 + 0.25 * flash), 3.0)
+	draw_arc(Vector2.ZERO, radius - 5.0, 0.0, TAU, 40, Color(hot, 0.3), 1.0)
+	var spin := now * 0.8
+	for k in 12:
+		var a := spin + TAU * k / 12.0
+		draw_arc(Vector2.ZERO, radius + 4.0, a, a + 0.22, 4, Color(hot, 0.6), 2.0)
+	draw_set_transform(Vector2.ZERO)
+
+
+## A sweep in front: the cone's dark wash, a brighter wedge sweeping out,
+## a thick edge, and chevrons along its middle pointing the way.
+func _tele_cone(facing: Vector2, reach: float, arc: float, progress: float, hot: Color, flash: float, now: float) -> void:
+	var slant := Vector2(1.0, 0.72)
+	var outer := PackedVector2Array([Vector2.ZERO])
+	var inner := PackedVector2Array([Vector2.ZERO])
+	for i in 17:
+		var dir := Vector2.from_angle(facing.angle() - arc / 2.0 + arc * i / 16.0)
+		outer.append(dir * reach * slant)
+		inner.append(dir * reach * progress * slant)
+	draw_colored_polygon(outer, Color(0.08, 0.0, 0.02, 0.22))
+	draw_colored_polygon(inner, Color(hot, 0.18 + 0.14 * progress + 0.2 * flash))
+	var rim := outer.slice(1)
+	draw_polyline(rim, Color(0.12, 0.02, 0.04, 0.7), 5.0)
+	draw_polyline(rim, Color(hot, 0.8 + 0.2 * flash), 3.0)
+	draw_line(Vector2.ZERO, outer[1], Color(hot, 0.55), 2.0)
+	draw_line(Vector2.ZERO, outer[outer.size() - 1], Color(hot, 0.55), 2.0)
+	_chevrons(facing, reach * 0.85, hot, now)
+
+
+## The lane a charge will run: dark wash, fill running forward, dashed
+## edges, and chevrons marching along it.
+func _tele_lane(facing: Vector2, length: float, half: float, progress: float, hot: Color, flash: float, now: float) -> void:
+	var slant := Vector2(1.0, 0.72)
+	var side := facing.orthogonal() * half
+	var tip := facing * length * slant
+	draw_colored_polygon(PackedVector2Array([side, side + tip, -side + tip, -side]), Color(0.08, 0.0, 0.02, 0.22))
+	draw_colored_polygon(PackedVector2Array([side, side + tip * progress, -side + tip * progress, -side]), Color(hot, 0.18 + 0.14 * progress + 0.2 * flash))
+	for edge: Vector2 in [side, -side]:
+		var dashes := int(length / 12.0)
+		for k in dashes:
+			var a := edge + tip * (float(k) / dashes)
+			var b := edge + tip * (float(k) + 0.6) / dashes
+			draw_line(a, b, Color(hot, 0.85), 2.0)
+	draw_line(side + tip, -side + tip, Color(hot, 0.9), 3.0)
+	_chevrons(facing, length * 0.92, hot, now)
+
+
+## Chevrons along a direction, drifting outward.
+func _chevrons(facing: Vector2, length: float, hot: Color, now: float) -> void:
+	var slant := Vector2(1.0, 0.72)
+	var across := facing.orthogonal()
+	var count := maxi(int(length / 22.0), 2)
+	for k in count:
+		var t := fmod(float(k) / count + now * 0.6, 1.0)
+		var at := facing * length * t * slant
+		var back := -facing * 5.0
+		var alpha := 0.7 * sin(t * PI)
+		draw_line(at + back + across * 5.0, at, Color(hot.lightened(0.25), alpha), 2.0)
+		draw_line(at + back - across * 5.0, at, Color(hot.lightened(0.25), alpha), 2.0)
+
+
+## A shot's line: dots marching to a reticle at its end.
+func _tele_shot(direction: Vector2, length: float, progress: float, hot: Color, flash: float, now: float) -> void:
+	var count := int(length / 10.0)
+	for k in count:
+		var t := (float(k) + fmod(now * 4.0, 1.0)) / count
+		if t > progress + 0.15:
+			continue
+		var at := direction * length * t
+		draw_rect(Rect2(at.round() - Vector2(1, 1), Vector2(3, 3)), Color(hot, 0.35 + 0.5 * t))
+	var end := direction * length
+	var size := 7.0 - 3.0 * progress
+	draw_arc(end, size + 3.0, 0.0, TAU, 16, Color(0.12, 0.02, 0.04, 0.6), 4.0)
+	draw_arc(end, size + 3.0, 0.0, TAU, 16, Color(hot, 0.7 + 0.3 * flash), 2.0)
+	for dir: Vector2 in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+		draw_line(end + dir * (size + 5.0), end + dir * (size + 10.0), Color(hot, 0.8), 2.0)
 
 
 ## Returns the health actually removed, so callers can reward real damage only.

@@ -11,10 +11,10 @@ const SMALL_SIZE := Vector2(32, 32)
 ## Tall sheet indices.
 enum Tall { OAK, OAK_2, DEAD, PINE, SNOW_PINE, THORN, CRIMSON, MUSHROOM, BONE, CHARRED, CRYSTAL, SALT, WILLOW, CACTUS,
 	BUSH, BERRY_BUSH, SNOW_BUSH, THORN_BUSH, DRY_SHRUB, FUNGAL_BUSH,
-	BROAD_OAK, TALL_OAK, SLENDER_PINE, SLENDER_SNOW_PINE, SQUAT_PINE }
+	BROAD_OAK, TALL_OAK, SLENDER_PINE, SLENDER_SNOW_PINE, SQUAT_PINE, AUTUMN_OAK, CHERRY, RED_MAPLE }
 ## Trees that give wood when chopped; the rest are scenery.
 const WOODEN: Array[int] = [Tall.OAK, Tall.OAK_2, Tall.DEAD, Tall.PINE, Tall.SNOW_PINE, Tall.THORN, Tall.CRIMSON, Tall.CHARRED, Tall.WILLOW,
-	Tall.BROAD_OAK, Tall.TALL_OAK, Tall.SLENDER_PINE, Tall.SLENDER_SNOW_PINE, Tall.SQUAT_PINE]
+	Tall.BROAD_OAK, Tall.TALL_OAK, Tall.SLENDER_PINE, Tall.SLENDER_SNOW_PINE, Tall.SQUAT_PINE, Tall.AUTUMN_OAK, Tall.CHERRY, Tall.RED_MAPLE]
 
 ## Per terrain:
 ##   "trees"   tall sheet indices for trees, picked at random
@@ -24,8 +24,8 @@ const WOODEN: Array[int] = [Tall.OAK, Tall.OAK_2, Tall.DEAD, Tall.PINE, Tall.SNO
 ##   "cover"   how much ground cover per tile
 ##   "critters" kinds of wildlife (see Critter)
 const BIOMES := {
-	T.DEAD_GRASS: {"decals": [42, 46, 51, 45], "trees": [Tall.OAK, Tall.OAK_2, Tall.DEAD, Tall.BROAD_OAK], "bushes": [Tall.BUSH, Tall.BERRY_BUSH, Tall.DRY_SHRUB], "ground": [0, 4, 6, 7, 9, 9, 13, 34, 35, 40], "forest": 0.32, "cover": 0.55, "critters": ["rabbit", "bird", "butterfly"]},
-	T.DARK_GRASS: {"decals": [44, 45, 45, 50, 43], "trees": [Tall.OAK, Tall.OAK_2, Tall.OAK, Tall.BROAD_OAK, Tall.TALL_OAK, Tall.TALL_OAK], "bushes": [Tall.BUSH, Tall.BERRY_BUSH, Tall.BUSH], "ground": [0, 1, 2, 3, 6, 7, 8, 11, 31, 32, 33, 35, 36], "forest": 0.55, "cover": 0.7, "critters": ["rabbit", "bird", "butterfly"]},
+	T.DEAD_GRASS: {"decals": [42, 46, 51, 45], "trees": [Tall.OAK, Tall.OAK_2, Tall.DEAD, Tall.BROAD_OAK, Tall.AUTUMN_OAK, Tall.AUTUMN_OAK, Tall.RED_MAPLE], "bushes": [Tall.BUSH, Tall.BERRY_BUSH, Tall.DRY_SHRUB], "ground": [0, 4, 6, 7, 9, 9, 13, 34, 35, 40], "forest": 0.32, "cover": 0.55, "critters": ["rabbit", "bird", "butterfly"]},
+	T.DARK_GRASS: {"decals": [44, 45, 45, 50, 43], "trees": [Tall.OAK, Tall.OAK_2, Tall.OAK, Tall.BROAD_OAK, Tall.TALL_OAK, Tall.TALL_OAK, Tall.CHERRY, Tall.AUTUMN_OAK], "bushes": [Tall.BUSH, Tall.BERRY_BUSH, Tall.BUSH], "ground": [0, 1, 2, 3, 6, 7, 8, 11, 31, 32, 33, 35, 36], "forest": 0.55, "cover": 0.7, "critters": ["rabbit", "bird", "butterfly"]},
 	T.BOG: {"decals": [43, 43, 50, 44], "trees": [Tall.WILLOW, Tall.DEAD], "bushes": [Tall.BUSH], "ground": [8, 8, 11, 6, 2, 39, 39], "forest": 0.3, "cover": 0.55, "critters": ["frog", "bird"]},
 	T.MUD: {"decals": [43, 51, 42, 46], "trees": [Tall.DEAD], "bushes": [Tall.DRY_SHRUB], "ground": [13, 9, 8], "forest": 0.08, "cover": 0.3, "critters": ["frog"]},
 	T.ASH: {"decals": [49, 49, 42, 46], "trees": [Tall.CHARRED, Tall.DEAD], "bushes": [Tall.DRY_SHRUB], "ground": [13, 13, 17, 9, 14], "forest": 0.12, "cover": 0.3, "critters": []},

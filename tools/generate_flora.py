@@ -121,7 +121,7 @@ def canopy(c, blobs, colours, seed, highlights=True):
 
 
 # ----------------------------------------------------------------- tall
-def oak(seed=1, wide=1.0, lift=0):
+def oak(seed=1, wide=1.0, lift=0, leaves=None, deep=None, tips="9aca6a", petals=None):
     """A broadleaf: a crown of leaf clumps over a dark inner mass, branches
     showing in the gaps. `wide` stretches the crown, `lift` raises it on a
     taller trunk, so a wood is not one tree repeated."""
@@ -133,8 +133,8 @@ def oak(seed=1, wide=1.0, lift=0):
     # Branches reaching into the crown, seen through gaps.
     for (a, b) in [((32, 58), (18, 44)), ((32, 54), (46, 42)), ((32, 50), (30, 30)), ((32, 46), (40, 28))]:
         c.shade("line", (sx(a[0]), a[1] - lift, sx(b[0]), b[1] - lift), BARK, width=3 if a[1] > 50 else 2, dither=False)
-    leaves = ramp("6a9a4a", "4a7a3a", "2f5a2a")
-    deep = ramp("3f6a34", "2f5a2a", "1f3e1e")
+    leaves = leaves or ramp("6a9a4a", "4a7a3a", "2f5a2a")
+    deep = deep or ramp("3f6a34", "2f5a2a", "1f3e1e")
     # A dark inner mass first, then lit clumps over it, for depth.
     canopy(c, [(32, 40 - lift, int(22 * wide), 16), (sx(20), 46 - lift, 11, 9), (sx(44), 46 - lift, 11, 9)], deep, seed, highlights=False)
     jitter = lambda v: v + r.randint(-2, 2)
@@ -148,13 +148,21 @@ def oak(seed=1, wide=1.0, lift=0):
     for (cx, cy, rr, _ry) in clumps:
         for k in range(6):
             a = math.pi * (1.1 + 0.08 * k)
-            c.put(cx + math.cos(a) * (rr - 2), cy + math.sin(a) * (rr * 0.8 - 2), C("9aca6a"))
+            c.put(cx + math.cos(a) * (rr - 2), cy + math.sin(a) * (rr * 0.8 - 2), C(tips))
         # A shadowed underside to each clump separates it from the next.
         for k in range(-rr + 3, rr - 2, 2):
             if (cx + k, cy + int(rr * 0.75)) in c.filled:
                 c.put(cx + k, cy + int(rr * 0.75), deep[2])
     for x in (16, 27, 44, 49):
         c.put(sx(x), 54 - lift + r.randint(0, 2), leaves[1])
+    if petals:
+        # Blossom: pale petals scattered over the crown and a few fallen.
+        for _ in range(26):
+            px, py = r.randint(10, 54), r.randint(6, 52) - lift
+            if (int(px), int(py)) in c.filled:
+                c.put(px, py, C(petals))
+        for _ in range(8):
+            c.put(r.randint(14, 50), r.randint(84, 92), C(petals))
     c.outline()
     return c.img
 
@@ -415,6 +423,10 @@ TALL = [
     pine(False, seed=23, tiers=6, wide=0.82),                                     # 22 slender pine
     pine(True, seed=24, tiers=6, wide=0.86),                                      # 23 slender snowy pine
     pine(False, seed=25, tiers=4, wide=1.12),                                     # 24 squat pine
+    oak(31, wide=1.05, leaves=ramp("e8983a", "c06a2a", "8a4420"), deep=ramp("8a4a20", "6a361a", "4a2412"), tips="f8c868"),       # 25 autumn oak
+    oak(32, wide=1.1, lift=-2, leaves=ramp("f4b4cc", "e084aa", "b0587a"), deep=ramp("a04870", "80385a", "5a2440"), tips="fff0f6",
+        petals="fff4f8"),                                                                                                          # 26 cherry blossom
+    oak(33, wide=0.95, lift=4, leaves=ramp("dc4a4c", "b02a34", "7a1a24"), deep=ramp("7a2228", "5a161e", "3c0e14"), tips="ff9a88"),  # 27 red maple
 ]
 
 
