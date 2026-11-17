@@ -2342,6 +2342,20 @@ def new_thing_icon(kind):
         icon.line([(23, 11), (26, 17)], 1, ramp("e0dccf"))
         for x, y in ((4, 14), (28, 5), (5, 27)):
             icon.sparkle(x, y, (255, 230, 160))
+    elif kind.startswith("gate_key_"):
+        # A gate key: a long black-iron key, its bow a ring holding a cut
+        # crystal in the rank's colour, light coming off the crystal.
+        crystal = {"e": "a8a8b0", "d": "7ad07a", "c": "6aa8f0", "b": "b07af0", "a": "f0a050", "s": "f05a4a"}[kind[-1]]
+        icon.line([(13, 18), (27, 4)], 3, ramp("3a3644"))
+        icon.line([(14, 17), (26, 5)], 1, ramp("6a6478"))
+        icon.rect((22, 6, 26, 8), ramp("3a3644"))
+        icon.rect((24, 9, 28, 11), ramp("3a3644"))
+        icon.ring((2, 15, 17, 30), 3, ramp("4a4652"))
+        icon.poly([(9, 18), (13, 22), (9, 27), (5, 22)], ramp(crystal))
+        icon.put(8, 20, c("ffffff"))
+        icon.put(9, 21, c("ffffff"))
+        for x, y in ((3, 13), (17, 14), (16, 29)):
+            icon.sparkle(x, y, tuple(min(255, v + 60) for v in c(crystal)))
     elif kind == "benefactor_pen":
         # The Benefactor's pen: a long black quill with a cut gilt nib, a
         # drop of ink, and a little brass key tied on with thread.
@@ -2934,6 +2948,12 @@ ITEMS = {
     "noble_mask": lambda: new_thing_icon("noble_mask"),
     "matron_lantern": lambda: new_thing_icon("matron_lantern"),
     "benefactor_pen": lambda: new_thing_icon("benefactor_pen"),
+    "gate_key_e": lambda: new_thing_icon("gate_key_e"),
+    "gate_key_d": lambda: new_thing_icon("gate_key_d"),
+    "gate_key_c": lambda: new_thing_icon("gate_key_c"),
+    "gate_key_b": lambda: new_thing_icon("gate_key_b"),
+    "gate_key_a": lambda: new_thing_icon("gate_key_a"),
+    "gate_key_s": lambda: new_thing_icon("gate_key_s"),
     "taming_treat": treat_icon,
     # --- walls
     **{k: (lambda k=k: wall_icon(k)) for k in WALLS},

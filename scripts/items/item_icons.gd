@@ -424,6 +424,12 @@ const INDEX := {
 	"lull_doll": 409,
 	"matron_lantern": 410,
 	"noble_mask": 411,
+	"gate_key_a": 412,
+	"gate_key_b": 413,
+	"gate_key_c": 414,
+	"gate_key_d": 415,
+	"gate_key_e": 416,
+	"gate_key_s": 417,
 }
 
 static func has(id: String) -> bool:

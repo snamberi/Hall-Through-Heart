@@ -611,6 +611,12 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 func use_item(item: Item) -> String:
 	if item.id == "bedroll" and item in inventory.items:
 		return sleep_rough()
+	if item.definition().get("use", {}).has("gate_key") and item in inventory.items:
+		var gates: Gates = get_parent().get_node_or_null("Gates")
+		var problem := gates.use_key(str(item.definition()["use"]["gate_key"])) if gates else "Nothing happens."
+		if problem == "":
+			inventory.take(item.id, 1)
+		return problem
 	if item.definition().has("satchel") and item in inventory.items:
 		return inventory.bind_satchel(item)
 	if item.definition().has("boat") and item in inventory.items:

@@ -410,3 +410,9 @@ benefactor_pen
 lull_doll
 matron_lantern
 noble_mask
+gate_key_a
+gate_key_b
+gate_key_c
+gate_key_d
+gate_key_e
+gate_key_s

@@ -335,3 +335,171 @@ func test_the_aura_cows_the_weak_and_not_the_great(t: TestContext) -> void:
 	weakling.queue_free()
 	boss.queue_free()
 	t.close_game()
+
+
+func test_the_pact_is_won_in_the_chapel_and_keeps_a_daily_rite(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var pact: ThePact = main.get_node("ThePact")
+	var gates: Gates = main.get_node("Gates")
+	var instances: Instances = main.get_node("Instances")
+	var day_night: DayNight = main.get_node("DayNight")
+	t.check(not pact.awakened, "no Pact at first")
+	player.leveling.add_xp(3000)
+	gates._chapel_check()
+	t.check(gates.chapel_cell != Vector2i.MAX, "the crimson gate opens near you at level %d" % ThePact.CHAPEL_LEVEL)
+	gates.enter({})
+	await t.frames(3)
+	t.check(instances.is_inside() and instances.room.title == "The Drowned Chapel", "into the Drowned Chapel")
+	# A broken commandment hurts.
+	pact._command = "kneel"
+	pact._toll_wait = 0.0
+	player.velocity = Vector2(200, 0)
+	var health := player.health.current
+	pact._chapel_tick(0.01)
+	pact._chapel_tick(0.01)
+	t.check(player.health.current < health, "moving while the bell tolls for KNEEL is punished")
+	pact._tolls = ThePact.CHAPEL_TOLLS
+	pact._accept()
+	await t.frames(2)
+	t.check(pact.awakened and not instances.is_inside(), "the Pact is accepted, and you are out")
+	t.equal(gates.chapel_cell, Vector2i.MAX, "the crimson gate is gone")
+	# The rite.
+	var points := player.attributes.unspent
+	for key: String in ThePact.RITE:
+		pact.rite[key] = pact.goal(key) - 1
+	pact._on_kill({})
+	t.check(not pact.rite_done, "not done until every part is")
+	pact.rite["blows"] = pact.goal("blows")
+	pact.rite["steps"] = float(pact.goal("steps"))
+	pact.rite["gathered"] = pact.goal("gathered")
+	pact._check_rite()
+	t.check(pact.rite_done and player.attributes.unspent == points + 3, "a finished rite gives three points")
+	# An unfinished one means the Pit.
+	pact.rite_done = false
+	day_night.day += 1
+	pact._on_new_day(day_night.day)
+	t.check(pact.penalty_due, "an unfinished rite brings a penalty")
+	pact._penalty_wait = 0.0
+	pact._physics_process(0.1)
+	await t.frames(3)
+	t.check(instances.is_inside() and instances.room.title == "The Pit of Atonement", "taken to the Pit of Atonement")
+	pact._scene_left = 0.0
+	pact._pit_tick(0.1)
+	await t.frames(2)
+	t.check(not instances.is_inside(), "let go when the time is served")
+	var data := pact.save_data()
+	pact.load_data({})
+	t.check(not pact.awakened, "fresh")
+	pact.load_data(data)
+	t.check(pact.awakened, "the save keeps the Pact")
+	t.close_game()
+
+
+func test_gates_open_break_seal_and_yield_to_keys(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var pact: ThePact = main.get_node("ThePact")
+	var gates: Gates = main.get_node("Gates")
+	var instances: Instances = main.get_node("Instances")
+	var day_night: DayNight = main.get_node("DayNight")
+	var buildings: Buildings = main.get_node("Buildings")
+	pact.awakened = true
+	t.equal(Gates.rank_for_level(1, 0.5), "E", "a beginner meets E-rank gates")
+	t.equal(Gates.rank_for_level(90, 0.5), "S", "the strong meet S-rank gates")
+	var gate := gates.open_gate("D", false)
+	t.equal(gates.gates.size(), 1, "a gate opens")
+	gates._physics_process(1.1)
+	await t.frames(1)
+	# Inside, the master; its fall clears the gate.
+	gates.enter(gate)
+	await t.frames(3)
+	t.check(instances.is_inside() and instances.room.title == "D-Rank Gate", "into a D-rank gate")
+	t.check(gates._master != null and is_instance_valid(gates._master), "its master waits")
+	(gates._master as Enemy).health.take_damage(1e9)
+	await t.frames(3)
+	t.equal(gates.gates.size(), 0, "cleared, the gate closes")
+	t.equal(gates.cleared, 1, "one gate cleared")
+	instances.leave()
+	await t.frames(2)
+	# A red gate seals.
+	var red := gates.open_gate("C", true)
+	gates.enter(red)
+	await t.frames(3)
+	t.check(Gates.sealed, "a red gate seals")
+	buildings.home = {"position": [0.0, 0.0]}
+	t.check(buildings.recall_problem().contains("red gate"), "no recall out of a red gate")
+	t.check(not instances.room.get_children().any(func(n: Node) -> bool: return n is Prop and (n as Prop).prompt_text == "Leave the gate"), "and no way out")
+	(gates._master as Enemy).health.take_damage(1e9)
+	await t.frames(3)
+	t.check(not Gates.sealed, "its master's fall opens it")
+	instances.leave()
+	await t.frames(2)
+	# Left too long, a gate breaks and its horde walks out.
+	var old := gates.open_gate("E", false)
+	old["day"] = day_night.day - 10
+	gates._on_new_day(day_night.day)
+	t.check(old["broken"], "an old gate breaks")
+	var before := main.get_tree().get_nodes_in_group("enemies").size()
+	gates._break_out(old, player.global_position + Vector2(300, 0))
+	await t.frames(2)
+	t.check(main.get_tree().get_nodes_in_group("enemies").size() > before, "and monsters pour out")
+	# A key opens a private gate.
+	player.inventory.add(Item.create("gate_key_e"))
+	var key: Item = null
+	for item in player.inventory.items:
+		if item.id == "gate_key_e":
+			key = item
+	t.equal(player.use_item(key), "", "a gate key opens a gate")
+	await t.frames(3)
+	t.check(instances.is_inside() and instances.room.title == "E-Rank Gate", "a private E-rank gate")
+	t.equal(player.inventory.count_of("gate_key_e"), 0, "the key is used up")
+	instances.leave()
+	t.close_game()
+
+
+func test_the_vigil_makes_a_shade_sovereign_who_raises_shadows(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var pact: ThePact = main.get_node("ThePact")
+	var shadows: Shadows = main.get_node("Shadows")
+	var instances: Instances = main.get_node("Instances")
+	pact.awakened = true
+	t.check(pact.vigil_problem() != "", "the Vigil waits for level %d" % ThePact.VIGIL_LEVEL)
+	player.leveling.add_xp(4000000)
+	t.check(player.leveling.level >= ThePact.VIGIL_LEVEL, "grown enough")
+	t.equal(pact.begin_vigil(), "", "the Vigil begins")
+	await t.frames(3)
+	t.check(instances.is_inside() and instances.room.title == "The Vigil of Ashes", "in the grave-ring")
+	pact._wave = 5
+	pact._wave_wait = 0.0
+	instances.room.clear_enemies()
+	pact._vigil_tick(0.1)
+	await t.frames(2)
+	t.check(pact._vigil_boss != null, "the Warden of Ashes comes")
+	(pact._vigil_boss as Enemy).health.take_damage(1e9)
+	await t.frames(3)
+	t.equal(pact.job, "shade_sovereign", "the job changes")
+	instances.leave()
+	await t.frames(2)
+	t.check(shadows.can_raise(), "a Shade Sovereign raises the fallen")
+	# Raise one (several tries at most; a normal monster is easy).
+	var raised := false
+	for k in 8:
+		shadows._on_kill({"id": "husk", "name": "Husk", "rank": "normal", "position": player.global_position + Vector2(40, 0)})
+		if shadows.raise_nearest() == "":
+			raised = true
+			break
+	t.check(raised and shadows.soldiers.size() == 1, "a husk rises as a shadow")
+	shadows._physics_process(0.1)
+	await t.frames(2)
+	t.equal(shadows._nodes.size(), 1, "and walks with you")
+	var node: Node2D = shadows._nodes.values()[0]
+	node.global_position = player.global_position + Vector2(200, 0)
+	player.camera.global_position = player.global_position
+	var at := player.global_position
+	main.get_viewport().warp_mouse(main.get_viewport().get_visible_rect().size / 2.0)
+	t.equal(shadows.swap(), "", "swap places with it")
+	t.check(player.global_position.distance_to(at) > 100.0, "you stand where it stood")
+	t.check(shadows.swap() != "", "not again so soon")
+	t.close_game()

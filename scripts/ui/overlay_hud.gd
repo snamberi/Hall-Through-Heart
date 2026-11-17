@@ -85,6 +85,13 @@ func _targets() -> Array:
 	if bounties:
 		for bounty: Dictionary in bounties.active:
 			out.append([(Vector2(bounties.cell_of(bounty)) + Vector2(0.5, 0.5)) * TerrainTiles.TILE_SIZE, Color("e0524a"), str(bounty.get("name", "Bounty"))])
+	var gates: Gates = world.get_node_or_null("Gates")
+	if gates:
+		for gate: Dictionary in gates.gates:
+			if not gate["broken"]:
+				out.append([(Vector2(gate["cell"][0], gate["cell"][1]) + Vector2(0.5, 0.5)) * TerrainTiles.TILE_SIZE, Color("e0303a") if gate["red"] else Gates.RANKS[gate["rank"]]["color"], "%s-Gate" % gate["rank"]])
+		if gates.chapel_cell != Vector2i.MAX:
+			out.append([(Vector2(gates.chapel_cell) + Vector2(0.5, 0.5)) * TerrainTiles.TILE_SIZE, Color("e8bc4a"), "Crimson gate"])
 	var hunts: Node = world.get_node_or_null("TreasureMaps")
 	if hunts:
 		for spot: Dictionary in hunts.spots:

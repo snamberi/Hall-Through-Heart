@@ -38,6 +38,11 @@ const ATTACK_HINTS := {
 
 ## [text, detail, time shown]
 var _heart: Array = []
+## The Pact's windows: [[title, lines, age], ...] newest last.
+var _pact: Array = []
+const PACT_SECONDS := 6.0
+const PACT_BRONZE := Color("c8904a")
+const PACT_TEXT := Color("bfe4f0")
 ## [[text, age], ...] newest last.
 var _still: Array = []
 ## Keys already said this session (so a voice does not repeat itself).
@@ -68,6 +73,18 @@ static func heart(tree: SceneTree, text: String, detail: String = "") -> void:
 	if voices:
 		voices._heart = [text, detail, 0.0]
 		Audio.play_note("heartbeat", 0.85, -2.0)
+
+
+## The Pact shows a window: a title and a few lines.
+static func pact(tree: SceneTree, title: String, lines: Array = []) -> void:
+	var voices: Voices = tree.get_first_node_in_group("voices") if tree else null
+	Chronicle.say(tree, "event", "The Pact", title + ((": " + " ".join(lines)) if not lines.is_empty() else ""))
+	if voices == null or not GameSettings.system_window:
+		return
+	voices._pact.append([title, lines, 0.0])
+	while voices._pact.size() > 2:
+		voices._pact.pop_front()
+	Audio.play_note("ui_click", 0.6, -6.0)
 
 
 ## The Still Voice says something (once per `key`, if a key is given).
@@ -128,6 +145,9 @@ func _process(delta: float) -> void:
 	for line: Array in _still:
 		line[1] = float(line[1]) + delta
 	_still = _still.filter(func(line: Array) -> bool: return float(line[1]) < STILL_SECONDS)
+	for window: Array in _pact:
+		window[2] = float(window[2]) + delta
+	_pact = _pact.filter(func(window: Array) -> bool: return float(window[2]) < PACT_SECONDS)
 	# Near death: a word of advice, now and then.
 	_low_health_wait = maxf(_low_health_wait - delta, 0.0)
 	if _player and not _player.is_dead() and _low_health_wait <= 0.0 and _player.health.current < _player.health.max_health * 0.25:
@@ -142,6 +162,8 @@ func _draw_all() -> void:
 		_draw_heart(view)
 	if not _still.is_empty():
 		_draw_still(view)
+	if not _pact.is_empty():
+		_draw_pact(view)
 
 
 ## The Heart's banner: a crimson rule with a small heart, the words in gold
@@ -149,7 +171,7 @@ func _draw_all() -> void:
 func _draw_heart(view: Vector2) -> void:
 	var t := float(_heart[2])
 	var fade := clampf(t / 0.4, 0.0, 1.0) * clampf((HEART_SECONDS - t) / 0.8, 0.0, 1.0)
-	var top := roundf(view.y * 0.36)
+	var top := roundf(view.y * 0.6)
 	var beat := 1.0 + 0.6 * maxf(sin(t * 7.0), 0.0) * clampf(1.0 - t / 2.0, 0.0, 1.0)
 	var middle := roundf(view.x / 2.0)
 	var reach := roundf(minf(view.x * 0.32, 420.0))
@@ -197,3 +219,33 @@ func _draw_still(view: Vector2) -> void:
 		_canvas.draw_string_outline(font, Vector2(x, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 3, Color(0, 0, 0, 0.7 * fade))
 		_canvas.draw_string(font, Vector2(x, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(STILL_COLOR, fade))
 		y += 20.0
+
+
+## The Pact's windows: navy panels with a double bronze rule, a small
+## header, the title in pale ice, and the lines under it; sliding in from
+## the right and fading.
+func _draw_pact(view: Vector2) -> void:
+	var font := UITheme.body_bold()
+	var title_font := UITheme.bold()
+	var width := 340.0
+	var y := roundf(view.y * 0.5)
+	for window: Array in _pact:
+		var age := float(window[2])
+		var fade := clampf(age / 0.25, 0.0, 1.0) * clampf((PACT_SECONDS - age) / 0.8, 0.0, 1.0)
+		var slide := roundf((1.0 - clampf(age / 0.25, 0.0, 1.0)) * 40.0)
+		var lines: Array = window[1]
+		var height := 52.0 + lines.size() * 18.0
+		var box := Rect2(view.x - width - 16.0 + slide, y, width, height)
+		_canvas.draw_rect(box, Color(0.04, 0.07, 0.13, 0.92 * fade))
+		_canvas.draw_rect(box, Color(PACT_BRONZE, fade), false, 2.0)
+		_canvas.draw_rect(box.grow(-4.0), Color(PACT_BRONZE.darkened(0.4), 0.8 * fade), false, 1.0)
+		for corner: Vector2 in [box.position, Vector2(box.end.x - 6, box.position.y), Vector2(box.position.x, box.end.y - 6), box.end - Vector2(6, 6)]:
+			_canvas.draw_rect(Rect2(corner, Vector2(6, 6)), Color(PACT_BRONZE.lightened(0.2), fade))
+		var header := "THE PACT"
+		_canvas.draw_string(font, Vector2(box.position.x + 14.0, box.position.y + 18.0), header, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(PACT_BRONZE, fade))
+		_canvas.draw_string(title_font, Vector2(box.position.x + 14.0, box.position.y + 38.0), str(window[0]), HORIZONTAL_ALIGNMENT_LEFT, width - 28.0, 17, Color(PACT_TEXT, fade))
+		var line_y := box.position.y + 56.0
+		for line: Variant in lines:
+			_canvas.draw_string(font, Vector2(box.position.x + 14.0, line_y), str(line), HORIZONTAL_ALIGNMENT_LEFT, width - 28.0, 13, Color(UITheme.TEXT, fade))
+			line_y += 18.0
+		y += height + 8.0

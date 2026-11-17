@@ -217,6 +217,19 @@ func _ready() -> void:
 	echoes.name = "Echoes"
 	add_child(echoes)
 	echoes.setup(_player)
+	# The Pact, its gates, and a Shade Sovereign's shadows.
+	var pact := ThePact.new()
+	pact.name = "ThePact"
+	add_child(pact)
+	pact.setup(_player, _world, _instances, _spawner, _day_night)
+	var gates := Gates.new()
+	gates.name = "Gates"
+	add_child(gates)
+	gates.setup(_player, _world, _instances, _spawner, _day_night, _loot)
+	var shadows := Shadows.new()
+	shadows.name = "Shadows"
+	add_child(shadows)
+	shadows.setup(_player, pact)
 	# Your presence, let loose.
 	var aura := DreadAura.new()
 	aura.name = "DreadAura"

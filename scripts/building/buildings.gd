@@ -546,6 +546,8 @@ func apply_trophies() -> void:
 ## Sends the player home after a short wait, if the cooldown allows.
 ## Returns "" or why not.
 func recall_problem() -> String:
+	if Gates.sealed:
+		return "The red gate holds you. Defeat its master first."
 	if home.is_empty():
 		return "Sleep in a bed first to make a home."
 	if recall_left > 0.0:

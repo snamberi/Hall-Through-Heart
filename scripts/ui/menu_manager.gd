@@ -28,6 +28,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "evolution", "title": "Evolution", "icon": 39, "text": "Your race's paths", "side": true, "group": "Character"},
 	{"id": "runes", "title": "Runes", "icon": 156, "text": "Bind runes into gear", "side": true, "group": "Character"},
 	{"id": "echoes", "title": "Echoes", "icon": 123, "text": "What you have devoured", "side": true, "group": "Character"},
+	{"id": "pact", "title": "The Pact", "icon": 41, "text": "Status, rite, shadows, gates", "side": true, "group": "Character"},
 	{"id": "codex", "title": "Codex", "icon": 53, "text": "Bestiary and feats", "side": true, "group": "Collection"},
 	{"id": "pets", "title": "Pets", "icon": 95, "text": "Companions, mounts", "side": true, "group": "Collection"},
 	{"id": "town", "title": "Town", "icon": 56, "text": "Your monster citizens", "side": true, "group": "Collection"},
@@ -37,7 +38,7 @@ const SCREENS: Array[Dictionary] = [
 	{"id": "pause", "title": "Settings", "icon": 5, "text": "Options and saving", "side": true, "group": "System"},
 ]
 ## Screens with a key of their own (rebindable): action -> screen id.
-const SHORTCUTS := {"open_inventory": "inventory", "open_quests": "journal", "open_map": "map"}
+const SHORTCUTS := {"open_inventory": "inventory", "open_quests": "journal", "open_map": "map", "open_system": "pact"}
 ## Where a screen's Back button leads, when not to the wheel. "" closes.
 const BACK := {"dialogue": "", "cipher": "", "settings": "pause", "teacher": "", "villager": "", "furnace": "", "shop": "", "quest_board": "", "bounty_board": "", "waystones": "", "recruit": "", "storage": "", "trophies": "", "projects": "", "rift": "", "festival": "", "trade_board": "shop"}
 
@@ -167,6 +168,7 @@ func setup(player: Player) -> void:
 	_add("cipher", CipherMenu.new())
 	_add("echoes", EchoesMenu.new())
 	_add("town", TownMenu.new())
+	_add("pact", PactMenu.new())
 	_add("pause", PauseMenu.new())
 	_add("settings", SettingsMenu.new())
 
