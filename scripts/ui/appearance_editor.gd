@@ -307,4 +307,7 @@ static func race_text(race: String) -> String:
 			var value: float = data["mods"][stat][kind]
 			var words := ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": absf(value)})
 			lines.append("[color=#%s]%s[/color]" % [(UITheme.GOOD if value >= 0.0 else UITheme.BAD).to_html(false), words if value >= 0.0 else "-" + words.substr(1)])
+	# What only this race does.
+	for line: Variant in RaceTraits.of(race).get("lines", []):
+		lines.append("[color=#%s]%s[/color]" % [UITheme.INFO.to_html(false), str(line)])
 	return "\n".join(lines)

@@ -348,7 +348,7 @@ func test_village_projects(t: TestContext) -> void:
 	var level := player.leveling.level
 	player.buffs.add("well_rested", "Well Rested", 60.0, {"xp_gain": {"flat": 0.1}})
 	player.leveling.add_xp(10)
-	t.check(player.leveling.level > level or player.leveling.xp - xp == 11, "well rested gives a tenth more experience")
+	t.check(player.stats.get_stat("xp_gain") >= 0.1 and (player.leveling.level > level or player.leveling.xp - xp == roundi(10.0 * (1.0 + player.stats.get_stat("xp_gain")))), "well rested gives a tenth more experience")
 
 
 func test_every_creature_has_its_own_sounds(t: TestContext) -> void:

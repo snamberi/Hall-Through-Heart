@@ -5,16 +5,17 @@ extends Control
 const GAME := "res://scenes/main.tscn"
 ## The logo and the panorama behind everything (tools/generate_title.py):
 ## the sky stands still; the layers in front drift past at their own pace,
-## in whole art pixels, wrapping round.
+## a screen pixel at a time (so they glide rather than hop a whole art
+## pixel at once), wrapping round.
 const LOGO: Texture2D = preload("res://assets/ui/logo.png")
 const SKY: Texture2D = preload("res://assets/ui/title_sky.png")
 const SKY_SIZE := Vector2(427, 240)
 const LAYER_WIDTH := 640.0
 ## [picture, art pixels a second]
 const LAYERS := [
-	[preload("res://assets/ui/title_far.png"), 1.0],
-	[preload("res://assets/ui/title_hills.png"), 3.0],
-	[preload("res://assets/ui/title_woods.png"), 8.0],
+	[preload("res://assets/ui/title_far.png"), 1.5],
+	[preload("res://assets/ui/title_hills.png"), 4.0],
+	[preload("res://assets/ui/title_woods.png"), 10.0],
 ]
 
 var _pages: Dictionary[String, Control] = {}
@@ -27,7 +28,7 @@ var _difficulty_buttons: Dictionary[String, Button] = {}
 var _difficulty_text: Label
 var _armed_delete := ""
 var _hardcore: CheckBox
-var _class := "adventurer"
+var _class := "warrior"
 var _class_buttons: Dictionary[String, Button] = {}
 var _class_text: RichTextLabel
 var _figure: LookPreview
@@ -82,7 +83,7 @@ func _draw() -> void:
 	for layer: Array in LAYERS:
 		var picture: Texture2D = layer[0]
 		var width := LAYER_WIDTH * scale
-		var shift := fmod(floorf(now * float(layer[1])), LAYER_WIDTH) * scale
+		var shift := fmod(floorf(now * float(layer[1]) * scale), width)
 		var x := origin.x - shift
 		while x < size.x:
 			draw_texture_rect(picture, Rect2(Vector2(x, origin.y), Vector2(width, view.y)), false)
@@ -92,7 +93,7 @@ func _draw() -> void:
 		var seed := float(index) * 37.13
 		var drift := fmod(now * (0.02 + fmod(seed, 0.03)) + fmod(seed, 1.0), 1.0)
 		var at := Vector2(fmod(seed * 91.7, size.x), size.y * 0.92 - drift * size.y * 0.7)
-		draw_rect(Rect2((at / scale).floor() * scale, Vector2(scale, scale)), Color(1.0, 0.55, 0.3, 0.55 * (1.0 - drift)))
+		draw_rect(Rect2(at.floor(), Vector2(scale, scale)), Color(1.0, 0.55, 0.3, 0.55 * (1.0 - drift)))
 
 
 ## The heartbeat: two quick thumps, then a rest (0 to 1).
@@ -410,10 +411,10 @@ func _new_page() -> Control:
 	classes.add_theme_constant_override("h_separation", 6)
 	classes.add_theme_constant_override("v_separation", 6)
 	class_box.add_child(classes)
-	for id: String in HeroClasses.CLASSES:
+	for id: String in HeroClasses.CHOICES:
 		var data: Dictionary = HeroClasses.CLASSES[id]
 		var button := Button.new()
-		button.text = "  " + (data["name"] if id != "adventurer" else "Decide later")
+		button.text = "  " + data["name"]
 		button.icon = ItemDB.icon(data["icon"])
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.toggle_mode = true
@@ -526,7 +527,7 @@ func _new_page() -> Control:
 	_next_button = UITheme.primary_button("Next  >", _step_next, 240.0)
 	buttons.add_child(_next_button)
 	_choose_difficulty("normal")
-	_choose_class("adventurer")
+	_choose_class("warrior")
 	_on_look_changed(_appearance)
 	_show_step("look")
 	return _framed(box)
@@ -594,7 +595,7 @@ func _randomise_look() -> void:
 func _randomise_all() -> void:
 	_remember()
 	_set_look(Appearance.random())
-	_choose_class(HeroClasses.CLASSES.keys().pick_random())
+	_choose_class(HeroClasses.CHOICES.pick_random())
 
 
 func _remember() -> void:
@@ -643,10 +644,7 @@ func _update_summary() -> void:
 	var seed_words := _seed_field.text.strip_edges() if _seed_field.text.strip_edges() != "" else "random"
 	var lines: PackedStringArray = []
 	lines.append("[color=#%s]Race[/color]  [color=#%s]%s[/color]  [color=#%s](for life)[/color]" % [dim, gold, Appearance.RACES[worn["race"]]["name"], dim])
-	if _class == "adventurer":
-		lines.append("[color=#%s]Class[/color]  [color=#%s]Adventurer[/color]  [color=#%s](choose for good at level %d)[/color]" % [dim, gold, dim, HeroClasses.CHOICE_LEVEL])
-	else:
-		lines.append("[color=#%s]Class[/color]  [color=#%s]%s[/color]  [color=#%s](for life; its abilities open at level %d)[/color]" % [dim, gold, HeroClasses.CLASSES[_class]["name"], dim, HeroClasses.CHOICE_LEVEL])
+	lines.append("[color=#%s]Class[/color]  [color=#%s]%s[/color]  [color=#%s](for life; its first ability is yours from the start)[/color]" % [dim, gold, HeroClasses.CLASSES[_class]["name"], dim])
 	lines.append("[color=#%s]World[/color]  [color=#%s]%s[/color]  [color=#%s]·  seed %s  ·[/color]  [color=#%s]%s[/color]" % [dim, gold, world_name, dim, seed_words,
 		UITheme.BAD.to_html(false) if _hardcore.button_pressed else gold, "Hardcore (Insane)" if _hardcore.button_pressed else Difficulty.display_name(_difficulty)])
 	_summary.text = "\n".join(lines)
@@ -683,7 +681,15 @@ func _choose_class(id: String) -> void:
 		var weapons: PackedStringArray = []
 		for weapon: String in data["weapons"]:
 			weapons.append(weapon.capitalize())
-		lines.append("[color=#%s]Favours %s. Signature skills, opening from level %d:[/color]" % [UITheme.DIM.to_html(false), ", ".join(weapons).to_lower(), HeroClasses.CHOICE_LEVEL])
+		var penalty := HeroClasses.off_class_penalty("normal")
+		lines.append("[color=#%s]Trains with %s (+%d%% damage). Any other weapon: %d%% damage, %d%% slower (on Normal).[/color]" % [UITheme.DIM.to_html(false), ", ".join(weapons).to_lower(),
+			roundi(HeroClasses.WEAPON_BONUS * 100.0), roundi(float(penalty[0]) * 100.0), roundi(float(penalty[1]) * 100.0)])
+		var kit: PackedStringArray = []
+		for entry: Array in data.get("kit", []):
+			if ItemDB.ITEMS.has(entry[0]):
+				kit.append(("%s x%d" % [ItemDB.ITEMS[entry[0]]["name"], int(entry[1])]) if int(entry[1]) > 1 else str(ItemDB.ITEMS[entry[0]]["name"]))
+		lines.append("[color=#%s]Starts with: %s.[/color]" % [UITheme.INFO.to_html(false), ", ".join(kit)])
+		lines.append("[color=#%s]Class abilities, opening as the class levels up:[/color]" % UITheme.DIM.to_html(false))
 	_class_text.text = "\n".join(lines)
 	if _class_skills:
 		for child in _class_skills.get_children():

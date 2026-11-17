@@ -67,7 +67,11 @@ var _surge_speed := 0.0
 var _dodge_direction := Vector2.ZERO
 ## The level the class was chosen at, and ranks learned in its tree.
 var class_chosen_at := 10
+## Passive ranks bought in the class tree (abilities open by class level).
 var class_ranks: Dictionary = {}
+## Class level and the experience toward the next (see HeroClasses).
+var class_level := 0
+var class_xp := 0
 ## Seconds until another potion can be drunk.
 var potion_cooldown_left := 0.0
 ## The node being gathered from, how long it takes, and how far along.
@@ -202,8 +206,8 @@ func _ready() -> void:
 		var chosen_class := str(meta.get("class_id", "adventurer"))
 		if HeroClasses.CLASSES.has(chosen_class) and chosen_class != "adventurer":
 			class_id = chosen_class
-			# Class points start to come at the level a class used to be chosen.
-			class_chosen_at = HeroClasses.CHOICE_LEVEL
+			class_chosen_at = 1
+			class_level = 1
 	apply_look()
 	GameSettings.changed.connect(_on_settings_changed)
 	stats.setup(attributes, mastery)
@@ -260,9 +264,10 @@ func _ready() -> void:
 	_apply_class()
 	equipment.setup(inventory, leveling, attributes)
 	if not inventory.starter_given:
-		# A new character starts with nothing in hand; the first sword waits
-		# in a chest at the Sanctuary.
+		# A new character starts with its class's kit: the weapon it trains
+		# with in hand, a piece or two of armour on, and supplies in the bag.
 		inventory.starter_given = true
+		give_starter_kit()
 	if not inventory.tools_given:
 		# Older saves get the gathering tools too.
 		inventory.tools_given = true
@@ -273,6 +278,7 @@ func _ready() -> void:
 	equipment.changed.connect(_on_equipment_changed)
 	stats.changed.connect(_apply_stats)
 	leveling.leveled_up.connect(_on_leveled_up)
+	Events.enemy_killed.connect(_on_kill_class_xp)
 	_on_equipment_changed()
 	_apply_stats()
 	_restore_all()
@@ -753,6 +759,12 @@ func _read_ground() -> void:
 	var was_swimming := swimming
 	swimming = TerrainTiles.is_water(tile)
 	deep_water = tile == TerrainTiles.Type.DEEP_WATER
+	# Some races swim far better (or worse) than others; the cold-blooded
+	# slow on snow.
+	if swimming:
+		_ground_speed *= float(RaceTraits.value(race(), "water", 1.0))
+	elif tile in [TerrainTiles.Type.SNOW, TerrainTiles.Type.FROSTPINE, TerrainTiles.Type.PEAK]:
+		_ground_speed *= float(RaceTraits.value(race(), "cold", 1.0))
 	if swimming and buffs.has("tidestride"):
 		# The Tidewalker's relic: water is no slower than land.
 		_ground_speed = maxf(_ground_speed, 1.0)
@@ -807,6 +819,7 @@ func choose_class(id: String) -> String:
 		return "Your path is already chosen."
 	class_id = id
 	class_chosen_at = leveling.level
+	class_level = maxi(class_level, 1)
 	_apply_class()
 	_on_equipment_changed()
 	class_changed.emit()
@@ -815,11 +828,61 @@ func choose_class(id: String) -> String:
 	return ""
 
 
-## Class points earned so far: one on choosing, then one every few levels.
+## Class points earned so far: one per class level.
 func class_points_total() -> int:
 	if class_id == "adventurer":
 		return 0
-	return 1 + maxi(leveling.level - class_chosen_at, 0) / HeroClasses.CLASS_POINT_LEVELS
+	return class_level
+
+
+## Class experience, from abilities used and enemies defeated; class levels
+## open the class's abilities and give a point for its passives.
+func gain_class_xp(amount: int) -> void:
+	if class_id == "adventurer" or class_level >= HeroClasses.MAX_CLASS_LEVEL or amount <= 0:
+		return
+	class_xp += amount
+	var grew := false
+	while class_level < HeroClasses.MAX_CLASS_LEVEL and class_xp >= HeroClasses.xp_to_next(class_level):
+		class_xp -= HeroClasses.xp_to_next(class_level)
+		class_level += 1
+		grew = true
+		var opened: PackedStringArray = []
+		for entry: Array in HeroClasses.TREES.get(class_id, {}).get("abilities", []):
+			if int(entry[1]) == class_level:
+				opened.append(str(AbilityDB.ABILITIES[entry[0]]["name"]))
+		Events.announcement.emit("CLASS LEVEL %d" % class_level, ("New class ability: %s" % ", ".join(opened)) if not opened.is_empty() else "+1 class point")
+		RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(1.0, 0.8, 0.4), 70.0)
+		Events.codex_event.emit("class_levels", 1)
+	if class_level >= HeroClasses.MAX_CLASS_LEVEL:
+		class_xp = 0
+	if grew:
+		_apply_class()
+		abilities.changed.emit()
+		class_changed.emit()
+	SaveGame.request_save()
+
+
+func _on_kill_class_xp(info: Dictionary) -> void:
+	var rank_index: int = maxi(["normal", "elite", "champion", "miniboss", "boss"].find(str(info.get("rank", "normal"))), 0)
+	gain_class_xp(HeroClasses.XP_KILL[rank_index])
+
+
+## The kit of a new character's class: its weapon (in hand), armour (worn)
+## and supplies. Kit entries: [item id, count, wear it].
+func give_starter_kit() -> void:
+	for entry: Array in HeroClasses.CLASSES.get(class_id, {}).get("kit", []):
+		var id: String = entry[0]
+		if not ItemDB.ITEMS.has(id):
+			continue
+		var data: Dictionary = ItemDB.ITEMS[id]
+		var item: Item = LootGenerator.make_equipment(1, 0, id) if data.has("slot") else Item.create(id, int(entry[1]))
+		var wear: bool = entry.size() > 2 and bool(entry[2])
+		if wear and data.has("slot"):
+			equipment.equip_directly(item)
+		else:
+			inventory.add(item)
+	inventory.add(Item.create("bandage", 3))
+	inventory.add(Item.create("torch", 4))
 
 
 func class_points_free() -> int:
@@ -829,8 +892,11 @@ func class_points_free() -> int:
 	return class_points_total() - spent
 
 
-## Whether a class ability or passive has been learned.
+## Whether a class ability is open (by class level) or a passive learned.
 func has_class_node(id: String) -> bool:
+	var opens := HeroClasses.ability_level(class_id, id)
+	if opens > 0:
+		return class_level >= opens
 	return class_ranks.get(id, 0) > 0
 
 
@@ -845,13 +911,13 @@ func class_node_problem(id: String) -> String:
 			var entry: Array = entries[index]
 			if entry[0] != id:
 				continue
-			var max_rank: int = 1 if column == "abilities" else entry[2]
+			if column == "abilities":
+				return "Unlocked." if class_level >= int(entry[1]) else "Opens at class level %d." % int(entry[1])
+			var max_rank: int = entry[2]
 			if class_ranks.get(id, 0) >= max_rank:
 				return "Fully learned."
 			if index > 0 and not has_class_node(entries[index - 1][0]):
 				return "Learn the one above first."
-			if column == "abilities" and leveling.level < entry[1]:
-				return "Requires level %d." % entry[1]
 			if class_points_free() <= 0:
 				return "No class points."
 			return ""
@@ -1127,7 +1193,7 @@ func take_up_magic(school: String) -> String:
 
 
 func save_data() -> Dictionary:
-	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "appearance": appearance.duplicate(), "flight_unlocked": flight_unlocked, "pinned_recipe": pinned_recipe}
+	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "class_level": class_level, "class_xp": class_xp, "appearance": appearance.duplicate(), "flight_unlocked": flight_unlocked, "pinned_recipe": pinned_recipe}
 
 
 ## Sleeps on a bedroll till morning, if it is night and no monster is
@@ -1286,10 +1352,16 @@ func load_data(data: Dictionary) -> void:
 	if saved_ranks is Dictionary:
 		for id: String in saved_ranks:
 			class_ranks[id] = int(saved_ranks[id])
-	# Classes chosen before trees existed keep their two abilities.
-	if class_id != "adventurer" and class_ranks.is_empty() and not data.has("class_ranks"):
-		for entry: Array in HeroClasses.TREES[class_id]["abilities"].slice(0, 2):
-			class_ranks[entry[0]] = 1
+	# Abilities now open by class level: points once spent on them come back.
+	for id: String in class_ranks.keys():
+		if HeroClasses.ability_level(class_id, id) > 0 or AbilityDB.is_class_ability(id):
+			class_ranks.erase(id)
+	class_level = int(data.get("class_level", 0))
+	class_xp = int(data.get("class_xp", 0))
+	if class_id != "adventurer" and class_level <= 0:
+		# Chosen before class levels: a class level for every few levels since.
+		var now := leveling.level if leveling != null else class_chosen_at
+		class_level = clampi(1 + maxi(now - class_chosen_at, 0) / 3, 1, HeroClasses.MAX_CLASS_LEVEL)
 	show_helmet = bool(data.get("show_helmet", true))
 	var saved_look: Variant = data.get("appearance", SaveGame.get_section("meta").get("appearance", {}))
 	if saved_look is Dictionary:
@@ -1579,13 +1651,32 @@ func _on_equipment_changed() -> void:
 	stats.mastery_key = mastery_key()
 	stats.set_modifiers_quietly("mastery_passive", mastery.passive_modifiers(mastery_key()))
 	stats.set_modifiers("equipment", equipment.modifiers())
-	# A class hits harder with the weapon types it favours.
-	var favoured: Array = HeroClasses.CLASSES[class_id]["weapons"]
-	if weapon_type in favoured:
-		stats.set_modifiers("class_weapon", {"physical_damage": {"percent": HeroClasses.WEAPON_BONUS}})
-	else:
-		stats.clear_modifiers("class_weapon")
+	# A class hits harder with the weapon types it favours, and handles any
+	# other weapon clumsily: less damage and slower blows, worse on harder
+	# difficulties (fists, combat styles and tools are anyone's).
+	stats.set_modifiers("class_weapon", class_weapon_mods())
 	abilities.changed.emit()
+
+
+## What the class makes of the weapon in hand: a bonus for its own kind,
+## a penalty for anything else it does not train with.
+func class_weapon_mods() -> Dictionary:
+	var favoured: Array = HeroClasses.CLASSES.get(class_id, {}).get("weapons", [])
+	if weapon_type in favoured:
+		return {"physical_damage": {"percent": HeroClasses.WEAPON_BONUS}}
+	if favoured.is_empty() or equipment == null or equipment.weapon() == null or fighting_bare():
+		return {}
+	if not WeaponMastery.NAMES.has(weapon_type) or weapon_type == "unarmed":
+		return {}
+	var penalty := HeroClasses.off_class_penalty(Difficulty.current)
+	var lost := 1.0 - float(penalty[0])
+	return {"physical_damage": {"percent": -lost}, "magic_power": {"percent": -lost}, "attack_speed": {"percent": -float(penalty[1])}}
+
+
+## Whether the weapon in hand is one the class does not train with.
+func off_class_weapon() -> bool:
+	var mods := class_weapon_mods()
+	return mods.has("attack_speed")
 
 
 ## Bonuses earned through mastery of the weapon in hand.

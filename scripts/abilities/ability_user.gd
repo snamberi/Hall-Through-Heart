@@ -1,7 +1,8 @@
 class_name AbilityUser
 extends Node
-## The player's abilities: which are known, the eight on the bar (two sets
-## of four, switched with a key), and using them with keys 1-4.
+## The player's abilities: which are known, the three sets of four on the
+## bar (weapon, universal, class; switched with a key), and using them with
+## keys 1-4.
 ##
 ## Weapon abilities are known through mastery and only work with that kind
 ## of weapon in hand; class abilities are learned in the class tree. With a
@@ -13,9 +14,11 @@ signal changed
 
 ## ability id -> seconds left
 var cooldowns: Dictionary[String, float] = {}
-## What sits in each of the eight slots ("" for empty).
+## What sits in each universal slot ("" for empty).
 var loadout: Array[String] = []
-## Which set of four the keys use: 0 or 1.
+## What sits in each class slot ("" for empty).
+var class_loadout: Array[String] = []
+## Which set of four the keys use: 0 weapon, 1 universal, 2 class.
 var active_set := 0
 
 @onready var _player: Player = get_parent()
@@ -24,6 +27,8 @@ var active_set := 0
 func _ready() -> void:
 	loadout.resize(AbilityDB.SLOTS)
 	loadout.fill("")
+	class_loadout.resize(AbilityDB.SLOTS)
+	class_loadout.fill("")
 	SaveGame.register("abilities", self)
 	Events.mastery_level_up.connect(func(_type: String, _level: int) -> void:
 		_fill_empty_slots()
@@ -51,13 +56,27 @@ func known() -> Array[String]:
 	return ids
 
 
-## Universal abilities (and class ones) the player has, for the second set.
+## Universal abilities the player has, for the second set.
 func known_universal() -> Array[String]:
 	var ids: Array[String] = []
 	for id: String in AbilityDB.ABILITIES:
 		if AbilityDB.is_universal(id) and rank(id) > 0:
 			ids.append(id)
 	return ids
+
+
+## Class abilities the player has opened, for the third set, in tree order.
+func known_class() -> Array[String]:
+	var ids: Array[String] = []
+	for entry: Array in HeroClasses.TREES.get(_player.class_id, {}).get("abilities", []):
+		if rank(entry[0]) > 0:
+			ids.append(entry[0])
+	return ids
+
+
+## Whether the class set has anything to offer (a class with a tree).
+func has_class_set() -> bool:
+	return _player != null and HeroClasses.TREES.has(_player.class_id)
 
 
 ## The moves of what is in hand: the magic school's spells, the combat
@@ -84,15 +103,22 @@ func slots() -> Array[String]:
 	return _set_ids(active_set)
 
 
-## The four of the other set, shown small beside the bar.
+## The four of the next set, shown small beside the bar.
 func other_slots() -> Array[String]:
-	return _set_ids((active_set + 1) % AbilityDB.SETS)
+	return _set_ids(_next_set(active_set))
+
+
+func _next_set(from: int) -> int:
+	var next := (from + 1) % AbilityDB.SETS
+	if next == 2 and not has_class_set():
+		next = 0
+	return next
 
 
 func _set_ids(index: int) -> Array[String]:
-	if index == 1:
+	if index == 1 or index == 2:
 		var chosen: Array[String] = []
-		chosen.assign(loadout)
+		chosen.assign(loadout if index == 1 else class_loadout)
 		return chosen
 	var ids := arms()
 	while ids.size() < AbilityDB.SET_SIZE:
@@ -105,10 +131,29 @@ func casting() -> bool:
 	return _player != null and _player.magic_school != "" and _player.holding_magic()
 
 
-## Tab: between the moves in hand and the universal abilities.
+## Tab: weapon, universal, class, and round again.
 func switch_set() -> void:
-	active_set = (active_set + 1) % AbilityDB.SETS
+	active_set = _next_set(active_set)
 	changed.emit()
+
+
+## Puts a class ability in one of the four class slots.
+func assign_class(slot: int, id: String) -> void:
+	if slot < 0 or slot >= class_loadout.size() or not AbilityDB.is_class_ability(id):
+		return
+	var previous := class_loadout.find(id)
+	if previous != -1:
+		class_loadout[previous] = class_loadout[slot]
+	class_loadout[slot] = id
+	changed.emit()
+	SaveGame.request_save()
+
+
+func clear_class_slot(slot: int) -> void:
+	if slot >= 0 and slot < class_loadout.size():
+		class_loadout[slot] = ""
+		changed.emit()
+		SaveGame.request_save()
 
 
 ## Puts a universal ability in one of the four universal slots.
@@ -139,9 +184,11 @@ func rank(id: String) -> int:
 			return 0
 		return AbilityDB.rank(id, _player.leveling.level)
 	if ability.has("class"):
-		if ability["class"] != _player.class_id or not _player.has_class_node(id):
+		var opens := HeroClasses.ability_level(_player.class_id, id)
+		if ability["class"] != _player.class_id or opens <= 0 or _player.class_level < opens:
 			return 0
-		return AbilityDB.rank(id, _player.leveling.level)
+		# A rank more every four class levels past where it opened.
+		return mini(1 + (_player.class_level - opens) / 4, AbilityDB.MAX_RANK)
 	if ability.get("universal", false):
 		return AbilityDB.rank(id, _player.leveling.level)
 	if ability.has("style"):
@@ -201,7 +248,7 @@ func try_use_pressed() -> bool:
 
 
 func save_data() -> Dictionary:
-	return {"loadout": loadout.duplicate(), "active_set": active_set}
+	return {"loadout": loadout.duplicate(), "class_loadout": class_loadout.duplicate(), "active_set": active_set}
 
 
 func load_data(data: Dictionary) -> void:
@@ -215,6 +262,13 @@ func load_data(data: Dictionary) -> void:
 			if next < AbilityDB.SLOTS and AbilityDB.is_universal(id) and not id in loadout:
 				loadout[next] = id
 				next += 1
+	class_loadout.fill("")
+	var saved_class: Variant = data.get("class_loadout", [])
+	if saved_class is Array:
+		for index in mini((saved_class as Array).size(), AbilityDB.SLOTS):
+			var id := str(saved_class[index])
+			if AbilityDB.is_class_ability(id):
+				class_loadout[index] = id
 	active_set = clampi(int(data.get("active_set", 0)), 0, AbilityDB.SETS - 1)
 
 
@@ -227,8 +281,17 @@ func _fill_empty_slots() -> void:
 			continue
 		var free := loadout.find("")
 		if free == -1:
-			return
+			break
 		loadout[free] = id
+	if class_loadout.is_empty():
+		return
+	for id in known_class():
+		if id in class_loadout:
+			continue
+		var free := class_loadout.find("")
+		if free == -1:
+			return
+		class_loadout[free] = id
 
 
 func use(id: String) -> bool:
@@ -240,6 +303,7 @@ func use(id: String) -> bool:
 	cooldowns[id] = ability["cooldown"]
 	changed.emit()
 	Events.codex_event.emit("abilities_used", 1)
+	_player.gain_class_xp(HeroClasses.XP_CLASS_ABILITY if ability.has("class") else HeroClasses.XP_ABILITY)
 	if ability.has("school"):
 		Events.codex_event.emit("spells_cast", 1)
 	_run(id, ability)
@@ -281,6 +345,8 @@ func _run(id: String, ability: Dictionary) -> void:
 			await _blink(ability, damage)
 		"veil":
 			_veil(id, ability, damage)
+		"summon":
+			_summon(ability)
 	if ability.has("crit"):
 		_player.stats.set_modifiers("ability_crit", {})
 	_player.end_ability()
@@ -426,6 +492,16 @@ func _veil(id: String, ability: Dictionary, damage: float) -> void:
 			enemy.lose_track()
 	if ability.has("mods"):
 		_player.buffs.add(id, ability["name"], ability["duration"], ability["mods"])
+
+
+## Calls minions up out of the ground (see Summons).
+func _summon(ability: Dictionary) -> void:
+	_player.begin_ability(0.4)
+	_player.play_attack_animation(0.45, true)
+	var summons: Summons = _player.get_node_or_null("Summons")
+	if summons:
+		summons.summon(ability["summon"], _color(ability))
+	await _wait(0.35)
 
 
 func _chain(ability: Dictionary, direction: Vector2, damage: float) -> void:

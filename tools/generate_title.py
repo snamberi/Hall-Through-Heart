@@ -35,20 +35,23 @@ def mix(a, b, t):
 # The logo
 # ======================================================================
 
+# A heavy face: every stroke two cells thick, so the letters read as solid
+# carved blocks even small.
 GLYPHS = {
-    "H": ["X...X", "X...X", "X...X", "XXXXX", "X...X", "X...X", "X...X"],
-    "A": [".XXX.", "X...X", "X...X", "XXXXX", "X...X", "X...X", "X...X"],
-    "L": ["X....", "X....", "X....", "X....", "X....", "X....", "XXXXX"],
-    "T": ["XXXXX", "..X..", "..X..", "..X..", "..X..", "..X..", "..X.."],
-    "R": ["XXXX.", "X...X", "X...X", "XXXX.", "X.X..", "X..X.", "X...X"],
-    "U": ["X...X", "X...X", "X...X", "X...X", "X...X", "X...X", ".XXX."],
-    "G": [".XXX.", "X...X", "X....", "X.XXX", "X...X", "X...X", ".XXX."],
-    "E": ["XXXXX", "X....", "X....", "XXXX.", "X....", "X....", "XXXXX"],
-    "O": [".XXX.", "X...X", "X...X", "X...X", "X...X", "X...X", ".XXX."],
+    "H": ["XX...XX", "XX...XX", "XX...XX", "XXXXXXX", "XXXXXXX", "XX...XX", "XX...XX", "XX...XX", "XX...XX"],
+    "A": [".XXXXX.", "XXXXXXX", "XX...XX", "XX...XX", "XXXXXXX", "XXXXXXX", "XX...XX", "XX...XX", "XX...XX"],
+    "L": ["XX.....", "XX.....", "XX.....", "XX.....", "XX.....", "XX.....", "XX.....", "XXXXXXX", "XXXXXXX"],
+    "T": ["XXXXXXX", "XXXXXXX", "..XXX..", "..XXX..", "..XXX..", "..XXX..", "..XXX..", "..XXX..", "..XXX.."],
+    "R": ["XXXXXX.", "XXXXXXX", "XX...XX", "XX...XX", "XXXXXX.", "XXXXX..", "XX.XXX.", "XX..XXX", "XX...XX"],
+    "U": ["XX...XX", "XX...XX", "XX...XX", "XX...XX", "XX...XX", "XX...XX", "XX...XX", "XXXXXXX", ".XXXXX."],
+    "G": [".XXXXX.", "XXXXXXX", "XX.....", "XX.....", "XX..XXX", "XX..XXX", "XX...XX", "XXXXXXX", ".XXXXX."],
+    "E": ["XXXXXXX", "XXXXXXX", "XX.....", "XX.....", "XXXXXX.", "XXXXXX.", "XX.....", "XXXXXXX", "XXXXXXX"],
+    "O": [".XXXXX.", "XXXXXXX", "XX...XX", "XX...XX", "XX...XX", "XX...XX", "XX...XX", "XXXXXXX", ".XXXXX."],
     # The heart that takes the O's place.
-    "♥": [".....", "XX.XX", "XXXXX", "XXXXX", ".XXX.", "..X..", "....."],
-    " ": [".....", ".....", ".....", ".....", ".....", ".....", "....."],
+    "♥": [".......", ".XX.XX.", "XXXXXXX", "XXXXXXX", "XXXXXXX", ".XXXXX.", "..XXX..", "...X...", "......."],
+    " ": [".......", ".......", ".......", ".......", ".......", ".......", ".......", ".......", "......."],
 }
+GLYPH_W, GLYPH_H = 7, 9
 
 # Old, tarnished bronze: the hall is long dead.
 BRONZE = [C("f0d8a0"), C("d4a858"), C("b07a38"), C("845426"), C("4e2e14")]   # hi, light, mid, shade, deep
@@ -72,7 +75,7 @@ def letters(text, block, gap):
                     for dy in range(block):
                         for dx in range(block):
                             cells[(x0 + gx * block + dx, gy * block + dy)] = "heart" if ch == "♥" else "bronze"
-        x0 += 5 * block + gap
+        x0 += GLYPH_W * block + gap
     return cells, x0 - gap
 
 
@@ -80,7 +83,7 @@ def draw_line(img, text, block, gap, ox, oy, depth, seed, veins=False):
     r = random.Random(seed)
     cells, width = letters(text, block, gap)
     face = {(x + ox, y + oy): m for (x, y), m in cells.items()}
-    height = 7 * block
+    height = GLYPH_H * block
     # The dropped face: the letters' bodies seen below their tops.
     for d in range(depth, 0, -1):
         for (x, y), m in face.items():
@@ -206,13 +209,13 @@ def bleed(img, face1, face2):
 
 
 def logo():
-    w, h = 236, 74
+    w, h = 252, 92
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    top_block, top_gap = 3, 3
+    top_block, top_gap = 2, 3
     _cells, top_width = letters("HALL THR♥UGH", top_block, top_gap)
-    face1, _ = draw_line(img, "HALL THR♥UGH", top_block, top_gap, (w - top_width) // 2, 6, 4, 1)
-    _cells, big_width = letters("HEART", 4, 4)
-    face2, _ = draw_line(img, "HEART", 4, 4, (w - big_width) // 2, 36, 5, 2, veins=True)
+    face1, _ = draw_line(img, "HALL THR♥UGH", top_block, top_gap, (w - top_width) // 2, 6, 5, 1)
+    _cells, big_width = letters("HEART", 3, 4)
+    face2, _ = draw_line(img, "HEART", 3, 4, (w - big_width) // 2, 36, 7, 2, veins=True)
     blades1, vines1 = grow_moss(img, face1, 3)
     blades2, vines2 = grow_moss(img, face2, 4, 0.45)
     for (p, c) in vines1 + vines2:

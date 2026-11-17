@@ -1,8 +1,10 @@
 class_name ClassMenu
 extends GameMenu
-## Before level 10: what the classes are. At level 10: choosing one, for
-## good, with a confirmation that says so. After that: the class's own tree
-## of abilities and passives, with the free points by the heading.
+## The class's own tree: its class level and experience (from abilities
+## used and enemies defeated), its six abilities opening one by one along
+## a path as the class level climbs, and its passives, bought with class
+## points (one per class level). Older worlds still without a class choose
+## one here at level 10, for good, with a confirmation that says so.
 
 var _title: Label
 var _note: Label
@@ -17,7 +19,9 @@ var _message: Label
 ## Where each node of a tree sits, as fractions of its panel: a path that
 ## winds down the panel so the tree reads as a tree, not a list.
 const LAYOUT: Array[Vector2] = [Vector2(0.5, 0.13), Vector2(0.25, 0.38), Vector2(0.75, 0.62), Vector2(0.5, 0.87)]
-const NODE := 64.0
+## The six abilities wind further down their panel.
+const ABILITY_LAYOUT: Array[Vector2] = [Vector2(0.5, 0.08), Vector2(0.24, 0.25), Vector2(0.76, 0.42), Vector2(0.24, 0.59), Vector2(0.76, 0.76), Vector2(0.5, 0.92)]
+const NODE := 56.0
 
 var _left: VBoxContainer
 var _portrait: LookPreview
@@ -79,6 +83,18 @@ func _build() -> void:
 	_class_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_class_text.custom_minimum_size.x = 210.0
 	_left.add_child(_class_text)
+	_level_line = UITheme.strong("", 16, UITheme.HEADING)
+	_level_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_left.add_child(_level_line)
+	_xp_bar = ProgressBar.new()
+	_xp_bar.show_percentage = false
+	_xp_bar.custom_minimum_size = Vector2(210.0, 12.0)
+	_left.add_child(_xp_bar)
+	_xp_words = UITheme.label("", 13, UITheme.DIM)
+	_xp_words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_xp_words.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_xp_words.custom_minimum_size.x = 210.0
+	_left.add_child(_xp_words)
 	_points = UITheme.strong("", 16, UITheme.GOLD)
 	_points.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_points.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -93,7 +109,7 @@ func _build() -> void:
 	_left.add_child(others)
 
 	# --- middle: the two trees
-	for column: Array in [["abilities", "Active Abilities", "Skills for the bar, each opening the next."], ["passives", "Passives", "Lasting gifts that shape your build."]]:
+	for column: Array in [["abilities", "Class Abilities", "Open as your class level climbs; they go on the Class set."], ["passives", "Passives", "Lasting gifts, bought with class points."]]:
 		var panel := UITheme.inset_panel()
 		_tree_box.add_child(panel)
 		var box := VBoxContainer.new()
@@ -106,7 +122,7 @@ func _build() -> void:
 		sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(sub)
 		var canvas := Control.new()
-		canvas.custom_minimum_size = Vector2(276.0, 420.0)
+		canvas.custom_minimum_size = Vector2(276.0, 520.0 if column[0] == "abilities" else 420.0)
 		canvas.draw.connect(_draw_links.bind(canvas, column[0]))
 		box.add_child(canvas)
 		_trees[column[0]] = canvas
@@ -160,6 +176,9 @@ func _build() -> void:
 
 
 var _ranks: RichTextLabel
+var _level_line: Label
+var _xp_bar: ProgressBar
+var _xp_words: Label
 
 
 func refresh() -> void:
@@ -180,8 +199,12 @@ func refresh() -> void:
 			(card as PanelContainer).add_theme_stylebox_override("panel", UITheme.card("card_selected" if card.name == _pending else "card", 10))
 		return
 	var data: Dictionary = HeroClasses.CLASSES[player.class_id]
-	var next_level := player.class_chosen_at + (player.class_points_total()) * HeroClasses.CLASS_POINT_LEVELS
-	_note.text = "%d class point%s free  ·  next at level %d      %s" % [player.class_points_free(), "" if player.class_points_free() == 1 else "s", next_level, ",  ".join(HeroClasses.describe_bonuses(player.class_id))]
+	_note.text = ",  ".join(HeroClasses.describe_bonuses(player.class_id))
+	var top := player.class_level >= HeroClasses.MAX_CLASS_LEVEL
+	_level_line.text = "Class level %d%s" % [player.class_level, " (highest)" if top else ""]
+	_xp_bar.max_value = HeroClasses.xp_to_next(player.class_level)
+	_xp_bar.value = _xp_bar.max_value if top else player.class_xp
+	_xp_words.text = "Class experience comes from using abilities (class abilities most) and defeating enemies." if top else "%d / %d class experience. Use abilities (class ones most) and defeat enemies." % [player.class_xp, HeroClasses.xp_to_next(player.class_level)]
 	_portrait.show_look(player.appearance)
 	_portrait.play("attack")
 	_class_name.text = data["name"]
@@ -205,12 +228,13 @@ func _fill_tree(column: String, entries: Array) -> void:
 	for index in entries.size():
 		var entry: Array = entries[index]
 		var id: String = entry[0]
-		var rank: int = player.class_ranks.get(id, 0)
+		var rank: int = (1 if player.has_class_node(id) else 0) if abilities else player.class_ranks.get(id, 0)
 		var max_rank: int = 1 if abilities else entry[2]
 		var problem := player.class_node_problem(id)
 		var learned := rank > 0
 		var open := problem == "" and rank < max_rank
-		var at: Vector2 = LAYOUT[mini(index, LAYOUT.size() - 1)] * canvas.custom_minimum_size - Vector2(NODE, NODE) / 2.0
+		var layout: Array[Vector2] = ABILITY_LAYOUT if abilities else LAYOUT
+		var at: Vector2 = layout[mini(index, layout.size() - 1)] * canvas.custom_minimum_size - Vector2(NODE, NODE) / 2.0
 		var node := Button.new()
 		node.position = at
 		node.size = Vector2(NODE, NODE)
@@ -230,7 +254,7 @@ func _fill_tree(column: String, entries: Array) -> void:
 		picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		node.add_child(picture)
-		var badge := UITheme.label("%d / %d" % [rank, max_rank], 14, UITheme.GOLD if learned else UITheme.TEXT)
+		var badge := UITheme.label(("Open" if learned else "Lv %d" % int(entry[1])) if abilities else "%d / %d" % [rank, max_rank], 14, UITheme.GOLD if learned else UITheme.TEXT)
 		badge.add_theme_font_override("font", UITheme.body_bold())
 		badge.add_theme_color_override("font_outline_color", Color.BLACK)
 		badge.add_theme_constant_override("outline_size", 4)
@@ -281,10 +305,11 @@ func _draw_links(canvas: Control, column: String) -> void:
 	if player == null or player.class_id == "adventurer":
 		return
 	var entries: Array = HeroClasses.TREES[player.class_id][column]
+	var layout: Array[Vector2] = ABILITY_LAYOUT if column == "abilities" else LAYOUT
 	for index in range(1, entries.size()):
-		var from: Vector2 = LAYOUT[index - 1] * canvas.custom_minimum_size
-		var to: Vector2 = LAYOUT[mini(index, LAYOUT.size() - 1)] * canvas.custom_minimum_size
-		var learned: bool = player.class_ranks.get(entries[index][0], 0) > 0
+		var from: Vector2 = layout[index - 1] * canvas.custom_minimum_size
+		var to: Vector2 = layout[mini(index, layout.size() - 1)] * canvas.custom_minimum_size
+		var learned: bool = player.has_class_node(entries[index][0])
 		var color := UITheme.GOLD if learned else Color(0.32, 0.32, 0.4)
 		# An elbow: out of the parent's side, across, then down into the
 		# child, so it never runs through a caption.
@@ -302,7 +327,7 @@ func _pick(id: String, ability: bool, entry: Array) -> void:
 	_picked = id
 	_picked_ability = ability
 	_picked_entry = entry
-	var rank: int = player.class_ranks.get(id, 0)
+	var rank: int = (1 if player.has_class_node(id) else 0) if ability else player.class_ranks.get(id, 0)
 	var max_rank: int = 1 if ability else entry[2]
 	var head: PackedStringArray = []
 	var ranks: PackedStringArray = []
@@ -310,8 +335,8 @@ func _pick(id: String, ability: bool, entry: Array) -> void:
 		var data: Dictionary = AbilityDB.ABILITIES[id]
 		_detail_icon.texture = AbilityDB.icon(id)
 		head.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [UITheme.HEADING.to_html(false), data["name"]])
-		head.append("[color=#%s]Active ability  -  level %d[/color]" % [UITheme.DIM.to_html(false), entry[1]])
-		head.append("Rank: [color=#%s]%d / %d[/color]" % [UITheme.GOLD.to_html(false), rank, max_rank])
+		head.append("[color=#%s]Class ability  -  opens at class level %d[/color]" % [UITheme.DIM.to_html(false), entry[1]])
+		head.append(("[color=#%s]Open  ·  rank %d[/color]" % [UITheme.GOLD.to_html(false), player.abilities.rank(id)]) if rank > 0 else "[color=#%s]Not yet open[/color]" % UITheme.DIM.to_html(false))
 		ranks.append(data["text"])
 		ranks.append("")
 		var costs: PackedStringArray = []
@@ -321,7 +346,7 @@ func _pick(id: String, ability: bool, entry: Array) -> void:
 			costs.append("%d mana" % roundi(data["mana"]))
 		ranks.append("[color=#%s]Cooldown %ss   Costs %s[/color]" % [UITheme.INFO.to_html(false), str(data["cooldown"]), " and ".join(costs) if not costs.is_empty() else "nothing"])
 		ranks.append("")
-		ranks.append("[color=#%s]Learning it does not put it on a key: assign it on the Abilities screen.[/color]" % UITheme.DIM.to_html(false))
+		ranks.append("[color=#%s]It goes on the Class set (Tab switches sets): place it on the Abilities screen. It grows a rank every four class levels.[/color]" % UITheme.DIM.to_html(false))
 	else:
 		_detail_icon.texture = ItemDB.icon(entry[4])
 		head.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [UITheme.HEADING.to_html(false), entry[1]])
@@ -337,14 +362,17 @@ func _pick(id: String, ability: bool, entry: Array) -> void:
 			var reached := rank >= step
 			ranks.append("[color=#%s]Rank %d[/color]   [color=#%s]%s[/color]" % [(UITheme.GOLD if reached else UITheme.DIM).to_html(false), step,
 				(UITheme.GOOD if reached else UITheme.TEXT).to_html(false), ", ".join(parts)])
+		if entry.size() > 5:
+			ranks.append("[color=#%s]%s[/color]" % [UITheme.INFO.to_html(false), entry[5]])
 	var problem := player.class_node_problem(id)
 	_message.text = ""
 	_details.text = "\n".join(head)
 	_ranks.text = "\n".join(ranks)
+	_learn.visible = not ability
 	_learn.disabled = problem != ""
 	_learn.text = "Fully learned" if rank >= max_rank else "Learn  ·  1 class point" if rank == 0 else "Learn rank %d  ·  1 class point" % (rank + 1)
 	_to_abilities.visible = ability and rank > 0
-	if problem != "" and problem != "Fully learned.":
+	if problem != "" and problem != "Fully learned." and problem != "Unlocked.":
 		_message.text = problem
 
 

@@ -1,7 +1,7 @@
 extends RefCounted
 ## Abilities, spells and their icons.
 
-const SHAPES := ["shot", "buff", "chain", "arc", "spin", "slam", "dash", "leap", "flurry", "blink", "veil"]
+const SHAPES := ["shot", "buff", "chain", "arc", "spin", "slam", "dash", "leap", "flurry", "blink", "veil", "summon"]
 
 
 func test_abilities_are_complete(t: TestContext) -> void:

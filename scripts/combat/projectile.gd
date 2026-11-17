@@ -27,6 +27,12 @@ static func fire(player: Player, direction: Vector2, config: Dictionary, multipl
 	var projectile := Projectile.new()
 	projectile._player = player
 	projectile._direction = direction
+	# Keen-eyed races send their shots faster and further.
+	var aim := float(RaceTraits.value(player.race(), "aim", 1.0)) if player else 1.0
+	if aim != 1.0:
+		config = config.duplicate()
+		config["speed"] = float(config.get("speed", 600.0)) * aim
+		config["range"] = float(config.get("range", 520.0)) * aim
 	projectile._config = config
 	projectile._multiplier = multiplier
 	projectile.position = player.global_position + Vector2(0, -14) + direction * 18.0

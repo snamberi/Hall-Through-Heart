@@ -54,6 +54,10 @@ func level(id: String) -> int:
 func add_xp(id: String, amount: float) -> void:
 	if not levels.has(id) or amount <= 0.0 or levels[id] >= MAX_LEVEL:
 		return
+	# Some races learn a trade faster.
+	var holder := get_parent() as Player
+	if holder:
+		amount *= float(RaceTraits.value(holder.race(), "learning", 1.0))
 	xp[id] += amount
 	while levels[id] < MAX_LEVEL and xp[id] >= xp_required(levels[id]):
 		xp[id] -= xp_required(levels[id])

@@ -323,9 +323,7 @@ func _build_temple(placed: Array) -> void:
 	rift.sprite().modulate = Color(1.0, 0.45, 0.5)
 	rift.add_light(0.9, 1.6, Color(1.0, 0.3, 0.4))
 	placed.append(rift)
-	# A first weapon for the taking, so nobody has to fight bare-handed for long.
-	if not used.has("temple:sword"):
-		placed.append(_chest(Vector2i(0, -5), "temple:sword", 1, 0.0, [LootGenerator.make_equipment(1, 0, "sword").to_dict(), Item.create("bandage", 3).to_dict(), Item.create("torch", 4).to_dict()]))
+	# (A new character's first weapon now comes in its class's starter kit.)
 
 
 ## Somewhere to rest: heals, and becomes where the player wakes after dying.

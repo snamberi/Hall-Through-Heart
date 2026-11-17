@@ -415,7 +415,143 @@ const BASE_ABILITIES := {
 		"mana": 25.0, "cooldown": 30.0, "duration": 20.0, "color": Color(0.7, 0.92, 1.0),
 		"mods": {"armor": {"percent": 0.35}, "frost_resist": {"flat": 0.25}, "knockback_resistance": {"flat": 0.3}},
 		"text": "+35% armor, +25% frost resistance and steady footing for 20 seconds.",
+	},	# --- class abilities added with class levels (see HeroClasses.TREES)
+	"rallying_roar": {
+		"name": "Rallying Roar", "class": "warrior", "level": 10, "shape": "buff", "heal": 0.2,
+		"stamina": 25.0, "cooldown": 35.0, "duration": 10.0, "mods": {"physical_damage": {"percent": 0.15}, "attack_speed": {"percent": 0.12}},
+		"color": Color(1.0, 0.6, 0.35), "text": "A roar that heals a fifth of your health; then 15% more damage and 12% faster blows for 10 seconds.",
 	},
+	"titan_cleave": {
+		"name": "Titan Cleave", "class": "warrior", "level": 21, "shape": "arc",
+		"damage": 4.2, "stamina": 40.0, "cooldown": 14.0, "reach": 1.7, "arc": 230.0, "knockback": 950.0,
+		"status": {"status": "bleed", "duration": 5.0, "power": 0.45}, "color": Color(1.0, 0.75, 0.55),
+		"text": "One enormous sweep that cuts everything before you and leaves it bleeding.",
+	},
+	"shield_wall": {
+		"name": "Shield Wall", "class": "guardian", "level": 10, "shape": "buff",
+		"stamina": 25.0, "cooldown": 30.0, "duration": 8.0, "mods": {"armor": {"percent": 0.6}, "health_regen": {"flat": 4.0}, "knockback_resistance": {"flat": 0.8}},
+		"color": Color(0.75, 0.85, 1.0), "text": "Plant your feet: +60% armour, steady footing and 4 health a second for 8 seconds.",
+	},
+	"earthshaker": {
+		"name": "Earthshaker", "class": "guardian", "level": 21, "shape": "slam",
+		"damage": 3.4, "stamina": 40.0, "cooldown": 16.0, "radius": 180.0, "distance": 0.0, "knockback": 900.0,
+		"status": {"status": "chill", "duration": 3.0, "power": 0.8}, "color": Color(0.9, 0.8, 0.6),
+		"text": "Bring your weight down so hard the ground breaks around you, battering and slowing all near.",
+	},
+	"piercing_shot": {
+		"name": "Piercing Shot", "class": "ranger", "level": 10, "shape": "shot",
+		"damage": 3.0, "stamina": 20.0, "cooldown": 7.0, "count": 1, "spread": 0.0,
+		"projectile": {"sprite": 0, "speed": 1200.0, "radius": 12.0, "range": 820.0, "pierce": true, "knockback": 420.0}, "color": Color(0.95, 0.95, 0.8),
+		"text": "A drawn-out shot that passes through every enemy in a long line.",
+	},
+	"snare_trap": {
+		"name": "Snare Trap", "class": "ranger", "level": 21, "shape": "slam",
+		"damage": 1.2, "stamina": 20.0, "cooldown": 16.0, "radius": 110.0, "distance": 170.0, "knockback": -200.0,
+		"status": {"status": "chill", "duration": 5.0, "power": 0.95}, "color": Color(0.7, 0.9, 0.5),
+		"text": "Spring a snare ahead: it drags enemies together and all but roots them for 5 seconds.",
+	},
+	"knife_storm": {
+		"name": "Knife Storm", "class": "assassin", "level": 10, "shape": "shot",
+		"damage": 0.9, "stamina": 25.0, "cooldown": 9.0, "count": 9, "spread": 150.0,
+		"projectile": {"sprite": 0, "speed": 900.0, "radius": 10.0, "range": 380.0, "knockback": 160.0}, "status": {"status": "bleed", "duration": 4.0, "power": 0.3},
+		"color": Color(0.85, 0.85, 0.9), "text": "Nine knives thrown in a wide fan, each leaving a bleeding cut.",
+	},
+	"shadow_dance": {
+		"name": "Shadow Dance", "class": "assassin", "level": 21, "shape": "veil",
+		"damage": 1.5, "stamina": 30.0, "cooldown": 40.0, "radius": 110.0, "duration": 8.0, "knockback": 200.0,
+		"mods": {"critical_chance": {"flat": 0.3}, "move_speed": {"percent": 0.3}}, "color": Color(0.55, 0.45, 0.8),
+		"text": "Melt into the dark, cutting all near you: foes lose you, and for 8 seconds +30% crit chance and speed.",
+	},
+	"glacial_nova": {
+		"name": "Glacial Nova", "class": "mage", "level": 10, "shape": "spin", "magic": true,
+		"damage": 1.8, "mana": 25.0, "cooldown": 10.0, "radius": 160.0, "hits": 1, "knockback": 350.0,
+		"status": {"status": "chill", "duration": 4.0, "power": 0.85}, "color": Color(0.7, 0.92, 1.0),
+		"text": "A ring of frost bursts out from you and all but freezes everything it touches.",
+	},
+	"meteor_swarm": {
+		"name": "Meteor Swarm", "class": "mage", "level": 21, "shape": "slam", "magic": true,
+		"damage": 4.8, "mana": 55.0, "cooldown": 22.0, "radius": 190.0, "distance": 220.0, "knockback": 700.0,
+		"status": {"status": "burn", "duration": 5.0, "power": 0.6}, "color": Color(1.0, 0.5, 0.2),
+		"text": "Call a swarm of burning stars down on the ground ahead.",
+	},
+	"runic_ward": {
+		"name": "Runic Ward", "class": "spellblade", "level": 10, "shape": "buff", "magic": true,
+		"mana": 25.0, "cooldown": 30.0, "duration": 12.0, "mods": {"armor": {"percent": 0.3}, "magic_power": {"percent": 0.15}, "damage_taken": {"percent": -0.15}},
+		"color": Color(0.6, 0.8, 1.0), "text": "Runes light along your blade and skin: +30% armour, +15% magic and 15% less damage taken for 12 seconds.",
+	},
+	"spellsunder": {
+		"name": "Spellsunder", "class": "spellblade", "level": 21, "shape": "flurry", "magic": true,
+		"damage": 1.3, "stamina": 20.0, "mana": 25.0, "cooldown": 12.0, "hits": 6, "reach": 1.4, "arc": 120.0, "knockback": 180.0,
+		"color": Color(0.75, 0.6, 1.0), "text": "Six blindingly quick runed cuts.",
+	},
+	"raise_dead": {
+		"name": "Raise Dead", "class": "necromancer", "level": 1, "shape": "summon", "magic": true,
+		"mana": 25.0, "cooldown": 14.0, "summon": {"kind": "zombie", "count": 2, "limit": 3},
+		"color": Color(0.55, 0.85, 0.5), "text": "Two weak zombies claw their way out of the ground to fight for you. They crumble after three minutes.",
+	},
+	"bone_spear": {
+		"name": "Bone Spear", "class": "necromancer", "level": 3, "shape": "shot", "magic": true,
+		"damage": 2.4, "mana": 15.0, "cooldown": 4.0, "count": 1, "spread": 0.0,
+		"projectile": {"sprite": 0, "speed": 900.0, "radius": 12.0, "range": 600.0, "pierce": true, "knockback": 260.0, "color": Color(0.95, 0.92, 0.85)},
+		"color": Color(0.95, 0.92, 0.85), "text": "A spear of bone that passes through every enemy in its way.",
+	},
+	"corpse_bloom": {
+		"name": "Corpse Bloom", "class": "necromancer", "level": 6, "shape": "slam", "magic": true,
+		"damage": 2.6, "mana": 25.0, "cooldown": 9.0, "radius": 120.0, "distance": 150.0, "knockback": 300.0,
+		"status": {"status": "poison", "duration": 6.0, "power": 0.45}, "color": Color(0.6, 0.8, 0.3),
+		"text": "Rot bursts from the ground ahead in a sickly bloom, poisoning all it touches.",
+	},
+	"grave_chill": {
+		"name": "Grave Chill", "class": "necromancer", "level": 10, "shape": "spin", "magic": true,
+		"damage": 1.6, "mana": 22.0, "cooldown": 11.0, "radius": 150.0, "hits": 2, "knockback": 200.0,
+		"status": {"status": "chill", "duration": 4.0, "power": 0.6}, "color": Color(0.55, 0.75, 0.85),
+		"text": "The cold of the grave rolls off you twice, slowing everything near.",
+	},
+	"bone_archers": {
+		"name": "Bone Archers", "class": "necromancer", "level": 15, "shape": "summon", "magic": true,
+		"mana": 35.0, "cooldown": 25.0, "summon": {"kind": "skeleton_archer", "count": 2, "limit": 2},
+		"color": Color(0.9, 0.88, 0.8), "text": "Two skeleton archers rise and shoot at what comes near. They crumble after three minutes.",
+	},
+	"army_of_the_dead": {
+		"name": "Army of the Dead", "class": "necromancer", "level": 21, "shape": "summon", "magic": true,
+		"mana": 60.0, "cooldown": 90.0, "summon": {"kind": "zombie", "count": 6, "limit": 9},
+		"color": Color(0.5, 0.95, 0.55), "text": "Six of the dead rise at once, beyond your usual limit.",
+	},
+	"arcane_bolt": {
+		"name": "Arcane Bolt", "class": "spellcaster", "level": 1, "shape": "shot", "magic": true,
+		"damage": 1.8, "mana": 8.0, "cooldown": 1.2, "count": 1, "spread": 0.0,
+		"projectile": {"sprite": 1, "speed": 760.0, "radius": 11.0, "range": 560.0, "knockback": 160.0, "color": Color(0.75, 0.6, 1.0)},
+		"color": Color(0.75, 0.6, 1.0), "text": "A quick, cheap bolt of raw arcana.",
+	},
+	"hex": {
+		"name": "Hex", "class": "spellcaster", "level": 3, "shape": "shot", "magic": true,
+		"damage": 1.0, "mana": 14.0, "cooldown": 6.0, "count": 1, "spread": 0.0,
+		"projectile": {"sprite": 1, "speed": 600.0, "radius": 14.0, "range": 560.0, "explode": 80.0, "knockback": 60.0, "color": Color(0.85, 0.4, 0.75)},
+		"status": {"status": "chill", "duration": 6.0, "power": 0.7}, "color": Color(0.85, 0.4, 0.75),
+		"text": "A curse that bursts on what it hits and leaves everything near sluggish for 6 seconds.",
+	},
+	"warding_sigil": {
+		"name": "Warding Sigil", "class": "spellcaster", "level": 6, "shape": "buff", "magic": true, "heal": 0.15,
+		"mana": 30.0, "cooldown": 30.0, "duration": 10.0, "mods": {"damage_taken": {"percent": -0.3}, "health_regen": {"flat": 3.0}},
+		"color": Color(0.6, 0.85, 1.0), "text": "Draw a sigil of warding: heal 15%, then take 30% less damage and heal more for 10 seconds.",
+	},
+	"conjure_familiar": {
+		"name": "Conjure Familiar", "class": "spellcaster", "level": 10, "shape": "summon", "magic": true,
+		"mana": 30.0, "cooldown": 20.0, "summon": {"kind": "familiar", "count": 1, "limit": 2},
+		"color": Color(0.75, 0.6, 1.0), "text": "A small wisp of arcana that floats by you and shoots at your foes, for three minutes.",
+	},
+	"mana_storm": {
+		"name": "Mana Storm", "class": "spellcaster", "level": 15, "shape": "chain", "magic": true,
+		"damage": 1.6, "mana": 35.0, "cooldown": 12.0, "targets": 8, "reach": 380.0, "jump": 200.0,
+		"color": Color(0.7, 0.6, 1.0), "text": "Arcana leaps from foe to foe through up to eight enemies.",
+	},
+	"astral_prison": {
+		"name": "Astral Prison", "class": "spellcaster", "level": 21, "shape": "slam", "magic": true,
+		"damage": 3.0, "mana": 45.0, "cooldown": 20.0, "radius": 140.0, "distance": 170.0, "knockback": -340.0,
+		"status": {"status": "chill", "duration": 5.0, "power": 0.95}, "color": Color(0.8, 0.75, 1.0),
+		"text": "A cage of starlight drags enemies together ahead and holds them almost still.",
+	},
+
 }
 
 ## Number of ability slots on the bar.
@@ -443,11 +579,13 @@ static func icon(id: String) -> Texture2D:
 	return _icons[id]
 
 
-## Two sets on the bar, switched with Tab: 0 is the moves of whatever is
+## Three sets on the bar, switched with Tab: 0 is the moves of whatever is
 ## in hand (the weapon's own, the combat style's, or the magic school's
-## spells), 1 is the universal abilities chosen in the Abilities screen.
+## spells), 1 is the universal abilities, 2 the class's own abilities, both
+## chosen in the Abilities screen.
 const SET_SIZE := 4
-const SETS := 2
+const SETS := 3
+const SET_NAMES: Array[String] = ["Weapon", "Universal", "Class"]
 const SLOTS := SET_SIZE
 
 ## Abilities anyone can use with or without a weapon, unlocked by level
@@ -565,9 +703,14 @@ static func style_moves(style: String) -> Array[String]:
 	return ids
 
 
-## Universal abilities and class abilities: what the second set can hold.
+## Universal abilities: what the second set can hold.
 static func is_universal(id: String) -> bool:
-	return ABILITIES.has(id) and (ABILITIES[id].get("universal", false) or ABILITIES[id].has("class"))
+	return ABILITIES.has(id) and ABILITIES[id].get("universal", false)
+
+
+## Class abilities: what the third set can hold.
+static func is_class_ability(id: String) -> bool:
+	return ABILITIES.has(id) and ABILITIES[id].has("class")
 
 
 ## Level an ability unlocks at: a mastery level for weapon abilities, a

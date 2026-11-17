@@ -164,6 +164,15 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 	if def.has("damage") and not bare:
 		var weapon: Dictionary = def["weapon"]
 		lines.append("[color=#%s]Damage[/color]  [font_size=20]%d[/font_size]%s%s" % [text, roundi(item.base_power("damage")), _delta(item, player, "damage"), "  [color=#%s](magic)[/color]" % dim if def.get("magic", false) else ""])
+		# What your class makes of it.
+		var weapon_kind: String = def.get("weapon", {}).get("type", "")
+		var favoured: Array = HeroClasses.CLASSES.get(player.class_id, {}).get("weapons", [])
+		if weapon_kind != "" and not favoured.is_empty():
+			if weapon_kind in favoured:
+				lines.append("[color=#%s]Your class trains with this: +%d%% damage.[/color]" % [UITheme.GOOD.to_html(false), roundi(HeroClasses.WEAPON_BONUS * 100.0)])
+			else:
+				var penalty := HeroClasses.off_class_penalty(Difficulty.current)
+				lines.append("[color=#%s]Not your class's weapon: %d%% damage, %d%% slower.[/color]" % [UITheme.BAD.to_html(false), roundi(float(penalty[0]) * 100.0), roundi(float(penalty[1]) * 100.0)])
 		var action := "shots, range" if weapon.has("projectile") else "swings, reach"
 		lines.append("[color=#%s]%.2fs between %s %d[/color]" % [dim, weapon["cooldown"], action, roundi(weapon["range"])])
 	if def.has("armor") and not bare:

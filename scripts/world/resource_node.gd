@@ -193,6 +193,8 @@ func gather_seconds(player: Player) -> float:
 		speed *= player.equipment.tool(_kind["tool"]).definition()["tool"]["speed"]
 	if kind() == "ore":
 		speed *= player.stats.get_stat("mining_efficiency")
+	if profession() == "mining":
+		speed *= float(RaceTraits.value(player.race(), "mining", 1.0))
 	# Each spare tool tier works a tenth faster again.
 	speed *= 1.0 + 0.1 * tool_surplus(player)
 	return (_kind["seconds"] + _data["level"] * 0.02) / speed * (RICH_WORK if rich else 1.0)
@@ -223,6 +225,9 @@ func harvest(player: Player, perfects := 0) -> void:
 	if item_id != "":
 		if randf() < player.professions.double_chance(profession()):
 			count *= 2
+		# Races with a knack for it get one more now and then.
+		if kind() != "fish" and randf() < float(RaceTraits.value(player.race(), "yield", 0.0)) * (1.0 if profession() == "mining" or player.race() == "goblin" else 0.0):
+			count += 1
 		var item := Item.create_rolled(item_id, count, luck)
 		if player.inventory.add(item):
 			Events.pickup_noted.emit(item.display_name(), count, item.tint().lightened(0.3))

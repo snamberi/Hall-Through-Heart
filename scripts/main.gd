@@ -230,6 +230,16 @@ func _ready() -> void:
 	shadows.name = "Shadows"
 	add_child(shadows)
 	shadows.setup(_player, pact)
+	# What the player's race does that no other can.
+	var race_traits := RaceTraits.new()
+	race_traits.name = "RaceTraits"
+	add_child(race_traits)
+	race_traits.setup(_player, _day_night)
+	# What a Necromancer raises and a Spellcaster conjures.
+	var summons := Summons.new()
+	summons.name = "Summons"
+	_player.add_child(summons)
+	summons.setup(_player)
 	# Your presence, let loose.
 	var aura := DreadAura.new()
 	aura.name = "DreadAura"

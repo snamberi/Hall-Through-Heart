@@ -8,6 +8,8 @@ signal changed
 const BASE := 60
 ## Extra slots from the backpack worn (kept up to date by Equipment).
 var bonus_slots := 0
+## Slots a race carries more (an orc) or fewer (a fairy) than others.
+var race_slots := 0
 
 var items: Array[Item] = []
 var gold := 0
@@ -30,7 +32,7 @@ func _ready() -> void:
 
 
 func capacity() -> int:
-	return BASE + bonus_slots
+	return maxi(BASE + bonus_slots + race_slots, 10)
 
 
 func free_slots() -> int:

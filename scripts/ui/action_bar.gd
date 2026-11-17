@@ -234,7 +234,7 @@ func _ability_text(id: String) -> String:
 	parts.append("Costs %s. Cooldown %ss." % [" and ".join(costs) if not costs.is_empty() else "nothing", str(ability.get("cooldown", 0.0))])
 	match _player.abilities.blocked_reason(id):
 		"locked":
-			parts.append("Locked: needs %s." % ("%s mastery %d" % [WeaponMastery.NAMES.get(ability.get("weapon", ""), "weapon"), ability["mastery"]] if ability.has("mastery") else "level %d" % ability.get("level", 1)))
+			parts.append("Locked: needs %s." % ("%s mastery %d" % [WeaponMastery.NAMES.get(ability.get("weapon", ""), "weapon"), ability["mastery"]] if ability.has("mastery") else ("class level %d" % HeroClasses.ability_level(_player.class_id, id) if ability.has("class") else "level %d" % ability.get("level", 1))))
 		"weapon":
 			parts.append("Needs %s in hand." % str(WeaponMastery.NAMES[ability["weapon"]]).to_lower())
 		"mana":
@@ -248,6 +248,8 @@ func _ability_text(id: String) -> String:
 func _set_name(abilities: AbilityUser) -> String:
 	if abilities.active_set == 1:
 		return "Universal"
+	if abilities.active_set == 2:
+		return "Class: %s" % HeroClasses.CLASSES[_player.class_id]["name"]
 	if abilities.casting():
 		return "%s magic" % MagicDB.SCHOOLS[_player.magic_school]["short"]
 	if _player.fighting_bare():

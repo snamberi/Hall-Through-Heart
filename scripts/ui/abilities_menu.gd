@@ -1,13 +1,13 @@
 class_name AbilitiesMenu
 extends GameMenu
 ## Three columns. Left: the combat styles (use the ones you know, see who
-## teaches the rest). Middle: the two sets the ability keys work, each with
-## its four keys shown: what is in hand (a weapon's, a style's or a
-## school's own four moves) and the universal set that Tab switches to,
-## with the library of universal abilities under it. Right: an inspector
-## for whatever is chosen, with one clear action.
+## teaches the rest). Middle: the three sets the ability keys work, each
+## with its four keys shown: what is in hand (a weapon's, a style's or a
+## school's own four moves), the universal set and the class set that Tab
+## switches to, with the library of universal and class abilities under
+## them. Right: an inspector for whatever is chosen, with one clear action.
 ##
-## Choose an ability, choose a universal slot, press Assign.
+## Choose an ability, choose a slot in its set, press Assign.
 
 const SLOT := 58.0
 const KEYS: Array[String] = ["ability_1", "ability_2", "ability_3", "ability_4"]
@@ -21,6 +21,12 @@ var _hand_names: Array[Label] = []
 var _universal_badge: HBoxContainer
 var _slots: Array[Button] = []
 var _slot_names: Array[Label] = []
+var _class_badge: HBoxContainer
+var _class_title: Label
+var _class_slots: Array[Button] = []
+var _class_names: Array[Label] = []
+## The class slot Assign fills for a class ability.
+var _class_slot := 0
 var _library: VBoxContainer
 var _search: LineEdit
 var _filter := "all"
@@ -90,7 +96,7 @@ func _build() -> void:
 	hand_head.add_child(_hand_title)
 	_hand_badge = HBoxContainer.new()
 	hand_head.add_child(_hand_badge)
-	middle.add_child(_slot_row(_hand_slots, _hand_names, false))
+	middle.add_child(_slot_row(_hand_slots, _hand_names, "hand"))
 	middle.add_child(UITheme.rule())
 	var universal_head := HBoxContainer.new()
 	universal_head.add_theme_constant_override("separation", 8)
@@ -98,8 +104,17 @@ func _build() -> void:
 	universal_head.add_child(UITheme.heading("Universal set", 17))
 	_universal_badge = HBoxContainer.new()
 	universal_head.add_child(_universal_badge)
-	middle.add_child(_slot_row(_slots, _slot_names, true))
-	middle.add_child(UITheme.label("Works with anything in hand. Click a slot to choose where Assign puts an ability.", 14, UITheme.DIM))
+	middle.add_child(_slot_row(_slots, _slot_names, "universal"))
+	middle.add_child(UITheme.rule())
+	var class_head := HBoxContainer.new()
+	class_head.add_theme_constant_override("separation", 8)
+	middle.add_child(class_head)
+	_class_title = UITheme.heading("Class set", 17)
+	class_head.add_child(_class_title)
+	_class_badge = HBoxContainer.new()
+	class_head.add_child(_class_badge)
+	middle.add_child(_slot_row(_class_slots, _class_names, "class"))
+	middle.add_child(UITheme.label("Universal and class sets work with anything in hand. Click a slot to choose where Assign puts an ability.", 14, UITheme.DIM))
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 4)
 	middle.add_child(tools)
@@ -183,7 +198,7 @@ func _key(action: String) -> String:
 
 ## Four slots in a row, each with its key on a cap above and its name
 ## beneath. Universal slots can be chosen as where Assign puts things.
-func _slot_row(buttons: Array[Button], names: Array[Label], universal: bool) -> HBoxContainer:
+func _slot_row(buttons: Array[Button], names: Array[Label], kind: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	for index in AbilityDB.SET_SIZE:
@@ -201,7 +216,7 @@ func _slot_row(buttons: Array[Button], names: Array[Label], universal: bool) -> 
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		UITheme.sounds(button)
-		if universal:
+		if kind == "universal":
 			button.pressed.connect(func() -> void:
 				_slot = index
 				if player.abilities.loadout[index] != "":
@@ -212,6 +227,19 @@ func _slot_row(buttons: Array[Button], names: Array[Label], universal: bool) -> 
 				var click := event as InputEventMouseButton
 				if click and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT:
 					player.abilities.clear_slot(index)
+					refresh()
+			)
+		elif kind == "class":
+			button.pressed.connect(func() -> void:
+				_class_slot = index
+				if player.abilities.class_loadout[index] != "":
+					_selected = player.abilities.class_loadout[index]
+				refresh()
+			)
+			button.gui_input.connect(func(event: InputEvent) -> void:
+				var click := event as InputEventMouseButton
+				if click and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT:
+					player.abilities.clear_class_slot(index)
 					refresh()
 			)
 		else:
@@ -334,16 +362,20 @@ func _held_name() -> String:
 func _refresh_sets() -> void:
 	var abilities := player.abilities
 	_hand_title.text = "In hand: %s" % _held_name()
-	for box: HBoxContainer in [_hand_badge, _universal_badge]:
+	for box: HBoxContainer in [_hand_badge, _universal_badge, _class_badge]:
 		for child in box.get_children():
 			child.queue_free()
-	(_hand_badge if abilities.active_set == 0 else _universal_badge).add_child(UITheme.badge("Active", "gold"))
+	([_hand_badge, _universal_badge, _class_badge][abilities.active_set] as HBoxContainer).add_child(UITheme.badge("Active", "gold"))
+	var has_class := abilities.has_class_set()
+	_class_title.text = "Class set: %s  ·  class level %d" % [HeroClasses.CLASSES[player.class_id]["name"], player.class_level] if has_class else "Class set (choose a class)"
 	var ids := abilities.arms()
 	for index in AbilityDB.SET_SIZE:
 		var id: String = ids[index] if index < ids.size() else ""
 		_style_slot(_hand_slots[index], _hand_names[index], id, id != "" and id == _selected, false)
 		var stored: String = abilities.loadout[index]
 		_style_slot(_slots[index], _slot_names[index], stored, index == _slot, true)
+		var class_stored: String = abilities.class_loadout[index]
+		_style_slot(_class_slots[index], _class_names[index], class_stored, index == _class_slot and has_class, has_class)
 
 
 ## Dresses one slot: its picture (greyed with a padlock while locked), a
@@ -391,7 +423,7 @@ func _refresh_library() -> void:
 		child.queue_free()
 	var words := _search.text.strip_edges().to_lower()
 	var ids: Array = AbilityDB.ABILITIES.keys().filter(func(id: String) -> bool:
-		if not AbilityDB.is_universal(id):
+		if not AbilityDB.is_universal(id) and not AbilityDB.is_class_ability(id):
 			return false
 		var ability: Dictionary = AbilityDB.ABILITIES[id]
 		if ability.has("class") and ability["class"] != player.class_id:
@@ -401,7 +433,15 @@ func _refresh_library() -> void:
 			return false
 		return words == "" or str(ability["name"]).to_lower().contains(words) or str(ability.get("text", "")).to_lower().contains(words)
 	)
-	ids.sort_custom(func(a: String, b: String) -> bool: return AbilityDB.unlock_level(a) < AbilityDB.unlock_level(b))
+	# Class abilities first, in the order the class level opens them.
+	ids.sort_custom(func(a: String, b: String) -> bool:
+		var ca := AbilityDB.is_class_ability(a)
+		var cb := AbilityDB.is_class_ability(b)
+		if ca != cb:
+			return ca
+		if ca:
+			return HeroClasses.ability_level(player.class_id, a) < HeroClasses.ability_level(player.class_id, b)
+		return AbilityDB.unlock_level(a) < AbilityDB.unlock_level(b))
 	for id: String in ids:
 		_library.add_child(_row(id))
 	if ids.is_empty():
@@ -413,7 +453,7 @@ func _refresh_library() -> void:
 func _row(id: String) -> Button:
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
 	var known := player.abilities.rank(id) > 0
-	var where := player.abilities.loadout.find(id)
+	var where := player.abilities.class_loadout.find(id) if AbilityDB.is_class_ability(id) else player.abilities.loadout.find(id)
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(380, 40)
 	var chosen := id == _selected
@@ -454,7 +494,7 @@ func _row(id: String) -> Button:
 func _unlock_words(id: String) -> String:
 	var ability: Dictionary = AbilityDB.ABILITIES[id]
 	if ability.has("class"):
-		return "Class tree"
+		return "Class level %d" % HeroClasses.ability_level(player.class_id, id)
 	if ability.get("universal", false):
 		return "Level %d" % AbilityDB.unlock_level(id)
 	if ability.has("style"):
@@ -504,6 +544,8 @@ func _refresh_inspector() -> void:
 		_needs.add_child(UITheme.badge("Requires: %s" % ItemDB.ITEMS[ability["weapon_item"]]["name"], "info"))
 	elif ability.has("school"):
 		_needs.add_child(UITheme.badge("Requires: %s magic" % MagicDB.SCHOOLS[ability["school"]]["short"], "info"))
+	elif AbilityDB.is_class_ability(id):
+		_needs.add_child(UITheme.badge("Class ability", "gold"))
 	elif AbilityDB.is_universal(id):
 		_needs.add_child(UITheme.badge("Works with anything", "good"))
 	var costs: PackedStringArray = []
@@ -519,23 +561,26 @@ func _refresh_inspector() -> void:
 	if rank == 0:
 		_fact("Unlocks at", _unlock_words(id), Color("e8a070"))
 	# The one action that fits.
-	var where := abilities.loadout.find(id)
-	if not AbilityDB.is_universal(id):
+	var is_class := AbilityDB.is_class_ability(id)
+	var where := abilities.class_loadout.find(id) if is_class else abilities.loadout.find(id)
+	var target := _class_slot if is_class else _slot
+	if not AbilityDB.is_universal(id) and not is_class:
 		_assign.visible = false
 		_reason.text = "This move belongs to what is in hand: it is on its key whenever you hold it." if rank > 0 else "Locked: %s." % _unlock_words(id).to_lower()
 		_reason.add_theme_color_override("font_color", UITheme.DIM if rank > 0 else Color("e8a070"))
 		return
 	_reason.add_theme_color_override("font_color", Color("e8a070"))
 	_remove.visible = where != -1
+	var set_word := "class " if is_class else ""
 	if rank == 0:
-		_assign.text = "Assign to %s" % _key(KEYS[_slot])
+		_assign.text = "Assign to %s%s" % [set_word, _key(KEYS[target])]
 		_assign.disabled = true
 		_reason.text = "Locked: %s." % _unlock_words(id).to_lower()
-	elif where == _slot:
-		_assign.text = "On %s" % _key(KEYS[_slot])
+	elif where == target:
+		_assign.text = "On %s%s" % [set_word, _key(KEYS[target])]
 		_assign.disabled = true
 	else:
-		_assign.text = "%s to %s" % ["Move" if where != -1 else "Assign", _key(KEYS[_slot])]
+		_assign.text = "%s to %s%s" % ["Move" if where != -1 else "Assign", set_word, _key(KEYS[target])]
 		_assign.disabled = false
 
 
@@ -567,12 +612,21 @@ func _on_assign() -> void:
 		_reason.text = player.styles.equip(_selected.trim_prefix("style:"))
 		refresh()
 		return
-	if _selected != "" and AbilityDB.is_universal(_selected) and player.abilities.rank(_selected) > 0:
+	if _selected != "" and AbilityDB.is_class_ability(_selected) and player.abilities.rank(_selected) > 0:
+		player.abilities.assign_class(_class_slot, _selected)
+		refresh()
+	elif _selected != "" and AbilityDB.is_universal(_selected) and player.abilities.rank(_selected) > 0:
 		player.abilities.assign(_slot, _selected)
 		refresh()
 
 
 func _on_remove() -> void:
+	if AbilityDB.is_class_ability(_selected):
+		var spot := player.abilities.class_loadout.find(_selected)
+		if spot != -1:
+			player.abilities.clear_class_slot(spot)
+			refresh()
+		return
 	var where := player.abilities.loadout.find(_selected)
 	if where != -1:
 		player.abilities.clear_slot(where)

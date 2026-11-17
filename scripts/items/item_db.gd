@@ -1052,9 +1052,10 @@ static func describe_modifier(modifier: Dictionary) -> String:
 			format = entry["format"]
 	var amount: String
 	if modifier["kind"] == "percent" or format in ["percent", "percent_fine", "bonus_percent", "multiplier"]:
-		amount = "+%.1f%%" % (value * 100.0)
+		amount = "%.1f%%" % (value * 100.0)
 	elif format == "per_second":
-		amount = "+%.1f/s" % value
+		amount = "%.1f/s" % value
 	else:
-		amount = "+%d" % roundi(value)
-	return "%s %s" % [amount, stat_name(stat)]
+		amount = "%d" % roundi(value)
+	# A penalty already carries its minus sign.
+	return "%s%s %s" % ["" if amount.begins_with("-") else "+", amount, stat_name(stat)]
