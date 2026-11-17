@@ -6,62 +6,76 @@ extends Node2D
 ## behind the body). The aim is taken in eight directions; diagonals use
 ## the nearer view, shifted to that side.
 ##
-## Map keys: o outline, r rim, R rim shade, f face, F face shade, h shine,
-## b boss, w back wood, W back shade, s strap.
+## Map keys: o outline, r rim, H rim shine, R rim shade, v rivet, f face,
+## F face shade, h face shine, b emblem (a bronze heart), B emblem shade,
+## w back planks, W back shade, g wood knot, s strap.
 
 const FRONT := [
-	".ooooooooo.",
-	"orrrrrrrrRo",
-	"orhffbffFRo",
-	"orhfbbbfFRo",
-	"orhffbffFRo",
-	"orfffffFFRo",
-	".orfffFFRo.",
-	".orffFFFRo.",
-	"..orfFFRo..",
-	"...orFRo...",
-	"....oRo....",
-	".....o.....",
+	".oooooooooooo.",
+	"ovHHHHHHHHHHvo",
+	"orhhfffffffFRo",
+	"orhfbbffbbfFRo",
+	"orhbBbbbbBbFRo",
+	"orhbbbbbbbbFRo",
+	"orhfbbbbbbFFRo",
+	"orhffbbbbFFFRo",
+	".orhffbbFFFRo.",
+	".orhfffFFFFRo.",
+	"..orhffFFFRo..",
+	"..orhfFFFFRo..",
+	"...orfFFRRo...",
+	"....orFRRo....",
+	".....oRRo.....",
+	"......oo......",
 ]
 const BACK := [
-	".ooooooooo.",
-	"owwwwwwwwwo",
-	"owwssssswwo",
-	"owwwwwwwwWo",
-	"owwssssswWo",
-	"owwwwwwwWWo",
-	".owwwwwWWo.",
-	".owwwwWWWo.",
-	"..owwWWWo..",
-	"...owWWo...",
-	"....oWo....",
-	".....o.....",
+	".oooooooooooo.",
+	"ovrrrrrrrrrrvo",
+	"orwwwwwwwwwWRo",
+	"orwssssssssWRo",
+	"orwgwwwwwgwWRo",
+	"orwwwwgwwwwWRo",
+	"orwssssssssWRo",
+	"orwwwwwwwwWWRo",
+	".orwwgwwwWWRo.",
+	".orwwwwwWWWRo.",
+	"..orwwwWWWRo..",
+	"..orwwWWWWRo..",
+	"...orwWWRRo...",
+	"....orWRRo....",
+	".....oRRo.....",
+	"......oo......",
 ]
 ## Three-quarter view, its face turned toward the east.
 const SIDE := [
-	".oooo..",
-	"orrrRo.",
-	"orhfFRo",
-	"orfbFRo",
-	"orhfFRo",
-	"orffFRo",
-	".orfFRo",
-	".orFRo.",
-	"..orRo.",
-	"..oRo..",
-	"...o...",
+	".ooooo..",
+	"oHrrrRo.",
+	"orhfbFRo",
+	"orhbBFRo",
+	"orhbbFRo",
+	"orhfbFRo",
+	"orhffFRo",
+	"orhffFRo",
+	".orhfFRo",
+	".orhfFRo",
+	".orffFRo",
+	"..orfRo.",
+	"..orFRo.",
+	"...oRo..",
+	"...oRo..",
+	"....o...",
 ]
 ## Where the shield sits for each of eight aims (east first, going round
 ## clockwise): [offset of its middle from the feet, view, in front of the body].
 const PLACES := [
-	[Vector2(12, -18), "side", true],
-	[Vector2(8, -13), "front", true],
-	[Vector2(0, -12), "front", true],
-	[Vector2(-8, -13), "front", true],
-	[Vector2(-12, -18), "side", true],
-	[Vector2(-12, -25), "back", false],
-	[Vector2(10, -27), "back", false],
-	[Vector2(12, -25), "back", false],
+	[Vector2(12, -19), "side", true],
+	[Vector2(8, -14), "front", true],
+	[Vector2(0, -13), "front", true],
+	[Vector2(-8, -14), "front", true],
+	[Vector2(-12, -19), "side", true],
+	[Vector2(-12, -26), "back", false],
+	[Vector2(10, -28), "back", false],
+	[Vector2(12, -26), "back", false],
 ]
 
 var direction := Vector2.DOWN
@@ -76,7 +90,7 @@ func dress(item: Item) -> void:
 	if item == null:
 		return
 	metal = ItemDB.tier_color(item.tier_level()).lightened(0.15)
-	face = ItemDB.tier_color(item.tier_level()).darkened(0.3)
+	face = ItemDB.tier_color(item.tier_level()).darkened(0.5)
 	queue_redraw()
 
 
@@ -104,8 +118,9 @@ func _draw() -> void:
 	var rows: Array = {"front": FRONT, "back": BACK, "side": SIDE}[place[1]]
 	var mirrored: bool = place[1] == "side" and direction.x < 0.0
 	var colors := {
-		"o": Color("1a1420"), "r": metal, "R": metal.darkened(0.35), "f": face, "F": face.darkened(0.3),
-		"h": face.lightened(0.35), "b": Color("e8c070"), "w": Color("7a5a40"), "W": Color("4a3626"), "s": Color("2a2018"),
+		"o": Color("1a1420"), "r": metal, "H": metal.lightened(0.45), "R": metal.darkened(0.35), "v": Color("f4e4b8"),
+		"f": face, "F": face.darkened(0.3), "h": face.lightened(0.3), "b": Color("f4d27a"), "B": Color("b8863a"),
+		"w": Color("7a5a40"), "W": Color("4a3626"), "g": Color("5a4030"), "s": Color("2a2018"),
 	}
 	var width := String(rows[0]).length()
 	var origin := (place[0] as Vector2) - Vector2(width / 2, rows.size() / 2)
@@ -119,3 +134,11 @@ func _draw() -> void:
 			if _flash > 0.0 and key != "o":
 				color = color.lerp(Color.WHITE, 0.7)
 			draw_rect(Rect2(origin + Vector2(x, y), Vector2.ONE), color)
+	# A blow caught on the shield: sparks thrown off its face.
+	if _flash > 0.0 and place[2]:
+		var out := 1.0 - _flash / 0.15
+		var middle := place[0] as Vector2
+		for k in 5:
+			var angle := direction.angle() + (k - 2) * 0.45
+			var at := (middle + Vector2.from_angle(angle) * (9.0 + out * 10.0)).round()
+			draw_rect(Rect2(at, Vector2(2, 1) if k % 2 == 0 else Vector2(1, 2)), Color(1.0, 0.92, 0.6, 1.0 - out))

@@ -395,3 +395,20 @@ func test_mount_tack_and_races(t: TestContext) -> void:
 	var gates := RaceCourse.plan(world, Vector2i.ZERO, post)
 	t.check(gates.size() >= 4, "a course has gates (%d)" % gates.size())
 	t.equal(gates[-1], post, "the course ends at the post")
+
+
+func test_a_freed_settings_panel_leaves_nothing_behind(t: TestContext) -> void:
+	# The crash "Cannot call method 'set_pressed_no_signal' on a null value":
+	# the title screen's settings panel left listeners on GameSettings that
+	# fired after it was gone. Now nothing of it stays connected.
+	var before := GameSettings.changed.get_connections().size()
+	var panel := SettingsPanel.new()
+	t.tree.root.add_child(panel)
+	await t.frames(2)
+	t.check(GameSettings.changed.get_connections().size() > before, "the panel listens while it is shown")
+	panel.queue_free()
+	await t.frames(2)
+	t.equal(GameSettings.changed.get_connections().size(), before, "and lets go when it is freed")
+	GameSettings.set_value("bloom", not GameSettings.bloom)
+	GameSettings.set_value("bloom", not GameSettings.bloom)
+	t.check(true, "changing settings afterwards is safe")

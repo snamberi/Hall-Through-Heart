@@ -172,7 +172,7 @@ func _on_build_mode(on: bool) -> void:
 			if child is CanvasItem and child != _palette and child != _health_bar and child != _boss_bar and not child is ItemTooltip and child.name != "LevelUpBanner" and child.name != "DeathMessage":
 				_hidden_for_build[child] = (child as CanvasItem).visible
 				(child as CanvasItem).visible = false
-		_player.view_zoom = 0.8
+		_player.view_zoom = 0.5
 	else:
 		for child: CanvasItem in _hidden_for_build:
 			if is_instance_valid(child):

@@ -184,7 +184,7 @@ func _build(k: int) -> void:
 				var orb := _plate(_cell(k, Vector2i(-3 + index * 2, -2)), "", Color(0.7, 0.9, 1.0))
 				orb.round = true
 				state["orbs"].append(orb)
-				_stone(Prop.Decor.OBELISK, _cell(k, Vector2i(-3 + index * 2, 0)), "Strike the chime stone", func() -> void: _strike(k, index))
+				_stone(Prop.Decor.CHIME_STONE, _cell(k, Vector2i(-3 + index * 2, 0)), "Strike the chime stone", func() -> void: _strike(k, index))
 			state["heard"] = []
 			if PUZZLES[k] == "echo":
 				state["song"] = [randi() % 4, randi() % 4, randi() % 4, randi() % 4]
@@ -219,7 +219,7 @@ func _build(k: int) -> void:
 		"riddle":
 			var riddle: Array = RIDDLES[_rng.randi_range(0, RIDDLES.size() - 1)]
 			state["riddle"] = riddle
-			_stone(Prop.Decor.OBELISK, _cell(k, Vector2i(0, -3)), "Read the inscription", func() -> void:
+			_stone(Prop.Decor.RUNE_STELE, _cell(k, Vector2i(0, -3)), "Read the inscription", func() -> void:
 				Events.announcement.emit("THE INSCRIPTION", riddle[0]))
 			var answers: Array = riddle[1].duplicate()
 			var right: String = answers[riddle[2]]

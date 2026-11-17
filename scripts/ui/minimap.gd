@@ -30,7 +30,7 @@ func setup(player: Player, world: World) -> void:
 	_exploration = world.get_parent().get_node_or_null("Exploration")
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	custom_minimum_size = Vector2.ONE * ((RADIUS * 2 + 1) * SCALE + 8.0)
-	GameSettings.changed.connect(func() -> void: visible = GameSettings.show_minimap)
+	GameSettings.changed.connect(_on_settings_changed)
 	visible = GameSettings.show_minimap
 
 
@@ -168,3 +168,7 @@ func _dot(inner: Rect2, middle: Vector2, offset: Vector2, color: Color, radius: 
 	var point := middle + offset / TerrainTiles.TILE_SIZE * SCALE
 	if inner.grow(-radius).has_point(point):
 		draw_circle(point, radius, color)
+
+
+func _on_settings_changed() -> void:
+	visible = GameSettings.show_minimap

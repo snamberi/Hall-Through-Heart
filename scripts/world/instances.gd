@@ -23,11 +23,11 @@ const CAVE_THEMES := {
 	"ossuary": {"title": "Ossuary", "floor": T.ASH, "monsters": ["bone_archer", "husk", "rot_cultist", "ash_wraith", "dune_mummy"], "boss": "rot_cultist",
 		"decor": [Prop.Decor.BONES, Prop.Decor.CANDLES, Prop.Decor.STATUE, Prop.Decor.BONES], "ore": 0.5, "light": Color(0.9, 0.95, 1.0)},
 	"ember": {"title": "Ember Depths", "floor": T.CINDER, "monsters": ["ember_wisp", "magma_slime", "cinder_imp", "crag_golem"], "boss": "ember_wisp",
-		"decor": [Prop.Decor.BRAZIER, Prop.Decor.RUBBLE, Prop.Decor.OBELISK], "ore": 1.3, "light": Color(1.0, 0.5, 0.25)},
+		"decor": [Prop.Decor.BRAZIER, Prop.Decor.RUBBLE, Prop.Decor.STONE_SHARD], "ore": 1.3, "light": Color(1.0, 0.5, 0.25)},
 	"ice": {"title": "Ice Cavern", "floor": T.SNOW, "monsters": ["frost_wolf", "frost_wolf", "frost_troll"], "boss": "frost_troll",
-		"decor": [Prop.Decor.RUBBLE, Prop.Decor.BONES, Prop.Decor.OBELISK], "ore": 1.2, "light": Color(0.7, 0.9, 1.0)},
+		"decor": [Prop.Decor.RUBBLE, Prop.Decor.BONES, Prop.Decor.STANDING_STONE], "ore": 1.2, "light": Color(0.7, 0.9, 1.0)},
 	"void": {"title": "Void Hollow", "floor": T.VOIDSCAR, "monsters": ["void_eye", "void_stalker", "ash_wraith"], "boss": "void_stalker",
-		"decor": [Prop.Decor.OBELISK, Prop.Decor.CANDLES, Prop.Decor.RUBBLE], "ore": 0.8, "light": Color(0.75, 0.5, 1.0)},
+		"decor": [Prop.Decor.STONE_SHARD, Prop.Decor.CANDLES, Prop.Decor.RUBBLE], "ore": 0.8, "light": Color(0.75, 0.5, 1.0)},
 	"flooded": {"title": "Flooded Cave", "floor": T.CAVE_FLOOR, "water": true, "monsters": ["bog_slime", "rot_hound", "thorn_stalker"], "boss": "bog_slime",
 		"decor": [Prop.Decor.RUBBLE, Prop.Decor.BARREL], "ore": 0.8, "light": Color(0.6, 0.85, 1.0)},
 }
@@ -396,7 +396,7 @@ func enter_dungeon(dungeon_seed: int, level: int, boss_id: String, on_cleared: C
 				crypt.add_child(arrow)
 		else:
 			# The first room is quiet: a key waits on a pedestal.
-			var pedestal := Prop.create_decor(Prop.Decor.OBELISK, crypt.cell_position(rect.get_center() + Vector2i(0, -3)), 10.0, "Take the old key", func(p: Player) -> void:
+			var pedestal := Prop.create_decor(Prop.Decor.STONE_PEDESTAL, crypt.cell_position(rect.get_center() + Vector2i(0, -3)), 10.0, "Take the old key", func(p: Player) -> void:
 				if not info["cleared"]:
 					info["cleared"] = true
 					p.inventory.add(Item.create("dungeon_key"))
@@ -496,8 +496,8 @@ func enter_rift(rift_seed: int, level: int, boss_id: String, affixes: Array[Stri
 				info["enemies"].append(enemy)
 				rift.enemies.append(enemy)
 		for i in random.randi_range(2, 4):
-			var crystal := Prop.create_decor(Prop.Decor.OBELISK, rift.cell_position(rect.position + Vector2i(random.randi_range(1, rect.size.x - 2), 1 if random.randf() < 0.5 else rect.size.y - 2)), 10.0)
-			crystal.sprite().modulate = Color(1.0, 0.45, 0.55)
+			var crystal := Prop.create_decor(Prop.Decor.STONE_SHARD, rift.cell_position(rect.position + Vector2i(random.randi_range(1, rect.size.x - 2), 1 if random.randf() < 0.5 else rect.size.y - 2)), 10.0)
+			crystal.sprite().modulate = Color(0.9, 0.72, 0.74)
 			crystal.add_light(0.7, 1.3, Color(1.0, 0.35, 0.45))
 			rift.add_prop(crystal)
 		run.rooms.append(info)

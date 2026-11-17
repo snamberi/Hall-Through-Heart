@@ -364,7 +364,7 @@ func _resonance(cell: Vector2i, key: String, level: int, placed: Array) -> void:
 	for i in 5:
 		song.append(notes.randi_range(0, CHIMES.size() - 1))
 	var words := ", ".join(song.map(func(index: int) -> String: return CHIMES[index]["name"]))
-	var tablet := _decor(placed, Prop.Decor.SIGNPOST, cell + Vector2i(1, 2))
+	var tablet := _decor(placed, Prop.Decor.RUNE_STELE, cell + Vector2i(1, 2), 8.0)
 	tablet.prompt_text = "Read the inscription"
 	tablet.on_interact = func(_p: Player) -> void:
 		Events.announcement.emit("AN INSCRIPTION", "Carved in an old hand: \"Wake the hall as the song goes: %s.\"" % words)
@@ -382,8 +382,9 @@ func _resonance(cell: Vector2i, key: String, level: int, placed: Array) -> void:
 	var heard: Array[int] = []
 	for index in CHIMES.size():
 		var chime: Dictionary = CHIMES[index]
-		var stone := Prop.create_decor(Prop.Decor.OBELISK, _at(cell + (chime["at"] as Vector2i)), 9.0, "Strike the %s stone" % chime["name"])
-		stone.sprite().modulate = (chime["color"] as Color).lerp(Color(0.75, 0.75, 0.8), 0.55)
+		var stone := Prop.create_decor(Prop.Decor.CHIME_STONE, _at(cell + (chime["at"] as Vector2i)), 9.0, "Strike the %s stone" % chime["name"])
+		# Plain stone, with only a hint of its note's colour.
+		stone.sprite().modulate = (chime["color"] as Color).lerp(Color.WHITE, 0.75)
 		stone.on_interact = func(_p: Player) -> void:
 			Audio.play_note("pickup", float(chime["pitch"]), -2.0)
 			RingBurst.spawn(get_parent(), stone.global_position + Vector2(0, -26), chime["color"], 44.0)
@@ -416,7 +417,7 @@ func _build_altar(cell: Vector2i, _key: String, _level: int, random: RandomNumbe
 	for index in 8:
 		var spot := cell + Vector2i(Vector2.from_angle(TAU * index / 8.0 + 0.2) * 4.6)
 		if index % 2 == 0:
-			_decor(placed, Prop.Decor.OBELISK, spot, 10.0)
+			_decor(placed, Prop.Decor.STANDING_STONE, spot, 10.0)
 		else:
 			_decor(placed, Prop.Decor.CANDLES, spot, 0.0, true)
 	for i in 3:
@@ -438,7 +439,7 @@ func _build_sky_shrine(cell: Vector2i, _key: String, _level: int, random: Random
 	_floor(placed, cell, 4, "shrine")
 	for index in 6:
 		var spot := cell + Vector2i(Vector2.from_angle(TAU * index / 6.0 + 0.5) * 3.6)
-		var stone := Prop.create_decor(Prop.Decor.OBELISK, _at(spot), 10.0)
+		var stone := Prop.create_decor(Prop.Decor.STANDING_STONE, _at(spot), 10.0)
 		stone.sprite().modulate = Color(0.85, 0.92, 1.0)
 		stone.add_light(0.5, 1.0, Color(0.75, 0.9, 1.0))
 		placed.append(stone)
@@ -462,7 +463,7 @@ func _build_shrine(cell: Vector2i, key: String, _level: int, random: RandomNumbe
 		_decor(placed, Prop.Decor.CANDLES, cell + Vector2i(Vector2.from_angle(TAU * index / 6.0) * 2.2), 0.0, index % 2 == 0)
 	_decor(placed, Prop.Decor.STATUE, cell + Vector2i(-2, -2), 12.0)
 	_decor(placed, Prop.Decor.STATUE, cell + Vector2i(2, -2), 12.0)
-	var stone := Prop.create_decor(Prop.Decor.OBELISK, _at(cell), 12.0, "Pray at the shrine")
+	var stone := Prop.create_decor(Prop.Decor.RUNE_STELE, _at(cell), 12.0, "Pray at the shrine")
 	stone.add_light(0.7, 1.4)
 	stone.on_interact = func(player: Player) -> void:
 		var day: int = get_parent().get_node("DayNight").day
@@ -540,8 +541,8 @@ func _build_portal(cell: Vector2i, key: String, level: int, random: RandomNumber
 	if used.has(key):
 		_decor(placed, Prop.Decor.RUBBLE, cell)
 		return
-	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(-2, 0), 10.0, true)
-	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(2, 0), 10.0, true)
+	_decor(placed, Prop.Decor.STONE_SHARD, cell + Vector2i(-2, 0), 10.0, true)
+	_decor(placed, Prop.Decor.STONE_SHARD, cell + Vector2i(2, 0), 10.0, true)
 	_decor(placed, Prop.Decor.CANDLES, cell + Vector2i(-1, 2))
 	_decor(placed, Prop.Decor.CANDLES, cell + Vector2i(1, 2))
 	var arena_seed := random.randi()
@@ -571,7 +572,7 @@ func _build_boss(cell: Vector2i, key: String, level: int, random: RandomNumberGe
 		if index % 2 == 0:
 			_decor(placed, Prop.Decor.BRAZIER, spot, 10.0, true)
 		else:
-			_decor(placed, Prop.Decor.OBELISK, spot, 10.0)
+			_decor(placed, Prop.Decor.STANDING_STONE, spot, 10.0)
 	_decor(placed, Prop.Decor.BANNER, cell + Vector2i(-2, -6), 4.0)
 	_decor(placed, Prop.Decor.BANNER, cell + Vector2i(2, -6), 4.0)
 	for i in 4:
@@ -660,11 +661,10 @@ func _build_obelisk(cell: Vector2i, key: String, _level: int, _random: RandomNum
 	_floor(placed, cell, 2)
 	var read := used.has(key)
 	var obelisk := Prop.create_decor(Prop.Decor.OBELISK, _at(cell), 12.0, "The obelisk is silent" if read else "Lay a hand on the obelisk")
-	obelisk.sprite().scale = Vector2(1.5, 1.5)
-	obelisk.sprite().position.y *= 1.5
-	obelisk.sprite().modulate = Color(0.9, 0.8, 1.0) if not read else Color(0.6, 0.6, 0.65)
+	# Grey granite, drawn at its own size; a read one has gone dull.
+	obelisk.sprite().modulate = Color.WHITE if not read else Color(0.72, 0.72, 0.76)
 	if not read:
-		obelisk.add_light(0.9, 1.6)
+		obelisk.add_light(0.7, 1.4, Color(0.9, 0.92, 1.0))
 		obelisk.on_interact = func(player: Player) -> void:
 			if used.has(key):
 				return
@@ -723,8 +723,8 @@ func _build_dungeon(cell: Vector2i, key: String, level: int, random: RandomNumbe
 	var dungeon_seed := random.randi()
 	var boss_id := BossDB.for_site(_world.generator.tile_type_at(cell), level, dungeon_seed)
 	_floor(placed, cell, 3, "basalt")
-	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(-2, -1), 10.0)
-	_decor(placed, Prop.Decor.OBELISK, cell + Vector2i(2, -1), 10.0)
+	_decor(placed, Prop.Decor.CARVED_PILLAR, cell + Vector2i(-2, -1), 10.0)
+	_decor(placed, Prop.Decor.CARVED_PILLAR, cell + Vector2i(2, -1), 10.0)
 	_decor(placed, Prop.Decor.STATUE, cell + Vector2i(-3, 1), 12.0)
 	_decor(placed, Prop.Decor.STATUE, cell + Vector2i(3, 1), 12.0)
 	_decor(placed, Prop.Decor.BRAZIER, cell + Vector2i(-1, 2), 8.0, true)
@@ -808,7 +808,7 @@ func _build_henge(cell: Vector2i, _key: String, _level: int, random: RandomNumbe
 			_decor(placed, Prop.Decor.WAYSTONE, spot, 10.0)
 		else:
 			_decor(placed, Prop.Decor.RUBBLE, spot)
-	var stone := Prop.create_decor(Prop.Decor.OBELISK, _at(cell), 12.0, "Lay a hand on the old stone", func(player: Player) -> void:
+	var stone := Prop.create_decor(Prop.Decor.STANDING_STONE, _at(cell), 12.0, "Lay a hand on the old stone", func(player: Player) -> void:
 		player.buffs.add("henge", "Blessing of the Stones", 300.0, {"physical_damage": {"percent": 0.08}, "magic_power": {"percent": 0.08}, "health_regen": {"flat": 1.0}}, null, "blessing")
 		Events.announcement.emit("BLESSING OF THE STONES", "Stronger blows and spells, and wounds that close, for five minutes.")
 		Audio.play("level_up", -8.0, 0.0)

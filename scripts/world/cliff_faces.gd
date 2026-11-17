@@ -59,9 +59,7 @@ func _height(x: int, y: int) -> int:
 ## Whether a face stands on a chunk tile: higher ground just north, and
 ## nothing built there.
 func _is_face(x: int, y: int) -> bool:
-	if _height(x, y - 1) <= _height(x, y) or TerrainTiles.is_water(_type(x, y)):
-		return false
-	return not (levelled.is_valid() and levelled.call(origin + Vector2i(x, y)))
+	return _height(x, y - 1) > _height(x, y) and not TerrainTiles.is_water(_type(x, y))
 
 
 func _is_stairs(x: int, y: int) -> bool:
@@ -102,35 +100,93 @@ func _draw() -> void:
 			var at := Vector2(x, y) * TILE
 			var above := _type(x, y - 1)
 			var drop := _height(x, y - 1) - mine
-			# Raised open ground catches a touch more light than the land below.
-			var open_ground := mine > 0 and level(_type(x, y)) == 0
-			if open_ground:
-				draw_rect(Rect2(at, Vector2(TILE, TILE)), Color(1.0, 0.97, 0.88, 0.07))
-				# Its sides: a rim where it drops away west (lit) or east (shaded).
-				var rim: Color = (TerrainTiles.COLORS[_type(x, y)] as Color).lightened(0.3)
-				if _height(x - 1, y) < mine:
-					draw_rect(Rect2(at, Vector2(2.0, TILE)), Color(rim, 0.35))
-				if _height(x + 1, y) < mine:
-					draw_rect(Rect2(at + Vector2(TILE - 2.0, 0), Vector2(2.0, TILE)), Color(rim.darkened(0.45), 0.35))
+			# Raised ground catches more light than the land below it.
+			if mine > 0 and level(_type(x, y)) == 0:
+				draw_rect(Rect2(at, Vector2(TILE, TILE)), Color(1.0, 0.97, 0.86, 0.1))
 			if drop > 0 and _is_face(x, y):
 				_cliff(at, drop, above, x, y)
 				if _is_stairs(x, y):
 					_steps(at, drop, above, x, y)
-			elif mine > 0:
-				# The far rim of high ground: a thin dark line where it falls away north.
-				if _height(x, y - 1) < mine:
-					draw_rect(Rect2(at, Vector2(TILE, 2.0)), Color(0, 0, 0, 0.28))
-					if level(_type(x, y)) == 0:
-						draw_rect(Rect2(at + Vector2(0, 2), Vector2(TILE, 2.0)), Color(1, 1, 1, 0.08))
-			# Ground beside higher ground lies in its shadow.
+			# Ground at the foot of higher ground to the west or east lies in
+			# its shadow (the light comes from the upper left).
 			if _height(x - 1, y) > mine:
-				for k in 6:
-					draw_rect(Rect2(at.x + k * 2.0, at.y, 2.0, TILE), Color(0, 0, 0, 0.26 * (1.0 - k / 6.0)))
-				pass
+				for k in 7:
+					draw_rect(Rect2(at.x + k * 2.0, at.y, 2.0, TILE), Color(0, 0, 0, 0.3 * (1.0 - k / 7.0)))
 			if _height(x + 1, y) > mine:
-				for k in 4:
-					draw_rect(Rect2(at.x + TILE - (k + 1) * 2.0, at.y, 2.0, TILE), Color(0, 0, 0, 0.16 * (1.0 - k / 4.0)))
-				pass
+				for k in 3:
+					draw_rect(Rect2(at.x + TILE - (k + 1) * 2.0, at.y, 2.0, TILE), Color(0, 0, 0, 0.14 * (1.0 - k / 3.0)))
+			# Behind higher ground to the south, the low ground darkens toward it.
+			if _height(x, y + 1) > mine and not _is_face(x, y + 1):
+				for k in 3:
+					draw_rect(Rect2(at.x, at.y + TILE - (k + 1) * 2.0, TILE, 2.0), Color(0, 0, 0, 0.18 * (1.0 - k / 3.0)))
+	# Edges of raised ground on its other three sides, drawn over the rest.
+	for y in size:
+		for x in size:
+			var mine := _height(x, y)
+			if mine <= 0 or TerrainTiles.is_water(_type(x, y)):
+				continue
+			var at := Vector2(x, y) * TILE
+			if _height(x, y - 1) < mine:
+				_north_rim(at, x, y)
+			if _height(x - 1, y) < mine:
+				_side_wall(at, x, y, true)
+			if _height(x + 1, y) < mine:
+				_side_wall(at, x, y, false)
+
+
+## The far (north) edge of raised ground: the ground runs to a bright,
+## ragged lip with a dark line where it falls away behind.
+func _north_rim(at: Vector2, x: int, y: int) -> void:
+	var ground := _type(x, y)
+	var base: Color = TerrainTiles.COLORS[ground]
+	var lit := Color.from_hsv(base.h, minf(base.s * 1.2, 1.0), clampf(base.v + 0.32, 0.0, 0.95))
+	var world_x := float(origin.x + x) * TILE
+	for c in 22:
+		var px := at.x + c * 2.0
+		var dip := maxf(2.0 + _wave(world_x + c * 2.0, 3.3, 4.0), 0.0)
+		# The low ground just beyond the edge lies darker.
+		for k in 3:
+			draw_rect(Rect2(px, at.y - (k + 1) * 2.0 + dip, 2.0, 2.0), Color(0.04, 0.03, 0.07, 0.3 * (1.0 - k / 3.0)))
+		draw_rect(Rect2(px, at.y + dip, 2.0, 2.0), lit)
+		draw_rect(Rect2(px, at.y + dip + 2.0, 2.0, 2.0), Color(lit, 0.4))
+
+
+## The side of raised ground where it drops away to the west (lit) or east
+## (in shade): seen nearly edge-on, a narrow wall of soil or rock under a
+## grass lip that hangs over it here and there.
+func _side_wall(at: Vector2, x: int, y: int, west: bool) -> void:
+	var ground := _type(x, y)
+	var rocky := level(ground) > 0
+	var stones := _stone_look(ground)
+	var soil: Array = stones if rocky else _soil(ground)
+	var base: Color = TerrainTiles.COLORS[ground]
+	var grass := Color.from_hsv(base.h, minf(base.s * 1.2, 1.0), clampf(base.v + 0.22, 0.0, 0.92))
+	var face: Color = (soil[0] as Color) if west else (soil[2] as Color)
+	var band_dark: Color = face.darkened(0.12)
+	var dark: Color = soil[3]
+	var world_y := float(origin.y + y) * TILE
+	# Where the wall starts: below the north rim if there is one.
+	var start := 4.0 if _height(x, y - 1) < _height(x, y) else 0.0
+	var random := RandomNumberGenerator.new()
+	random.seed = hash(Vector3i(origin.x + x, origin.y + y, 919 if west else 929))
+	for r in range(int(start / 2.0), 22):
+		var py := at.y + r * 2.0
+		var width := 10.0 + _wave(world_y + r * 2.0, 5.1 if west else 6.7, 4.0)
+		var outer := at.x if west else at.x + TILE - width
+		var inner := at.x + width if west else at.x + TILE - width
+		# Bands of soil (or rock) that wander a little, like the faces.
+		var banded := int(floorf((world_y + r * 2.0 + _wave(world_y + r * 2.0, 1.3, 4.0)) / 8.0)) % 2 == 1
+		draw_rect(Rect2(outer, py, width, 2.0), band_dark if banded else face)
+		# A dark line on its outer edge, and the grass lip on its inner.
+		draw_rect(Rect2(at.x if west else at.x + TILE - 2.0, py, 2.0, 2.0), dark)
+		draw_rect(Rect2(inner - (2.0 if west else 0.0), py, 2.0, 2.0), grass.lightened(0.18) if west else grass.darkened(0.12))
+		# Stones in the wall, and grass hanging over it.
+		var roll := random.randf()
+		if roll < 0.18:
+			draw_rect(Rect2(outer + 2.0, py, 2.0, 2.0), (stones[1] as Color) if west else (stones[0] as Color))
+		elif roll < 0.4 and not rocky:
+			var hang_x := inner - 4.0 if west else inner
+			draw_rect(Rect2(hang_x, py, 4.0, 2.0), grass.darkened(0.08))
 
 
 ## One tile of cliff face, `drop` steps tall, hanging from the high ground above.
@@ -335,8 +391,10 @@ func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 	random.seed = hash(Vector3i(origin.x + x, origin.y + y, 733))
 	var height := TILE - 4.0 if not rocky else minf(STEP * drop, TILE - 4.0)
 	var world_x := float(origin.x + x) * TILE
-	var open_left := _height(x - 1, y - 1) - _height(x - 1, y) <= 0
-	var open_right := _height(x + 1, y - 1) - _height(x + 1, y) <= 0
+	# Outer corners: where the high ground above ends beside this face, the
+	# face turns the corner into the plateau's side wall.
+	var outer_left := _height(x - 1, y - 1) < _height(x, y - 1)
+	var outer_right := _height(x + 1, y - 1) < _height(x, y - 1)
 	# Per two-pixel column: where the lip and the foot lie. Ends of a cliff
 	# curve round: the face shrinks toward them instead of stopping square.
 	var tops: Array[float] = []
@@ -346,19 +404,56 @@ func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 		var wx := world_x + cx
 		var top := at.y + 2.0 + _wave(wx, 1.7, 6.0)
 		var bottom := at.y + height + _wave(wx, 4.1, 5.0)
-		var shrink := 1.0
-		if open_left and cx < 16.0:
-			shrink = minf(shrink, sqrt(cx / 16.0))
-		if open_right and cx > TILE - 18.0:
-			shrink = minf(shrink, sqrt((TILE - 2.0 - cx) / 16.0))
-		bottom = top + roundf((bottom - top) * shrink / 2.0) * 2.0
+		# The foot rounds off a little at an outer corner.
+		if outer_left and c < 2:
+			bottom -= (2 - c) * 2.0
+		if outer_right and c > 19:
+			bottom -= (c - 19) * 2.0
 		tops.append(top)
 		bottoms.append(bottom)
 	# The shadow the cliff throws on the ground below.
 	for c in 22:
 		for k in 6:
 			draw_rect(Rect2(at.x + c * 2.0, bottoms[c] + k * 2.0, 2.0, 2.0), Color(0, 0, 0, 0.32 * (1.0 - k / 6.0)))
-	# The soil between the stones.
+	if not rocky:
+		_earth_face(at, tops, bottoms, above, random)
+	else:
+		_rock_face(at, tops, bottoms, stones, random)
+	var wall: Array = stones if rocky else _soil(above)
+	if outer_left:
+		_corner(at, tops, bottoms, true, wall)
+	if outer_right:
+		_corner(at, tops, bottoms, false, wall)
+	_cliff_trim(at, tops, bottoms, stones, grass, rocky, random)
+
+
+## The end of a face at an outer corner: the plateau's side wall coming
+## down to the foot, lit on the west, shaded on the east, in bands like the
+## face, with a hard edge where it turns.
+func _corner(at: Vector2, tops: Array[float], bottoms: Array[float], west: bool, wall: Array) -> void:
+	var columns := range(0, 5) if west else range(17, 22)
+	for c: int in columns:
+		var px := at.x + c * 2.0
+		var y0: float = tops[c]
+		while y0 < bottoms[c]:
+			var band := int((y0 - at.y) / 8.0) % 2
+			var color: Color = (wall[0] as Color) if west else (wall[2] as Color)
+			draw_rect(Rect2(px, y0, 2.0, 2.0), color.darkened(0.08 * band))
+			y0 += 2.0
+	# The outer edge, dark, and the turn of the corner, bright or dim.
+	var edge_c := 0 if west else 21
+	var turn_c := 5 if west else 16
+	draw_rect(Rect2(at.x + edge_c * 2.0, tops[edge_c], 2.0, bottoms[edge_c] - tops[edge_c]), wall[3])
+	var turn: Color = (wall[0] as Color).lightened(0.2) if west else (wall[2] as Color).darkened(0.25)
+	draw_rect(Rect2(at.x + turn_c * 2.0, tops[turn_c] + 6.0, 2.0, maxf(bottoms[turn_c] - tops[turn_c] - 8.0, 0.0)), Color(turn, 0.8))
+
+
+## A rock face: the soil-dark gaps behind, then blocks of stone in rough
+## courses, each lit along its top and left edge and shaded along its foot.
+func _rock_face(at: Vector2, tops: Array[float], bottoms: Array[float], stones: Array, random: RandomNumberGenerator) -> void:
+	var height := 0.0
+	for c in 22:
+		height = maxf(height, bottoms[c] - at.y)
 	for c in 22:
 		if bottoms[c] > tops[c]:
 			draw_rect(Rect2(at.x + c * 2.0, tops[c], 2.0, bottoms[c] - tops[c]), stones[3])
@@ -372,7 +467,6 @@ func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 		while sx < TILE:
 			var width := float(random.randi_range(4, 9)) * 2.0
 			var tint: Color = (stones[0] as Color).lerp(stones[1], random.randf() * 0.35).darkened(random.randf() * 0.12)
-			var mossy := not rocky and random.randf() < 0.25
 			for c in range(maxi(0, int(sx / 2.0) + 1), mini(22, int((sx + width) / 2.0))):
 				var y0 := maxf(row_top + 2.0, tops[c] + 4.0)
 				var y1 := minf(row_top + row_h, bottoms[c] - 2.0)
@@ -388,12 +482,67 @@ func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 					if y1 - y0 < 2.0:
 						continue
 				draw_rect(Rect2(px, y0, 2.0, y1 - y0), stones[2] if last else (tint.lightened(0.12) if first else tint))
-				draw_rect(Rect2(px, y0, 2.0, 2.0), stones[1] if not mossy else grass.darkened(0.1))
+				draw_rect(Rect2(px, y0, 2.0, 2.0), stones[1])
 				draw_rect(Rect2(px, y1 - 2.0, 2.0, 2.0), (stones[2] as Color).darkened(0.15))
 			sx += width + 2.0
 		row_top += row_h
 		course += 1
-	# Roots hanging from the lip over the stones.
+
+
+
+## A bank of earth: soil in wavy layers, paler under the lip and darker
+## toward the foot, with stones of all sizes set in it, crevices running
+## down, and a few roots.
+func _earth_face(at: Vector2, tops: Array[float], bottoms: Array[float], above: int, random: RandomNumberGenerator) -> void:
+	var soil := _soil(above)
+	var world_x := at.x + float(origin.x) * TILE
+	for c in 22:
+		var top: float = tops[c]
+		var bottom: float = bottoms[c]
+		if bottom <= top:
+			continue
+		var px := at.x + c * 2.0
+		var y0 := top
+		while y0 < bottom:
+			var depth := (y0 - top) / maxf(bottom - top, 1.0)
+			# The layers wander, so the bands are not ruled straight.
+			var band := int(floorf((y0 - at.y + _wave(world_x + c * 2.0, 2.9, 4.0)) / 8.0))
+			var color: Color = (soil[0] as Color).lerp(soil[1], clampf(depth * 1.6, 0.0, 1.0)).lerp(soil[2], clampf(depth * 2.0 - 1.0, 0.0, 1.0))
+			if band % 2 == 1:
+				color = color.darkened(0.08)
+			draw_rect(Rect2(px, y0, 2.0, 2.0), color)
+			y0 += 2.0
+	# Stones set in the earth: odd sizes, rounded, lit top-left.
+	var look := _stone_look(above)
+	for k in random.randi_range(3, 6):
+		var c := random.randi_range(1, 18)
+		var w := random.randi_range(2, 5) * 2
+		var h := random.randi_range(2, 3) * 2
+		var sy := tops[c] + 8.0 + float(random.randi_range(0, 6)) * 2.0
+		if sy + h > bottoms[c] - 4.0:
+			continue
+		var sx := at.x + c * 2.0
+		var tint: Color = (look[0] as Color).lerp(look[1], random.randf() * 0.4)
+		draw_rect(Rect2(sx + 2.0, sy, w - 4.0, h), tint)
+		draw_rect(Rect2(sx, sy + 2.0, w, h - 4.0) if h > 4 else Rect2(sx, sy, w, h), tint)
+		draw_rect(Rect2(sx + 2.0, sy, w - 4.0, 2.0), look[1])
+		draw_rect(Rect2(sx + 2.0, sy + h - 2.0, w - 4.0, 2.0), look[2])
+		draw_rect(Rect2(sx + 2.0, sy + h, w - 4.0, 2.0), Color(0, 0, 0, 0.25))
+	# Crevices: thin dark lines running down from under the lip.
+	for k in random.randi_range(1, 2):
+		var c := random.randi_range(2, 19)
+		var cy := tops[c] + 10.0
+		while cy < bottoms[c] - 4.0:
+			draw_rect(Rect2(at.x + c * 2.0, cy, 2.0, 2.0), Color(soil[3], 0.8))
+			cy += 2.0
+			if random.randf() < 0.3:
+				c = clampi(c + (1 if random.randf() < 0.5 else -1), 0, 21)
+
+
+## What every face shares: roots from the lip, the lip itself hanging over,
+## and the foot with its fallen stones and grass.
+func _cliff_trim(at: Vector2, tops: Array[float], bottoms: Array[float], stones: Array, grass: Color, rocky: bool, random: RandomNumberGenerator) -> void:
+	# Roots hanging from the lip.
 	if not rocky:
 		for k in random.randi_range(1, 3):
 			var c := random.randi_range(1, 20)

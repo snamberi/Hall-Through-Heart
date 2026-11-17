@@ -197,10 +197,7 @@ func _ready() -> void:
 			# Class points start to come at the level a class used to be chosen.
 			class_chosen_at = HeroClasses.CHOICE_LEVEL
 	apply_look()
-	GameSettings.changed.connect(func() -> void:
-		if flight_unlocked:
-			apply_look()
-	)
+	GameSettings.changed.connect(_on_settings_changed)
 	stats.setup(attributes, mastery)
 	stats.set_modifiers_quietly("race", Appearance.race_mods(appearance))
 	stats.set_modifiers_quietly("evolution", EvolutionDB.mods(race(), evolution_path, evolution_stage))
@@ -296,7 +293,9 @@ func _physics_process(delta: float) -> void:
 	if since_hurt > (2.0 if undying else 5.0):
 		health.heal((health.max_health * (0.04 if undying else 0.02) + stats.get_stat("health_regen")) * delta)
 	if state == State.MOVE or state == State.ATTACK:
-		var zoom := _height_zoom / GameSettings.ui_scale * view_zoom
+		# Whole-number zoom only, so every art pixel is a square of screen
+		# pixels (2x in the world, 1x in build mode).
+		var zoom := roundf(_height_zoom * view_zoom)
 		camera.zoom = camera.zoom.lerp(Vector2(zoom, zoom), 1.5 * delta)
 		# Settle exactly on the target: at these zooms tile and chunk edges
 		# land on whole pixels, so no seams show between chunks.
@@ -740,9 +739,9 @@ func _read_ground() -> void:
 		_ground_speed = maxf(_ground_speed, 1.0)
 	if swimming != was_swimming:
 		Events.splash.emit(global_position)
-	# Climbing gives a wider view.
-	var height := _world.generator.height_at(_world.world_to_cell(global_position))
-	_height_zoom = 1.5 if height >= 2 else 1.75 if tile == TerrainTiles.Type.ROCK else 1.85 if height == 1 else 2.0
+	# The view stays at 2x on high ground too: a fractional zoom out
+	# stretched the pixels unevenly.
+	_height_zoom = 2.0
 
 
 ## A safety net: if the player ever ends up inside a wall (a cave edge,
@@ -1155,6 +1154,12 @@ func wings_shown() -> bool:
 
 
 ## Redraws the player in their appearance, with the wings of flight when shown.
+## Wings shown or hidden by the settings.
+func _on_settings_changed() -> void:
+	if flight_unlocked:
+		apply_look()
+
+
 func apply_look() -> void:
 	var look := appearance.duplicate()
 	look["flight_wings"] = wings_shown()

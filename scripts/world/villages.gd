@@ -208,7 +208,7 @@ func _build_project(project: String, plot: Vector2i, center: Vector2i, add: Call
 				var candles := Prop.create_decor(Prop.Decor.CANDLES, _at(plot + Vector2i(side, 1)), 0.0)
 				candles.add_light(0.6, 1.0)
 				add.call(candles)
-			add.call(Prop.create_decor(Prop.Decor.OBELISK, _at(plot + Vector2i(0, -2)), 10.0))
+			add.call(Prop.create_decor(Prop.Decor.CARVED_PILLAR, _at(plot + Vector2i(0, -2)), 10.0))
 		"market":
 			for offset: Vector2i in [Vector2i(-2, 0), Vector2i(2, 0)]:
 				add.call(Prop.create_decor(Prop.Decor.STALL, _at(plot + offset), 18.0))

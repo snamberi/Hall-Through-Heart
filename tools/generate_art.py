@@ -3207,6 +3207,10 @@ def main():
     props = Image.new("RGBA", (len(PROPS) * NODE, NODE), (0, 0, 0, 0))
     for index, parts in enumerate(PROPS):
         props.paste(draw_icon(parts, NODE), (index * NODE, 0))
+    # The chests and the altar are drawn with the decor canvas instead.
+    import generate_flora
+    for index, image in ((2, generate_flora.chest(False)), (3, generate_flora.chest(True)), (4, generate_flora.altar())):
+        props.paste(image, (index * NODE, 0))
     props.save(os.path.join(ROOT, "sprites", "props.png"))
 
 

@@ -427,9 +427,8 @@ func _draw() -> void:
 			draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
 			draw_arc(Vector2.ZERO, body_radius + 9.0 + index * 5.0, 0.0, TAU, 28, Color(ring, 0.9), 2.0)
 			if modifiers[index] == "shielded" and shield > 0.0:
-				draw_set_transform(Vector2(0, -body_radius), 0.0, Vector2.ONE)
-				draw_arc(Vector2.ZERO, body_radius + 14.0, 0.0, TAU, 32, Color(ring, 0.35 + 0.45 * shield / shield_max), 2.5)
-				draw_circle(Vector2.ZERO, body_radius + 13.0, Color(ring, 0.07))
+				draw_set_transform(Vector2.ZERO)
+				_draw_ward(ring)
 			if modifiers[index] == "frozen_aura":
 				draw_arc(Vector2.ZERO, FROZEN_AURA_RADIUS, 0.0, TAU, 48, Color(ring, 0.25), 1.5)
 			draw_set_transform(Vector2.ZERO)
@@ -438,6 +437,54 @@ func _draw() -> void:
 		return
 	if state == State.WINDUP:
 		_draw_telegraph()
+
+
+## The ward of a Shielded monster: a bubble round its body drawn pixel by
+## pixel, its rim lit at the top-left, faint facets inside, cracks spreading
+## as it weakens, and a bright flare for a moment when it takes a blow.
+func _draw_ward(tint: Color) -> void:
+	var strength := clampf(shield / maxf(shield_max, 1.0), 0.0, 1.0)
+	var rx := roundf(body_radius + 13.0)
+	var ry := roundf((body_radius + 13.0) * 1.12)
+	var center := Vector2(0, -roundf(ry * 0.8))
+	var struck := clampf(1.0 - _since_hurt / 0.25, 0.0, 1.0)
+	var shimmer := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 260.0)
+	# A faint fill, row by row.
+	for y in range(-int(ry), int(ry) + 1):
+		var half := floorf(rx * sqrt(maxf(1.0 - float(y * y) / (ry * ry), 0.0)))
+		draw_rect(Rect2(center.x - half, center.y + y, half * 2.0, 1.0), Color(tint, 0.1 + 0.1 * struck))
+	# The rim: brighter toward the light, dimmer behind.
+	# Enough points that the rim is unbroken; two pixels thick.
+	var steps := int(TAU * maxf(rx, ry) * 1.5)
+	for k in steps:
+		var angle := TAU * k / steps
+		var lit := 0.5 + 0.5 * cos(angle - PI * 1.25)
+		var alpha := (0.45 + 0.5 * lit) * (0.5 + 0.5 * strength) + struck * 0.4
+		for inset: float in [0.0, 1.0]:
+			var at := (center + Vector2(cos(angle) * (rx - inset), sin(angle) * (ry - inset))).round()
+			draw_rect(Rect2(at, Vector2.ONE), Color(tint.lightened(0.35 * lit), minf(alpha * (1.0 if inset == 0.0 else 0.55), 1.0)))
+	# A shine on the upper left.
+	for k in 5:
+		var angle := PI * 1.15 + k * 0.12
+		var at := (center + Vector2(cos(angle) * (rx - 3.0), sin(angle) * (ry - 3.0))).round()
+		draw_rect(Rect2(at, Vector2(1, 1)), Color(1, 1, 1, 0.55 + 0.3 * shimmer))
+	# Facets: a few faint diagonal seams.
+	for k in range(-2, 3):
+		var from := center + Vector2(k * rx * 0.4 - rx * 0.2, -ry * 0.6)
+		for t in range(0, int(ry * 1.2), 2):
+			var at := (from + Vector2(t * 0.35, t)).round()
+			if pow((at.x - center.x) / rx, 2) + pow((at.y - center.y) / ry, 2) < 0.85:
+				draw_rect(Rect2(at, Vector2.ONE), Color(tint, 0.22 + 0.1 * struck))
+	# Cracks once it is under half strength.
+	if strength < 0.5:
+		var crack := Color(1, 1, 1, 0.9)
+		for start: Vector2 in [Vector2(rx * 0.35, -ry * 0.55), Vector2(-rx * 0.4, -ry * 0.2)]:
+			var at := center + start
+			for step in int((0.5 - strength) * 24.0) + 3:
+				var next := at + Vector2(-2.0 if step % 3 == 0 else 1.0, 2.0)
+				draw_rect(Rect2(at.round(), Vector2.ONE), crack)
+				draw_rect(Rect2(((at + next) / 2.0).round(), Vector2.ONE), crack)
+				at = next
 
 
 ## Every attack warns on the ground the same way while it winds up: a red

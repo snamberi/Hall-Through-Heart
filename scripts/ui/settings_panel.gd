@@ -30,6 +30,11 @@ var _listen_banner: Label
 ## The action waiting for a key, or "".
 var _listening := ""
 var _current := "Audio"
+## What to bring up to date when a setting changes elsewhere. Run from one
+## method bound to this panel, so the connection goes when the panel does
+## (a lambda connected straight to GameSettings outlived the title screen
+## and crashed the game on the next change).
+var _listeners: Array[Callable] = []
 
 
 func _ready() -> void:
@@ -102,12 +107,18 @@ func _ready() -> void:
 	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
 	add_child(bottom)
 	bottom.add_child(UITheme.primary_button("Done", func() -> void: closed.emit(), 200.0))
-	GameSettings.changed.connect(_refresh_bindings)
+	GameSettings.changed.connect(_on_settings_changed)
 	show_tab("Audio")
 	visibility_changed.connect(func() -> void:
 		if is_visible_in_tree():
 			_tab_buttons[_current].grab_focus.call_deferred()
 	)
+
+
+func _on_settings_changed() -> void:
+	_refresh_bindings()
+	for listener: Callable in _listeners:
+		listener.call()
 
 
 func show_tab(tab: String) -> void:
@@ -192,7 +203,7 @@ func _preset_row(page: Control) -> void:
 			(buttons[preset] as Button).set_pressed_no_signal(GameSettings.graphics_preset == preset)
 		custom.text = "Custom" if GameSettings.graphics_preset == "custom" else ""
 	show.call()
-	GameSettings.changed.connect(show)
+	_listeners.append(show)
 
 
 func _page(holder: Control, fill: Callable) -> VBoxContainer:
@@ -273,7 +284,7 @@ func _text_size(page: Control) -> void:
 		sample.add_theme_font_size_override("font_size", roundi(16 * value))
 		apply.disabled = is_equal_approx(value, GameSettings.text_scale)
 	)
-	GameSettings.changed.connect(func() -> void: apply.disabled = is_equal_approx(slider.value, GameSettings.text_scale))
+	_listeners.append(func() -> void: apply.disabled = is_equal_approx(slider.value, GameSettings.text_scale))
 
 
 func _check(page: Control, setting: String, title: String) -> CheckBox:
@@ -285,7 +296,7 @@ func _check(page: Control, setting: String, title: String) -> CheckBox:
 	box.toggled.connect(func(on: bool) -> void: GameSettings.set_value(setting, on))
 	# Kept true to the setting when it is changed elsewhere (the same
 	# toggle can be on two tabs).
-	GameSettings.changed.connect(func() -> void: box.set_pressed_no_signal(GameSettings.get(setting)))
+	_listeners.append(func() -> void: box.set_pressed_no_signal(GameSettings.get(setting)))
 	page.add_child(box)
 	return box
 
@@ -310,7 +321,7 @@ func _choice(page: Control, setting: String, title: String, options: Array, widt
 		row.add_child(button)
 		buttons.append(button)
 	# A preset changes many at once: keep the buttons showing the values.
-	GameSettings.changed.connect(func() -> void:
+	_listeners.append(func() -> void:
 		for index in buttons.size():
 			buttons[index].set_pressed_no_signal(GameSettings.get(setting) == options[index][0])
 	)

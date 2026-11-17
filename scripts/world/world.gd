@@ -227,7 +227,9 @@ func _build_chunk(chunk: Vector2i, announce: bool = true) -> void:
 	var has_high := false
 	for y in span:
 		for x in span:
-			var height := generator.height_at(origin + Vector2i(x - 1, y - 1))
+			var cell := origin + Vector2i(x - 1, y - 1)
+			# Ground a structure stands on is levelled: no plateau through it.
+			var height := 0 if levelled.is_valid() and levelled.call(cell) else generator.height_at(cell)
 			heights[y * span + x] = height
 			has_high = has_high or height > 0
 	if has_high:
