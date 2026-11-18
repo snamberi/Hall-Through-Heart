@@ -49,24 +49,51 @@ static var IGLOO: Texture2D = _draw_igloo()
 
 static func _draw_igloo() -> Texture2D:
 	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
-	var outline := Color("0c0a10")
+	var outline := Color("222238")
+	var facet := Color("accacf")
+	var pale := Color("dbe7dc")
+	var shade := Color("7a9fb0")
+	var mortar := Color("627e9b")
 	for y in 64:
 		for x in 64:
 			var dx := (x - 32) / 28.0
 			var dy := (y - 58) / 30.0
-			var inside := dx * dx + dy * dy <= 1.0 and y <= 58
-			if inside:
-				var shade := Color("eef2f6") if dx < -0.2 and dy < -0.5 else Color("c8d4e0") if dx > 0.4 or dy > -0.25 else Color("dde6ee")
-				# Rows of snow blocks.
-				if (y - 30) % 7 == 0 or ((x + (y / 7) * 4) % 9 == 0 and y > 30):
-					shade = Color("aab8c6")
-				image.set_pixel(x, y, shade)
-	for y in range(46, 59):
-		for x in range(25, 40):
-			var dx := (x - 32) / 7.5
-			var dy := (y - 58) / 12.0
-			if dx * dx + dy * dy <= 1.0:
-				image.set_pixel(x, y, Color("1a2030"))
+			if y < 28 or y > 58 or dx * dx + dy * dy > 1.0:
+				continue
+			# Staggered joints follow the curve of the dome. The upper edge
+			# of each block holds a thin, light snow lip.
+			var course := floori((y - 28) / 6.0)
+			var course_edge := (y - 28) % 6
+			var joint := posmod(x + 5 * (course % 2), 11)
+			var block := facet
+			if x < 31 - floori((y - 29) / 3.0):
+				block = pale
+			elif dx > 0.32 + dy * 0.16 or y > 53:
+				block = shade
+			if course_edge == 0 or joint == 0:
+				block = mortar
+			elif course_edge == 1 or joint == 1:
+				block = block.lerp(pale, 0.57)
+			image.set_pixel(x, y, block)
+	# An ice arch and a timber screen in its recess. Amber pixels pick out
+	# the light from within against the blue shadow.
+	for y in range(39, 59):
+		for x in range(19, 46):
+			var u := (x - 32) / 12.0
+			var v := (y - 57) / 16.0
+			if u * u + v * v > 1.0:
+				continue
+			var inside := (x - 32) / 8.0
+			var up := (y - 57) / 11.0
+			var arch := pale if x < 33 else shade
+			if inside * inside + up * up <= 1.0:
+				arch = Color("372c42")
+				if x >= 28 and x <= 35 and y >= 51:
+					arch = Color("775052") if x != 31 else Color("9e6560")
+				if x == 28 and y >= 52 and y <= 55:
+					arch = Color("e7b481")
+			image.set_pixel(x, y, arch)
+	image.set_pixel(33, 54, Color("e3ad78"))
 	for y in 64:
 		for x in 64:
 			if image.get_pixel(x, y).a > 0.0:
