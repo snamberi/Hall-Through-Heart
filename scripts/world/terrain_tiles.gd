@@ -33,9 +33,9 @@ const NAMES: Array[String] = [
 
 ## Flat colour for each type, for maps and previews.
 const COLORS: Array[Color] = [
-	Color("18283d"), Color("264652"), Color("4e3a37"), Color("4b4553"), Color("535637"), Color("2b4c3c"), Color("354c3f"), Color("586072"),
-	Color("bbd3d6"), Color("3e6262"), Color("908678"), Color("514536"), Color("542e42"), Color("46365d"), Color("2b2533"), Color("a3885e"),
-	Color("493133"), Color("302542"), Color("78543f"), Color("3a3448"), Color("41404f"), Color("7a8095"), Color("887052"),
+	Color("141b2b"), Color("23364a"), Color("3d342c"), Color("4b4a4e"), Color("4a4d32"), Color("26382c"), Color("2e3528"), Color("5a5560"),
+	Color("c8d0d8"), Color("3d5a58"), Color("8c8a84"), Color("4a4030"), Color("4a2830"), Color("3a2c4a"), Color("1c1a1e"), Color("8a7650"),
+	Color("3a2a28"), Color("1a1428"), Color("6b4f36"), Color("2a2630"), Color("34323a"), Color("8a8794"), Color("7a6448"),
 ]
 
 ## Tiles nothing can pass through. Only walls inside buildings and caves:
