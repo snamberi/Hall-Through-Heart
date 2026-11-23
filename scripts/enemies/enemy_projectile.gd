@@ -13,6 +13,7 @@ var _damage := 5.0
 var _level := 1
 var _status: Dictionary = {}
 var _owner_enemy: Enemy
+var _element := ""
 var _flying := false
 var _travelled := 0.0
 
@@ -25,17 +26,42 @@ static func fire(from: Enemy, target: Player, attack: Dictionary, damage: float,
 	shot._damage = damage
 	shot._level = from.level
 	shot._status = attack.get("status", {})
+	shot._element = Elements.attack_element(from.enemy_id)
 	shot.position = from.global_position + Vector2(0, -16)
 	shot._direction = direction.normalized() if direction != Vector2.ZERO else shot.position.direction_to(target.global_position + Vector2(0, -14))
-	shot.rotation = shot._direction.angle()
-	shot.z_index = 30
+	shot._dress(int(attack["sprite"]), attack.get("color", Color.WHITE))
+	from.get_parent().add_child(shot)
+	# Everyone near sees it fly, and it can hit them too.
+	if NetWorld.current:
+		NetWorld.current.share_shot(from, shot.position, shot._direction, shot._speed, damage, attack)
+
+
+## The same shot in another player's game, aimed at nobody in particular:
+## it hurts this game's player if it reaches them.
+static func fire_copy(parent: Node, at: Vector2, direction: Vector2, target: Player, speed: float, damage: float, level: int,
+		status: Dictionary, sprite: int, color: Color, element: String) -> void:
+	var shot := EnemyProjectile.new()
+	shot._target = target
+	shot._speed = speed
+	shot._damage = damage
+	shot._level = level
+	shot._status = status
+	shot._element = element
+	shot.position = at
+	shot._direction = direction.normalized()
+	shot._dress(sprite, color)
+	parent.add_child(shot)
+
+
+func _dress(frame: int, color: Color) -> void:
+	rotation = _direction.angle()
+	z_index = 30
 	var sprite := Sprite2D.new()
 	sprite.texture = SHEET
 	sprite.hframes = 4
-	sprite.frame = attack["sprite"]
-	sprite.modulate = attack.get("color", Color.WHITE)
-	shot.add_child(sprite)
-	from.get_parent().add_child(shot)
+	sprite.frame = frame
+	sprite.modulate = color
+	add_child(sprite)
 
 
 func _physics_process(delta: float) -> void:
@@ -48,7 +74,7 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_target) or _target.is_dead():
 		return
 	if global_position.distance_to(_target.global_position + Vector2(0, -14)) < 16.0:
-		var hurt := _target.take_damage(_damage, global_position - _direction * 10.0, _level, Elements.attack_element(_owner_enemy.enemy_id) if is_instance_valid(_owner_enemy) else "")
+		var hurt := _target.take_damage(_damage, global_position - _direction * 10.0, _level, _element)
 		if hurt:
 			if not _status.is_empty():
 				_target.apply_status(_status["status"], _status["duration"], _status["power"] * _damage if _status["status"] != "chill" else _status["power"])

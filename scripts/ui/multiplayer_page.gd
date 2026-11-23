@@ -20,6 +20,7 @@ var _address: LineEdit
 var _password: LineEdit
 var _status: Label
 var _host_button: Button
+var _pvp: CheckBox
 var _seen := ""
 var _waiting_slot := ""
 
@@ -66,6 +67,11 @@ func _ready() -> void:
 	host_text.add_child(UITheme.heading("Host", 20))
 	var addresses := Net.local_addresses()
 	host_text.add_child(UITheme.label("Opens the chosen character's world to friends nearby.%s" % (("  Your address: " + ", ".join(addresses)) if not addresses.is_empty() else ""), 14, UITheme.DIM))
+	_pvp = CheckBox.new()
+	_pvp.text = "PvP"
+	_pvp.tooltip_text = "Players' blows and shots can hurt one another (at 60%)."
+	_pvp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	host_row.add_child(_pvp)
 	_host_button = UITheme.primary_button("Host this world", _host, 200.0)
 	_host_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_host_button.tooltip_text = "Hosting stops when you leave the world. For a world that stays up, use My Servers."
@@ -176,7 +182,9 @@ func _host() -> void:
 	var slot := _chosen()
 	if slot.is_empty():
 		return
-	var problem := Net.host(_info(slot))
+	var info := _info(slot)
+	info["pvp"] = _pvp.button_pressed
+	var problem := Net.host(info)
 	if problem != "":
 		_status.text = problem
 		return

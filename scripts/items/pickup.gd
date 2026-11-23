@@ -10,6 +10,16 @@ const LIFETIME := 180.0
 var item: Item
 var gold := 0
 
+## Its id in a shared world (0 playing alone), and whether it is another
+## game's drop shown here. In a shared world a drop is one drop: reaching it
+## asks the host first, and whoever asks first gets it.
+var net_id := 0
+var net_replica := false
+var net_granted := false
+var _claiming := false
+## Where it comes to rest after being tossed.
+var landing := Vector2.INF
+
 var _player: Player
 var _age := 0.0
 var _blocked_left := 0.0
@@ -43,11 +53,13 @@ func _ready() -> void:
 		# Gold lies at its own size (no stretched pixels).
 		_sprite.scale = Vector2.ONE
 	add_child(_sprite)
+	if NetWorld.current and not net_replica:
+		NetWorld.current.share_pickup.call_deferred(self)
 
 
 ## Tosses the pickup a short way from where it appeared.
 func scatter() -> void:
-	var landing := position + Vector2.from_angle(randf() * TAU) * randf_range(14.0, 44.0)
+	landing = position + Vector2.from_angle(randf() * TAU) * randf_range(14.0, 44.0)
 	create_tween().tween_property(self, "position", landing, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 
 
@@ -138,6 +150,18 @@ func _pixel_pool(color: Color, radius: float, alpha: float) -> void:
 
 
 func _collect() -> void:
+	if net_id != 0 and not net_granted:
+		# Shared: ask first; the answer collects it (or it was someone else's).
+		if _claiming or NetWorld.current == null:
+			return
+		if item and not item.is_relic() and not _player.inventory.has_room_for(item):
+			DamageNumber.spawn_text(get_parent(), _player.global_position + Vector2(0, -20), "Inventory full", Color(0.9, 0.4, 0.4), 12)
+			_blocked_left = 2.5
+			return
+		_claiming = true
+		visible = false
+		NetWorld.current.claim_pickup(self)
+		return
 	var text_position := _player.global_position + Vector2(0, -20)
 	Audio.play("pickup", -8.0)
 	if item == null:

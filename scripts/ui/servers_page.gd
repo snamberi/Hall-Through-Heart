@@ -225,9 +225,12 @@ func _server_card(server: Dictionary) -> Control:
 	if state == "running":
 		var up := int(Time.get_unix_time_from_system() - float(status.get("started", 0.0)))
 		var names: Array = status.get("players", [])
-		text.add_child(UITheme.label("Day %d  -  %s  -  up %dh %02dm  -  %d MB  -  address %s" % [
+		text.add_child(UITheme.label("Day %d  -  %s  -  up %dh %02dm  -  address %s" % [
 			int(status.get("day", 1)), ("%d on: %s" % [names.size(), ", ".join(names)]) if not names.is_empty() else "nobody on (resting)",
-			up / 3600, (up / 60) % 60, int(status.get("memory_mb", 0)), ", ".join(status.get("addresses", []))], 14, UITheme.GOOD))
+			up / 3600, (up / 60) % 60, ", ".join(status.get("addresses", []))], 14, UITheme.GOOD))
+		text.add_child(UITheme.label("Load %d%%  -  %d MB  -  %d monsters, %d drops shared  -  %d chunks active" % [
+			int(status.get("load", 0)), int(status.get("memory_mb", 0)), int(status.get("monsters", 0)), int(status.get("drops", 0)),
+			int(status.get("active_chunks", 0))], 14, UITheme.DIM))
 	elif state != "starting" and float(status.get("last_save", 0.0)) > 0.0:
 		var note := str(status.get("note", ""))
 		text.add_child(UITheme.label("Last saved %s%s" % [Time.get_datetime_string_from_unix_time(int(status["last_save"]), true), ("  -  " + note) if note != "" and state == "stopped" else ""], 14, UITheme.BAD if state == "crashed" else UITheme.DIM))
@@ -358,7 +361,7 @@ func _form_view() -> Control:
 		difficulty.add_item(Difficulty.display_name(level))
 	_row(world, "Difficulty", difficulty, "difficulty")
 	_field_check(world, "permadeath", "Permadeath", "A player who dies may not come back to this world.")
-	_field_check(world, "pvp", "Player versus player", "Kept with the server; players cannot hurt each other yet.")
+	_field_check(world, "pvp", "Player versus player", "Players' blows and shots can hurt one another (at 60%).")
 
 	var who := _section(form, "Who can join", "")
 	_field_spin(who, "max_players", "Most players", 2, ServerStore.MAX_PLAYERS, 1)
@@ -394,16 +397,17 @@ func _form_view() -> Control:
 	_field_check(hosting, "idle_mode", "Rest when nobody is on", "Far fewer updates a second while the world is empty.")
 	_field_check(hosting, "pause_when_empty", "Pause time when empty", "The day and the weather wait for someone to come back.")
 
-	var limits := _section(form, "Resources", "The server keeps the clock, the weather and what is built, and lets players in. These limits are for its world simulation as that grows.")
-	_field_spin(limits, "max_active_chunks", "Most active chunks", 50, 4000, 50)
-	_field_spin(limits, "chunk_sim_distance", "World simulation distance (chunks)", 1, 8, 1)
-	_field_spin(limits, "enemy_sim_distance", "Monster simulation distance", 400, 4000, 100)
-	_field_spin(limits, "max_instances", "Most open dungeons at once", 1, 16, 1)
+	var limits := _section(form, "Resources", "Each monster is run by the game of the player nearest it; the server referees, and tells each player only of what is near them. These limits set how far that reaches and how much the server keeps track of.")
+	_field_spin(limits, "max_active_chunks", "Most active chunks (all players)", 50, 4000, 50)
+	_field_spin(limits, "chunk_sim_distance", "Shared distance (chunks)", 1, 8, 1)
+	_field_spin(limits, "enemy_sim_distance", "Monster distance (pixels)", 400, 4000, 100)
+	_field_spin(limits, "max_instances", "Most shared dungeons at once", 1, 16, 1)
 	var quality := OptionButton.new()
 	for entry: Array in QUALITY:
 		quality.add_item(entry[1])
 	_row(limits, "Background quality", quality, "background_quality")
 	_field_spin(limits, "memory_warning_mb", "Warn when memory passes (MB)", 256, 16384, 128)
+	(_fields["background_quality"] as Control).tooltip_text = "Updates a second while players are on: Low 10, Normal 20, High 30."
 
 	_form_status = UITheme.label("", 15, UITheme.INFO)
 	_form_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

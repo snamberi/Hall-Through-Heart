@@ -17,8 +17,10 @@ var colour := Color.WHITE
 var level := 1
 var health_share := 1.0
 var dead := false
-## Whether this game's own player is in a cave, dungeon or other room.
-var local_inside := false
+## Where this game's own player is: "" out in the world, else their room.
+## Someone is seen only by players in the same place.
+var local_place := ""
+var place := ""
 
 var _figure: PersonFigure
 ## [time, position, velocity] newest last.
@@ -39,6 +41,9 @@ func setup(peer_id: int, info: Dictionary) -> void:
 
 func _ready() -> void:
 	add_to_group("remote_players")
+	# Where the world allows fighting between players, they can be struck.
+	if Net.rules.get("pvp", false):
+		add_to_group("rivals")
 	_figure = PersonFigure.new()
 	var look := Appearance.DEFAULT.duplicate()
 	look.merge(_look, true)
@@ -78,8 +83,9 @@ func hear(state: Dictionary) -> void:
 			_figure.pose(walk, 1.0)
 			_pose = walk
 	modulate.a = 0.45 if dead else 1.0
-	# Someone in a cave or dungeon is only seen by others in one too.
-	visible = bool(state.get("in", false)) == local_inside
+	# Someone in a cave or dungeon is only seen by others in the same one.
+	place = str(state.get("ik", "" if not state.get("in", false) else "?"))
+	visible = place == local_place
 	queue_redraw()
 
 

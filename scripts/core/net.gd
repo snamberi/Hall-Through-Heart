@@ -36,6 +36,9 @@ signal kill_shared(peer: int, xp: int, at: Vector2)
 ## A friend did something worth showing (a swing, a dash, a level up).
 signal deed_received(peer: int, kind: String, data: Dictionary)
 signal left_game(reason: String)
+## The shared world (monsters, loot, chests, gathering): a message for this
+## game. `from` is the peer it came from.
+signal world_msg(kind: String, data: Variant, from: int)
 
 const PORT := 24680
 const BEACON_PORT := 24681
@@ -76,6 +79,18 @@ var _beacon_left := 0.0
 var _listening := false
 ## Why the host is closing, told just before it does.
 var _parting := ""
+## Where each player is, as the world's host hears it: peer -> {"p": Vector2,
+## "i": instance key ("" out in the world, else the room they are in)}.
+var places: Dictionary = {}
+## The world's rules, set by its host: "pvp", "interest" (how far each
+## player hears of monsters and loot), and so on.
+var rules: Dictionary = {}
+## The world's referee (who runs which monster, who gets which drop), kept
+## by the host's game or the dedicated server.
+var referee: WorldReferee
+
+## How far a player hears of the world around them, unless the host says.
+const INTEREST := 1800.0
 
 
 ## What this process was started as: "" (the game), or "server",
@@ -153,6 +168,8 @@ func host(info: Dictionary, port: int = PORT) -> String:
 	max_players = MAX_PLAYERS
 	me = info
 	roster = {1: info}
+	rules = {"pvp": bool(info.get("pvp", false)), "interest": INTEREST}
+	_start_referee({})
 	_open_beacon()
 	roster_changed.emit()
 	status_changed.emit("Hosting on port %d" % port)
@@ -175,6 +192,12 @@ func host_dedicated(settings: Dictionary) -> String:
 	listed = str(settings.get("visibility", "lan")) == "lan"
 	me = {"name": str(settings.get("name", "Server"))}
 	roster = {}
+	# How far each player hears of the world: the monster distance, or the
+	# chunks around them, whichever is further.
+	var chunk_span := float(World.CHUNK_SIZE * TerrainTiles.TILE_SIZE)
+	rules = {"pvp": bool(settings.get("pvp", false)),
+		"interest": maxf(float(settings.get("enemy_sim_distance", INTEREST)), float(settings.get("chunk_sim_distance", 3)) * chunk_span)}
+	_start_referee(settings)
 	if listed:
 		_open_beacon()
 	roster_changed.emit()
@@ -269,6 +292,11 @@ func leave(reason: String = "") -> void:
 	world.clear()
 	_waiting.clear()
 	world_now = Callable()
+	places.clear()
+	rules.clear()
+	if referee:
+		referee.queue_free()
+		referee = null
 	if was != "off":
 		roster_changed.emit()
 		left_game.emit(reason)
@@ -333,6 +361,9 @@ func _on_peer_connected(_peer: int) -> void:
 
 
 func _on_peer_disconnected(peer: int) -> void:
+	places.erase(peer)
+	if referee:
+		referee.peer_left(peer)
 	if not roster.has(peer):
 		return
 	var name := name_of(peer)
@@ -398,6 +429,7 @@ func _refused(reason: String) -> void:
 @rpc("authority", "reliable")
 func _welcome(host_world: Dictionary, everyone: Dictionary) -> void:
 	world = host_world
+	rules = host_world.get("rules", {}) if host_world.get("rules") is Dictionary else {}
 	roster = everyone
 	mode = "guest"
 	roster_changed.emit()
@@ -423,6 +455,7 @@ func _gone(peer: int) -> void:
 ## Sends our place and pose to everyone.
 func send_state(state: Dictionary) -> void:
 	if online():
+		_note_place(my_id(), state)
 		_state.rpc(state)
 
 
@@ -432,7 +465,171 @@ func _state(state: Dictionary) -> void:
 	if roster.has(peer):
 		if state.has("lv"):
 			roster[peer]["level"] = int(state["lv"])
+		_note_place(peer, state)
 		state_received.emit(peer, state)
+
+
+func _note_place(peer: int, state: Dictionary) -> void:
+	if state.get("p") is Vector2:
+		places[peer] = {"p": state["p"], "i": str(state.get("ik", "")), "dead": bool(state.get("d", false))}
+
+
+func place_of(peer: int) -> Vector2:
+	return places[peer]["p"] if places.has(peer) else Vector2.INF
+
+
+func instance_of(peer: int) -> String:
+	return str(places[peer]["i"]) if places.has(peer) else "?"
+
+
+## How far `peer` hears of the world around them.
+func interest_of(peer: int) -> float:
+	if referee:
+		return referee.radius_for(peer)
+	return float(rules.get("interest", INTEREST))
+
+
+## Whether `peer` stands near `at`, in the same place.
+func hears(peer: int, at: Vector2, instance: String, slack: float = 1.0) -> bool:
+	if not places.has(peer) or str(places[peer]["i"]) != instance:
+		return false
+	if referee and not referee.shares(instance):
+		return false
+	return (places[peer]["p"] as Vector2).distance_to(at) < interest_of(peer) * slack
+
+
+# --- the shared world: monsters, loot, chests, gathering
+#
+# Everything goes through the host (the referee), which passes it on only
+# to the players near enough to care. On the host's own game a message to
+# itself is simply emitted.
+
+func _start_referee(settings: Dictionary) -> void:
+	if referee:
+		referee.queue_free()
+	referee = WorldReferee.new()
+	referee.name = "Referee"
+	referee.configure(settings)
+	add_child(referee)
+
+
+## To the players near `at` (in the same place), not back to us.
+func sync_near(kind: String, data: Variant, at: Vector2, instance: String, reliable: bool = true) -> void:
+	if not online():
+		return
+	if is_host():
+		deliver_near(my_id(), kind, data, at, instance, reliable)
+	elif reliable:
+		_up_near_r.rpc_id(1, kind, data, at, instance)
+	else:
+		_up_near_u.rpc_id(1, kind, data, at, instance)
+
+
+## To every player in the world, not back to us.
+func sync_all(kind: String, data: Variant) -> void:
+	if not online():
+		return
+	if is_host():
+		deliver_all(my_id(), kind, data)
+	else:
+		_up_all.rpc_id(1, kind, data)
+
+
+## To one player.
+func sync_to(peer: int, kind: String, data: Variant) -> void:
+	if not online():
+		return
+	if peer == my_id():
+		world_msg.emit(kind, data, peer)
+	elif is_host():
+		send_down(peer, kind, data, my_id(), true)
+	else:
+		_up_to.rpc_id(1, peer, kind, data)
+
+
+## To the referee, which decides (who gets a drop, who runs a monster).
+func sync_ask(kind: String, data: Variant, reliable: bool = true) -> void:
+	if not online():
+		return
+	if is_host():
+		if referee:
+			referee.handle(kind, data, my_id())
+	elif reliable:
+		_up_ask_r.rpc_id(1, kind, data)
+	else:
+		_up_ask_u.rpc_id(1, kind, data)
+
+
+func deliver_near(from: int, kind: String, data: Variant, at: Vector2, instance: String, reliable: bool) -> void:
+	for peer: int in roster:
+		if peer != from and hears(peer, at, instance):
+			send_down(peer, kind, data, from, reliable)
+
+
+func deliver_all(from: int, kind: String, data: Variant) -> void:
+	for peer: int in roster:
+		if peer != from:
+			send_down(peer, kind, data, from, true)
+
+
+## Hands a message to one player (the host's own game hears it at once).
+func send_down(peer: int, kind: String, data: Variant, from: int, reliable: bool) -> void:
+	if peer == my_id():
+		world_msg.emit(kind, data, from)
+	elif peer in multiplayer.get_peers():
+		if reliable:
+			_down_r.rpc_id(peer, kind, data, from)
+		else:
+			_down_u.rpc_id(peer, kind, data, from)
+
+
+@rpc("any_peer", "reliable")
+func _up_near_r(kind: String, data: Variant, at: Vector2, instance: String) -> void:
+	if is_host():
+		deliver_near(multiplayer.get_remote_sender_id(), kind, data, at, instance, true)
+
+
+@rpc("any_peer", "unreliable_ordered")
+func _up_near_u(kind: String, data: Variant, at: Vector2, instance: String) -> void:
+	if is_host():
+		deliver_near(multiplayer.get_remote_sender_id(), kind, data, at, instance, false)
+
+
+@rpc("any_peer", "reliable")
+func _up_all(kind: String, data: Variant) -> void:
+	if is_host():
+		var from := multiplayer.get_remote_sender_id()
+		if referee:
+			referee.heard_all(kind, data, from)
+		deliver_all(from, kind, data)
+
+
+@rpc("any_peer", "reliable")
+func _up_to(peer: int, kind: String, data: Variant) -> void:
+	if is_host() and roster.has(peer):
+		send_down(peer, kind, data, multiplayer.get_remote_sender_id(), true)
+
+
+@rpc("any_peer", "reliable")
+func _up_ask_r(kind: String, data: Variant) -> void:
+	if is_host() and referee:
+		referee.handle(kind, data, multiplayer.get_remote_sender_id())
+
+
+@rpc("any_peer", "unreliable_ordered")
+func _up_ask_u(kind: String, data: Variant) -> void:
+	if is_host() and referee:
+		referee.handle(kind, data, multiplayer.get_remote_sender_id())
+
+
+@rpc("authority", "reliable")
+func _down_r(kind: String, data: Variant, from: int) -> void:
+	world_msg.emit(kind, data, from)
+
+
+@rpc("authority", "unreliable_ordered")
+func _down_u(kind: String, data: Variant, from: int) -> void:
+	world_msg.emit(kind, data, from)
 
 
 func say(text: String) -> void:

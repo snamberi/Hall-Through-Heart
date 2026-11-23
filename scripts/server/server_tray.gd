@@ -95,7 +95,8 @@ func _refresh() -> void:
 	lines.append("%s  -  %s" % [config.get("name", id), "online" if running else str(state.get("state", "not running"))])
 	if running:
 		var up := int(Time.get_unix_time_from_system() - float(state.get("started", 0.0)))
-		lines.append("Up %dh %02dm  -  day %d  -  %d MB" % [up / 3600, (up / 60) % 60, int(state.get("day", 1)), int(state.get("memory_mb", 0))])
+		lines.append("Up %dh %02dm  -  day %d  -  %d MB  -  load %d%%" % [up / 3600, (up / 60) % 60, int(state.get("day", 1)), int(state.get("memory_mb", 0)), int(state.get("load", 0))])
+		lines.append("%d monsters and %d drops shared  -  %d chunks active" % [int(state.get("monsters", 0)), int(state.get("drops", 0)), int(state.get("active_chunks", 0))])
 		var names: Array = state.get("players", [])
 		lines.append("Players (%d/%d): %s" % [names.size(), int(state.get("max_players", 8)), ", ".join(names) if not names.is_empty() else "nobody (resting)"])
 		lines.append("Port %d  -  %s" % [int(state.get("port", 0)), ", ".join(state.get("addresses", []))])

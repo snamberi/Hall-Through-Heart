@@ -21,6 +21,9 @@ var _config: Dictionary = {}
 var _multiplier := 1.0
 var _travelled := 0.0
 var _hit: Array = []
+## Only a picture of another player's shot: it flies and bursts but harms
+## nothing here (their game deals the damage).
+var cosmetic := false
 
 
 static func fire(player: Player, direction: Vector2, config: Dictionary, multiplier: float) -> Projectile:
@@ -39,7 +42,21 @@ static func fire(player: Player, direction: Vector2, config: Dictionary, multipl
 	projectile.rotation = direction.angle()
 	projectile.z_index = 30
 	player.get_parent().add_child(projectile)
+	if NetWorld.current:
+		NetWorld.current.share_bolt(projectile.position, direction, config)
 	return projectile
+
+
+## Another player's shot, shown here.
+static func fire_copy(parent: Node, at: Vector2, direction: Vector2, config: Dictionary) -> void:
+	var projectile := Projectile.new()
+	projectile.cosmetic = true
+	projectile._direction = direction
+	projectile._config = config
+	projectile.position = at
+	projectile.rotation = direction.angle()
+	projectile.z_index = 30
+	parent.add_child(projectile)
 
 
 func _ready() -> void:
@@ -57,7 +74,18 @@ func _physics_process(delta: float) -> void:
 	if _travelled > _config.get("range", 520.0) or _touches_wall():
 		_finish()
 		return
+	if cosmetic:
+		return
 	var radius: float = _config.get("radius", 10.0)
+	# In a world with fighting between players, rivals can be shot too.
+	for node in get_tree().get_nodes_in_group("rivals"):
+		var rival := node as RemotePlayer
+		if rival and rival.visible and not rival.dead and not rival in _hit and (rival.global_position + Vector2(0, -14)).distance_to(global_position) < radius + 10.0:
+			_hit.append(rival)
+			_player.hit_rival(rival, _multiplier)
+			if not _config.get("pierce", false):
+				_finish()
+				return
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
 		if enemy == null or enemy in _hit:
@@ -97,7 +125,9 @@ func _apply_status(enemy: Enemy) -> void:
 func _finish() -> void:
 	var color: Color = _config.get("color", Color(1.0, 0.95, 0.8))
 	var blast: float = _config.get("explode", 0.0)
-	if blast > 0.0:
+	if blast > 0.0 and cosmetic:
+		RingBurst.spawn(get_parent(), global_position, color, blast)
+	elif blast > 0.0:
 		RingBurst.spawn(get_parent(), global_position, color, blast)
 		var status: String = str((_config.get("status", {}) as Dictionary).get("status", "")) if _config.get("status") is Dictionary else ""
 		FightMarks.leave(get_tree(), FightMarks.for_blast(status, color), global_position + Vector2(0, 12))

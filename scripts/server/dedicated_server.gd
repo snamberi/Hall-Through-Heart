@@ -15,8 +15,11 @@ extends Node
 ## restart) and writes its heartbeat for them to see it by.
 
 const DAY_SECONDS := 600.0
-const BUSY_FPS := 20
+## Updates a second with players on, by the host's background quality.
+const BUSY_FPS := {"low": 10, "normal": 20, "high": 30}
 const IDLE_FPS := 4
+## Gathered things grow back after this long (as in every game).
+const REGROW := 240.0
 const STATUS_EVERY := 2.0
 const BACKUP_EVERY := 1800.0
 ## Weather fronts: how long one lasts, and how often it is stormy.
@@ -73,7 +76,7 @@ func start(server_id: String) -> void:
 	_time = clampf(float(clock.get("time", 0.3)), 0.0, 0.999)
 	_started = Time.get_unix_time_from_system()
 	_save_left = float(config["autosave_minutes"]) * 60.0
-	Engine.max_fps = BUSY_FPS
+	Engine.max_fps = _busy_fps()
 	OS.low_processor_usage_mode = true
 	# Asked to close from outside: stop() saves, says goodbye and then quits.
 	get_tree().auto_accept_quit = false
@@ -86,6 +89,9 @@ func start(server_id: String) -> void:
 		return
 	Net.world = {"name": str(config["world_name"])}
 	Net.admit = _admit
+	# Changes players make to the world are kept here, and given to whoever
+	# joins next.
+	Net.referee.fact_heard.connect(_on_fact)
 	Net.world_ready(world_now)
 	Net.roster_changed.connect(_on_roster)
 	Net.state_received.connect(_on_state)
@@ -109,10 +115,46 @@ func world_now(_peer: int = 0, info: Dictionary = {}) -> Dictionary:
 	var built: Dictionary = world.get("buildings", {}).duplicate(true)
 	built.erase("home")
 	built.erase("recall_left")
+	var gathered := {}
+	var now := Time.get_unix_time_from_system()
+	var kept: Dictionary = world.get("gathered", {}) if world.get("gathered") is Dictionary else {}
+	for cell: String in kept.keys():
+		if now - float(kept[cell]) < REGROW:
+			gathered[cell] = kept[cell]
+		else:
+			kept.erase(cell)
+	var structures: Dictionary = world.get("structures", {}) if world.get("structures") is Dictionary else {}
 	return {"seed": int(world.get("world", {}).get("seed", config["seed"])), "name": str(config["world_name"]),
 		"difficulty": str(config["difficulty"]), "hardcore": false, "day": _day, "time": _time, "storminess": _storminess,
-		"spawn": spot, "host_name": str(config["name"]), "dedicated": true, "pvp": bool(config["pvp"]),
-		"sections": {"buildings": built}}
+		"spawn": spot, "host_name": str(config["name"]), "dedicated": true, "pvp": bool(config["pvp"]), "rules": Net.rules,
+		"sections": {"buildings": built, "structures": structures, "gathered": gathered}}
+
+
+func _busy_fps() -> int:
+	return int(BUSY_FPS.get(str(config.get("background_quality", "normal")), 20))
+
+
+## A change to the world told by a player's game: kept with the world.
+func _on_fact(kind: String, key: String, value: Variant) -> void:
+	if key == "":
+		return
+	var structures: Dictionary = world.get("structures", {}) if world.get("structures") is Dictionary else {}
+	match kind:
+		"used", "broken":
+			var list: Array = structures.get(kind, []) if structures.get(kind) is Array else []
+			if not key in list:
+				list.append(key)
+			structures[kind] = list
+		"chest":
+			var chests: Dictionary = structures.get("chests", {}) if structures.get("chests") is Dictionary else {}
+			chests[key] = value if value is Array else []
+			structures["chests"] = chests
+		"gathered":
+			var gathered: Dictionary = world.get("gathered", {}) if world.get("gathered") is Dictionary else {}
+			gathered[key] = float(value)
+			world["gathered"] = gathered
+			return
+	world["structures"] = structures
 
 
 ## Who may come in, beyond the password and the room.
@@ -207,7 +249,7 @@ func _process(delta: float) -> void:
 		return
 	var empty := Net.roster.is_empty()
 	# Resting with nobody on: fewer updates a second.
-	Engine.max_fps = IDLE_FPS if empty and config.get("idle_mode", true) else BUSY_FPS
+	Engine.max_fps = IDLE_FPS if empty and config.get("idle_mode", true) else _busy_fps()
 	if not (empty and config.get("pause_when_empty", false)):
 		_time += delta / DAY_SECONDS
 		if _time >= 1.0:
@@ -298,6 +340,17 @@ func _write_status(state: String, note: String = "") -> void:
 		"started": _started, "last_save": _last_save, "port": int(config.get("port", ServerStore.PORT)),
 		"players": names, "player_count": names.size(), "max_players": int(config.get("max_players", 8)),
 		"world": str(config.get("world_name", "")), "day": _day, "idle": Net.roster.is_empty(),
-		"memory_mb": roundi(memory), "fps": Engine.get_frames_per_second(),
+		"memory_mb": roundi(memory), "fps": Engine.get_frames_per_second(), "load": _load(),
+		"monsters": Net.referee.enemies.size() if Net.referee else 0, "drops": Net.referee.loot.size() if Net.referee else 0,
+		"active_chunks": Net.referee.active_chunks() if Net.referee else 0,
 		"addresses": Net.local_addresses(),
 	})
+
+
+## How busy the server is: the share of each update's time spent working
+## (0-100). Godot cannot read the processor's own load, so this is the work
+## measured against the time each update has.
+func _load() -> int:
+	var work := Performance.get_monitor(Performance.TIME_PROCESS) + Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
+	var budget := 1.0 / maxf(float(Engine.max_fps), 1.0)
+	return clampi(roundi(work / budget * 100.0), 0, 100)

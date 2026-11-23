@@ -143,6 +143,16 @@ func break_key() -> String:
 	return "%d,%d" % [roundi(global_position.x), roundi(global_position.y)]
 
 
+## Broken in another player's game: bursts here too, without spilling
+## anything (what was in it went to whoever broke it).
+func shatter_quietly() -> void:
+	broken[break_key()] = true
+	var wood: Array[Color] = [Color("8a6a48"), Color("6b4f36"), Color("a8875c"), Color("4a3626")]
+	Debris.spawn(get_parent(), global_position + Vector2(0, -6), wood, 12)
+	remove_from_group("breakables")
+	queue_free()
+
+
 ## Takes a blow: a shake, and after enough of them the thing bursts into
 ## splinters and spills 1 to 3 things.
 func take_hit(player: Player) -> void:

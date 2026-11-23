@@ -245,6 +245,33 @@ func _place_node(placed: Array, id: String, cell: Vector2i, look: int, offset: V
 	placed.append(node)
 
 
+## Gathered things, for a shared world: cell -> how many seconds ago.
+func gathered_ages() -> Dictionary:
+	var out := {}
+	var now := _now()
+	for cell: Vector2i in _gathered:
+		if now - float(_gathered[cell]) < REGROW_SECONDS:
+			out[cell] = now - float(_gathered[cell])
+	return out
+
+
+## Gathered in another player's game `ago` seconds since: gone here too (a
+## felled tree leaves its stump), until it grows back.
+func fell(cell: Vector2i, ago: float) -> void:
+	if ago >= REGROW_SECONDS:
+		return
+	_gathered[cell] = _now() - ago
+	var chunk := _world.cell_to_chunk(cell)
+	var placed: Array = _by_chunk.get(chunk, [])
+	for node: Variant in placed.duplicate():
+		if node is ResourceNode and is_instance_valid(node) and (node as ResourceNode).cell == cell:
+			var gone := node as ResourceNode
+			if gone.tall_look in Flora.WOODEN:
+				placed.append(_stump(gone.position))
+			placed.erase(gone)
+			gone.queue_free()
+
+
 ## What is left of a felled tree.
 func _stump(at: Vector2) -> Node2D:
 	var stump := Stump.new()

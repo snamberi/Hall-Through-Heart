@@ -26,6 +26,8 @@ var _saved: Array = []
 
 
 func _build() -> void:
+	# A chest changed in another player's game refreshes here if open.
+	add_to_group("storage_menus")
 	content.add_theme_constant_override("separation", 10)
 	_heading = UITheme.heading("STORAGE", 28)
 	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

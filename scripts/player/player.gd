@@ -422,6 +422,18 @@ func strike_arc(
 		hit_enemy(enemy, multiplier, direction * knockback)
 		already_hit.append(enemy)
 		hits += 1
+	# With fighting between players allowed, rivals in the swing are hit.
+	for node in get_tree().get_nodes_in_group("rivals"):
+		var rival := node as RemotePlayer
+		if rival == null or rival.dead or not rival.visible or rival in already_hit:
+			continue
+		var to_rival := rival.global_position - global_position
+		if to_rival.length() > reach + 12.0 or (to_rival.length() > 12.0 and absf(direction.angle_to(to_rival)) > half_arc):
+			continue
+		if has_line_to(rival.global_position):
+			hit_rival(rival, multiplier)
+			already_hit.append(rival)
+			hits += 1
 	# Crates and barrels in the swing break open.
 	for node in get_tree().get_nodes_in_group("breakables"):
 		var prop := node as Prop
@@ -478,7 +490,22 @@ func strike_circle(
 		hit_enemy(enemy, multiplier, push * knockback)
 		already_hit.append(enemy)
 		hits += 1
+	for node in get_tree().get_nodes_in_group("rivals"):
+		var rival := node as RemotePlayer
+		if rival and not rival.dead and rival.visible and rival.global_position.distance_to(center) < radius + 12.0:
+			hit_rival(rival, multiplier)
+			hits += 1
 	return hits
+
+
+## A blow on another player, where fighting between players is allowed:
+## their own game takes it (and their armour, dodges and blocks count).
+func hit_rival(rival: RemotePlayer, multiplier: float) -> void:
+	if NetWorld.current == null:
+		return
+	var critical := randf() < stats.get_stat("critical_chance")
+	var damage := stats.get_stat("physical_damage") * multiplier * (stats.get_stat("critical_damage") if critical else 1.0)
+	NetWorld.current.strike_rival(rival, damage, critical, weapon_type)
 
 
 func show_slash(

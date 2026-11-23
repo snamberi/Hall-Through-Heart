@@ -66,11 +66,22 @@ Everyone must be on the **same Wi-Fi or network cable**.
 - **Experience:** a monster felled within about 28 tiles of a friend gives that friend 30% of its experience as well.
 - **Building:** what anyone builds or takes down is checked by the host and shown to everyone, and kept in the host's world. Only the builder can take down what they built.
 - **Weather:** the host's storms and clear skies.
+- **Monsters and bosses:** everyone fights the same monsters.
+  - Each monster is run by the game of the player nearest it, and passes to another player's game as they move.
+  - Everyone else sees it live; a blow from anyone counts, and the kill (its experience and drops) goes to whoever struck last.
+  - Monsters' swipes, blasts, poison clouds and shots can hurt everyone near them.
+- **Drops:** one drop for everyone. Whoever reaches it first gets it.
+- **Chests, crates and gathering:** what is taken from a chest, a crate broken, a place used up (an obelisk read, a lair cleared) or a tree or ore gathered is the same for everyone.
+- **Arrows and spells:** everyone sees each other's shots fly.
+- **Player versus player:** off unless the host ticks **PvP** (or the server's setting). Then players' blows and shots hurt one another, at 60%.
+- **Dungeons and caves:** players who go in by the same door share it, its monsters and its drops.
+
+The host referees all this. Each player only hears of what is near them (about 40 tiles), so a big world with many players stays light.
 
 ### What is still each player's own
 
-- **Monsters and loot.** Each game runs its own monsters, so friends fight side by side but not the same monster yet.
-- **Chests, doors and the ground.** Opening a chest, mining or felling a tree happens in each player's own game.
+- **Quests, bounties and the codex:** each player's own, as their character's.
+- **Arena waves:** two players in the same void arena each get their own waves.
 
 ### Guests' characters
 
@@ -109,7 +120,13 @@ A guest's character comes from one of their own worlds. What it carries, learns 
   - **Autosave:** every 1–60 minutes.
   - **Rest when nobody is on:** 4 updates a second instead of 20.
   - **Pause time when empty.**
-- **Resources:** most active chunks, simulation distances, most open dungeons, background quality, and a memory warning. Today the server keeps the clock, weather and buildings and lets players in. These limits are for its world simulation as that grows.
+- **Resources:**
+  - **Most active chunks (all players):** if the players together would keep more ground active than this, everyone's shared distance shrinks to fit.
+  - **Shared distance (chunks)** and **Monster distance:** how far each player hears of monsters and drops (the larger of the two).
+  - **Most shared dungeons at once:** past this, further dungeons are played alone.
+  - **Background quality:** updates a second while players are on: Low 10, Normal 20, High 30.
+  - **Memory warning:** noted in the log when passed.
+  - The server's card and tray show its **load** (the share of each update spent working), memory, and how many monsters, drops and chunks it is keeping track of.
 
 ### Seeing and stopping it
 
@@ -140,6 +157,6 @@ Saving is safe in three ways:
 
 ### Not there yet
 
-- **Monsters, bosses and loot** are still each player's own (see *What is still each player's own* above). The server does not run them yet.
+- **A server with nobody on runs no monsters.** Monsters are run by players' games (the server referees), so with everyone gone the world waits, as it does at home.
 - **Public server list:** there is no listing on the internet, because that needs a separate service. LAN discovery and joining by address work without one. To play over the internet, forward the server's UDP port on your router and share your public address.
 - **Moving a world to another host** (host migration) is not built.

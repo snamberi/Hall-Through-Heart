@@ -83,6 +83,9 @@ func _physics_process(delta: float) -> void:
 
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
+		# Copies of other players' monsters come and go with the news.
+		if enemy.net_puppet:
+			continue
 		# Lair guardians stay put; their structure removes them with its chunk.
 		# A wounded monster lingers for a few minutes so the player can come
 		# back and finish it, rather than meeting a fresh one at full health.
@@ -106,6 +109,10 @@ func _try_spawn() -> void:
 	var spawn_position := _player.global_position + Vector2.from_angle(angle) * distance
 	var cell := _world.world_to_cell(spawn_position)
 	if Vector2(cell).length() < safe_radius_tiles:
+		return
+	# In a shared world, the nearest player's game stirs the monsters there
+	# (so two friends together do not get twice as many).
+	if NetWorld.current and not NetWorld.current.nearest_to(spawn_position):
 		return
 	# Nothing appears in water or inside rock.
 	if not _world.generator.is_dry_land(cell):

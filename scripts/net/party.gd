@@ -75,10 +75,14 @@ func world_now(_peer: int = 0, _info: Dictionary = {}) -> Dictionary:
 	var built: Dictionary = _buildings().save_data() if _buildings() else {}
 	built.erase("home")
 	built.erase("recall_left")
+	var sections := {"buildings": built}
+	# The world as it stands: chests, things used up, what was gathered.
+	if NetWorld.current:
+		sections.merge(NetWorld.current.world_sections())
 	return {"seed": _seed(), "name": _world_name, "difficulty": Difficulty.current, "hardcore": false,
 		"day": _day_night.day, "time": _day_night.time, "storminess": Atmosphere._storminess,
 		"spawn": _player.global_position if not _instances.is_inside() else _instances.return_position(),
-		"meta_name": str(meta.get("name", "")), "host_name": Net.name_of(1), "sections": {"buildings": built}}
+		"meta_name": str(meta.get("name", "")), "host_name": Net.name_of(1), "sections": sections, "rules": Net.rules}
 
 
 func _buildings() -> Buildings:
@@ -123,15 +127,16 @@ func _process(delta: float) -> void:
 			"a": sprite.animation if sprite else "idle",
 			"hp": _player.health.current, "mhp": _player.health.max_health,
 			"lv": _player.leveling.level, "d": _player.is_dead(), "in": _instances.is_inside(),
+			"ik": NetWorld.current.instance_key() if NetWorld.current else "",
 		})
 	if Net.is_host():
 		_clock_left -= delta
 		if _clock_left <= 0.0:
 			_clock_left = CLOCK_EVERY
 			Net.send_clock(_day_night.day, _day_night.time, Atmosphere._storminess)
-	var inside := _instances.is_inside()
+	var here := NetWorld.current.instance_key() if NetWorld.current else ""
 	for peer in players:
-		(players[peer] as RemotePlayer).local_inside = inside
+		(players[peer] as RemotePlayer).local_place = here
 
 
 func _on_state(peer: int, state: Dictionary) -> void:

@@ -286,6 +286,12 @@ func _ready() -> void:
 	party.name = "Party"
 	add_child(party)
 	party.setup(_player, _day_night, _instances)
+	if Net.online():
+		# The shared world: monsters, drops, chests and gathering in step.
+		var shared := NetWorld.new()
+		shared.name = "NetWorld"
+		shared.setup(_player, _spawner, _loot, _instances, _structures, _resources)
+		add_child(shared)
 	_menus.setup(_player)
 	_debug_hud.setup(_world, _player)
 	_player.died.connect(_on_player_died)

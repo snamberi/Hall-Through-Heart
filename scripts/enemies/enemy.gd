@@ -183,6 +183,18 @@ var _pouncing := false
 ## status id -> {"time": seconds left, "power": float, "tick": seconds to next tick}
 var _statuses: Dictionary = {}
 
+# --- the shared world (see NetWorld)
+## Its id in the shared world (0 when playing alone).
+var net_id := 0
+## Only a copy: another player's game runs this monster, and this one
+## shows it and passes on the blows it takes.
+var net_puppet := false
+## The player whose blow landed last (0: this game's own player).
+var net_last_peer := 0
+## Where the copy is heading, and when it last heard.
+var _net_goal := Vector2.INF
+var _net_heard := 0.0
+
 @onready var health: Health = $Health
 @onready var _visual: Node2D = $Visual
 @onready var _animator: EnemyAnimator = $Visual/Sprite
@@ -271,6 +283,9 @@ func _ready() -> void:
 		mask_left = 2 if lull != null and lull.promise_known() else MASK_CRACKS
 		Events.enemy_killed.connect(_on_death_nearby)
 	_pick_wander()
+	# Shared with the other players nearby (or shown, for a copy).
+	if NetWorld.current and not net_puppet:
+		NetWorld.current.adopt(self)
 
 
 ## Experience this enemy is worth at its level and rank.
@@ -289,6 +304,9 @@ func is_area_attack() -> bool:
 
 
 func _physics_process(delta: float) -> void:
+	if net_puppet:
+		_puppet_step(delta)
+		return
 	if state == State.DEAD:
 		return
 	_state_time_left = maxf(_state_time_left - delta, 0.0)
@@ -689,6 +707,9 @@ func take_damage(
 ) -> float:
 	if state == State.DEAD:
 		return 0.0
+	if net_puppet:
+		# Someone else's game runs it: the blow goes to them.
+		return NetWorld.current.strike_copy(self, amount, knockback, critical, weapon_type, element) if NetWorld.current else 0.0
 	# Striking one of a faction at peace ends the treaty.
 	if faction != "" and element == "":
 		var factions: Factions = get_tree().get_first_node_in_group("factions")
@@ -793,6 +814,10 @@ func take_damage(
 func apply_status(id: String, duration: float, power: float, weapon_type: String = "") -> void:
 	if state == State.DEAD:
 		return
+	if net_puppet:
+		if NetWorld.current:
+			NetWorld.current.forward(self, "status", {"s": id, "d": duration, "w": power, "t": weapon_type})
+		return
 	var current: Dictionary = _statuses.get(id, {})
 	_statuses[id] = {
 		"time": maxf(duration, current.get("time", 0.0)),
@@ -868,6 +893,11 @@ func lose_track() -> void:
 func expose(seconds: float) -> void:
 	if state == State.DEAD:
 		return
+	if net_puppet:
+		exposed_left = seconds * (0.6 if rank >= Rank.MINIBOSS else 1.0)
+		if NetWorld.current:
+			NetWorld.current.forward(self, "expose", {"d": seconds})
+		return
 	exposed_left = seconds * (0.6 if rank >= Rank.MINIBOSS else 1.0)
 	stun(seconds * 0.8)
 	queue_redraw()
@@ -876,6 +906,10 @@ func expose(seconds: float) -> void:
 ## Freezes the enemy in place. Bosses shake it off sooner.
 func stun(seconds: float) -> void:
 	if state == State.DEAD:
+		return
+	if net_puppet:
+		if NetWorld.current:
+			NetWorld.current.forward(self, "stun", {"d": seconds})
 		return
 	_enter(State.STAGGER, seconds * (0.4 if rank >= Rank.MINIBOSS else 1.0))
 	velocity = Vector2.ZERO
@@ -957,6 +991,8 @@ func _strike(has_target: bool) -> void:
 			_blast()
 			if _attack["kind"] == "cloud":
 				HazardZone.spawn(get_parent(), global_position, target, _attack["radius"], _attack["linger"], _attack["color"], _attack["status"], _current_damage())
+				if NetWorld.current:
+					NetWorld.current.share_strike(self, {"k": "cloud", "r": _attack["radius"], "l": _attack["linger"], "c": _attack["color"], "st": _attack["status"]})
 			_enter(State.RECOVER, _attack["recover"])
 		"explode":
 			_blast()
@@ -971,6 +1007,8 @@ func _swipe(arc_degrees: float) -> void:
 	var claws := 1 if _attack["kind"] == "thrust" else int(_attack.get("claws", 3))
 	ClawSwipe.spawn(get_parent(), global_position, _direction, reach, arc_degrees, _attack.get("color", Color(1.0, 0.92, 0.8)), claws)
 	Audio.play("swing", -10.0, 0.2)
+	if NetWorld.current:
+		NetWorld.current.share_strike(self, {"k": "swipe", "r": reach, "a": arc_degrees, "c": _attack.get("color", Color(1.0, 0.92, 0.8)), "cl": claws})
 	if target == null or target.is_dead():
 		return
 	var offset := target.global_position - global_position
@@ -989,6 +1027,8 @@ func _blast(radius: float = -1.0) -> void:
 	var color: Color = _attack.get("color", Color(1.0, 0.6, 0.3))
 	RingBurst.spawn(get_parent(), global_position, color, radius)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -10), color, true)
+	if NetWorld.current:
+		NetWorld.current.share_strike(self, {"k": "blast", "r": radius, "c": color})
 	if target and not target.is_dead() and target.global_position.distance_to(global_position) < radius:
 		if _hit_target(_current_damage()):
 			target.shake_camera(7.0)
@@ -1495,16 +1535,7 @@ func _on_died() -> void:
 	_voice("death", -1.0)
 	_death_effects()
 	var xp := xp_value()
-	DamageNumber.spawn_text(
-		get_parent(), global_position + Vector2(0, -24), "+%d XP" % xp, Color(0.45, 0.7, 1.0), 12
-	)
-	died.emit(self)
-	_witnessed()
-	if fleeing:
-		# Cut down before it could warn its faction.
-		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -16), "Silenced", Color(1.0, 0.85, 0.4), 13)
-		Events.codex_event.emit("silenced", 1)
-	Events.enemy_killed.emit({
+	var info := {
 		"id": enemy_id,
 		"name": display_name,
 		"level": level,
@@ -1516,7 +1547,28 @@ func _on_died() -> void:
 		"fragment": is_fragment,
 		"modifiers": modifiers.size(),
 		"named": named_id,
-	})
+	}
+	# In a shared world, the kill (its experience, its drops) belongs to
+	# whoever struck last, in their own game.
+	var ours := NetWorld.current.enemy_fell(self, info) if NetWorld.current and net_id != 0 else true
+	if ours:
+		DamageNumber.spawn_text(
+			get_parent(), global_position + Vector2(0, -24), "+%d XP" % xp, Color(0.45, 0.7, 1.0), 12
+		)
+	died.emit(self)
+	_witnessed()
+	if fleeing:
+		# Cut down before it could warn its faction.
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -16), "Silenced", Color(1.0, 0.85, 0.4), 13)
+		Events.codex_event.emit("silenced", 1)
+	if ours:
+		Events.enemy_killed.emit(info)
+	_fade_out()
+
+
+## The collapse: a white flash, the death frames, a moment lying still,
+## and gone.
+func _fade_out() -> void:
 	if _flash_tween:
 		_flash_tween.kill()
 	$HealthBar.visible = false
@@ -1549,3 +1601,119 @@ func _add_nameplate(rank_data: Dictionary, size: float) -> void:
 	add_child(label)
 	_nameplate = label
 	$HealthBar.position.y = top
+
+
+# --- the shared world: a copy of someone else's monster, and handing over
+
+## What it is, for other games to make a copy of it.
+func net_spec() -> Dictionary:
+	return {"e": enemy_id, "lv": level, "r": rank, "b": boss_id, "n": named_id, "c": custom_name, "m": modifiers.duplicate(),
+		"f": is_fragment, "fa": faction, "lh": lair_home if lair_home != Vector2.INF else null}
+
+
+## How it is now, in a line: [id, x, y, vx, vy, state, time left, health,
+## most health, facing, shield, aim x, aim y].
+func net_state() -> Array:
+	return [net_id, snappedf(global_position.x, 0.1), snappedf(global_position.y, 0.1), roundf(velocity.x), roundf(velocity.y), int(state),
+		snappedf(_state_time_left, 0.01), snappedf(health.current, 0.1), snappedf(health.max_health, 0.1), signf(_visual.scale.x),
+		snappedf(shield, 0.1), snappedf(_direction.x, 0.01), snappedf(_direction.y, 0.01)]
+
+
+## Everything a game needs to take over running it.
+func net_full() -> Dictionary:
+	return {"spec": net_spec(), "s": net_state(), "fl": fleeing, "ml": mask_left, "ex": exposed_left, "sm": shield_max,
+		"rv": brain.revived if brain else false, "ph": brain.phase if brain else 1}
+
+
+## News of the real one, for a copy: glides there, wears its pose.
+func hear_state(line: Array) -> void:
+	if line.size() < 13 or state == State.DEAD:
+		return
+	var goal := Vector2(float(line[1]), float(line[2]))
+	if _net_goal == Vector2.INF or goal.distance_to(global_position) > 320.0:
+		global_position = goal
+	_net_goal = goal
+	velocity = Vector2(float(line[3]), float(line[4]))
+	var news := int(line[5]) as State
+	if news != state and news != State.DEAD:
+		if news == State.WINDUP:
+			_visual.modulate = Color(1.8, 0.5, 0.5)
+		elif state == State.WINDUP:
+			_visual.modulate = _tint
+		state = news
+	_state_time_left = float(line[6])
+	health.max_health = maxf(float(line[8]), 1.0)
+	var was := health.current
+	health.current = clampf(float(line[7]), 0.0, health.max_health)
+	if not is_equal_approx(was, health.current):
+		health.changed.emit(health.current, health.max_health)
+	if float(line[9]) != 0.0:
+		_visual.scale.x = absf(_visual.scale.x) * float(line[9])
+	shield = float(line[10])
+	_direction = Vector2(float(line[11]), float(line[12]))
+	_net_heard = Time.get_ticks_msec() / 1000.0
+
+
+func _puppet_step(delta: float) -> void:
+	if state == State.DEAD:
+		return
+	_state_time_left = maxf(_state_time_left - delta, 0.0)
+	_plate_check -= delta
+	if _plate_check <= 0.0 and _nameplate:
+		_plate_check = 0.15
+		_update_nameplate()
+	if exposed_left > 0.0:
+		exposed_left = maxf(exposed_left - delta, 0.0)
+	if state == State.WINDUP or exposed_left > 0.0 or shield_max > 0.0:
+		queue_redraw()
+	if _net_goal != Vector2.INF:
+		# A little ahead of the last news, as it was moving.
+		var goal := _net_goal + velocity * 0.05
+		global_position = global_position.lerp(goal, 1.0 - exp(-14.0 * delta))
+
+
+## Struck down in the game that runs it: the copy falls too.
+func puppet_die() -> void:
+	if state == State.DEAD:
+		return
+	state = State.DEAD
+	health.current = 0.0
+	remove_from_group("enemies")
+	remove_from_group("bosses")
+	velocity = Vector2.ZERO
+	$Collision.set_deferred("disabled", true)
+	_voice("death", -1.0)
+	# Whatever this game hung on it (a lair's guard, a bounty, a slime's
+	# split) still hears of its end; the kill itself is the striker's.
+	died.emit(self)
+	_fade_out()
+
+
+## Handed to another player's game: from now on only a copy here.
+func become_puppet() -> void:
+	net_puppet = true
+	target = null
+	_net_goal = global_position
+	_net_heard = Time.get_ticks_msec() / 1000.0
+
+
+## Handed to this game: the copy becomes the real one, as it was.
+func become_owned(full: Dictionary, player: Player) -> void:
+	net_puppet = false
+	target = player
+	var line: Array = full.get("s", [])
+	if line.size() >= 13:
+		global_position = Vector2(float(line[1]), float(line[2]))
+		health.max_health = maxf(float(line[8]), 1.0)
+		health.current = clampf(float(line[7]), 1.0, health.max_health)
+		shield = float(line[10])
+	fleeing = bool(full.get("fl", fleeing))
+	mask_left = int(full.get("ml", mask_left))
+	shield_max = maxf(shield_max, float(full.get("sm", shield_max)))
+	if brain:
+		brain.revived = bool(full.get("rv", false))
+		brain.phase = int(full.get("ph", brain.phase))
+	_visual.modulate = _tint
+	_since_hurt = 0.0
+	state = State.CHASE if target and not target.is_dead() else State.WANDER
+	_state_time_left = 0.0
