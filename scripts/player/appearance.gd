@@ -166,6 +166,63 @@ const RACES := {
 	"merfolk": {"name": "Merfolk", "text": "Born of the deep water, walking the land out of curiosity.",
 		"look": {"skin": 13, "ears": 4, "hair": 9, "hair_style": 2, "eyes": 8}, "mods": {"frost_resist": {"flat": 0.35}, "max_mana": {"percent": 0.15}, "health_regen": {"flat": 1.5}, "move_speed": {"percent": -0.08}}},
 }
+## Skin tones people really have, the only ones a human may choose from:
+## Fair, Pale, Tan, Brown, Dark, Bronze, Rosy, Umber.
+const REAL_SKIN: Array[int] = [0, 1, 2, 3, 4, 18, 19, 20]
+## Each race's ten designs are drawn from these: what its people are born
+## with (skin, eyes, ears, horns, tail, wings, height, build) and how they
+## tend to wear their hair. Only the hair, beard, face, clothes and a few
+## things worn are then the player's to change.
+const DESIGN_POOLS := {
+	"human": {"skin": [0, 1, 2, 3, 4, 18, 19, 20], "eyes": [0, 1, 2, 6, 10], "height": [2, 1, 3], "build": [1, 0, 2], "hair": [0, 1, 2, 3, 13, 11], "hair_style": [0, 1, 2, 3, 7, 11]},
+	"elf": {"skin": [1, 0, 16, 19, 5], "eyes": [2, 1, 6, 9], "ears": [1, 2], "height": [3, 2], "build": [0, 1], "hair": [6, 2, 14, 1, 4], "hair_style": [2, 16, 3, 10]},
+	"dwarf": {"skin": [2, 0, 3, 18, 19], "eyes": [0, 1, 3, 10], "height": [0], "build": [2, 1], "hair": [3, 11, 0, 1, 13], "hair_style": [8, 14, 1, 13]},
+	"orc": {"skin": [7, 6, 3, 14], "eyes": [3, 4, 0, 7], "ears": [1, 2], "height": [4, 3], "build": [2], "hair": [1, 0, 13, 18], "hair_style": [4, 13, 18, 3]},
+	"goblin": {"skin": [6, 7, 12, 3], "eyes": [7, 3, 4, 11], "ears": [2, 1], "height": [0], "build": [0], "hair": [1, 0, 13], "hair_style": [13, 4, 6, 14]},
+	"slime": {"skin": [8, 12, 13, 15, 10], "eyes": [8, 9, 4, 5], "height": [1, 2], "build": [1, 0], "hair_style": [13, 17]},
+	"undead": {"skin": [9, 5, 14, 16], "eyes": [8, 4, 9, 6], "height": [2, 3], "build": [0, 1], "hair": [4, 13, 1, 14], "hair_style": [13, 2, 21, 12]},
+	"demonkin": {"skin": [10, 11, 15, 4], "eyes": [3, 4, 7, 9], "horns": [3, 2, 4], "tail": [1], "height": [2, 3], "build": [1, 2], "hair": [1, 15, 12, 4], "hair_style": [1, 6, 18, 2]},
+	"beastkin": {"skin": [17, 2, 3, 0, 18], "eyes": [3, 7, 2, 10], "ears": [3], "tail": [2], "height": [2, 1, 3], "build": [0, 1], "hair": [11, 3, 0, 4, 2], "hair_style": [9, 21, 0, 15]},
+	"lizardfolk": {"skin": [12, 6, 7, 13, 17], "eyes": [7, 3, 11, 4], "horns": [1, 0], "tail": [3], "height": [2, 3], "build": [1, 2], "hair_style": [13]},
+	"fairy": {"skin": [1, 0, 19, 16, 15], "eyes": [5, 1, 9, 11], "ears": [1], "wings": [1], "height": [0], "build": [0], "hair": [7, 2, 9, 19, 6], "hair_style": [5, 15, 17, 7]},
+	"stoneborn": {"skin": [14, 5, 9, 17], "eyes": [8, 3, 7, 9], "horns": [5, 4, 1], "height": [3, 4], "build": [2], "hair_style": [13]},
+	"vampire": {"skin": [16, 5, 1, 0], "eyes": [4, 5, 7, 6], "ears": [1], "height": [2, 3], "build": [0, 1], "hair": [1, 4, 12, 15, 18], "hair_style": [12, 20, 2, 10]},
+	"merfolk": {"skin": [13, 12, 8, 15], "eyes": [8, 1, 9, 2], "ears": [4], "height": [2, 3], "build": [0, 1], "hair": [9, 5, 16, 14, 7], "hair_style": [2, 16, 9, 21]},
+}
+const DESIGNS_PER_RACE := 10
+## What a design fixes (a choice no longer once it is picked).
+const DESIGN_KEYS: Array[String] = ["skin", "eyes", "ears", "horns", "tail", "wings", "height", "build"]
+
+static var _designs := {}
+
+
+## A race's ten designs: each a different mix from its pools, named by its
+## skin and eyes ("Moonlit, red eyes").
+static func designs(race: String) -> Array:
+	if _designs.has(race):
+		return _designs[race]
+	var pools: Dictionary = DESIGN_POOLS.get(race, DESIGN_POOLS["human"])
+	var born: Dictionary = RACES.get(race, RACES["human"])["look"]
+	var out: Array = []
+	var seen := {}
+	var steps := {"skin": 1, "eyes": 3, "ears": 1, "horns": 2, "tail": 1, "wings": 1, "height": 1, "build": 2, "hair": 3, "hair_style": 1}
+	var d := 0
+	while out.size() < DESIGNS_PER_RACE and d < 200:
+		var design := {}
+		for key: String in steps:
+			var pool: Array = pools.get(key, [born.get(key, DEFAULT.get(key, 0))])
+			design[key] = pool[(d * int(steps[key]) + d / pool.size()) % pool.size()]
+		var sig := var_to_str(design)
+		d += 1
+		if seen.has(sig):
+			continue
+		seen[sig] = true
+		design["name"] = "%s, %s eyes" % [SKIN_NAMES[int(design["skin"])], EYE_NAMES[int(design["eyes"])].to_lower()]
+		out.append(design)
+	_designs[race] = out
+	return out
+
+
 ## Rows of choices, in the order the creator shows them:
 ## [key, title, list, kind] where kind is "colour" (swatches) or "shape" (named buttons).
 const OPTIONS: Array[Array] = [
@@ -283,11 +340,16 @@ static func option_name(list_name: String, index: int) -> String:
 
 
 ## How many separate choices the creator offers, races included.
+## How many choices the creator offers: the races, their designs, and the
+## rows a player may still change (hair, beard, face, clothes, a few things
+## worn, and a human's real skin tones).
 static func option_count() -> int:
-	var total := RACES.size()
-	for row in OPTIONS:
-		total += list(row[2]).size()
-	return total
+	var total := RACES.size() * (1 + DESIGNS_PER_RACE) + REAL_SKIN.size()
+	for key: String in ["hair_style", "hair", "beard", "mark", "outfit", "clothes", "trousers"]:
+		for row in OPTIONS:
+			if row[0] == key:
+				total += list(row[2]).size()
+	return total + 7 + 4 + 4
 
 
 ## The choices actually worn, after a look's overrides, each kept in range.
@@ -300,27 +362,45 @@ static func resolved(appearance: Dictionary) -> Dictionary:
 			result[key] = look[key]
 	if not RACES.has(result["race"]):
 		result["race"] = "human"
-	# What the race is born with is not a choice.
-	var born: Dictionary = RACES[result["race"]]["look"]
-	for key: String in RACE_FIXED:
-		result[key] = born.get(key, DEFAULT[key])
+	if appearance.has("design"):
+		# A chosen design fixes what the race is born with; a human's skin
+		# is theirs to pick, from real skin tones only.
+		var all := designs(result["race"])
+		var design: Dictionary = all[clampi(int(appearance["design"]), 0, all.size() - 1)]
+		var own_skin := int(result["skin"])
+		for key: String in DESIGN_KEYS:
+			result[key] = design.get(key, DEFAULT.get(key, 0))
+		if result["race"] == "human" and appearance.has("skin") and own_skin in REAL_SKIN:
+			result["skin"] = own_skin
+	else:
+		# Older characters: what the race is born with is not a choice.
+		var born: Dictionary = RACES[result["race"]]["look"]
+		for key: String in RACE_FIXED:
+			result[key] = born.get(key, DEFAULT[key])
 	for row in OPTIONS:
 		result[row[0]] = clampi(int(result[row[0]]), 0, list(row[2]).size() - 1)
 	return result
 
 
 ## A fresh character of a race: the race's own look over the defaults.
-static func for_race(race: String) -> Dictionary:
+static func for_race(race: String, design: int = 0) -> Dictionary:
 	var result := DEFAULT.duplicate()
 	result["race"] = race
 	result.merge(RACES[race]["look"], true)
+	var chosen: Dictionary = designs(race)[clampi(design, 0, DESIGNS_PER_RACE - 1)]
+	result["design"] = design
+	for key: String in ["hair", "hair_style"]:
+		if chosen.has(key):
+			result[key] = chosen[key]
+	for key: String in DESIGN_KEYS:
+		result[key] = chosen[key]
 	return result
 
 
 ## A character rolled from nothing.
 static func random() -> Dictionary:
 	var races: Array = RACES.keys()
-	var result := for_race(races[randi() % races.size()])
+	var result := for_race(races[randi() % races.size()], randi() % DESIGNS_PER_RACE)
 	for key: String in ["hair", "clothes", "trousers", "eyes"]:
 		for row in OPTIONS:
 			if row[0] == key:

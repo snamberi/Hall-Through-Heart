@@ -69,3 +69,27 @@ func test_every_choice_has_its_art_and_name(t: TestContext) -> void:
 		t.check(layers.has(slot), "a worn %s shows" % slot)
 	t.equal(layers["hat"]["tint"], Color(Appearance.DYES[5][0]), "a dyed hat takes the dye")
 	t.check(Appearance.option_count() >= 200, "plenty of choices (%d)" % Appearance.option_count())
+
+
+func test_each_race_has_ten_designs(t: TestContext) -> void:
+	for race: String in Appearance.RACES:
+		var all := Appearance.designs(race)
+		t.equal(all.size(), Appearance.DESIGNS_PER_RACE, "%s has ten designs" % race)
+		var looks := {}
+		for design: Dictionary in all:
+			looks[var_to_str(design)] = true
+		t.equal(looks.size(), all.size(), "%s's designs all differ" % race)
+	# A design fixes what a race is born with...
+	var elf := Appearance.for_race("elf", 3)
+	elf["skin"] = 6
+	elf["ears"] = 0
+	var worn := Appearance.resolved(elf)
+	t.equal(int(worn["skin"]), int(Appearance.designs("elf")[3]["skin"]), "an elf cannot repaint their skin")
+	t.equal(int(worn["ears"]), int(Appearance.designs("elf")[3]["ears"]), "nor change their ears")
+	# ...but a human picks a real skin tone.
+	var human := Appearance.for_race("human", 0)
+	human["skin"] = 4
+	t.equal(int(Appearance.resolved(human)["skin"]), 4, "a human chooses a real skin tone")
+	human["skin"] = 6
+	t.check(int(Appearance.resolved(human)["skin"]) in Appearance.REAL_SKIN, "but never goblin green")
+	t.equal(ItemDB.describe_modifier({"stat": "xp_gain", "kind": "flat", "value": 0.15}), "+15.0% Xp Gain", "experience gained reads as a share")

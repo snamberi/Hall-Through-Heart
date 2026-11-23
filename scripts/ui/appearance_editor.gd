@@ -10,12 +10,20 @@ signal changed(appearance: Dictionary)
 
 const TABS: Array[Array] = [
 	["Race", []],
-	["Body", ["skin"]],
+	["Design", ["skin"]],
 	["Hair", ["hair_style", "hair", "beard"]],
-	["Face", ["eyes", "mark"]],
-	["Clothes", ["outfit", "clothes", "trousers", "dye"]],
-	["Wear", ["hat", "accessory", "neck", "cape"]],
+	["Face", ["mark"]],
+	["Clothes", ["outfit", "clothes", "trousers"]],
+	["Wear", ["hat", "accessory", "neck"]],
 ]
+## Rows that offer only some of their list: a human's real skin tones, and
+## a few things worn rather than every one.
+const ALLOWED := {
+	"skin": Appearance.REAL_SKIN,
+	"hat": [0, 1, 2, 3, 7, 8, 9],
+	"accessory": [0, 1, 2, 4],
+	"neck": [0, 1, 2, 4],
+}
 ## Rows drawn as pictures; the rest of the shape rows are named buttons.
 const PICTURED: Array[String] = ["hair_style", "beard", "mark", "ears", "horns", "tail", "wings", "hat", "accessory", "neck", "cape", "outfit"]
 ## Rows whose pictures show the whole figure rather than the head.
@@ -69,6 +77,10 @@ func _ready() -> void:
 		_pages[title] = scroll
 		if title == "Race":
 			_build_races(page)
+		elif title == "Design":
+			_build_designs(page)
+			for key: String in tab[1]:
+				_build_row(page, key)
 		else:
 			for key: String in tab[1]:
 				_build_row(page, key)
@@ -121,7 +133,59 @@ func _build_races(page: VBoxContainer) -> void:
 	page.add_child(_race_text)
 
 
-## A new race starts from that race's own look, keeping the clothes.
+## The ten designs of the chosen race, as pictures; and, for humans only,
+## the real skin tones beneath.
+var _design_grid: GridContainer
+var _design_buttons: Array[Button] = []
+var _design_race := ""
+var _skin_rows: Array[Control] = []
+
+
+func _build_designs(page: VBoxContainer) -> void:
+	page.add_child(UITheme.heading("Design  (%d)" % Appearance.DESIGNS_PER_RACE, 15))
+	page.add_child(UITheme.paragraph("Each people has its own looks; choose yours. Hair, face and clothes are yours to change after.", width - 16.0, 13, UITheme.DIM))
+	_design_grid = GridContainer.new()
+	_design_grid.columns = 5
+	_design_grid.add_theme_constant_override("h_separation", 4)
+	_design_grid.add_theme_constant_override("v_separation", 4)
+	page.add_child(_design_grid)
+	for index in Appearance.DESIGNS_PER_RACE:
+		var button := _picture_button(null, "", false)
+		button.custom_minimum_size = Vector2(width / 5.0 - 6.0, THUMB + 6.0)
+		button.pressed.connect(func() -> void:
+			appearance["design"] = index
+			var design: Dictionary = Appearance.designs(str(appearance.get("race", "human")))[index]
+			for key: String in ["hair", "hair_style"]:
+				if design.has(key):
+					appearance[key] = design[key]
+			# A human starts from the design's skin and may change it.
+			appearance["skin"] = design["skin"]
+			_stale = true
+			_mark()
+			changed.emit(appearance)
+		)
+		_design_grid.add_child(button)
+		_design_buttons.append(button)
+
+
+func _fill_designs() -> void:
+	var race := str(Appearance.resolved(appearance)["race"])
+	var all := Appearance.designs(race)
+	for index in _design_buttons.size():
+		var button := _design_buttons[index]
+		button.set_pressed_no_signal(int(appearance.get("design", -1)) == index)
+		button.tooltip_text = str(all[index]["name"])
+		if race != _design_race or _stale:
+			var look := Appearance.for_race(race, index)
+			for key: String in ["clothes", "trousers", "outfit"]:
+				look[key] = appearance.get(key, 0)
+			(button.get_node("Picture") as TextureRect).texture = LookThumbs.texture(look)
+	_design_race = race
+	for row in _skin_rows:
+		row.visible = race == "human"
+
+
+## A new race starts from that race's first design, keeping the clothes.
 func choose_race(race: String) -> void:
 	var clothes: int = appearance.get("clothes", 0)
 	var trousers: int = appearance.get("trousers", 0)
@@ -167,16 +231,22 @@ func _build_row(page: VBoxContainer, key: String) -> void:
 	for option in Appearance.OPTIONS:
 		if option[0] == key:
 			row = option
-	var heading := UITheme.heading("%s  (%d)" % [row[1], Appearance.list(row[2]).size()], 15)
+	var shown_count: int = (ALLOWED[key] as Array).size() if ALLOWED.has(key) else Appearance.list(row[2]).size()
+	var heading := UITheme.heading("%s  (%d)" % [row[1], shown_count], 15)
 	page.add_child(heading)
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 4)
 	flow.add_theme_constant_override("v_separation", 4)
 	flow.custom_minimum_size.x = width - 16.0
 	page.add_child(flow)
+	if key == "skin":
+		_skin_rows.append(heading)
+		_skin_rows.append(flow)
 	var entries := Appearance.list(row[2])
-	var buttons: Array[Button] = []
+	var buttons: Dictionary = {}
 	for index in entries.size():
+		if ALLOWED.has(key) and not index in ALLOWED[key]:
+			continue
 		var button: Button
 		var title := Appearance.option_name(row[2], index)
 		if row[3] == "colour":
@@ -248,7 +318,7 @@ func _build_row(page: VBoxContainer, key: String) -> void:
 			changed.emit(appearance)
 		)
 		flow.add_child(button)
-		buttons.append(button)
+		buttons[index] = button
 	_choices[key] = buttons
 
 
@@ -256,8 +326,8 @@ func _build_row(page: VBoxContainer, key: String) -> void:
 func _mark() -> void:
 	var worn := Appearance.resolved(appearance)
 	for key: String in _choices:
-		var buttons: Array = _choices[key]
-		for index in buttons.size():
+		var buttons: Dictionary = _choices[key]
+		for index: int in buttons:
 			var button := buttons[index] as Button
 			var on := index == int(worn[key])
 			button.set_pressed_no_signal(on)
@@ -269,6 +339,8 @@ func _mark() -> void:
 		_race_buttons[race].set_pressed_no_signal(race == worn["race"])
 	if _race_text:
 		_race_text.text = race_text(worn["race"])
+	if _design_grid:
+		_fill_designs()
 	_draw_pictures()
 
 
@@ -283,8 +355,8 @@ func _draw_pictures() -> void:
 	for key: String in keys:
 		if not key in PICTURED or not _choices.has(key):
 			continue
-		var buttons: Array = _choices[key]
-		for index in buttons.size():
+		var buttons: Dictionary = _choices[key]
+		for index: int in buttons:
 			var look := appearance.duplicate()
 			look[key] = index
 			# Show a beard or a mark clearly, without hair falling over it.

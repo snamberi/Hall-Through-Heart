@@ -1077,9 +1077,15 @@ static func describe_modifier(modifier: Dictionary) -> String:
 	var stat: String = modifier["stat"]
 	var value: float = modifier["value"]
 	var format := "number"
+	var listed := false
 	for entry in CharacterStats.DISPLAY:
 		if entry["id"] == stat:
 			format = entry["format"]
+			listed = true
+	# A share of something not on the character sheet (experience gained,
+	# say) is a percentage, not a whole number rounded to nothing.
+	if not listed and absf(value) < 1.0:
+		format = "percent"
 	var amount: String
 	if modifier["kind"] == "percent" or format in ["percent", "percent_fine", "bonus_percent", "multiplier"]:
 		amount = "%.1f%%" % (value * 100.0)
