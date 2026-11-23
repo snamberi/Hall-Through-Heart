@@ -1,8 +1,9 @@
 class_name QuestBookMenu
 extends GameMenu
-## The Quest Book: chapters down the left, every quest as a node on a large
-## map in the middle (drag to move, scroll or the buttons to zoom), and the
-## chosen quest's story, objectives and rewards on the right.
+## The Quest Book: a bar along the top (the views, the chapter to look at,
+## search), every quest as a node on a large map (drag to move, scroll or
+## the buttons to zoom), and the chosen quest's story, objectives and
+## rewards on the right.
 
 const STEP := Vector2(66.0, 84.0)
 const NODE := 44.0
@@ -22,6 +23,7 @@ static var _bounds: Dictionary = {}
 var _book: QuestBook
 var _canvas: Control
 var _chapter_buttons: Dictionary = {}
+var _chapter_pick: OptionButton
 var _strip_buttons: Dictionary = {}
 var _zoom_label: Label
 var _progress_label: Label
@@ -57,55 +59,38 @@ var _textures: Dictionary = {}
 
 func _build() -> void:
 	content.add_theme_constant_override("separation", 8)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	content.add_child(row)
-
-	# Chapters.
-	var left := VBoxContainer.new()
-	left.add_theme_constant_override("separation", 3)
-	left.custom_minimum_size = Vector2(204, 0)
-	row.add_child(left)
+	# One bar along the top: the title, the two views, the chapter to look
+	# at (a drop-down, not a column of filters) and the search.
+	var top_bar := HBoxContainer.new()
+	top_bar.add_theme_constant_override("separation", 10)
+	content.add_child(top_bar)
 	var title := UITheme.heading("QUEST BOOK", 21)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	left.add_child(title)
-	var views := HBoxContainer.new()
-	views.add_theme_constant_override("separation", 4)
-	left.add_child(views)
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top_bar.add_child(title)
 	for view: Array in [["map", "Map"], ["list", "Open now"]]:
 		var view_button := UITheme.button(view[1], func() -> void: _set_view(view[0]), 94.0)
 		view_button.toggle_mode = true
 		view_button.custom_minimum_size = Vector2(94, 32)
-		views.add_child(view_button)
+		top_bar.add_child(view_button)
 		_view_buttons[view[0]] = view_button
-	_quest_search = UITheme.search_box("Search quests...", 192.0, func() -> void:
+	_chapter_pick = OptionButton.new()
+	_chapter_pick.custom_minimum_size = Vector2(250, 32)
+	UITheme.font_size(_chapter_pick, 14)
+	for chapter in QuestBookDB.CHAPTERS:
+		_chapter_pick.add_icon_item(QuestBookDB.icon_texture(chapter["icon"]), chapter["name"])
+	_chapter_pick.item_selected.connect(func(index: int) -> void:
+		_view = "map"
+		_focus_chapter(QuestBookDB.CHAPTERS[index]["id"])
+	)
+	top_bar.add_child(_chapter_pick)
+	_quest_search = UITheme.search_box("Search quests...", 220.0, func() -> void:
 		_view = "list" if _quest_search.text.strip_edges() != "" else "map"
 		refresh()
 	)
-	left.add_child(_quest_search)
-	# Fifteen chapters and counting: the list scrolls rather than squeeze.
-	var chapter_scroll := ScrollContainer.new()
-	chapter_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	chapter_scroll.custom_minimum_size = Vector2(204, 300)
-	chapter_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left.add_child(chapter_scroll)
-	var chapter_list := VBoxContainer.new()
-	chapter_list.add_theme_constant_override("separation", 3)
-	chapter_scroll.add_child(chapter_list)
-	for chapter in QuestBookDB.CHAPTERS:
-		var button := Button.new()
-		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(192, 26)
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.icon = QuestBookDB.icon_texture(chapter["icon"])
-		button.expand_icon = false
-		button.add_theme_constant_override("icon_max_width", 22)
-		UITheme.font_size(button, 14)
-		button.add_theme_constant_override("icon_max_width", 18)
-		var id: String = chapter["id"]
-		button.pressed.connect(func() -> void: _focus_chapter(id))
-		chapter_list.add_child(button)
-		_chapter_buttons[id] = button
+	top_bar.add_child(_quest_search)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	content.add_child(row)
 
 	# The map, under a line that says where you are and what the marks mean.
 	var map_frame := UITheme.inset_panel()
@@ -123,12 +108,12 @@ func _build() -> void:
 	for entry: Array in [["open", "Current path"], ["done", "Completed"], ["locked", "Locked"]]:
 		where.add_child(_legend(entry[0], entry[1]))
 	var map_stack := Control.new()
-	map_stack.custom_minimum_size = Vector2(640, 488)
+	map_stack.custom_minimum_size = Vector2(860, 488)
 	map_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_box.add_child(map_stack)
 	_canvas = Control.new()
 	_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_canvas.custom_minimum_size = Vector2(640, 488)
+	_canvas.custom_minimum_size = Vector2(860, 488)
 	_canvas.clip_contents = true
 	_canvas.mouse_filter = Control.MOUSE_FILTER_STOP
 	_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -141,7 +126,7 @@ func _build() -> void:
 	map_stack.add_child(_canvas)
 	_list_scroll = ScrollContainer.new()
 	_list_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_list_scroll.custom_minimum_size = Vector2(640, 488)
+	_list_scroll.custom_minimum_size = Vector2(860, 488)
 	_list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_list_scroll.visible = false
 	map_stack.add_child(_list_scroll)
@@ -311,13 +296,12 @@ func refresh() -> void:
 		_chapter = _first_open_chapter()
 		_selected = _book.tracked[0] if not _book.tracked.is_empty() and _book.is_open(_book.tracked[0]) else _first_open_in(_chapter)
 		_focus_quest(_selected)
-	for chapter in QuestBookDB.CHAPTERS:
+	for index in QuestBookDB.CHAPTERS.size():
+		var chapter: Dictionary = QuestBookDB.CHAPTERS[index]
 		var id: String = chapter["id"]
-		var button: Button = _chapter_buttons[id]
-		button.text = "  %s   %d/%d" % [chapter["name"], _book.count_done(id), _book.count_all(id)]
-		button.set_pressed_no_signal(id == _chapter)
-		var has_open := QuestBookDB.all().any(func(q: Dictionary) -> bool: return q["chapter"] == id and _book.is_open(q["id"]))
-		button.add_theme_color_override("font_color", UITheme.HEADING if has_open else UITheme.DIM)
+		_chapter_pick.set_item_text(index, "%s   %d/%d" % [chapter["name"], _book.count_done(id), _book.count_all(id)])
+		if id == _chapter:
+			_chapter_pick.select(index)
 	var done := _book.count_done()
 	var total := _book.count_all()
 	_progress_label.text = "Progress: %d%%     %d / %d" % [roundi(100.0 * done / maxf(total, 1)), done, total]

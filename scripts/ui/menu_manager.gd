@@ -54,6 +54,9 @@ var _side_badges: Dictionary = {}
 var _holder: CenterContainer
 var _hint: Label
 var _back: Button
+var _close: Button
+var _hardcore_marks: Control
+const EVIL_HEART := preload("res://scripts/ui/evil_heart.gd")
 var _fade: Tween
 
 
@@ -74,6 +77,13 @@ func setup(player: Player) -> void:
 	dim.color = Color(0.02, 0.03, 0.05, 0.78)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(dim)
+	# A Hardcore world wears its mark: a darker, bloodied backdrop with a
+	# crimson edge, and the evil heart beating over every screen.
+	_hardcore_marks = Control.new()
+	_hardcore_marks.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_hardcore_marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hardcore_marks.draw.connect(_draw_hardcore)
+	_root.add_child(_hardcore_marks)
 
 	_wheel = MenuWheel.new()
 	for screen in SCREENS:
@@ -97,6 +107,17 @@ func setup(player: Player) -> void:
 	_back.custom_minimum_size.y = 38.0
 	UITheme.font_size(_back, 17)
 	_root.add_child(_back)
+	# Every screen, and the wheel, can be closed with one press: top right,
+	# big enough for a thumb.
+	_close = UITheme.button("Close  X", close, 118.0)
+	_close.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_close.offset_left = -136.0
+	_close.offset_right = -18.0
+	_close.offset_top = 16.0
+	_close.offset_bottom = 54.0
+	_close.tooltip_text = "Close (Esc)"
+	UITheme.font_size(_close, 17)
+	_root.add_child(_close)
 
 	_hint = UITheme.label("", 14, UITheme.DIM)
 	_hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -241,7 +262,22 @@ func _show(id: String) -> void:
 	_fit.call_deferred()
 
 
+func _draw_hardcore() -> void:
+	if not Difficulty.hardcore:
+		return
+	var view := _hardcore_marks.size
+	var t := Time.get_ticks_msec() / 1000.0
+	# Crimson creeping in from the edges, in hard steps.
+	for step in 6:
+		var inset := step * 10.0
+		var colour := Color(0.45, 0.02, 0.06, 0.16 - step * 0.025)
+		_hardcore_marks.draw_rect(Rect2(inset, inset, view.x - inset * 2.0, view.y - inset * 2.0), colour, false, 10.0)
+	EVIL_HEART.draw(_hardcore_marks, Vector2(view.x / 2.0, 30.0), 3, t)
+
+
 func _process(_delta: float) -> void:
+	if Difficulty.hardcore and is_open():
+		_hardcore_marks.queue_redraw()
 	# Screens can change size as they fill in; keep them inside the window.
 	if is_open() and _open_id != "wheel":
 		_fit()

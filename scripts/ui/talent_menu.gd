@@ -179,17 +179,65 @@ func _on_input(event: InputEvent) -> void:
 			_canvas.queue_redraw()
 
 
+## One link between two talents, tidily: along the ring when both sit at
+## the same distance from the heart, bowed outward when the jump is long (so
+## it does not cut across the tree), straight otherwise; it stops at each
+## node's rim rather than running over its picture.
+func _draw_link(a_id: String, b_id: String, color: Color, width: float) -> void:
+	var centre := _to_screen("awakened_heart")
+	var a := _to_screen(a_id)
+	var b := _to_screen(b_id)
+	var rim := 15.0 * _zoom
+	var ra := (a - centre).length()
+	var rb := (b - centre).length()
+	var points := PackedVector2Array()
+	if ra > rim * 2.0 and absf(ra - rb) < TalentDB.STEP * 0.3 * _zoom:
+		# Round the ring.
+		var radius := (ra + rb) / 2.0
+		var from := (a - centre).angle()
+		var turn := wrapf((b - centre).angle() - from, -PI, PI)
+		var trim := rim / radius
+		var steps := maxi(int(absf(turn) * radius / 6.0), 4)
+		for k in steps + 1:
+			var angle := from + signf(turn) * trim + (turn - signf(turn) * trim * 2.0) * k / steps
+			points.append(centre + Vector2.from_angle(angle) * radius)
+	elif a.distance_to(b) > TalentDB.STEP * 1.6 * _zoom:
+		# A long jump bows outward, away from the heart.
+		var middle := (a + b) / 2.0
+		var out := (middle - centre).normalized() if middle.distance_to(centre) > 1.0 else (b - a).orthogonal().normalized()
+		var bend := middle + out * a.distance_to(b) * 0.22
+		for k in 17:
+			var t := k / 16.0
+			points.append(a.lerp(bend, t).lerp(bend.lerp(b, t), t))
+		points[0] = points[0].move_toward(points[1], rim)
+		points[-1] = points[-1].move_toward(points[-2], rim)
+	else:
+		points.append(a.move_toward(b, rim))
+		points.append(b.move_toward(a, rim))
+	if points.size() >= 2:
+		_canvas.draw_polyline(points, color, width, true)
+
+
 func _draw_tree() -> void:
 	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), Color("0b0d15"))
 	var talents := player.talents
 	# Faint rings for each distance out.
 	for ring in range(1, 10):
 		_canvas.draw_arc(_to_screen("awakened_heart"), ring * TalentDB.STEP * _zoom, 0.0, TAU, 96, Color(1, 1, 1, 0.03), 1.0)
-	for edge: Array in TalentDB.edges():
-		var both: bool = talents.has(edge[0]) and talents.has(edge[1])
-		var either: bool = talents.has(edge[0]) or talents.has(edge[1])
-		var color := UITheme.GOLD if both else Color(0.55, 0.5, 0.4, 0.8) if either else Color(0.28, 0.28, 0.34)
-		_canvas.draw_line(_to_screen(edge[0]), _to_screen(edge[1]), color, (4.0 if both else 2.5) * _zoom)
+	# Locked paths first and faint, then those that open now, then the
+	# learned ones in gold on top, so the way taken reads clearly.
+	for pass_index in 3:
+		for edge: Array in TalentDB.edges():
+			var both: bool = talents.has(edge[0]) and talents.has(edge[1])
+			var either: bool = talents.has(edge[0]) or talents.has(edge[1])
+			var tier := 2 if both else 1 if either else 0
+			if tier != pass_index:
+				continue
+			var color := UITheme.GOLD if both else Color(0.62, 0.55, 0.42, 0.85) if either else Color(0.24, 0.25, 0.31)
+			var width := (3.5 if both else 2.0 if either else 1.4) * maxf(_zoom, 0.5)
+			if both:
+				_draw_link(edge[0], edge[1], Color(0.05, 0.04, 0.02), width + 2.0)
+			_draw_link(edge[0], edge[1], color, width)
 	for id: String in TalentDB.NODES:
 		_draw_node(id)
 	# Branch names, near the top of each branch.

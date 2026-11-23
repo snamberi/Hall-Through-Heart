@@ -561,7 +561,7 @@ func _draw_view() -> void:
 	var origin := Vector2i((_center - Vector2(cells) / 2.0).floor())
 	if _dirty:
 		_dirty = false
-		_render(origin, cells)
+		_render(origin, cells, clampi(int(scale / 3.0), 1, 4))
 	var offset := (Vector2(origin) - _center) * scale + _view.size / 2.0
 	_view.draw_rect(Rect2(Vector2.ZERO, _view.size), Color("07080c"))
 	_view.draw_texture_rect(_texture, Rect2(offset, Vector2(cells) * scale), false)
@@ -616,22 +616,29 @@ func _draw_view() -> void:
 	_view.draw_rect(Rect2(Vector2(2, 2), _view.size - Vector2(4, 4)), Color("8a683a"), false, 1.5)
 
 
-func _render(origin: Vector2i, cells: Vector2i) -> void:
-	_image = Image.create(cells.x, cells.y, false, Image.FORMAT_RGBA8)
+## Draws the land in view: `sub` pixels a side to each map cell when zoomed
+## in, each read from its own tiles, so shores and borders run in curves
+## rather than in squares; land a little lit where it rises.
+func _render(origin: Vector2i, cells: Vector2i, sub: int = 1) -> void:
+	_image = Image.create(cells.x * sub, cells.y * sub, false, Image.FORMAT_RGBA8)
 	var generator := _world.generator
-	for y in cells.y:
-		for x in cells.x:
-			var map_cell := origin + Vector2i(x, y)
+	var step := float(Exploration.CELL) / sub
+	for y in cells.y * sub:
+		for x in cells.x * sub:
+			var map_cell := origin + Vector2i(x / sub, y / sub)
 			if not _exploration.is_seen(map_cell):
 				# Unexplored: dark, with a faint texture so it reads as fog.
 				var shade := 0.07 + 0.02 * float(posmod(hash(map_cell), 3))
 				_image.set_pixel(x, y, Color(shade, shade * 1.05, shade * 1.25))
 				continue
-			var color: Variant = _colors.get(map_cell)
+			var tile := map_cell * Exploration.CELL + Vector2i(int((x % sub + 0.5) * step), int((y % sub + 0.5) * step))
+			var color: Variant = _colors.get(tile)
 			if color == null:
-				var tile := map_cell * Exploration.CELL + Vector2i(2, 2)
-				color = TerrainTiles.COLORS[generator.tile_type_at(tile)].lightened(0.12)
-				_colors[map_cell] = color
+				var type := generator.tile_type_at(tile)
+				color = TerrainTiles.COLORS[type].lightened(0.12)
+				if generator.height_at(tile) > 0 and not type in TerrainTiles.HIGH:
+					color = (color as Color).lightened(0.08)
+				_colors[tile] = color
 			_image.set_pixel(x, y, color)
 	if _texture == null or _texture.get_size() != Vector2(cells):
 		_texture = ImageTexture.create_from_image(_image)

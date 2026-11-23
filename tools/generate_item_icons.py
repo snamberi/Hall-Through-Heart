@@ -1416,13 +1416,35 @@ RUNE_GLYPHS = {
 }
 
 
+# Each rune is cut into a stone of its own: what it is shaped like and what
+# it is made of tell it apart at a glance, before the glyph is read.
+RUNE_STONES = {
+    "ember": ("b8563a", [(16, 2), (27, 10), (25, 29), (7, 29), (5, 10)]),          # a scorched shard
+    "rime": ("8ab0c8", [(16, 1), (29, 16), (16, 31), (3, 16)]),                   # a clear ice diamond
+    "venom": ("5a7a4a", [(9, 3), (23, 3), (28, 14), (24, 29), (8, 29), (4, 14)]), # a mossy pebble
+    "gloom": ("3e3450", [(6, 3), (26, 3), (26, 29), (6, 29)]),                    # a black slate tablet
+    "dawn": ("c8b47a", [(16, 2), (29, 12), (25, 29), (7, 29), (3, 12)]),          # a pale sandstone
+    "gale": ("9ab8b4", [(4, 8), (16, 3), (28, 8), (28, 24), (16, 29), (4, 24)]),  # a wind-worn hexagon
+    "stone": ("8a8478", [(7, 3), (25, 3), (29, 7), (29, 25), (25, 29), (7, 29), (3, 25), (3, 7)]),  # a granite block
+    "blood": ("6e2a32", [(16, 3), (27, 12), (22, 29), (10, 29), (5, 12)]),        # a dark heart-stone
+}
+
+
 def rune_icon(kind):
     colour, strokes = RUNE_GLYPHS[kind]
+    stone, outline = RUNE_STONES[kind]
     icon = Icon()
-    icon.poly([(7, 3), (25, 3), (29, 7), (29, 25), (25, 29), (7, 29), (3, 25), (3, 7)], ramp("8a8794"))
-    icon.poly([(8, 5), (24, 5), (27, 8), (27, 24), (24, 27), (8, 27), (5, 24), (5, 8)], ramp("a8a4b0"))
+    icon.poly(outline, ramp(stone))
+    # A worn bevel inside the edge.
+    cx = sum(x for x, _y in outline) / len(outline)
+    cy = sum(y for _x, y in outline) / len(outline)
+    inner = [(round(cx + (x - cx) * 0.8), round(cy + (y - cy) * 0.8)) for x, y in outline]
+    icon.poly(inner, ramp(mix(c(stone), (255, 255, 255), 0.12)))
+    # The glyph: a dark cut, then its glowing heart, so it reads on any stone.
     for stroke in strokes:
-        icon.line(stroke, 2, [mix(c(colour), (255, 255, 255), 0.3), c(colour), c(colour), ramp(colour)[3], ramp(colour)[3]])
+        icon.line(stroke, 3, [c("1a1420")] * 5, flat=True, rim=False)
+    for stroke in strokes:
+        icon.line(stroke, 1, [mix(c(colour), (255, 255, 255), 0.45), c(colour), c(colour), c(colour), c(colour)], flat=True, rim=False)
     return icon
 
 

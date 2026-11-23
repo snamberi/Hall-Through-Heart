@@ -2,6 +2,8 @@ extends Control
 ## The title screen: continue the last world, pick another from the save
 ## list, make a new world with a difficulty, change settings, or quit.
 
+## The beating heart shown while a world loads.
+const LOADING := preload("res://scripts/ui/loading_screen.gd")
 const GAME := "res://scenes/main.tscn"
 ## The logo and the panorama behind everything (tools/generate_title.py):
 ## the sky stands still; the layers in front drift past at their own pace,
@@ -77,7 +79,7 @@ func _ready() -> void:
 
 func _enter_world(id: String, as_guest: bool) -> void:
 	SaveGame.use_slot(id, as_guest)
-	get_tree().change_scene_to_file(GAME)
+	LOADING.go(get_tree(), GAME)
 
 
 func show_page(page: String) -> void:
@@ -196,6 +198,11 @@ func _home_page() -> Control:
 	title.custom_minimum_size = LOGO.get_size() * 3.0
 	title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(title)
+	# Blood gathering under the letters and dripping away.
+	var drips := Drips.new()
+	drips.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	drips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.add_child(drips)
 	var line := UITheme.label("The land is the corpse of a god. Its heart still beats.", 18, Color("c8c0b0"))
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# Dark-edged, so it reads over the sky and the mountains behind.
@@ -820,4 +827,69 @@ func _play(id: String) -> void:
 	if Net.online() or Net.mode == "joining":
 		Net.leave("")
 	SaveGame.use_slot(id)
-	get_tree().change_scene_to_file(GAME)
+	LOADING.go(get_tree(), GAME)
+
+
+
+## Blood on the title: at a few columns, under the lowest pixel of the
+## letters, a bead gathers, stretches into a drip and lets a drop fall away,
+## all in whole logo pixels (three screen pixels each).
+class Drips:
+	extends Control
+	const SCALE := 3
+	const BLOOD := Color("9c1c28")
+	const BLOOD_LIT := Color("d8404c")
+	const BLOOD_DARK := Color("4e0c14")
+	## column -> lowest opaque row of the logo there.
+	var _feet: Dictionary = {}
+	## Each drip: [column, age, how long it stretches (logo px), speed].
+	var _drips: Array = []
+
+	func _ready() -> void:
+		var image: Image = (load("res://assets/ui/logo.png") as Texture2D).get_image()
+		if image.is_compressed():
+			image.decompress()
+		for x in image.get_width():
+			for y in range(image.get_height() - 1, -1, -1):
+				var colour := image.get_pixel(x, y)
+				if colour.a > 0.5:
+					# Only under the letters, not under their dark outline.
+					if colour.get_luminance() > 0.12 or (y > 0 and image.get_pixel(x, y - 1).get_luminance() > 0.12):
+						_feet[x] = y
+					break
+		for k in 5:
+			_spawn(randf() * 3.0)
+
+	func _spawn(age: float = 0.0) -> void:
+		if _feet.is_empty():
+			return
+		_drips.append([_feet.keys().pick_random(), age, randi_range(2, 6), randf_range(0.7, 1.3)])
+
+	func _process(delta: float) -> void:
+		for drip: Array in _drips:
+			drip[1] += delta * float(drip[3])
+		var before := _drips.size()
+		_drips = _drips.filter(func(d: Array) -> bool: return d[1] < 4.2)
+		for k in before - _drips.size():
+			_spawn()
+		queue_redraw()
+
+	func _draw() -> void:
+		for drip: Array in _drips:
+			var x: int = drip[0]
+			var foot: int = _feet[x] + 1
+			var age: float = drip[1]
+			var length: int = drip[2]
+			# Gathering and stretching (0..2.4 s), then the drop falls.
+			var hang := mini(int(age / 2.4 * length), length)
+			for k in hang:
+				var colour := BLOOD_DARK if k == 0 else BLOOD
+				draw_rect(Rect2(Vector2(x, foot + k) * SCALE, Vector2(SCALE, SCALE)), colour)
+			if hang > 0:
+				draw_rect(Rect2(Vector2(x, foot + hang) * SCALE, Vector2(SCALE, SCALE)), BLOOD_LIT if age < 2.4 else BLOOD)
+			if age >= 2.4:
+				var fall := (age - 2.4) / 1.8
+				var drop_y := foot + hang + 1 + int(fall * fall * 30.0)
+				var fade := clampf(1.0 - fall, 0.0, 1.0)
+				draw_rect(Rect2(Vector2(x, drop_y) * SCALE, Vector2(SCALE, SCALE * 2)), Color(BLOOD, fade))
+				draw_rect(Rect2(Vector2(x, drop_y) * SCALE, Vector2(SCALE, SCALE)), Color(BLOOD_LIT, fade))

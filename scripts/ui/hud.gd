@@ -1,6 +1,7 @@
 extends CanvasLayer
 ## On-screen player status: health, experience, stamina, level, and messages.
 
+const EVIL_HEART := preload("res://scripts/ui/evil_heart.gd")
 var _player: Player
 var _banner_tween: Tween
 
@@ -374,7 +375,11 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 			var beat := (radius - 3.0) * (1.0 + 0.28 * Heartbeat.pulse if icon == 35 else 1.0)
 			if icon == 35 and Heartbeat.tension > 0.22:
 				bar.draw_circle(medal, radius + 3.0 + 4.0 * Heartbeat.pulse, Color(0.9, 0.15, 0.15, 0.3 * Heartbeat.pulse))
-			bar.draw_texture_rect(ItemDB.icon(icon), Rect2(medal - Vector2(beat, beat), Vector2(beat, beat) * 2.0), false)
+			if icon == 35 and Difficulty.hardcore:
+				# Hardcore: the evil heart beats here instead.
+				EVIL_HEART.draw(bar, medal.round(), 2, Time.get_ticks_msec() / 1000.0)
+			else:
+				bar.draw_texture_rect(ItemDB.icon(icon), Rect2(medal - Vector2(beat, beat), Vector2(beat, beat) * 2.0), false)
 		if values.is_valid() and size.y >= 14.0:
 			# The pool's name on the left and its numbers beside it, so no
 			# bar has to be told apart by colour alone.

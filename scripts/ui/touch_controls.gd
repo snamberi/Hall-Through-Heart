@@ -23,6 +23,44 @@ const NAVY := Color(0.06, 0.08, 0.16, 0.55)
 const NAVY_HELD := Color(0.16, 0.12, 0.08, 0.7)
 const BRONZE := Color(0.83, 0.66, 0.35, 0.9)
 const BRONZE_DIM := Color(0.52, 0.33, 0.15, 0.75)
+## The buttons' pictures (tools/generate_touch_icons.py), in sheet order.
+const TOUCH_SHEET: Texture2D = preload("res://assets/icons/touch.png")
+const TOUCH_ICONS: Array[String] = ["dash", "parry", "swap", "run", "walk", "ride", "drink", "chat", "use", "talk", "open", "enter",
+	"read", "stone", "pick_up", "sleep"]
+static var _touch_cache: Dictionary = {}
+
+
+static func touch_icon(name: String) -> Texture2D:
+	if not _touch_cache.has(name):
+		var atlas := AtlasTexture.new()
+		atlas.atlas = TOUCH_SHEET
+		atlas.region = Rect2(maxi(TOUCH_ICONS.find(name), 0) * 32, 0, 32, 32)
+		_touch_cache[name] = atlas
+	return _touch_cache[name]
+
+
+## What the Use button would do now, as the name of its picture: talk to
+## someone, open a chest, go through a door, read, touch a stone, pick
+## something up, sleep, or plain use.
+static func use_face(player: Player) -> String:
+	if player == null:
+		return "use"
+	var npc := player.nearest_npc()
+	if npc:
+		return "talk"
+	var prop := player.nearest_prop()
+	if prop:
+		var words := str(prop.prompt_text).to_lower()
+		for pair: Array in [["chest", "open"], ["open", "open"], ["loot", "open"], ["enter", "enter"], ["door", "enter"], ["step", "enter"], ["leave", "enter"],
+				["read", "read"], ["sign", "read"], ["note", "read"], ["waystone", "stone"], ["stone", "stone"], ["obelisk", "stone"], ["lay a hand", "stone"],
+				["sleep", "sleep"], ["bed", "sleep"], ["rest", "sleep"]]:
+			if words.contains(pair[0]):
+				return pair[1]
+		return "use"
+	for node in player.get_tree().get_nodes_in_group("pickups"):
+		if (node as Node2D).global_position.distance_to(player.global_position) < 70.0:
+			return "pick_up"
+	return "use"
 
 var _player: Player
 var _root: Control
@@ -133,17 +171,17 @@ func _layout() -> void:
 	var top_row := roundf(w / 2.0 - 112.0)
 	_buttons = {
 		"attack": {"at": attack, "r": 56.0, "action": "attack", "label": ""},
-		"dash": {"at": Vector2(w - 232.0, h - 40.0), "r": 34.0, "action": "dodge", "label": "Dash"},
-		"use": {"at": Vector2(w - 38.0, h - 196.0), "r": 28.0, "action": "interact", "label": "Use"},
-		"parry": {"at": Vector2(w - 300.0, h - 212.0), "r": 30.0, "action": "parry", "label": "Parry"},
-		"swap": {"at": attack + Vector2.from_angle(deg_to_rad(290.0)) * 132.0, "r": 20.0, "action": "ability_swap", "label": "Set"},
+		"dash": {"at": Vector2(w - 232.0, h - 40.0), "r": 34.0, "action": "dodge", "label": "Dash", "touch": "dash"},
+		"use": {"at": Vector2(w - 38.0, h - 196.0), "r": 30.0, "action": "interact", "label": "Use", "touch": "use"},
+		"parry": {"at": Vector2(w - 300.0, h - 212.0), "r": 30.0, "action": "parry", "label": "Parry", "touch": "parry"},
+		"swap": {"at": attack + Vector2.from_angle(deg_to_rad(290.0)) * 132.0, "r": 22.0, "action": "ability_swap", "label": "Set", "touch": "swap"},
 		"menu": {"at": Vector2(top_row + 0.0, 34.0), "r": 24.0, "action": "toggle_menu", "label": "", "icon": "pause"},
 		"bag": {"at": Vector2(top_row + 56.0, 34.0), "r": 24.0, "action": "open_inventory", "label": "", "icon": "inventory"},
 		"map": {"at": Vector2(top_row + 112.0, 34.0), "r": 24.0, "action": "open_map", "label": "", "icon": "map"},
-		"quick": {"at": Vector2(top_row + 168.0, 34.0), "r": 24.0, "action": "quick_use", "label": "Drink"},
-		"chat": {"at": Vector2(top_row + 224.0, 34.0), "r": 24.0, "action": "open_chat", "label": "Chat", "online": true},
-		"run": {"at": Vector2(40.0, h - 250.0), "r": 24.0, "action": "sprint", "label": "Run"},
-		"ride": {"at": Vector2(40.0, h - 194.0), "r": 24.0, "action": "mount", "label": "Ride"},
+		"quick": {"at": Vector2(top_row + 168.0, 34.0), "r": 24.0, "action": "quick_use", "label": "Drink", "touch": "drink"},
+		"chat": {"at": Vector2(top_row + 224.0, 34.0), "r": 24.0, "action": "open_chat", "label": "Chat", "online": true, "touch": "chat"},
+		"run": {"at": Vector2(40.0, h - 250.0), "r": 24.0, "action": "sprint", "label": "Run", "touch": "run"},
+		"ride": {"at": Vector2(40.0, h - 194.0), "r": 24.0, "action": "mount", "label": "Ride", "touch": "ride"},
 	}
 	for k in 4:
 		var angle := deg_to_rad(180.0 + 27.0 * k)
@@ -349,6 +387,13 @@ func _draw_controls() -> void:
 			continue
 		if button.has("icon"):
 			_icon(MenuIcons.icon(button["icon"]), at, Color.WHITE)
+		elif button.has("touch"):
+			var face: String = button["touch"]
+			if id == "use":
+				face = use_face(_player)
+			elif id == "run" and _player.sprinting:
+				face = "walk"
+			_icon(touch_icon(face), at, Color.WHITE)
 		else:
 			var text: String = button["label"]
 			if id == "run" and _player.sprinting:
