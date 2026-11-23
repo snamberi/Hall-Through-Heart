@@ -157,6 +157,35 @@ SKULL_SIDE = [
 ]
 # The eye's place in profile.
 EYE_SIDE_SHIFT = 2
+# Three-quarter front (walking down and to the right): the face turned a
+# pixel toward the near side, the far eye closer to the edge, a cheek shade.
+SKULL_FQ = ["oSSSSSSeSSSeSsso" if "e" in row else row for row in SKULL]
+SKULL_FQ[9] = SKULL_FQ[9][:12] + "h" + SKULL_FQ[9][13:]
+
+
+def fq_shift(x):
+    """Where a face pixel moves in three-quarter front: the far half two
+    pixels toward the near side, the near half one."""
+    return x + (2 if x < HEAD_X + 8 else 1)
+
+
+def _turned_details(rows):
+    """A front torso turned a little: its collar folds and buckle (f, G, g)
+    moved a pixel toward the near side, cloth or belt filling behind them."""
+    out = []
+    for row in rows:
+        cells = list(row)
+        for i in range(len(cells) - 2, 0, -1):
+            if cells[i] in "fGg" and cells[i + 1] not in "o.":
+                cells[i + 1] = cells[i]
+                cells[i] = "L" if cells[i] in "Gg" else "T"
+        out.append("".join(cells))
+    return out
+# Three-quarter back (walking up and to the right): the back of the head,
+# an ear and a sliver of cheek on the near side.
+SKULL_BQ = [row[:13] + "h" + row[14:] if i in (7, 8) else row for i, row in enumerate(SKULL_BACK)]
+# The views drawn facing right that the game mirrors for the left.
+QUARTER_VIEWS = ("fq", "bq")
 HEAD_X, HEAD_Y = 14, 12
 
 # The torso by build: slight, average, broad. Belt with a buckle, a skirt
@@ -297,6 +326,8 @@ BASE_ROWS = 5
 LEG_X = {"l": 17, "r": 23}
 # In profile the legs stand one before the other under the body.
 LEG_X_SIDE = {"l": 19, "r": 21}
+# In three-quarter the far leg stands a pixel nearer the near one.
+LEG_X_Q = {"l": 18, "r": 23}
 
 
 DEFAULT_BOOT = ["occco", "oBBbo", "oBbbo", "ooooo"]
@@ -307,7 +338,7 @@ def leg(side, trouser_rows, lift=0, dx=0, trouser=None, boot=None, parts=("trous
     moved `dx` sideways: a trouser column (rows from `trouser(index, n)`,
     default plain) and a boot a pixel wider on the outside (`boot` rows).
     In profile both legs stand under the body and the toes point ahead."""
-    x = LEG_X[side] if view != "side" else LEG_X_SIDE[side]
+    x = LEG_X_SIDE[side] if view == "side" else LEG_X_Q[side] if view in QUARTER_VIEWS else LEG_X[side]
     if view == "side":
         side = "r"
     out = {}
@@ -548,8 +579,20 @@ VIEWS = [
     ("idle_side", [F(body=(0, b), view="side") for b in (0, 0, 1, 1)]),
     ("walk_back", _walk_view("back")), ("run_back", _run_view("back")),
     ("walk_side", _walk_view("side")), ("run_side", _run_view("side")),
+    # The diagonals: three-quarter front and back.
+    ("idle_fq", [F(body=(0, b), view="fq") for b in (0, 0, 1, 1)]),
+    ("idle_bq", [F(body=(0, b), view="bq") for b in (0, 0, 1, 1)]),
+    ("walk_fq", _walk_view("fq")), ("run_fq", _run_view("fq")),
+    ("walk_bq", _walk_view("bq")), ("run_bq", _run_view("bq")),
 ]
-ANIMATIONS += CLASS_IDLES + VIEWS
+# Every blow in every view, so a swing, a shot or a spell faces the way
+# it goes: the front frames redrawn from behind, in profile and in the
+# two three-quarter views.
+BLOWS = ("attack", "heavy", "thrust", "smash", "shoot", "cast")
+BLOW_VIEWS = ("back", "side", "fq", "bq")
+_front = dict(ANIMATIONS)
+VIEWED_BLOWS = [("%s_%s" % (blow, view), [dict(frame, view=view) for frame in _front[blow]]) for view in BLOW_VIEWS for blow in BLOWS]
+ANIMATIONS += CLASS_IDLES + VIEWS + VIEWED_BLOWS
 # Where each animation sits in a sheet: [row, first column]. The first
 # fourteen keep their rows; short ones after them share a row in pairs
 # (sheets stay small), matching PlayerAnimator.ROWS.
@@ -557,7 +600,10 @@ LAYOUT = {name: (row, 0) for row, (name, _frames) in enumerate(ANIMATIONS[:14])}
 for k, (name, _frames) in enumerate(CLASS_IDLES):
     LAYOUT[name] = (14 + k // 2, 4 * (k % 2))
 LAYOUT.update({"idle_back": (18, 0), "idle_side": (18, 4), "walk_back": (19, 0), "run_back": (20, 0), "walk_side": (21, 0), "run_side": (22, 0)})
-SHEET_ROWS = 23
+LAYOUT.update({"idle_fq": (23, 0), "idle_bq": (23, 4), "walk_fq": (24, 0), "run_fq": (25, 0), "walk_bq": (26, 0), "run_bq": (27, 0)})
+for k, (name, _frames) in enumerate(VIEWED_BLOWS):
+    LAYOUT[name] = (28 + k, 0)
+SHEET_ROWS = 28 + len(VIEWED_BLOWS)
 
 # How each family carries its weapon when not attacking: [weapon angle].
 # 0 points straight up, 90 ahead, 180 down.
@@ -568,7 +614,8 @@ GRIPS = {
     # Heavy arms hang low at the side, head down, ready to swing up.
     "low": (158, ["greatsword", "executioner", "pulsebrand", "axe", "reaver", "bloodthirst", "club"]),
 }
-GRIP_ROWS = ("idle", "walk", "run", "hurt", "idle_back", "walk_back", "run_back", "idle_side", "walk_side", "run_side")
+GRIP_ROWS = ("idle", "walk", "run", "hurt", "idle_back", "walk_back", "run_back", "idle_side", "walk_side", "run_side",
+             "idle_fq", "walk_fq", "run_fq", "idle_bq", "walk_bq", "run_bq")
 
 
 def grip_angle(name):
@@ -604,6 +651,9 @@ def place(frame, height, build):
         oy = joint[1] + by - up + dy - ay
         arms[side] = (pose, ox, oy, (ox + handx, oy + handy))
     out["arms"] = arms
+    if frame.get("view") in QUARTER_VIEWS:
+        pose, ox, oy, hand = arms["l"]
+        arms["l"] = (pose, ox + 1, oy, (hand[0] + 1, hand[1]))
     if frame.get("view") == "side":
         # In profile the arms hang from the shoulder at the side of the body.
         for side, joint in (("l", JOINT_L_SIDE), ("r", JOINT_R_SIDE)):
@@ -634,7 +684,7 @@ def body_pixels(frame, height, build):
             lift, dx = frame["leg_" + side]
             layers.append(leg(side, max(rows, 1), lift, dx, view=frame.get("view", "front")))
     view = frame.get("view", "front")
-    torso_map = TORSOS_BACK[build] if view == "back" else TORSOS[build]
+    torso_map = TORSOS_BACK[build] if view in ("back", "bq") else _turned_details(TORSOS[build]) if view == "fq" else TORSOS[build]
     torso = {}
     for (x, y), ch in grid(torso_map, TORSO_X[build], TORSO_Y, {c: c for c in "oTtufLlGgPp"}).items():
         torso[(x, y)] = ch
@@ -645,8 +695,11 @@ def body_pixels(frame, height, build):
     for side in ("l", "r"):
         pose, ox, oy, _hand = where["arms"][side]
         arm_layers.append(grid(ARMS[pose][0], ox, oy, {c: c for c in "oTtuSs"}))
-    skull = SKULL_BACK if view == "back" else SKULL_SIDE if view == "side" else SKULL
+    skull = {"back": SKULL_BACK, "side": SKULL_SIDE, "fq": SKULL_FQ, "bq": SKULL_BQ}.get(view, SKULL)
     head = grid(skull, HEAD_X + hx, HEAD_Y + hy, {c: c for c in "oSskhe"})
+    if view in QUARTER_VIEWS:
+        # The far arm behind the body, the near one over it.
+        return layers + [arm_layers[0], torso, arm_layers[1], head]
     if view == "side":
         # The far arm behind the body, the near one over it.
         return layers + [arm_layers[0], torso, arm_layers[1], head]
@@ -2094,6 +2147,17 @@ def view_head(name, pixels, view):
     if view == "front":
         return pixels
     face = name.startswith(FACE_LOOKS)
+    if view == "fq":
+        # The face turned a pixel toward the near side; the rest stays.
+        if face or name == "eyes":
+            return {(fq_shift(x), y): c for (x, y), c in pixels.items() if x >= HEAD_X + 3}
+        return pixels
+    if view == "bq":
+        pixels = view_head(name, pixels, "back")
+        if name.startswith("hair"):
+            # A sliver of the near cheek and ear shows past the hair.
+            return {(x, y): c for (x, y), c in pixels.items() if not (x >= HEAD_X + 13 and SKULL_TOP + 5 <= y <= SKULL_TOP + 9 and c != GREY["o"])}
+        return pixels
     if view == "back":
         if name.startswith("hair"):
             return _hair_from_behind(pixels)
@@ -2123,7 +2187,7 @@ def view_torso(name, pixels, view, build, behind):
     """A torso look or piece from behind or in profile."""
     if view == "side":
         return side_columns(pixels, build)
-    if view == "back" and behind and name.startswith(("cape", "cape_")):
+    if view in ("back", "bq") and behind and name.startswith(("cape", "cape_")):
         # A cape seen from behind covers the back, edge to edge.
         out = dict(pixels)
         rows = {}

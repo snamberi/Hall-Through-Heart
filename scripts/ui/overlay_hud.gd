@@ -213,6 +213,8 @@ func _draw_meter() -> void:
 	var font := UITheme.body_bold()
 	var words := "DPS %s   best %s" % [InventoryMenu._thousands(roundi(dps)), InventoryMenu._thousands(roundi(_peak))]
 	var width := font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-	var box := Rect2(Vector2(_canvas.size.x - width - 34.0, _canvas.size.y - 150.0), Vector2(width + 20.0, 28.0))
+	# Above the pickup feed (bottom right), never over it.
+	var feed_top := _canvas.size.y - 120.0 - PickupFeed.LINES * PickupFeed.LINE_HEIGHT
+	var box := Rect2(Vector2(_canvas.size.x - width - 34.0, feed_top - 40.0), Vector2(width + 20.0, 28.0))
 	_canvas.draw_style_box(UITheme.tooltip_box(), box)
 	_canvas.draw_string(font, box.position + Vector2(10, 19), words, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.GOLD)

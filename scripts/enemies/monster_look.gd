@@ -47,6 +47,9 @@ uniform int pattern = -1;
 uniform float gone = 0.0;
 uniform int way = 0;
 uniform float frame_px = 96.0;
+// How much of the profile's width shows: 1 side-on, less when the
+// creature walks toward or away from us.
+uniform float turn = 1.0;
 // The sprite's own colour and fade (modulate), from the vertex: in the
 // fragment COLOR already holds the texture too.
 varying vec4 tint;
@@ -90,9 +93,20 @@ bool eaten(vec2 local, vec2 cell) {
 }
 
 void fragment() {
-	vec2 cell = floor(UV / TEXTURE_PIXEL_SIZE);
+	vec2 uv = UV;
+	bool off_frame = false;
+	// Turned toward or away from us: the profile drawn narrower by leaving
+	// out whole columns about its middle (nothing blended or stretched).
+	if (turn < 0.999) {
+		float col = mod(floor(uv.x / TEXTURE_PIXEL_SIZE.x), frame_px);
+		float middle = frame_px * 0.5;
+		float source = middle + floor((col - middle + 0.5) / turn);
+		off_frame = source < 0.0 || source >= frame_px;
+		uv.x += (clamp(source, 0.0, frame_px - 1.0) - col) * TEXTURE_PIXEL_SIZE.x;
+	}
+	vec2 cell = floor(uv / TEXTURE_PIXEL_SIZE);
 	vec2 local = mod(cell, frame_px);
-	vec4 here = texture(TEXTURE, UV);
+	vec4 here = texture(TEXTURE, uv);
 	if (here.a > 0.5) {
 		COLOR = here * tint;
 		if (eaten(local, cell)) {
@@ -101,8 +115,8 @@ void fragment() {
 	} else {
 		COLOR = vec4(0.0);
 		if (pattern >= 0 && gone <= 0.0) {
-			float near = texture(TEXTURE, UV + vec2(TEXTURE_PIXEL_SIZE.x, 0.0)).a + texture(TEXTURE, UV - vec2(TEXTURE_PIXEL_SIZE.x, 0.0)).a
-				+ texture(TEXTURE, UV + vec2(0.0, TEXTURE_PIXEL_SIZE.y)).a + texture(TEXTURE, UV - vec2(0.0, TEXTURE_PIXEL_SIZE.y)).a;
+			float near = texture(TEXTURE, uv + vec2(TEXTURE_PIXEL_SIZE.x, 0.0)).a + texture(TEXTURE, uv - vec2(TEXTURE_PIXEL_SIZE.x, 0.0)).a
+				+ texture(TEXTURE, uv + vec2(0.0, TEXTURE_PIXEL_SIZE.y)).a + texture(TEXTURE, uv - vec2(0.0, TEXTURE_PIXEL_SIZE.y)).a;
 			if (near > 0.5) {
 				vec4 colour = edge;
 				float t = TIME;
@@ -130,7 +144,7 @@ void fragment() {
 			}
 		}
 	}
-	if (local_y > water_line) {
+	if (local_y > water_line || off_frame) {
 		COLOR.a = 0.0;
 	}
 }

@@ -79,7 +79,8 @@ func hear(state: Dictionary) -> void:
 	# Seen from the way they are going; at rest, in their class's stance.
 	_figure.set_heading(moving if moving.length() > 20.0 else Vector2.ZERO)
 	var animation := str(state.get("a", "idle"))
-	if animation in ["attack", "heavy", "thrust", "smash", "shoot", "cast", "dodge"]:
+	# A blow arrives with its view ("attack_side"): played as it was seen.
+	if animation.get_slice("_", 0) in ["attack", "heavy", "thrust", "smash", "shoot", "cast", "dodge"]:
 		if _pose != animation:
 			_strike_left = 0.4
 			_figure.pose(animation, 1.0)

@@ -285,7 +285,9 @@ func _ready() -> void:
 	_animator.rebuild()
 	_look = Look.dress(self, _animator)
 	# Walkers are stopped by walls; fliers by nothing.
-	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION | TerrainTiles.CLIFF_COLLISION
+	# Flyers pass over cliffs and water, but never through walls: a bat in a
+	# dungeon, a raid or a portal's arena stays inside it.
+	collision_mask = TerrainTiles.WALL_COLLISION if _data.get("flying", false) else TerrainTiles.WALL_COLLISION | TerrainTiles.CLIFF_COLLISION
 	_add_nameplate(rank_data, size)
 	StatusFX.attach(self, func() -> Array: return _statuses.keys(), 40.0 * size, body_radius)
 	health.died.connect(_on_died)
@@ -314,7 +316,26 @@ func is_area_attack() -> bool:
 	return _attack["kind"] in ["slam", "cloud", "explode", "spin", "burrow"]
 
 
+## Walking toward or away from us, a creature shows a narrower profile, as
+## if turned (in tenths, so its pixels do not shimmer); side-on, its full
+## width. Upright folk (bandits, guards) are drawn in eight views instead.
+var _turn := 1.0
+
+
+func _turn_to_heading() -> void:
+	if _look == null:
+		return
+	var heading := velocity
+	var want := 1.0
+	if heading.length() > 15.0:
+		var upright := absf(heading.y) / heading.length()
+		want = 1.0 - 0.3 * smoothstep(0.6, 0.95, upright)
+	_turn = move_toward(_turn, snappedf(want, 0.1), 0.05)
+	_look.set_shader_parameter("turn", snappedf(_turn, 0.1))
+
+
 func _physics_process(delta: float) -> void:
+	_turn_to_heading()
 	if net_puppet:
 		_puppet_step(delta)
 		return
@@ -1131,9 +1152,20 @@ func _try_blink(delta: float, to_target: Vector2, distance: float) -> void:
 	if _blink_left > 0.0 or distance < 140.0:
 		return
 	_blink_left = randf_range(3.5, 5.5)
+	var landing := target.global_position - to_target.normalized().rotated(randf_range(-1.2, 1.2)) * 150.0
+	# Never through a wall: only to a spot in plain sight of both.
+	if not _clear_line(global_position, landing) or not _clear_line(landing, target.global_position):
+		return
 	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(0.7, 0.9, 1.0), 40.0)
-	global_position = target.global_position - to_target.normalized().rotated(randf_range(-1.2, 1.2)) * 150.0
+	global_position = landing
 	RingBurst.spawn(get_parent(), global_position + Vector2(0, -14), Color(0.7, 0.9, 1.0), 40.0)
+
+
+## Whether nothing solid (a wall) stands between two points.
+func _clear_line(from: Vector2, to: Vector2) -> bool:
+	var query := PhysicsRayQueryParameters2D.create(from, to, TerrainTiles.WALL_COLLISION)
+	query.exclude = [get_rid()]
+	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
 
 ## The modifiers that act on their own over time.

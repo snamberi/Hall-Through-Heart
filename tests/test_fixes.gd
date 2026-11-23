@@ -110,3 +110,19 @@ func test_quality_of_life_extras(t: TestContext) -> void:
 	player.auto_running = true
 	player.take_damage(1.0, player.global_position + Vector2(20, 0))
 	t.check(not player.auto_running, "a blow stops auto-run")
+
+
+func test_eight_directions_and_walls(t: TestContext) -> void:
+	var views := {Vector2(0, 1): "front", Vector2(1, 1): "fq", Vector2(1, 0): "side", Vector2(1, -1): "bq", Vector2(0, -1): "back",
+		Vector2(-1, -1): "bq", Vector2(-1, 0): "side", Vector2(-1, 1): "fq"}
+	for heading: Vector2 in views:
+		t.equal(PlayerAnimator.view_of(heading * 100.0), views[heading], "heading %s is seen %s" % [heading, views[heading]])
+	var frames := SheetAnimations.build(PlayerAnimator.SHEET, PlayerAnimator.FRAME_SIZE, PlayerAnimator.ROWS)
+	for name in ["walk_fq", "walk_bq", "attack_side", "shoot_back", "cast_bq", "thrust_fq"]:
+		t.check(frames.has_animation(name), "the sheet has %s" % name)
+	var main := await t.game()
+	var spawner = main.get_node("Enemies")
+	var bat: Enemy = spawner.spawn_at(main.get_node("Player").global_position + Vector2(200, 0), 1, Enemy.Rank.NORMAL, "carrion_bat")
+	await main.get_tree().physics_frame
+	t.check(EnemyDB.ENEMIES["carrion_bat"].get("flying", false), "the bat flies")
+	t.check(bat.collision_mask & TerrainTiles.WALL_COLLISION != 0, "a flying monster is stopped by walls")

@@ -173,7 +173,7 @@ func hold_tool(item_id: String) -> bool:
 ## set_heading), or any other row; looping.
 func pose(animation_name: String, speed: float = 1.0) -> void:
 	_body.speed_scale = speed
-	if animation_name in ["walk", "run", "idle"] and _view != "front":
+	if (animation_name in ["walk", "run", "idle"] or animation_name in PlayerAnimator.BLOWS) and _view != "front":
 		animation_name += "_" + _view
 	elif animation_name == "idle" and stance != "idle" and _body.sprite_frames.has_animation(stance):
 		animation_name = stance
@@ -181,7 +181,7 @@ func pose(animation_name: String, speed: float = 1.0) -> void:
 		animation_name = animation_name.get_slice("_", 0)
 	if _body.animation != animation_name:
 		_body.play(animation_name)
-		var from_behind := animation_name.ends_with("_back")
+		var from_behind := animation_name.ends_with("_back") or animation_name.ends_with("_bq")
 		for entry in Appearance.LAYER_ORDER:
 			if entry[1] and _layers.has(entry[0]):
 				(_layers[entry[0]] as CanvasItem).show_behind_parent = not from_behind

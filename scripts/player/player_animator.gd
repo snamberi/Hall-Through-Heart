@@ -42,17 +42,64 @@ const ROWS: Array[Dictionary] = [
 	{"name": "run_back", "frames": 8, "fps": 12.0, "loop": true, "row": 20},
 	{"name": "walk_side", "frames": 8, "fps": 11.0, "loop": true, "row": 21},
 	{"name": "run_side", "frames": 8, "fps": 12.0, "loop": true, "row": 22},
+	# The diagonals, seen three-quarter from the front and from behind.
+	{"name": "idle_fq", "frames": 4, "fps": 6.0, "loop": true, "row": 23, "col": 0},
+	{"name": "idle_bq", "frames": 4, "fps": 6.0, "loop": true, "row": 23, "col": 4},
+	{"name": "walk_fq", "frames": 8, "fps": 11.0, "loop": true, "row": 24},
+	{"name": "run_fq", "frames": 8, "fps": 12.0, "loop": true, "row": 25},
+	{"name": "walk_bq", "frames": 8, "fps": 11.0, "loop": true, "row": 26},
+	{"name": "run_bq", "frames": 8, "fps": 12.0, "loop": true, "row": 27},
+	# Every blow in every view (tools/generate_people.py VIEWED_BLOWS).
+	{"name": "attack_back", "frames": 6, "fps": 15.0, "loop": false, "row": 28},
+	{"name": "heavy_back", "frames": 8, "fps": 13.0, "loop": false, "row": 29},
+	{"name": "thrust_back", "frames": 6, "fps": 15.0, "loop": false, "row": 30},
+	{"name": "smash_back", "frames": 7, "fps": 13.0, "loop": false, "row": 31},
+	{"name": "shoot_back", "frames": 6, "fps": 13.0, "loop": false, "row": 32},
+	{"name": "cast_back", "frames": 6, "fps": 13.0, "loop": false, "row": 33},
+	{"name": "attack_side", "frames": 6, "fps": 15.0, "loop": false, "row": 34},
+	{"name": "heavy_side", "frames": 8, "fps": 13.0, "loop": false, "row": 35},
+	{"name": "thrust_side", "frames": 6, "fps": 15.0, "loop": false, "row": 36},
+	{"name": "smash_side", "frames": 7, "fps": 13.0, "loop": false, "row": 37},
+	{"name": "shoot_side", "frames": 6, "fps": 13.0, "loop": false, "row": 38},
+	{"name": "cast_side", "frames": 6, "fps": 13.0, "loop": false, "row": 39},
+	{"name": "attack_fq", "frames": 6, "fps": 15.0, "loop": false, "row": 40},
+	{"name": "heavy_fq", "frames": 8, "fps": 13.0, "loop": false, "row": 41},
+	{"name": "thrust_fq", "frames": 6, "fps": 15.0, "loop": false, "row": 42},
+	{"name": "smash_fq", "frames": 7, "fps": 13.0, "loop": false, "row": 43},
+	{"name": "shoot_fq", "frames": 6, "fps": 13.0, "loop": false, "row": 44},
+	{"name": "cast_fq", "frames": 6, "fps": 13.0, "loop": false, "row": 45},
+	{"name": "attack_bq", "frames": 6, "fps": 15.0, "loop": false, "row": 46},
+	{"name": "heavy_bq", "frames": 8, "fps": 13.0, "loop": false, "row": 47},
+	{"name": "thrust_bq", "frames": 6, "fps": 15.0, "loop": false, "row": 48},
+	{"name": "smash_bq", "frames": 7, "fps": 13.0, "loop": false, "row": 49},
+	{"name": "shoot_bq", "frames": 6, "fps": 13.0, "loop": false, "row": 50},
+	{"name": "cast_bq", "frames": 6, "fps": 13.0, "loop": false, "row": 51},
 ]
-## Which way the figure is seen while it moves: "front" (coming toward us),
-## "back" (going away) or "side", by its heading.
+## The blows that have a row for each view.
+const BLOWS: Array[String] = ["attack", "heavy", "thrust", "smash", "shoot", "cast"]
+## Which way the figure is seen, of eight, by its heading: "front" (coming
+## toward us), "fq" (three-quarter front, toward us and to a side), "side"
+## (in profile), "bq" (three-quarter back) or "back" (going away). The
+## sideways views are drawn facing right and mirrored for the left.
 static func view_of(heading: Vector2) -> String:
-	if heading.length() < 1.0:
+	if heading.length() < 0.01:
 		return "front"
-	if heading.y < -absf(heading.x) * 0.9:
+	var angle := rad_to_deg(atan2(heading.y, absf(heading.x)))
+	if angle < -67.5:
 		return "back"
-	if absf(heading.x) > absf(heading.y) * 1.1:
+	if angle < -22.5:
+		return "bq"
+	if angle <= 22.5:
 		return "side"
+	if angle <= 67.5:
+		return "fq"
 	return "front"
+
+
+## The row for a blow in the view now shown, if the sheet has it.
+func _viewed(row: String) -> String:
+	var viewed := row + "_" + _view
+	return viewed if _view != "front" and sprite_frames and sprite_frames.has_animation(viewed) else row
 ## Below this speed the player walks rather than runs, in pixels/second.
 const RUN_SPEED := 150.0
 
@@ -524,6 +571,10 @@ func play_attack(duration: float, heavy: bool = false) -> void:
 	_busy = rows[1] if heavy else rows[0]
 	if not sprite_frames or not sprite_frames.has_animation(_busy):
 		_busy = "heavy" if heavy else "attack"
+	# The blow faces where it is aimed, in eight directions.
+	if _player and not _player.swimming:
+		_view = view_of(_player.facing)
+		_busy = _viewed(_busy)
 	_play_for(_busy, duration, true)
 
 
@@ -568,8 +619,9 @@ func _choose_animation(delta: float) -> void:
 			return
 		Player.State.GATHER:
 			# Keep swinging for as long as the work takes.
-			if animation != "attack" or not is_playing():
-				_play_for("attack", 0.55, true)
+			var swing := _viewed("attack")
+			if animation != swing or not is_playing():
+				_play_for(swing, 0.55, true)
 			_busy = ""
 			return
 		Player.State.DODGE:
@@ -624,10 +676,13 @@ func _loop(animation_name: String) -> void:
 ## Seen from behind, a cape, wings and tail hang over the back instead of
 ## behind the body.
 func _turn_behind_layers() -> void:
-	var from_behind := String(animation).ends_with("_back")
+	var from_behind := String(animation).ends_with("_back") or String(animation).ends_with("_bq")
 	for layer in LAYERS:
 		if layer["behind"] and _layers.has(layer["name"]):
 			(_layers[layer["name"]] as CanvasItem).show_behind_parent = not from_behind
+	# Seen from behind, what is held is in front of the body, away from us.
+	if _layers.has("weapon"):
+		_layers["weapon"].show_behind_parent = from_behind
 
 
 func _play_for(animation_name: String, duration: float, restart: bool = false) -> void:
@@ -636,6 +691,7 @@ func _play_for(animation_name: String, duration: float, restart: bool = false) -
 	speed_scale = SheetAnimations.seconds(sprite_frames, animation_name) / maxf(duration, 0.05)
 	stop()
 	play(animation_name)
+	_turn_behind_layers()
 
 
 func _on_animation_finished() -> void:
