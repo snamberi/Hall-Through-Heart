@@ -57,6 +57,10 @@ func ride(id: String) -> void:
 	var data: Dictionary = MOUNTS[id]
 	sprite_frames = SheetAnimations.build(load("res://assets/sprites/mounts/%s.png" % data["sheet"]), 96, ROWS)
 	_front.sprite_frames = SheetAnimations.build(load("res://assets/sprites/mounts/%s_front.png" % data["sheet"]), 96, ROWS)
+	# The rider's near leg is drawn on the near side in the body's own
+	# trouser colours: the rider's palette makes them theirs.
+	var body := _player.get_node_or_null("Visual/Sprite") as CanvasItem
+	_front.material = body.material if body else null
 	modulate = Color.WHITE
 	scale = Vector2.ONE
 	position = Vector2(2.0, -19.0)

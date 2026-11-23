@@ -901,7 +901,11 @@ HUSK_REEL = {"root_pivot": (30, 41), "shadow": (22, 11, 0), "torso": (0, 0, -15)
              "front_arm": (0, 0, -40), "back_arm": (0, 0, -40)}
 HUSK_FALLEN = {"root_pivot": (30, 41), "shadow": (12, 18, 0), "root": (0, -19, -90), "head": (0, 0, -20),
                "front_arm": (0, 0, -60), "back_arm": (0, 0, 30), "leg_l": (0, 0, 15), "leg_r": (0, 0, -20)}
-HUSK_HURT = [blend({}, dict(HUSK_REEL, root=(-2, 0, 0)), t) for t in (0.7, 1.0, 0.4)]
+# A blow lands: squashed down and wide on the impact, stretched tall as it
+# recoils, then settling. Scaled about the feet when the frame is drawn, so
+# every pixel is drawn fresh (nothing is stretched in the game).
+HIT_SQUASH = [(1.16, 0.84), (0.9, 1.12), (1.05, 0.96)]
+HUSK_HURT = [dict(blend({}, dict(HUSK_REEL, root=(-2, 0, 0)), t), root_scale=sq) for t, sq in zip((0.7, 1.0, 0.4), HIT_SQUASH)]
 HUSK_DEATH = keyframes([(0, HUSK_STAND), (1, HUSK_REEL), (5, HUSK_FALLEN), (7, HUSK_FALLEN)])
 
 # Row order here is the row order in every sheet. The game lists the same
@@ -1147,7 +1151,7 @@ QUAD_STAND = {"root_pivot": (22, 41), "shadow": (22, 13, 0)}
 QUAD_REEL = {"root_pivot": (22, 41), "shadow": (22, 13, 0), "root": (-2, 0, 0), "body": (0, 0, -10), "head": (0, 0, -25)}
 QUAD_FALLEN = {"root_pivot": (22, 41), "shadow": (22, 15, 0), "root": (0, -9, 178), "root_pivot": (22, 34), "head": (0, 0, 20),
                "leg_bl": (0, 0, 25), "leg_br": (0, 0, -20), "leg_fl": (0, 0, 30), "leg_fr": (0, 0, -25)}
-QUAD_HURT = [blend({}, QUAD_REEL, t) for t in (0.7, 1.0, 0.4)]
+QUAD_HURT = [dict(blend({}, QUAD_REEL, t), root_scale=sq) for t, sq in zip((0.7, 1.0, 0.4), HIT_SQUASH)]
 QUAD_DEATH = keyframes([(0, dict(QUAD_STAND, root_pivot=(22, 34))), (1, dict(QUAD_REEL, root_pivot=(22, 34))), (5, QUAD_FALLEN), (7, QUAD_FALLEN)])
 QUAD_ANIMATIONS = [("idle", QUAD_IDLE), ("walk", QUAD_WALK), ("windup", QUAD_WINDUP), ("lunge", QUAD_LUNGE), ("hurt", QUAD_HURT), ("death", QUAD_DEATH)]
 
@@ -1164,7 +1168,7 @@ FLOAT_WALK = cycle(8, lambda s: _hover(round(-2 * abs(s)), flap=28 * s, sway=-12
 FLOAT_WINDUP = [_hover(-round(6 * t), dx=-round(2 * t) + (i % 2 if i > 2 else 0), turn=-10 * t, flap=-45 * t, sway=15 * t)
                 for i, t in enumerate(k / 5 for k in range(6))]
 FLOAT_LUNGE = [_hover(round(4 * k) - 4, dx=round(8 * k), turn=22 * k, flap=40 * k, sway=-25 * k) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
-FLOAT_HURT = [_hover(dx=-round(3 * t), turn=-14 * t, flap=-25 * t) for t in (0.7, 1.0, 0.4)]
+FLOAT_HURT = [dict(_hover(dx=-round(3 * t), turn=-14 * t, flap=-25 * t), root_scale=sq) for t, sq in zip((0.7, 1.0, 0.4), HIT_SQUASH)]
 FLOAT_DEATH = keyframes([(0, _hover()), (1, _hover(dx=-2, turn=-14, flap=-30)), (5, _hover(dy=17, turn=80, flap=55, shadow=7)),
                          (7, _hover(dy=18, turn=86, flap=60, shadow=7))])
 FLOAT_ANIMATIONS = [("idle", FLOAT_IDLE), ("walk", FLOAT_WALK), ("windup", FLOAT_WINDUP), ("lunge", FLOAT_LUNGE), ("hurt", FLOAT_HURT), ("death", FLOAT_DEATH)]
@@ -1183,6 +1187,37 @@ SLIME_LUNGE = [_squash(1.0 + 0.3 * k, 1.0 - 0.2 * k, round(7 * k), -round(6 * k)
 SLIME_HURT = [_squash(1.15, 0.8, -1), _squash(1.25, 0.7, -2), _squash(1.1, 0.9, -1)]
 SLIME_DEATH = [_squash(1.0 + 0.1 * i, max(1.0 - 0.13 * i, 0.12)) for i in range(8)]
 SLIME_ANIMATIONS = [("idle", SLIME_IDLE), ("walk", SLIME_WALK), ("windup", SLIME_WINDUP), ("lunge", SLIME_LUNGE), ("hurt", SLIME_HURT), ("death", SLIME_DEATH)]
+
+# --- a tamed monster at its ease (pets): settled down resting, a scratch,
+# and a long stretch. Rows 7-9 of every sheet (monsters never play them).
+def _settle(pose, breath):
+    """Four frames: going down, down, and breathing."""
+    return [blend({}, pose, 0.55), pose, blend(pose, dict(pose, **breath), 1.0), pose]
+
+
+HUSK_SIT = {"root": (0, 6, 0), "leg_l": (1, -1, -72), "leg_r": (1, -1, -78), "torso": (0, 0, -5), "head": (0, 0, 7),
+            "front_arm": (0, 0, 18), "back_arm": (0, 0, -8)}
+HUSK_REST = _settle(HUSK_SIT, {"torso": (0, 1, -5)})
+HUSK_SCRATCH = [dict(HUSK_SIT, front_arm=(0, -1, a), head=(0, 0, 14)) for a in (-138, -156, -140, -158)]
+HUSK_STRETCH = [blend({}, s_, t) for s_, t in [({"front_arm": (0, -1, -165), "back_arm": (0, -1, 165), "torso": (0, -1, -6), "root": (0, -1, 0)}, k)
+                                             for k in (0.5, 1.0, 1.0, 0.5)]]
+QUAD_LIE = {"root": (0, 6, 0), "leg_bl": (0, -2, 76), "leg_br": (0, -2, 82), "leg_fl": (2, -2, -82), "leg_fr": (2, -2, -76),
+            "head": (0, 2, 10), "tail": (0, 1, 22), "shadow": (22, 15, 0)}
+QUAD_REST = _settle(QUAD_LIE, {"body": (0, 1, 0)})
+QUAD_SCRATCH = [{"root": (0, 4, 0), "body": (0, 0, -18), "leg_bl": (-1, -2, 78), "leg_br": (3, -10, a), "leg_fl": (0, 0, -6),
+                 "leg_fr": (0, 0, -10), "head": (0, 0, 24), "tail": (0, 2, 30), "shadow": (22, 13, 0)} for a in (-62, -80, -64, -82)]
+QUAD_STRETCH = [blend({}, {"root": (0, 2, 0), "body": (0, 0, 11), "leg_fl": (1, 0, -52), "leg_fr": (1, 0, -46), "head": (0, 2, 6),
+                           "tail": (0, 0, -28)}, k) for k in (0.5, 1.0, 1.0, 0.5)]
+FLOAT_REST = [_hover(9 + d, flap=-40, sway=10, shadow=11) for d in (-3, 0, 0, -1)]
+FLOAT_SCRATCH = [dict(_hover(-1, flap=f), head=(0, 0, 18)) for f in (32, 46, 30, 48)]
+FLOAT_STRETCH = [_hover(-round(2 * k), flap=62 * k, sway=-10 * k) for k in (0.5, 1.0, 1.0, 0.5)]
+SLIME_REST = [_squash(1.1, 0.9), _squash(1.2, 0.8), _squash(1.23, 0.77), _squash(1.2, 0.8)]
+SLIME_SCRATCH = [_squash(1.06, 0.95, 1), _squash(0.95, 1.06, -1), _squash(1.06, 0.95, 1), _squash(0.95, 1.06, -1)]
+SLIME_STRETCH = [_squash(0.92, 1.12), _squash(0.85, 1.24), _squash(0.85, 1.24), _squash(0.94, 1.1)]
+for _animations, (_rest, _scratch, _stretch) in (
+        (HUSK_ANIMATIONS, (HUSK_REST, HUSK_SCRATCH, HUSK_STRETCH)), (QUAD_ANIMATIONS, (QUAD_REST, QUAD_SCRATCH, QUAD_STRETCH)),
+        (FLOAT_ANIMATIONS, (FLOAT_REST, FLOAT_SCRATCH, FLOAT_STRETCH)), (SLIME_ANIMATIONS, (SLIME_REST, SLIME_SCRATCH, SLIME_STRETCH))):
+    _animations += [("rest", _rest), ("scratch", _scratch), ("stretch", _stretch)]
 
 # --- biome families
 
@@ -1526,10 +1561,12 @@ CRAB_IDLE = [_crab(claws=c, bob=b) for c, b in ((0, 0), (0.25, 0), (0.5, 1), (0.
 CRAB_WALK = cycle(8, lambda s: _crab(step=s, bob=-round(abs(s)), claws=0.2))
 CRAB_WINDUP = [_crab(claws=1.2 * t, bob=round(2 * t), dx=(i % 2 if i > 2 else 0)) for i, t in enumerate(k / 5 for k in range(6))]
 CRAB_LUNGE = [_crab(claws=1.2 - 1.6 * k, dx=round(7 * k), bob=-round(3 * k), snap=k, lean=6 * k) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
-CRAB_HURT = [_crab(dx=-round(3 * t), lean=-10 * t, claws=-0.4 * t) for t in (0.7, 1.0, 0.4)]
+CRAB_HURT = [dict(_crab(dx=-round(3 * t), lean=-10 * t, claws=-0.4 * t), root_scale=sq) for t, sq in zip((0.7, 1.0, 0.4), HIT_SQUASH)]
 CRAB_FALLEN = dict(_crab(step=1.0, claws=1.4, shadow=16), root=(0, -8, 180), root_pivot=(22, 34))
 CRAB_DEATH = keyframes([(0, dict(_crab(), root_pivot=(22, 34))), (1, dict(_crab(lean=-12, claws=0.6), root_pivot=(22, 34))), (5, CRAB_FALLEN), (7, CRAB_FALLEN)])
-CRAB_ANIMATIONS = [("idle", CRAB_IDLE), ("walk", CRAB_WALK), ("windup", CRAB_WINDUP), ("lunge", CRAB_LUNGE), ("hurt", CRAB_HURT), ("death", CRAB_DEATH)]
+CRAB_ANIMATIONS = [("idle", CRAB_IDLE), ("walk", CRAB_WALK), ("windup", CRAB_WINDUP), ("lunge", CRAB_LUNGE), ("hurt", CRAB_HURT), ("death", CRAB_DEATH),
+                   ("rest", [_crab(bob=b, claws=-0.3) for b in (1, 2, 2, 2)]), ("scratch", [_crab(claws=c, bob=1) for c in (0.9, 0.3, 0.9, 0.3)]),
+                   ("stretch", [_crab(claws=c, bob=-1) for c in (0.8, 1.4, 1.4, 0.8)])]
 
 # A toad in profile: fat warty body, bulging eye, a folded hind leg that
 # kicks straight when it hops, and a short front leg.
@@ -1564,7 +1601,10 @@ TOAD_LUNGE = [_toad(1.0 - 0.06 * k, 1.0 + 0.08 * k, round(7 * k), -round(6 * k),
 TOAD_HURT = [_toad(1.12, 0.84, -1), _toad(1.2, 0.74, -2), _toad(1.08, 0.92, -1)]
 TOAD_FALLEN = dict(_toad(1.05, 0.9, kick=0.9, reach=0.8, shadow=14), root=(0, -9, 178), root_pivot=(22, 33))
 TOAD_DEATH = keyframes([(0, dict(_toad(), root_pivot=(22, 33))), (1, dict(_toad(1.1, 0.86, -2), root_pivot=(22, 33))), (5, TOAD_FALLEN), (7, TOAD_FALLEN)])
-TOAD_ANIMATIONS = [("idle", TOAD_IDLE), ("walk", TOAD_WALK), ("windup", TOAD_WINDUP), ("lunge", TOAD_LUNGE), ("hurt", TOAD_HURT), ("death", TOAD_DEATH)]
+TOAD_ANIMATIONS = [("idle", TOAD_IDLE), ("walk", TOAD_WALK), ("windup", TOAD_WINDUP), ("lunge", TOAD_LUNGE), ("hurt", TOAD_HURT), ("death", TOAD_DEATH),
+                   ("rest", [_toad(1.12, 0.86), _toad(1.18, 0.8), _toad(1.2, 0.78), _toad(1.18, 0.8)]),
+                   ("scratch", [_toad(1.0, 1.0, kick=k) for k in (0.5, 0.8, 0.5, 0.8)]),
+                   ("stretch", [_toad(0.94, 1.08, reach=r) for r in (0.5, 1.0, 1.0, 0.5)])]
 WILDLIFE = {
     "deer": (DEER, QUAD_ORDER, QUAD_ANIMATIONS),
     "wild_hare": (WILD_HARE, QUAD_ORDER, QUAD_ANIMATIONS),
@@ -3293,6 +3333,9 @@ def main():
     generate_mounts.main()
     import generate_people
     generate_people.main()
+    # The player's summoned allies (a Necromancer's dead, a familiar).
+    import generate_minions
+    generate_minions.main()
     draw_terrain()
 
     os.makedirs(os.path.join(ROOT, "icons"), exist_ok=True)

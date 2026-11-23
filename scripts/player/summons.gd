@@ -12,12 +12,12 @@ extends Node2D
 
 const LIFETIME := 180.0
 const KINDS := {
-	"zombie": {"name": "Risen Dead", "species": "husk", "tint": Color(0.62, 0.86, 0.55), "power": 0.6, "speed": 120.0, "gap": 1.3,
+	"zombie": {"name": "Risen Dead", "species": "risen_dead", "tint": Color.WHITE, "power": 0.6, "speed": 120.0, "gap": 1.3,
 		"reach": 34.0, "ranged": false, "rise": true},
-	"skeleton_archer": {"name": "Bone Archer", "species": "bone_archer", "tint": Color(0.95, 0.95, 0.88), "power": 0.8, "speed": 105.0, "gap": 1.6,
-		"reach": 280.0, "ranged": true, "rise": true, "shot": Color(0.95, 0.92, 0.8)},
-	"familiar": {"name": "Familiar", "species": "ember_wisp", "tint": Color(0.78, 0.62, 1.0), "power": 0.9, "speed": 170.0, "gap": 1.2,
-		"reach": 260.0, "ranged": true, "rise": false, "shot": Color(0.78, 0.62, 1.0)},
+	"skeleton_archer": {"name": "Bound Archer", "species": "bound_archer", "tint": Color.WHITE, "power": 0.8, "speed": 105.0, "gap": 1.6,
+		"reach": 280.0, "ranged": true, "rise": true, "shot": Color(0.82, 0.62, 1.0)},
+	"familiar": {"name": "Familiar", "species": "familiar", "tint": Color.WHITE, "power": 0.9, "speed": 170.0, "gap": 1.2,
+		"reach": 260.0, "ranged": true, "rise": false, "shot": Color(0.72, 0.94, 1.0)},
 }
 ## How far from the player minions go looking for a fight.
 const LEASH := 420.0

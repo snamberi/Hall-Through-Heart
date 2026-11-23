@@ -61,6 +61,21 @@ var _wander := Vector2.ZERO
 var _wander_left := 0.0
 var _hearts: Array = []
 var _bob := 0.0
+## At its ease while you stand about: now and then a scratch or a yawn (a
+## tamed monster stretches instead), and after a while it settles down and
+## sleeps, until you move on.
+var _idle := 0.0
+var _fidget := ""
+var _fidget_left := 0.0
+var _next_fidget := 5.0
+## Monster sheets drawn with the resting rows (generate_art.py).
+var _has_rest_rows := false
+const SLEEP_AFTER := 16.0
+const PET_ROWS: Array[Dictionary] = [
+	{"name": "rest", "frames": 4, "fps": 3.0, "loop": false},
+	{"name": "scratch", "frames": 4, "fps": 9.0, "loop": true},
+	{"name": "stretch", "frames": 4, "fps": 4.0, "loop": false},
+]
 
 
 func _ready() -> void:
@@ -483,7 +498,12 @@ func _refresh_look() -> void:
 	else:
 		_critter.visible = false
 		_sprite.visible = true
-		_sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet(pet["species"]), 96, EnemyAnimator.ROWS)
+		var sheet := EnemyDB.sheet(pet["species"])
+		_has_rest_rows = sheet.get_height() >= 96 * (EnemyAnimator.ROWS.size() + PET_ROWS.size())
+		var rows: Array[Dictionary] = EnemyAnimator.ROWS.duplicate()
+		if _has_rest_rows:
+			rows.append_array(PET_ROWS)
+		_sprite.sprite_frames = SheetAnimations.build(sheet, 96, rows)
 		# A tamed monster is smaller than its wild kin, and grows a little with level.
 		var size := (0.58 + 0.14 * int(pet["level"]) / float(MAX_LEVEL)) * float(EnemyDB.ENEMIES[pet["species"]].get("size", 1.0))
 		_sprite.scale = Vector2(size, size)
@@ -527,6 +547,8 @@ func _draw() -> void:
 	if apart > 0.02:
 		draw_string_outline(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 13, 3, Color(0, 0, 0, 0.8 * apart))
 		draw_string(font, Vector2(-60, top), label, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 13, Color(0.7, 1.0, 0.72, apart))
+	if _fidget == "sleep":
+		_draw_sleep(pet)
 	for heart: Array in _hearts:
 		if heart[1] < 0.0:
 			continue
@@ -536,6 +558,20 @@ func _draw() -> void:
 		draw_circle(at + Vector2(-2, 0), 2.6, color)
 		draw_circle(at + Vector2(2, 0), 2.6, color)
 		draw_colored_polygon(PackedVector2Array([at + Vector2(-4.4, 1), at + Vector2(4.4, 1), at + Vector2(0, 6)]), color)
+
+
+## Asleep: little z's drifting up from its head, drawn pixel by pixel.
+func _draw_sleep(pet: Dictionary) -> void:
+	var head := Vector2(6, -22.0 if pet["kind"] == "critter" else roundf(-40.0 * _sprite.scale.y - 4.0))
+	# A four-by-four Z: three pixels are too few to read as a letter.
+	const Z := [[0, 0], [1, 0], [2, 0], [3, 0], [2, 1], [1, 2], [0, 3], [1, 3], [2, 3], [3, 3]]
+	for k in 3:
+		var phase := fmod(_bob * 0.45 + k / 3.0, 1.0)
+		var at := (head + Vector2(roundf(phase * 8.0 + sin(phase * 6.0) * 2.0), -roundf(phase * 18.0))).round()
+		var size := 1.0 if k % 2 == 0 else 2.0
+		var colour := Color(0.85, 0.92, 1.0, 0.9 * (1.0 - phase))
+		for dot: Array in Z:
+			draw_rect(Rect2(at + Vector2(dot[0], dot[1]) * size, Vector2(size, size)), colour)
 
 
 ## The mark of a Name: a small gold diamond over the head, and with each
@@ -583,8 +619,12 @@ func _physics_process(delta: float) -> void:
 	var resting := _player.velocity.length() < 10.0
 	var goal := _player.global_position + Vector2(-34.0 * signf(_player.facing.x if _player.facing.x != 0.0 else 1.0), 12.0)
 	var fetching := _fetch_goal()
+	_update_fidget(delta, resting and fetching == Vector2.INF and not lunging)
 	if fetching != Vector2.INF:
 		goal = fetching
+	elif _fidget != "":
+		# Busy with itself: it stays where it is.
+		goal = global_position
 	elif resting:
 		_wander_left -= delta
 		if _wander_left <= 0.0:
@@ -606,7 +646,17 @@ func _physics_process(delta: float) -> void:
 	if pet["kind"] == "critter":
 		var base := Critter.KINDS.find(pet["species"]) * Critter.FRAMES
 		var hop := sin(_bob * 11.0)
-		if moving:
+		if _fidget != "" and not moving:
+			var still := base + Critter.FIDGETS
+			match _fidget:
+				"scratch":
+					_critter.frame = still + int(_bob * 9.0) % 2
+				"yawn":
+					_critter.frame = still + 2
+				"sleep":
+					_critter.frame = still + 3
+			_critter.position.y = -10.0
+		elif moving:
 			_critter.frame = base + (2 if cos(_bob * 11.0) * signf(hop) > 0.0 else 3)
 			_critter.position.y = -10.0 - absf(hop) * 5.0
 		else:
@@ -616,6 +666,8 @@ func _physics_process(delta: float) -> void:
 			_critter.flip_h = _velocity.x < 0.0
 	else:
 		var wanted := "walk" if moving else "idle"
+		if _fidget != "" and not moving and _has_rest_rows:
+			wanted = {"scratch": "scratch", "yawn": "stretch", "sleep": "rest"}[_fidget]
 		if _sprite.animation != wanted and not lunging:
 			_sprite.play(wanted)
 		if absf(_velocity.x) > 4.0 and not lunging:
@@ -623,6 +675,32 @@ func _physics_process(delta: float) -> void:
 	_fetch()
 	if pet["kind"] == "monster":
 		_fight(pet, delta)
+
+
+## Its fidgets while you stand about: a scratch or a yawn every few
+## seconds, and after a while, sleep. Anything else wakes it.
+func _update_fidget(delta: float, at_ease: bool) -> void:
+	if not at_ease:
+		_idle = 0.0
+		_fidget = ""
+		_next_fidget = randf_range(4.0, 7.0)
+		return
+	_idle += delta
+	if _fidget == "sleep":
+		return
+	if _idle > SLEEP_AFTER:
+		_fidget = "sleep"
+		return
+	if _fidget != "":
+		_fidget_left -= delta
+		if _fidget_left <= 0.0:
+			_fidget = ""
+		return
+	_next_fidget -= delta
+	if _next_fidget <= 0.0:
+		_next_fidget = randf_range(4.0, 8.0)
+		_fidget = "scratch" if randf() < 0.55 else "yawn"
+		_fidget_left = 1.4 if _fidget == "scratch" else 1.1
 
 
 ## Where the nearest dropped thing lies, if the pet should run to it.

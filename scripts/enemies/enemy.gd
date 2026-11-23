@@ -194,6 +194,8 @@ var net_last_peer := 0
 ## Where the copy is heading, and when it last heard.
 var _net_goal := Vector2.INF
 var _net_heard := 0.0
+## Its rank's outline and the way it dies (MonsterLook).
+var _look: ShaderMaterial
 
 @onready var health: Health = $Health
 @onready var _visual: Node2D = $Visual
@@ -273,6 +275,7 @@ func _ready() -> void:
 	_visual.modulate = _tint
 	_animator.sheet = EnemyDB.sheet(enemy_id)
 	_animator.rebuild()
+	_look = MonsterLook.dress(self, _animator)
 	# Walkers are stopped by walls; fliers by nothing.
 	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION
 	_add_nameplate(rank_data, size)
@@ -784,7 +787,7 @@ func take_damage(
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -16), Color(1.0, 0.85, 0.4) if critical else Color(1.0, 0.95, 0.85), critical)
 	var dealt := health.take_damage(amount)
 	Gore.spray(get_parent(), global_position, enemy_id, knockback.normalized(), 9 if health.is_dead() else (6 if critical else 3), health.is_dead() or critical)
-	_animator.scale = Vector2(1.18, 0.84)
+	_animator.flinch(knockback)
 	if health.is_dead():
 		return dealt
 	_maybe_flee()
@@ -1572,13 +1575,8 @@ func _fade_out() -> void:
 	if _flash_tween:
 		_flash_tween.kill()
 	$HealthBar.visible = false
-	_visual.modulate = Color(4.0, 4.0, 4.0)
-	var tween := create_tween()
-	tween.tween_property(_visual, "modulate", _tint, 0.15)
-	# Let the collapse play, lie still a moment, then fade away.
-	tween.tween_interval(_animator.death_seconds() + 3.5)
-	tween.tween_property(self, "modulate:a", 0.0, 1.2)
-	tween.tween_callback(queue_free)
+	# Each family meets its end its own way (MonsterLook).
+	MonsterLook.fall(self, _animator, _look, _animator.death_seconds(), _tint, queue_free)
 
 
 func _add_nameplate(rank_data: Dictionary, size: float) -> void:

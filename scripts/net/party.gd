@@ -20,6 +20,11 @@ var _day_night: DayNight
 var _instances: Instances
 var _send_left := 0.0
 var _clock_left := 0.0
+## What this player wears, as last told; checked now and then.
+var _gear_told := ""
+var _gear_left := 1.0
+## Gear heard before the figure was made.
+var _gear_heard: Dictionary = {}
 var _world_name := ""
 
 
@@ -44,6 +49,7 @@ func _ready() -> void:
 	Events.player_died.connect(func(_xp: int) -> void: Net.send_deed("died"))
 	Net.deed_received.connect(_on_deed)
 	Net.left_game.connect(_on_left)
+	Net.world_msg.connect(_on_world_msg)
 	Events.enemy_killed.connect(_on_local_kill)
 	Events.level_up.connect(func(level: int) -> void: Net.send_deed("level", {"lv": level}))
 	if Net.is_host():
@@ -134,6 +140,10 @@ func _process(delta: float) -> void:
 		if _clock_left <= 0.0:
 			_clock_left = CLOCK_EVERY
 			Net.send_clock(_day_night.day, _day_night.time, Atmosphere._storminess)
+	_gear_left -= delta
+	if _gear_left <= 0.0:
+		_gear_left = 1.0
+		_tell_gear(false)
 	var here := NetWorld.current.instance_key() if NetWorld.current else ""
 	for peer in players:
 		(players[peer] as RemotePlayer).local_place = here
@@ -150,10 +160,42 @@ func _on_state(peer: int, state: Dictionary) -> void:
 		_player.get_parent().add_child(figure)
 		figure.global_position = state.get("p", _player.global_position)
 		players[peer] = figure
+		if _gear_heard.has(peer):
+			figure.wear(_gear_heard[peer])
+		# The first we see of them is the first they can see of us: what we
+		# told on their joining may have come while their world was loading.
+		var animator := _player.get_node_or_null("Visual/Sprite") as PlayerAnimator
+		if animator:
+			Net.sync_to(peer, "gear", {"w": animator.worn()})
 	(players[peer] as RemotePlayer).hear(state)
 
 
+## Tells everyone what this player wears when it changes (or someone new
+## arrives and has not seen it).
+func _tell_gear(again: bool) -> void:
+	var animator := _player.get_node_or_null("Visual/Sprite") as PlayerAnimator
+	if animator == null:
+		return
+	var gear := animator.worn()
+	var said := var_to_str(gear)
+	if said != _gear_told or again:
+		_gear_told = said
+		Net.sync_all("gear", {"w": gear})
+
+
+func _on_world_msg(kind: String, data: Variant, from: int) -> void:
+	if kind != "gear" or not data is Dictionary:
+		return
+	var gear: Array = data.get("w", []) if data.get("w") is Array else []
+	_gear_heard[from] = gear
+	if players.has(from):
+		(players[from] as RemotePlayer).wear(gear)
+
+
 func _on_roster() -> void:
+	# Someone new: they have not seen what this player wears.
+	if Net.online():
+		_tell_gear.call_deferred(true)
 	for peer: int in players.keys():
 		if not Net.roster.has(peer):
 			(players[peer] as Node).queue_free()

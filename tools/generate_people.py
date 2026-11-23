@@ -136,6 +136,27 @@ SKULL = [
 ]
 # Eyes: columns 19 and 24, rows 19 and 20 (the eye layer colours the lower).
 EYES = [(19, 20), (24, 20)]
+# From behind: the same round head, no face.
+SKULL_BACK = [row.replace("e", "S") for row in SKULL]
+# In profile, facing right: one eye near the front, the nose past the
+# outline, an ear in the middle of the side of the head.
+SKULL_SIDE = [
+    "....oooooooo.....",
+    "..ooSSSSSSSSoo...",
+    ".oSSSSSSSSSSSso..",
+    "oSSSSSSSSSSSSsso.",
+    "oSSSSSSSSSSSSsso.",
+    "oSSSSShSSSSSSsso.",
+    "oSSSShSSSSSSSsso.",
+    "oSSSShSSSSSSeSso.",
+    "oSSSShSSSSSSeSSSo",
+    "oSSSSShSSSSSsssoo",
+    ".oSSSSSSSSSssso..",
+    "..oosSSSSsssoo...",
+    "....oooooooo.....",
+]
+# The eye's place in profile.
+EYE_SIDE_SHIFT = 2
 HEAD_X, HEAD_Y = 14, 12
 
 # The torso by build: slight, average, broad. Belt with a buckle, a skirt
@@ -177,6 +198,34 @@ TORSOS = [
 ]
 # Left edge of the torso by build, and how far each arm moves out.
 TORSO_X = [17, 16, 15]
+# From behind: the belt runs round without its buckle, no collar folds.
+TORSOS_BACK = [[row.replace("G", "L").replace("g", "l").replace("f", "T") for row in torso] for torso in TORSOS]
+# In profile the torso is narrower: its back three columns and its front
+# (two to four, by build) are kept, the middle taken out (whole columns,
+# nothing resampled), and it stands centred over the legs.
+SIDE_KEEP_FRONT = [4, 5, 6]
+SIDE_TORSO_X = 18
+# Shoulder joints in profile: the far arm behind the body, the near one over it.
+JOINT_L_SIDE = (21, 24)
+JOINT_R_SIDE = (23, 24)
+
+
+def side_columns(pixels, build):
+    """A torso piece (body or worn) narrowed to its profile: the back three
+    columns and the front ones, closed up, from the build's own torso box."""
+    x0 = TORSO_X[build]
+    width = len(TORSOS[build][0])
+    keep_front = SIDE_KEEP_FRONT[build]
+    out = {}
+    for (x, y), c in pixels.items():
+        col = x - x0
+        if col < 3:
+            out[(SIDE_TORSO_X + col, y)] = c
+        elif col >= width:
+            out[(SIDE_TORSO_X + 3 + keep_front + col - width, y)] = c
+        elif col >= width - keep_front:
+            out[(SIDE_TORSO_X + 3 + col - (width - keep_front), y)] = c
+    return out
 ARM_OUT = [-1, 0, 1]
 TORSO_Y = 24
 
@@ -246,16 +295,21 @@ UP_SHIFT = {"up": 1, "fwd_up": 0}
 HEIGHT_ROWS = [2, 3, 4, 5, 6]
 BASE_ROWS = 5
 LEG_X = {"l": 17, "r": 23}
+# In profile the legs stand one before the other under the body.
+LEG_X_SIDE = {"l": 19, "r": 21}
 
 
 DEFAULT_BOOT = ["occco", "oBBbo", "oBbbo", "ooooo"]
 
 
-def leg(side, trouser_rows, lift=0, dx=0, trouser=None, boot=None, parts=("trouser", "boot")):
+def leg(side, trouser_rows, lift=0, dx=0, trouser=None, boot=None, parts=("trouser", "boot"), view="front"):
     """One leg standing on the ground (or lifted `lift` pixels), its foot
     moved `dx` sideways: a trouser column (rows from `trouser(index, n)`,
-    default plain) and a boot a pixel wider on the outside (`boot` rows)."""
-    x = LEG_X[side]
+    default plain) and a boot a pixel wider on the outside (`boot` rows).
+    In profile both legs stand under the body and the toes point ahead."""
+    x = LEG_X[side] if view != "side" else LEG_X_SIDE[side]
+    if view == "side":
+        side = "r"
     out = {}
     bottom = GROUND - lift
     boot_top = bottom - 3
@@ -298,10 +352,12 @@ KNEEL = [
 # pose, how each leg steps, the weapon's angle (multiples of 45 degrees, so
 # blades stay clean stair-steps) and a quarter-turn for the whole figure.
 def F(body=(0, 0), head=None, arm_l=("down", 0, 0), arm_r=("down", 0, 0), leg_l=(0, 0), leg_r=(0, 0),
-      weapon=45, turn=0, crouch=0, legs=None, shadow=9, ground_shift=0):
+      weapon=45, turn=0, crouch=0, legs=None, shadow=9, ground_shift=0, view="front"):
+    """`view`: "front" (the usual three-quarter front), "back" (walking up,
+    away from us) or "side" (in profile, walking sideways)."""
     return {"body": body, "head": head if head is not None else body, "arm_l": arm_l, "arm_r": arm_r,
             "leg_l": leg_l, "leg_r": leg_r, "weapon": weapon, "turn": turn, "crouch": crouch, "legs": legs,
-            "shadow": shadow, "ground_shift": ground_shift}
+            "shadow": shadow, "ground_shift": ground_shift, "view": view}
 
 
 def _walk():
@@ -426,6 +482,83 @@ ANIMATIONS = [
     ]),
 ]
 
+# Each class at rest, its own way (4 frames, breathing).
+def _breathe(make):
+    return [make(b) for b in (0, 0, 1, 1)]
+
+
+CLASS_IDLES = [
+    # Weapon resting on the shoulder, feet planted wide.
+    ("idle_warrior", _breathe(lambda b: F(body=(0, b), arm_r=("fwd_up", -1, 1), weapon=-50, leg_l=(0, -1), leg_r=(0, 1)))),
+    # Shield arm braced forward, low and square.
+    ("idle_guardian", _breathe(lambda b: F(body=(1, 1 + b), crouch=1, arm_l=("fwd", 0, 0), weapon=70, leg_l=(0, -1), leg_r=(0, 1)))),
+    # Bow held low and ready, the head turning to look about.
+    ("idle_ranger", [F(body=(0, 0), head=(h, 0), arm_r=("fwd_down", 0, 0), weapon=100, leg_l=(0, -1))
+                     for h in (1, 1, 0, -1)]),
+    # Crouched, blade low in a reverse grip, the free hand out.
+    ("idle_assassin", _breathe(lambda b: F(body=(1, 1 + b), crouch=1, arm_r=("fwd_down", 0, 0), arm_l=("out", 0, 0), weapon=150,
+                                           leg_l=(0, -2), leg_r=(0, 1)))),
+    # Both hands raised, drawing on the arcane; light on the feet.
+    ("idle_mage", [F(body=(0, b), arm_l=("fwd_up", 0, 0), arm_r=("fwd_up", 0, 0), weapon=0) for b in (0, -1, -1, 0)]),
+    # The blade upright before the face, the free hand low.
+    ("idle_spellblade", _breathe(lambda b: F(body=(0, b), arm_r=("fwd", -2, -1), arm_l=("fwd_down", 0, 0), weapon=0, leg_l=(0, -1),
+                                             leg_r=(0, 1)))),
+    # Hunched, head bowed, a clawed hand held out over the ground.
+    ("idle_necromancer", _breathe(lambda b: F(body=(1, 1 + b), head=(2, 2 + b), crouch=1, arm_l=("fwd", 0, 0), weapon=10))),
+    # One palm raised, a spell held ready in it.
+    ("idle_spellcaster", [F(body=(0, b), arm_l=("fwd_up", 0, 0), weapon=30) for b in (0, -1, -1, 0)]),
+]
+
+
+def _walk_view(view):
+    frames = []
+    for i in range(8):
+        step = [0, 1, 1, 0, 0, -1, -1, 0][i]
+        lift_l = 1 if step > 0 else 0
+        lift_r = 1 if step < 0 else 0
+        bob = -1 if step != 0 else 0
+        if view == "side":
+            # In profile the legs stride ahead and behind, the arms swing.
+            frames.append(F(body=(0, bob), arm_l=("down", -step, 0), arm_r=("down", step, 0),
+                            leg_l=(lift_l, 2 * step), leg_r=(lift_r, -2 * step), view=view))
+        else:
+            frames.append(F(body=(0, bob), arm_l=("down", 0, -abs(step)), arm_r=("down", 0, -abs(step) if step < 0 else 0),
+                            leg_l=(lift_l, 0), leg_r=(lift_r, 0), view=view))
+    return frames
+
+
+def _run_view(view):
+    frames = []
+    for i in range(8):
+        step = [0, 1, 2, 1, 0, -1, -2, -1][i]
+        lift_l = 2 if step >= 2 else (1 if step == 1 else 0)
+        lift_r = 2 if step <= -2 else (1 if step == -1 else 0)
+        bob = -1 if abs(step) == 2 else 0
+        if view == "side":
+            frames.append(F(body=(1, bob), arm_l=("down", -step, 0), arm_r=("fwd_down" if step > 0 else "down", 0, 0),
+                            leg_l=(lift_l, 2 * step), leg_r=(lift_r, -2 * step), view=view, weapon=90 if step > 0 else 45))
+        else:
+            frames.append(F(body=(0, bob), arm_l=("down", 0, -1 if step > 0 else 0), arm_r=("down", 0, -1 if step < 0 else 0),
+                            leg_l=(lift_l, 0), leg_r=(lift_r, 0), view=view))
+    return frames
+
+
+VIEWS = [
+    ("idle_back", [F(body=(0, b), view="back") for b in (0, 0, 1, 1)]),
+    ("idle_side", [F(body=(0, b), view="side") for b in (0, 0, 1, 1)]),
+    ("walk_back", _walk_view("back")), ("run_back", _run_view("back")),
+    ("walk_side", _walk_view("side")), ("run_side", _run_view("side")),
+]
+ANIMATIONS += CLASS_IDLES + VIEWS
+# Where each animation sits in a sheet: [row, first column]. The first
+# fourteen keep their rows; short ones after them share a row in pairs
+# (sheets stay small), matching PlayerAnimator.ROWS.
+LAYOUT = {name: (row, 0) for row, (name, _frames) in enumerate(ANIMATIONS[:14])}
+for k, (name, _frames) in enumerate(CLASS_IDLES):
+    LAYOUT[name] = (14 + k // 2, 4 * (k % 2))
+LAYOUT.update({"idle_back": (18, 0), "idle_side": (18, 4), "walk_back": (19, 0), "run_back": (20, 0), "walk_side": (21, 0), "run_side": (22, 0)})
+SHEET_ROWS = 23
+
 # How each family carries its weapon when not attacking: [weapon angle].
 # 0 points straight up, 90 ahead, 180 down.
 GRIPS = {
@@ -435,7 +568,7 @@ GRIPS = {
     # Heavy arms hang low at the side, head down, ready to swing up.
     "low": (158, ["greatsword", "executioner", "pulsebrand", "axe", "reaver", "bloodthirst", "club"]),
 }
-GRIP_ROWS = ("idle", "walk", "run", "hurt")
+GRIP_ROWS = ("idle", "walk", "run", "hurt", "idle_back", "walk_back", "run_back", "idle_side", "walk_side", "run_side")
 
 
 def grip_angle(name):
@@ -471,6 +604,14 @@ def place(frame, height, build):
         oy = joint[1] + by - up + dy - ay
         arms[side] = (pose, ox, oy, (ox + handx, oy + handy))
     out["arms"] = arms
+    if frame.get("view") == "side":
+        # In profile the arms hang from the shoulder at the side of the body.
+        for side, joint in (("l", JOINT_L_SIDE), ("r", JOINT_R_SIDE)):
+            pose, dx, dy = frame["arm_" + side]
+            rows, ax, ay, handx, handy = ARMS[pose]
+            ox = joint[0] + bx + dx - ax
+            oy = joint[1] + by - up + dy - ay
+            arms[side] = (pose, ox, oy, (ox + handx, oy + handy))
     return out
 
 
@@ -491,15 +632,24 @@ def body_pixels(frame, height, build):
     else:
         for side in ("l", "r"):
             lift, dx = frame["leg_" + side]
-            layers.append(leg(side, max(rows, 1), lift, dx))
+            layers.append(leg(side, max(rows, 1), lift, dx, view=frame.get("view", "front")))
+    view = frame.get("view", "front")
+    torso_map = TORSOS_BACK[build] if view == "back" else TORSOS[build]
     torso = {}
-    for (x, y), ch in grid(TORSOS[build], TORSO_X[build] + bx, TORSO_Y + by, {c: c for c in "oTtufLlGgPp"}).items():
+    for (x, y), ch in grid(torso_map, TORSO_X[build], TORSO_Y, {c: c for c in "oTtufLlGgPp"}).items():
         torso[(x, y)] = ch
+    if view == "side":
+        torso = side_columns(torso, build)
+    torso = {(x + bx, y + by): ch for (x, y), ch in torso.items()}
     arm_layers = []
     for side in ("l", "r"):
         pose, ox, oy, _hand = where["arms"][side]
         arm_layers.append(grid(ARMS[pose][0], ox, oy, {c: c for c in "oTtuSs"}))
-    head = grid(SKULL, HEAD_X + hx, HEAD_Y + hy, {c: c for c in "oSskhe"})
+    skull = SKULL_BACK if view == "back" else SKULL_SIDE if view == "side" else SKULL
+    head = grid(skull, HEAD_X + hx, HEAD_Y + hy, {c: c for c in "oSskhe"})
+    if view == "side":
+        # The far arm behind the body, the near one over it.
+        return layers + [arm_layers[0], torso, arm_layers[1], head]
     return layers + [torso] + arm_layers + [head]
 
 
@@ -576,10 +726,11 @@ def body_frame(frame, height, build):
 
 def sheet(make_frame):
     columns = max(len(frames) for _name, frames in ANIMATIONS)
-    out = Image.new("RGBA", (columns * FRAME, len(ANIMATIONS) * FRAME), (0, 0, 0, 0))
-    for row, (_name, frames) in enumerate(ANIMATIONS):
+    out = Image.new("RGBA", (columns * FRAME, SHEET_ROWS * FRAME), (0, 0, 0, 0))
+    for name, frames in ANIMATIONS:
+        row, first = LAYOUT[name]
         for col, frame in enumerate(frames):
-            out.paste(make_frame(frame), (col * FRAME, row * FRAME))
+            out.paste(make_frame(frame), ((first + col) * FRAME, row * FRAME))
     return out
 
 
@@ -1876,6 +2027,115 @@ def fit_build(pixels, build):
 LAYER_LEGEND = dict(ACCENT)
 LAYER_LEGEND.update(GREY)
 
+# --------------------------------------------------------------- views
+# Every look and piece is drawn for the front; its back and profile come
+# from rules by what it is, worked on whole pixels.
+SKULL_CELLS = {(HEAD_X + col, HEAD_Y + row): ch for row, line in enumerate(SKULL) for col, ch in enumerate(line) if ch != "."}
+SKULL_TOP = HEAD_Y
+# Head looks that are part of the face: gone from behind, and turned to
+# the face side in profile (except what stands out past the head).
+FACE_LOOKS = ("eyes", "mark", "beard", "acc", "race_")
+
+
+def _fill_holes(pixels):
+    """Closes a piece's openings (a helmet's or hood's face) with its own
+    middle tone: any empty pixel inside it, row by row and column by column."""
+    if not pixels:
+        return pixels
+    out = dict(pixels)
+    fill = GREY["m"]
+    xs = [x for x, _y in pixels]
+    ys = [y for _x, y in pixels]
+    for y in range(min(ys), max(ys) + 1):
+        row = sorted(x for (x, yy) in pixels if yy == y)
+        if len(row) < 2:
+            continue
+        for x in range(row[0], row[-1] + 1):
+            if (x, y) in out:
+                continue
+            column = [yy for (xx, yy) in pixels if xx == x]
+            if column and min(column) < y < max(column):
+                out[(x, y)] = fill
+    return out
+
+
+def _hair_from_behind(pixels, half=None):
+    """Hair seen from behind: the back of the skull covered down to as long
+    as it hangs at the sides (or over the crown, for short hair), shaded
+    from the light crown to the dark nape with a few strands, outlined on
+    the skull's own outline. `half` "back" covers only the back of the
+    head (for the profile)."""
+    sides = [y for (x, y) in pixels if (x <= HEAD_X + 2 or x >= HEAD_X + 13) and SKULL_TOP <= y <= SKULL_TOP + 12]
+    bottom = max(sides) if sides else SKULL_TOP + 5
+    bottom = max(bottom, SKULL_TOP + 5)
+    out = dict(pixels)
+    for (x, y), ch in SKULL_CELLS.items():
+        if y > bottom or (x, y) in out:
+            continue
+        if half == "back" and x > HEAD_X + 7:
+            continue
+        if ch == "o":
+            out[(x, y)] = GREY["o"]
+        elif y <= SKULL_TOP + 2:
+            out[(x, y)] = GREY["M"]
+        elif y >= bottom - 1:
+            out[(x, y)] = GREY["d"]
+        else:
+            out[(x, y)] = GREY["d"] if (x * 3 + y) % 7 == 0 else GREY["m"]
+    # A hairline: the last row darker where it meets the neck.
+    for (x, y), ch in SKULL_CELLS.items():
+        if y == bottom and ch != "o" and (half != "back" or x <= HEAD_X + 7):
+            out[(x, y)] = GREY["x"]
+    return out
+
+
+def view_head(name, pixels, view):
+    """A head look or piece from behind or in profile (box pixels)."""
+    if view == "front":
+        return pixels
+    face = name.startswith(FACE_LOOKS)
+    if view == "back":
+        if name.startswith("hair"):
+            return _hair_from_behind(pixels)
+        if name.startswith(("helmet", "hood")):
+            return _fill_holes(pixels)
+        if name.startswith(("eyes", "mark", "beard")):
+            return {}
+        if face:
+            # Only what stands out past the head shows from behind.
+            return {p: c for p, c in pixels.items() if p not in SKULL_CELLS or p[1] <= SKULL_TOP + 3}
+        return pixels
+    # In profile.
+    if name.startswith("hair"):
+        shifted = {(x - 1, y): c for (x, y), c in pixels.items() if x >= HEAD_X + 2}
+        return _hair_from_behind(shifted, "back")
+    if name == "eyes":
+        return {(x + EYE_SIDE_SHIFT, y): c for (x, y), c in pixels.items() if x >= HEAD_X + 8}
+    if name.startswith("ears"):
+        # One ear, on the side of the head, its tip toward the back.
+        return {(x + 6, y): c for (x, y), c in pixels.items() if x <= HEAD_X + 2}
+    if face:
+        return {(x + EYE_SIDE_SHIFT, y): c for (x, y), c in pixels.items() if x >= HEAD_X + 3}
+    return pixels
+
+
+def view_torso(name, pixels, view, build, behind):
+    """A torso look or piece from behind or in profile."""
+    if view == "side":
+        return side_columns(pixels, build)
+    if view == "back" and behind and name.startswith(("cape", "cape_")):
+        # A cape seen from behind covers the back, edge to edge.
+        out = dict(pixels)
+        rows = {}
+        for (x, y) in pixels:
+            rows.setdefault(y, []).append(x)
+        for y, xs in rows.items():
+            for x in range(min(xs), max(xs) + 1):
+                if (x, y) not in out:
+                    out[(x, y)] = GREY["m"] if (x + y) % 5 else GREY["d"]
+        return out
+    return pixels
+
 
 def layer_frame(spec, frame, height, build):
     """One frame of a worn layer, on exactly the pixels its body part has
@@ -1883,12 +2143,16 @@ def layer_frame(spec, frame, height, build):
     where = place(frame, height, build)
     bx, by = where["body"]
     hx, hy = where["head"]
+    view = frame.get("view", "front")
+    name = spec.get("name", "")
     layers = []
     if "torso" in spec:
         pixels = fit_build(spec["torso"], build) if spec.get("fit") else spec["torso"]
+        pixels = view_torso(name, pixels, view, build, spec.get("behind", False))
         layers.append({(x + bx, y + by): c for (x, y), c in pixels.items()})
     if "head" in spec:
-        layers.append({(x + hx, y + hy): c for (x, y), c in spec["head"].items()})
+        pixels = view_head(name, spec["head"], view)
+        layers.append({(x + hx, y + hy): c for (x, y), c in pixels.items()})
     if "hand_l" in spec:
         hand = where["arms"]["l"][3]
         ax, ay = int(hand[0]), int(hand[1])
@@ -1898,7 +2162,7 @@ def layer_frame(spec, frame, height, build):
         parts = ("trouser",) if "trouser" in spec else ("boot",)
         for side in ("l", "r"):
             lift, dx = frame["leg_" + side]
-            pixels = leg(side, rows, lift, dx, trouser=spec.get("trouser"), boot=spec.get("boot"), parts=parts)
+            pixels = leg(side, rows, lift, dx, trouser=spec.get("trouser"), boot=spec.get("boot"), parts=parts, view=view)
             layers.append({p: LAYER_LEGEND[ch] for p, ch in pixels.items()})
     return turned(to_image(layers, {}), frame)
 
@@ -1928,6 +2192,7 @@ def write_body():
 def write_layer(spec, folder, name):
     """A layer at the average height and build, plus build variants for
     pieces fitted to the torso and height variants for leg armour."""
+    spec = dict(spec, name=name)
     save(sheet(lambda frame: layer_frame(spec, frame, AVERAGE_HEIGHT, AVERAGE_BUILD)), folder, name + ".png")
     if spec.get("fit"):
         for build in (0, 2):

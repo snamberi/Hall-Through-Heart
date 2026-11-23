@@ -34,6 +34,9 @@ GA.PALETTE.update({
     "blanket_blue": ["4a6ab0", "33508a", "223660"],
     "blanket_sand": ["40a0a0", "2a7a7a", "1c5454"],
     "blanket_black": ["5a2a3a", "3e1c28", "28121a"],
+    # The rider's trousers in the body sheet's own colours, which the game
+    # recolours to the rider's (Appearance.SOURCE): never change these.
+    "rider_trousers": ["4c4a5e", "383648", "272633"],
 })
 for material in ("bay", "cream", "dune", "night"):
     GA.TEXTURES["fur"].append(material)
@@ -95,7 +98,8 @@ GALLOP = GA.cycle(6, lambda s: {
     "leg_fl": (0, 0, -40 * s - 10), "leg_fr": (0, 0, -32 * s - 6), "leg_bl": (0, 0, 38 * s + 6), "leg_br": (0, 0, 30 * s + 2)})
 # Idle: breathing, a slow nod, the tail swishing.
 IDLE = [{"body": (0, b, 0), "head": (0, 0, nod), "tail": (0, 0, swish)} for b, nod, swish in ((0, 0, 0), (1, 3, 10), (1, 4, 18), (0, 1, 6))]
-ANIMATIONS = [("idle", IDLE)] + [row for row in GA.QUAD_ANIMATIONS if row[0] != "idle"] + [("gallop", GALLOP)]
+# (A pet's resting rows are not a mount's: the gallop stays the seventh row.)
+ANIMATIONS = [("idle", IDLE)] + [row for row in GA.QUAD_ANIMATIONS if row[0] not in ("idle", "rest", "scratch", "stretch")] + [("gallop", GALLOP)]
 
 MOUNTS = {
     "pony": (scaled(horse("cream", "cream_mane", "blanket_blue"), 1.1), 1.1),
@@ -106,17 +110,33 @@ MOUNTS = {
 }
 
 
-# A tall riding boot standing in the stirrup, for the front layer.
+# The rider's near leg, for the front layer: the thigh from the seat over
+# the saddle flap to a bent knee, and a tall riding boot from there down
+# into the stirrup. Drawn at each mount's own size, so it hangs as far as
+# that beast's flank (a pony's short drop, a horse's or elk's long one).
+THIGH = [(18.6, 14.8), (21.8, 14.0), (24.8, 18.0), (24.8, 20.4), (22.6, 21.9), (19.2, 21.9), (18.9, 18.8)]
+KNEE = [(22.4, 18.8), (24.6, 19.2), (24.4, 20.6), (22.8, 21.2)]
 BOOT = [("boot", [(19.2, 21.6), (21.6, 21.6), (21.8, 28.4), (23, 29.2), (23, 30.2), (18.8, 30.2), (19, 28.4)])]
 
 
 def front(rig, size):
     """The mount's near side, drawn over the rider so they sit in the
-    saddle: the barrel, blanket, saddle and stirrup with a boot in it."""
+    saddle: the barrel, blanket, saddle and stirrup (the leg is a layer of
+    its own, see leg_layer)."""
+    out = {name: dict(group, parts=[]) for name, group in rig.items()}
+    out["body"] = dict(rig["body"], parts=list(rig["body"]["parts"]))
+    return out
+
+
+def leg_layer(rig, size):
+    """The rider's near leg alone, moving with the beast's body, in flat
+    palette tones (so the trousers take the rider's colours in the game)."""
     def pt(p):
         return (22.0 + (p[0] - 22.0) * size, 41.0 + (p[1] - 41.0) * size)
     out = {name: dict(group, parts=[]) for name, group in rig.items()}
-    out["body"] = dict(rig["body"], parts=rig["body"]["parts"] + [(m, [pt(p) for p in poly]) for m, poly in BOOT])
+    parts = [("rider_trousers", [pt(p) for p in THIGH]), ("boot", [pt(p) for p in KNEE])]
+    parts += [(m, [pt(p) for p in poly]) for m, poly in BOOT]
+    out["body"] = dict(rig["body"], parts=parts)
     return out
 
 
@@ -126,7 +146,9 @@ def main():
     for name, (rig, size) in MOUNTS.items():
         anims = [(n, [dict(p, shadow=(22, round(13 * size), 0)) for p in poses]) for n, poses in ANIMATIONS]
         GA.draw_sheet(rig, GA.QUAD_ORDER, anims, rich=True).save(os.path.join(out, name + ".png"))
-        GA.draw_sheet(front(rig, size), GA.QUAD_ORDER, anims, shadow=False, rich=True).save(os.path.join(out, name + "_front.png"))
+        near = GA.draw_sheet(front(rig, size), GA.QUAD_ORDER, anims, shadow=False, rich=True)
+        near.alpha_composite(GA.draw_sheet(leg_layer(rig, size), GA.QUAD_ORDER, anims, shadow=False, rich=False))
+        near.save(os.path.join(out, name + "_front.png"))
     print("mounts drawn: " + ", ".join(MOUNTS))
 
 

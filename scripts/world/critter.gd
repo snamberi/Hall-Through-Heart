@@ -6,7 +6,11 @@ extends Node2D
 const SHEET: Texture2D = preload("res://assets/sprites/critters.png")
 const KINDS := ["rabbit", "bird", "butterfly", "frog"]
 ## Frames per kind in the sheet: two at rest, two in motion.
-const FRAMES := 4
+## Frames per kind: 0-3 at rest and moving (the wild ones use only these),
+## 4-7 a pet's fidgets (a scratch in two, a yawn, asleep).
+const FRAMES := 8
+## Where a kind's fidget frames start.
+const FIDGETS := 4
 const SCARE := 120.0
 
 var kind := "rabbit"
@@ -61,7 +65,7 @@ func _process(delta: float) -> void:
 				_think = randf_range(0.6, 2.0)
 				_sprite.frame = FRAMES + (1 if randf() < 0.35 else 0)
 		"butterfly":
-			_sprite.frame = FRAMES * 2 + int(_time * 14.0) % FRAMES
+			_sprite.frame = FRAMES * 2 + int(_time * 14.0) % FIDGETS
 			_sprite.position.y = -18.0 + sin(_time * 3.0) * 4.0
 			if _think <= 0.0:
 				_think = randf_range(0.5, 1.5)

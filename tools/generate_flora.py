@@ -820,7 +820,11 @@ SMALL = [
 # ----------------------------------------------------------------- critters
 def critter(kind, frame):
     """One 24x24 frame. Frames 0-1 are at rest (1 is a small idle movement),
-    frames 2-3 are in motion: a hop, a wingbeat, a leap."""
+    frames 2-3 are in motion: a hop, a wingbeat, a leap. Frames 4-7 are a
+    pet's fidgets (see critter_fidget): a scratch in two frames, a yawn,
+    and curled up asleep."""
+    if frame >= 4:
+        return critter_fidget(kind, frame - 4)
     c = Canvas(24, 24)
     if kind == "rabbit":
         fur = ramp("d2c2a8", "a8927a", "6e5c4a")
@@ -946,7 +950,169 @@ def critter(kind, frame):
     return c.img
 
 
-CRITTER_FRAMES = 4
+def critter_fidget(kind, step):
+    """A pet at its ease: 0-1 a scratch (a hind foot at the ear, a beak in
+    the wing, antennae cleaned, an eye rubbed), 2 a yawn, 3 asleep."""
+    c = Canvas(24, 24)
+    closed = C("3a2a22")
+    if kind == "rabbit":
+        fur = ramp("d2c2a8", "a8927a", "6e5c4a")
+        belly = ramp("f4efe4", "ddd4c4", "b8ac9a")
+        inner = C("e8a0a0")
+        if step < 2:
+            # Sitting, head tipped to the hind foot reaching up to scratch an ear.
+            reach = 0 if step == 0 else 1
+            c.shade("ellipse", (4, 12, 15, 21), fur)
+            c.shade("ellipse", (10, 13, 17, 21), fur)
+            c.shade("ellipse", (12, 16, 17, 21), belly)
+            c.shade("ellipse", (12, 8, 19, 15), fur)
+            c.shade("poly", [(13, 10), (10, 3), (12, 2), (15, 9)], fur, dither=False)
+            c.shade("poly", [(16, 9), (17, 2), (19, 2), (18, 10)], fur, dither=False)
+            c.put(12, 5, inner); c.put(12, 6, inner); c.put(18, 4, inner); c.put(18, 5, inner)
+            # The hind leg, from the haunch up past the cheek to the ear,
+            # quivering: drawn darker so it stands off the body.
+            leg = ramp("b8a68c", "8e7a62", "5e4c3c")
+            c.shade("poly", [(6, 18), (8, 12), (11, 7 + reach), (13, 6 + reach), (12, 9 + reach), (10, 14), (9, 18)], leg, dither=False)
+            c.fill("rect", (12, 5 + reach, 14, 6 + reach), leg[2])
+            c.put(14, 4 + reach, leg[2])
+            c.fill("ellipse", (2, 14, 5, 17), C("f8f6f0"))
+            c.fill("rect", (13, 20, 17, 21), fur[2])
+            c.put(16, 11, closed); c.put(17, 11, closed); c.put(19, 12, C("e08080"))
+        elif step == 2:
+            # A yawn: head up, ears laid back, mouth wide.
+            c.shade("ellipse", (4, 12, 15, 21), fur)
+            c.shade("ellipse", (10, 13, 17, 21), fur)
+            c.shade("ellipse", (12, 16, 17, 21), belly)
+            c.shade("ellipse", (13, 6, 20, 13), fur)
+            c.shade("poly", [(14, 7), (9, 3), (10, 2), (16, 6)], fur, dither=False)
+            c.shade("poly", [(15, 7), (11, 1), (13, 1), (17, 6)], fur, dither=False)
+            c.put(11, 3, inner); c.put(13, 2, inner)
+            c.fill("ellipse", (2, 14, 5, 17), C("f8f6f0"))
+            c.fill("rect", (13, 20, 17, 21), fur[2]); c.fill("rect", (6, 20, 11, 21), fur[2])
+            c.put(17, 8, closed); c.put(18, 8, closed)
+            c.fill("rect", (18, 10, 20, 12), C("5a2a2a")); c.put(19, 11, C("e87878")); c.put(20, 10, C("ffffff"))
+        else:
+            # Asleep: a round loaf, ears flat along the back, eyes shut.
+            c.shade("ellipse", (3, 14, 18, 21), fur)
+            c.shade("ellipse", (11, 17, 17, 21), belly)
+            c.shade("ellipse", (12, 12, 19, 18), fur)
+            c.shade("poly", [(13, 13), (5, 12), (5, 13), (13, 15)], fur, dither=False)
+            c.shade("poly", [(14, 12), (6, 10), (6, 11), (14, 14)], fur, dither=False)
+            c.put(7, 11, inner); c.put(8, 13, inner)
+            c.fill("ellipse", (1, 15, 4, 18), C("f8f6f0"))
+            c.put(16, 15, closed); c.put(17, 15, closed); c.put(19, 16, C("e08080"))
+    elif kind == "bird":
+        body = ramp("8a7a6a", "5e5248", "3c3430")
+        breast = ramp("e89060", "c06a40", "8a4428")
+        wing = ramp("6a5c50", "463c36", "2c2624")
+        beak = C("f0b030")
+        if step < 2:
+            # Preening: head turned back into a lifted wing.
+            lift = 1 if step == 1 else 0
+            c.shade("ellipse", (6, 10, 17, 18), body)
+            c.shade("ellipse", (10, 12, 17, 18), breast)
+            c.shade("poly", [(7, 11 - lift), (15, 11), (12, 16), (4, 14 - lift)], wing)
+            c.shade("poly", [(6, 13), (1, 15), (2, 17), (7, 16)], wing, dither=False)
+            c.shade("ellipse", (8, 6, 14, 12), body)
+            c.put(7, 10 + lift, beak); c.put(6, 11 + lift, beak)
+            c.put(11, 8, OUTLINE)
+            c.fill("rect", (10, 19, 10, 21), beak); c.fill("rect", (13, 19, 13, 21), beak)
+            c.put(11, 21, beak); c.put(14, 21, beak)
+        elif step == 2:
+            # A yawn with a wing stretched out behind.
+            c.shade("ellipse", (6, 10, 17, 18), body)
+            c.shade("ellipse", (10, 12, 17, 18), breast)
+            c.shade("poly", [(8, 11), (1, 6), (2, 9), (0, 11), (4, 13), (9, 14)], wing)
+            c.shade("poly", [(6, 13), (1, 15), (2, 17), (7, 16)], wing, dither=False)
+            c.shade("ellipse", (13, 4, 19, 10), body)
+            c.put(20, 6, beak); c.put(21, 5, beak); c.put(20, 8, beak); c.put(21, 8, C("b07818")); c.put(20, 7, C("5a2a2a"))
+            c.put(17, 6, closed)
+            c.fill("rect", (10, 19, 10, 21), beak); c.fill("rect", (13, 19, 13, 21), beak)
+            c.put(11, 21, beak); c.put(14, 21, beak)
+        else:
+            # Asleep: fluffed round, the head sunk in, the feet hidden.
+            c.shade("ellipse", (5, 11, 18, 21), body)
+            c.shade("ellipse", (10, 14, 17, 21), breast)
+            c.shade("poly", [(6, 13), (14, 12), (12, 18), (5, 17)], wing)
+            c.shade("poly", [(6, 15), (1, 17), (2, 19), (7, 18)], wing, dither=False)
+            c.shade("ellipse", (12, 9, 18, 15), body)
+            c.put(18, 13, beak); c.put(19, 13, beak)
+            c.put(15, 12, closed); c.put(16, 12, closed)
+    elif kind == "butterfly":
+        wing = ramp("ffe08a", "f0a030", "a06018")
+        if step == 2:
+            c.fill("rect", (11, 9, 12, 17), OUTLINE)
+        if step != 2:
+            # Wings shut upright over the back, seen side on: the pale
+            # undersides with their veins and an eye-spot; it cleans its
+            # antennae in turn, or rests with them laid back (asleep).
+            pale = ramp("f6e2a0", "dcb868", "a07c38")
+            c.shade("poly", [(12, 16), (5, 4), (7, 2), (11, 3), (14, 9), (14, 16)], pale, dither=False)
+            c.shade("poly", [(12, 16), (7, 12), (6, 17), (9, 19), (13, 18)], pale, dither=False)
+            for x, y in ((8, 5), (9, 7), (10, 9), (11, 11)):
+                c.put(x, y, C("b08a40"))
+            c.put(8, 14, C("b08a40")); c.put(9, 16, C("b08a40"))
+            c.fill("rect", (7, 4, 8, 5), C("6a4a1c")); c.put(8, 4, C("fff6d0"))
+            c.outline()
+            c.fill("rect", (13, 10, 14, 18), OUTLINE)
+            if step == 0:
+                c.put(15, 9, OUTLINE); c.put(16, 8, OUTLINE); c.put(17, 7, OUTLINE)
+                c.put(15, 10, OUTLINE); c.put(16, 11, OUTLINE)
+            elif step == 1:
+                c.put(15, 9, OUTLINE); c.put(16, 9, OUTLINE); c.put(17, 8, OUTLINE)
+                c.put(15, 10, OUTLINE); c.put(16, 10, OUTLINE); c.put(17, 11, OUTLINE)
+            else:
+                c.put(15, 10, OUTLINE); c.put(16, 11, OUTLINE); c.put(17, 12, OUTLINE)
+            for x in (13, 15):
+                c.put(x, 19, OUTLINE)
+        elif step == 2:
+            # A slow fan of the wings, half open.
+            for side in (-1, 1):
+                x0 = 11 if side < 0 else 12
+                c.shade("ellipse", (min(x0, x0 + side * 6), 5, max(x0, x0 + side * 6), 12), wing)
+                c.shade("ellipse", (min(x0, x0 + side * 4), 11, max(x0, x0 + side * 4), 17), wing)
+            c.put(10, 7, OUTLINE); c.put(9, 6, OUTLINE); c.put(13, 7, OUTLINE); c.put(14, 6, OUTLINE)
+    elif kind == "frog":
+        skin = ramp("9ad870", "5aa048", "356a2a")
+        belly = ramp("e8f0c0", "c8d8a0", "98b070")
+        dark = C("2e5a24")
+        low = 2 if step == 3 else 0
+        c.shade("ellipse", (5, 12 + low, 18, 20), skin)
+        c.shade("ellipse", (8, 15 + low, 15, 20), belly)
+        for side in (-1, 1):
+            kx = 5 if side < 0 else 18
+            c.shade("ellipse", (kx - 3, 14 + low, kx + 3, 20), skin)
+            c.fill("rect", (min(kx, kx + side * 4), 20, max(kx, kx + side * 4), 21), skin[1])
+            c.put(kx + side * 5, 21, skin[2]); c.put(kx + side * 4, 22, skin[2])
+        if step < 2:
+            # A hind foot up to rub an eye.
+            rub = 0 if step == 0 else 1
+            c.shade("poly", [(16, 17), (19, 10 + rub), (21, 10 + rub), (19, 18)], skin, dither=False)
+            c.fill("rect", (18, 9 + rub, 20, 9 + rub), skin[2])
+        c.shade("ellipse", (6, 8 + low, 10, 12 + low), skin, dither=False)
+        c.shade("ellipse", (13, 8 + low, 17, 12 + low), skin, dither=False)
+        if step == 3 or (step < 2 and False):
+            # Lids shut.
+            c.fill("rect", (7, 10 + low, 9, 10 + low), dark); c.fill("rect", (14, 10 + low, 16, 10 + low), dark)
+        elif step == 2:
+            c.fill("rect", (7, 10, 9, 10), dark); c.fill("rect", (14, 10, 16, 10), dark)
+        else:
+            c.fill("ellipse", (7, 9, 9, 11), C("f4e060")); c.put(8, 10, OUTLINE)
+            c.fill("rect", (14, 10, 16, 10), dark)
+        if step == 2:
+            # The yawn: the wide mouth open.
+            c.fill("rect", (8, 13, 15, 15), C("6a2a2a")); c.fill("rect", (9, 14, 14, 14), C("e87878"))
+        else:
+            c.fill("rect", (9, 15 + low // 2, 14, 15 + low // 2), dark)
+        front = [9, 14]
+        for fx in front:
+            c.fill("rect", (fx, 19, fx, 21), skin[1]); c.put(fx, 22, skin[2])
+    if kind != "butterfly":
+        c.outline()
+    return c.img
+
+
+CRITTER_FRAMES = 8
 CRITTERS = ["rabbit", "bird", "butterfly", "frog"]
 
 

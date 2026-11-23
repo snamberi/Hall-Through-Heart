@@ -26,7 +26,33 @@ const ROWS: Array[Dictionary] = [
 	{"name": "smash", "frames": 7, "fps": 13.0, "loop": false},
 	{"name": "shoot", "frames": 6, "fps": 13.0, "loop": false},
 	{"name": "cast", "frames": 6, "fps": 13.0, "loop": false},
+	# Each class at rest, its own way (two to a row).
+	{"name": "idle_warrior", "frames": 4, "fps": 6.0, "loop": true, "row": 14, "col": 0},
+	{"name": "idle_guardian", "frames": 4, "fps": 6.0, "loop": true, "row": 14, "col": 4},
+	{"name": "idle_ranger", "frames": 4, "fps": 3.0, "loop": true, "row": 15, "col": 0},
+	{"name": "idle_assassin", "frames": 4, "fps": 6.0, "loop": true, "row": 15, "col": 4},
+	{"name": "idle_mage", "frames": 4, "fps": 5.0, "loop": true, "row": 16, "col": 0},
+	{"name": "idle_spellblade", "frames": 4, "fps": 6.0, "loop": true, "row": 16, "col": 4},
+	{"name": "idle_necromancer", "frames": 4, "fps": 5.0, "loop": true, "row": 17, "col": 0},
+	{"name": "idle_spellcaster", "frames": 4, "fps": 5.0, "loop": true, "row": 17, "col": 4},
+	# Seen from behind (walking up) and in profile (walking sideways).
+	{"name": "idle_back", "frames": 4, "fps": 6.0, "loop": true, "row": 18, "col": 0},
+	{"name": "idle_side", "frames": 4, "fps": 6.0, "loop": true, "row": 18, "col": 4},
+	{"name": "walk_back", "frames": 8, "fps": 11.0, "loop": true, "row": 19},
+	{"name": "run_back", "frames": 8, "fps": 12.0, "loop": true, "row": 20},
+	{"name": "walk_side", "frames": 8, "fps": 11.0, "loop": true, "row": 21},
+	{"name": "run_side", "frames": 8, "fps": 12.0, "loop": true, "row": 22},
 ]
+## Which way the figure is seen while it moves: "front" (coming toward us),
+## "back" (going away) or "side", by its heading.
+static func view_of(heading: Vector2) -> String:
+	if heading.length() < 1.0:
+		return "front"
+	if heading.y < -absf(heading.x) * 0.9:
+		return "back"
+	if absf(heading.x) > absf(heading.y) * 1.1:
+		return "side"
+	return "front"
 ## Below this speed the player walks rather than runs, in pixels/second.
 const RUN_SPEED := 150.0
 
@@ -356,6 +382,7 @@ func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 	if _layers["cape"].visible:
 		# The cape takes the rarity colour itself rather than the metal's.
 		(_layers["cape"].material as ShaderMaterial).set_shader_parameter("tint", chest.color().darkened(0.15))
+		_layers["cape"].set_meta("tint", chest.color().darkened(0.15))
 
 	var best: Item = null
 	for item: Item in equipment.counted():
@@ -538,19 +565,40 @@ func _choose_animation(delta: float) -> void:
 		speed_scale = 0.55 if speed > 20.0 else 0.25
 		_loop("walk")
 		return
+	if speed > 20.0:
+		_view = view_of(_player.velocity)
+	var suffix := "" if _view == "front" else "_" + _view
 	if speed > RUN_SPEED:
 		# Legs keep pace with how fast the player actually moves.
 		speed_scale = clampf(speed / 200.0, 0.7, 1.8)
-		_loop("run")
+		_loop("run" + suffix)
 	elif speed > 20.0:
-		_loop("walk")
+		_loop("walk" + suffix)
+	elif _view == "front":
+		# At rest facing us: the class's own stance.
+		var stance := "idle_" + _player.class_id
+		_loop(stance if sprite_frames.has_animation(stance) else "idle")
 	else:
-		_loop("idle")
+		_loop("idle" + suffix)
+
+
+## Which way the player was last seen going (see view_of).
+var _view := "front"
 
 
 func _loop(animation_name: String) -> void:
 	if animation != animation_name:
 		play(animation_name)
+		_turn_behind_layers()
+
+
+## Seen from behind, a cape, wings and tail hang over the back instead of
+## behind the body.
+func _turn_behind_layers() -> void:
+	var from_behind := String(animation).ends_with("_back")
+	for layer in LAYERS:
+		if layer["behind"] and _layers.has(layer["name"]):
+			(_layers[layer["name"]] as CanvasItem).show_behind_parent = not from_behind
 
 
 func _play_for(animation_name: String, duration: float, restart: bool = false) -> void:
@@ -591,6 +639,8 @@ func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true,
 	BodyFit.follow(sprite, self)
 	sprite.visible = not (layer == "shield" and _guarding)
 	sprite.set_meta("worn", true)
+	sprite.set_meta("sheet", path)
+	sprite.set_meta("tint", ItemDB.tier_color(item.tier_level()) if tier_tint else tint)
 	var material := sprite.material as ShaderMaterial
 	# Worn gear is drawn as part of the body: its own metal, a plain dark
 	# outline, no coloured edge or glow. Rarity shows in the aura underfoot.
@@ -603,6 +653,20 @@ func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true,
 	material.set_shader_parameter("glint", look[0])
 	material.set_shader_parameter("glint_period", look[1])
 	material.set_shader_parameter("sparkle", look[2])
+
+
+## What is worn, for others to see it on this player: [{"l": layer,
+## "s": sheet, "t": tint}], in drawing order.
+func worn() -> Array:
+	var out: Array = []
+	for layer in LAYERS:
+		var name: String = layer["name"]
+		if name.begins_with("look_") or not _layers.has(name):
+			continue
+		var sprite: AnimatedSprite2D = _layers[name]
+		if sprite.get_meta("worn", false):
+			out.append({"l": name, "s": str(sprite.get_meta("sheet", "")), "t": sprite.get_meta("tint", Color.WHITE)})
+	return out
 
 
 func _spawn_ghost() -> void:

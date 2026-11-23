@@ -29,6 +29,7 @@ var _pose := "idle"
 var _strike_left := 0.0
 var _clock := 0.0
 var _look: Dictionary = {}
+var _class := ""
 
 
 func setup(peer_id: int, info: Dictionary) -> void:
@@ -37,6 +38,7 @@ func setup(peer_id: int, info: Dictionary) -> void:
 	level = int(info.get("level", 1))
 	colour = Net.colour_of(peer)
 	_look = info.get("look", {}) if info.get("look", {}) is Dictionary else {}
+	_class = str(info.get("class", ""))
 
 
 func _ready() -> void:
@@ -48,7 +50,14 @@ func _ready() -> void:
 	var look := Appearance.DEFAULT.duplicate()
 	look.merge(_look, true)
 	_figure.dress(look)
+	_figure.stance = "idle_" + str(_class)
 	add_child(_figure)
+
+
+## What they wear (PlayerAnimator.worn()), told when it changes.
+func wear(gear: Array) -> void:
+	if _figure:
+		_figure.wear(gear)
 
 
 ## News of where they are: {"p", "v", "fx", "a", "hp", "mhp", "lv", "d"}.
@@ -67,6 +76,8 @@ func hear(state: Dictionary) -> void:
 	var facing := float(state.get("fx", 0.0))
 	if absf(facing) > 0.05:
 		_figure.face(facing)
+	# Seen from the way they are going; at rest, in their class's stance.
+	_figure.set_heading(moving if moving.length() > 20.0 else Vector2.ZERO)
 	var animation := str(state.get("a", "idle"))
 	if animation in ["attack", "heavy", "thrust", "smash", "shoot", "cast", "dodge"]:
 		if _pose != animation:

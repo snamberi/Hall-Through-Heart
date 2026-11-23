@@ -83,9 +83,12 @@ func _ready() -> void:
 		_figure = PersonFigure.new()
 		_figure.dress(look, 0.72 if VillagerLife.JOBS.get(job, {}).get("small", false) else 1.0)
 		var carry: String = VillagerLife.JOBS.get(job, {}).get("carry", "")
-		if carry != "" and ItemDB.ITEMS.has(carry):
+		if carry != "" and ItemDB.ITEMS.has(carry) and not _figure.hold_tool(carry):
 			var item := Item.create(carry)
 			_figure.hold(item.icon(), item.icon_tint())
+		var gear: Array = VillagerLife.JOBS.get(job, {}).get("wears", [])
+		if not gear.is_empty():
+			_figure.wear(gear)
 		add_child(_figure)
 		top = -_figure.head_height() - 18.0
 		_walk_to = position
@@ -417,7 +420,7 @@ func _live(delta: float) -> void:
 	var step := _walk_to - position
 	if step.length() > 4.0:
 		position += step.normalized() * speed * delta
-		_figure.face(step.x)
+		_figure.set_heading(step)
 		_figure.pose("run" if speed > 60.0 else "walk", speed / 40.0 if speed <= 60.0 else 1.0)
 	else:
 		_figure.pose("idle")

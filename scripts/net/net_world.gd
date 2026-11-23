@@ -243,6 +243,7 @@ func strike_copy(enemy: Enemy, amount: float, knockback: Vector2, critical: bool
 		Audio.play("hit", -4.0)
 		HitSpark.spawn(enemy.get_parent(), enemy.global_position + Vector2(0, -16), Color(1.0, 0.85, 0.4) if critical else Color(1.0, 0.95, 0.85), critical)
 		enemy._flash()
+		enemy._animator.flinch(knockback)
 	enemy._since_hurt = 0.0
 	return amount
 
