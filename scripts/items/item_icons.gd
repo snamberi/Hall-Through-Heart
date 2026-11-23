@@ -430,6 +430,19 @@ const INDEX := {
 	"gate_key_d": 415,
 	"gate_key_e": 416,
 	"gate_key_s": 417,
+	"alchemists_bandolier": 418,
+	"brawlers_wraps": 419,
+	"cooks_kerchief": 420,
+	"duelists_grips": 421,
+	"hunters_circlet": 422,
+	"miners_gauntlets": 423,
+	"orb_of_awakening": 424,
+	"quickstep_spurs": 425,
+	"scholars_band": 426,
+	"smiths_vest": 427,
+	"tide_charm": 428,
+	"wayfarers_anklet": 429,
+	"woodwrights_apron": 430,
 }
 
 static func has(id: String) -> bool:

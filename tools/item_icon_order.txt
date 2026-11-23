@@ -416,3 +416,16 @@ gate_key_c
 gate_key_d
 gate_key_e
 gate_key_s
+alchemists_bandolier
+brawlers_wraps
+cooks_kerchief
+duelists_grips
+hunters_circlet
+miners_gauntlets
+orb_of_awakening
+quickstep_spurs
+scholars_band
+smiths_vest
+tide_charm
+wayfarers_anklet
+woodwrights_apron

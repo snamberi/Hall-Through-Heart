@@ -2667,7 +2667,128 @@ def _token_festival(icon):
 HEARTSWORN = "c8404e"
 
 
+
+# --- trinkets: charms that grow with use, and the orb that wakes them
+def trinket_icon(kind):
+    icon = Icon()
+    if kind == "hunters_circlet":
+        # A copper band with two antler tines and a bone bead.
+        icon.ring((4, 12, 28, 28), 2, ramp(COPPER))
+        icon.line([(9, 14), (7, 8), (5, 4)], 2, ramp(BONE))
+        icon.line([(7, 8), (3, 7)], 1, ramp(BONE))
+        icon.line([(23, 14), (25, 8), (27, 4)], 2, ramp(BONE))
+        icon.line([(25, 8), (29, 7)], 1, ramp(BONE))
+        icon.ellipse((13, 23, 19, 29), ramp("b84a3a"))
+        icon.put(15, 25, (255, 230, 200))
+    elif kind == "scholars_band":
+        # A silver band with a sapphire set in a gold crown-piece.
+        icon.ring((4, 10, 28, 28), 2, ramp(SILVER))
+        icon.poly([(11, 12), (16, 4), (21, 12)], ramp(GOLD))
+        icon.ellipse((12, 6, 20, 14), ramp(CLOTH_BLUE))
+        icon.put(14, 8, (230, 240, 255))
+        icon.dots([(7, 20), (25, 20)], (120, 150, 220))
+    elif kind == "cooks_kerchief":
+        # A red kerchief, knotted, with white dots and a wooden spoon.
+        icon.poly([(3, 8), (29, 8), (16, 26)], ramp(CLOTH_RED))
+        icon.poly([(12, 8), (20, 8), (18, 4), (14, 4)], ramp("8a2a32"))
+        icon.dots([(9, 11), (16, 12), (23, 11), (13, 16), (19, 16), (16, 21)], (250, 240, 230))
+        icon.line([(22, 28), (29, 18)], 1, ramp(WOOD))
+        icon.ellipse((27, 14, 31, 19), ramp(WOOD))
+    elif kind == "woodwrights_apron":
+        # A leather apron with a pocket, a hatchet tucked in it.
+        icon.poly([(9, 3), (23, 3), (25, 12), (27, 29), (5, 29), (7, 12)], ramp(LEATHER))
+        icon.line([(9, 3), (5, 1)], 1, ramp(DARK_LEATHER))
+        icon.line([(23, 3), (27, 1)], 1, ramp(DARK_LEATHER))
+        icon.rect((10, 17, 22, 25), ramp(DARK_LEATHER))
+        icon.line([(13, 13), (20, 24)], 1, ramp(WOOD))
+        icon.poly([(17, 13), (22, 11), (23, 16), (19, 17)], ramp(IRON))
+    elif kind == "smiths_vest":
+        # Mail over leather: a vest of rings with a hammer badge.
+        icon.poly([(8, 3), (13, 3), (16, 7), (19, 3), (24, 3), (27, 11), (26, 29), (6, 29), (5, 11)], ramp(DARK_IRON))
+        for y in range(9, 28, 3):
+            for x in range(8 + (y % 2), 25, 3):
+                icon.put(x, y, (170, 176, 190))
+        icon.rect((14, 14, 18, 17), ramp(GOLD))
+        icon.line([(16, 17), (16, 23)], 1, ramp(WOOD))
+    elif kind == "alchemists_bandolier":
+        # A diagonal strap with three phials: green, red, blue.
+        icon.line([(3, 6), (29, 26)], 3, ramp(LEATHER))
+        for (x, y, col) in ((9, 9, "5ab08a"), (16, 14, CLOTH_RED), (23, 19, CLOTH_BLUE)):
+            icon.rect((x - 2, y - 7, x + 2, y + 1), ramp(col))
+            icon.rect((x - 1, y - 9, x + 1, y - 8), ramp(BONE))
+            icon.put(x - 1, y - 5, (240, 250, 255))
+    elif kind == "wayfarers_anklet":
+        # A brass anklet with a little bell and a road-worn charm.
+        icon.ring((3, 6, 29, 24), 2, ramp(BRONZE))
+        icon.ellipse((12, 20, 20, 29), ramp(GOLD))
+        icon.rect((15, 26, 17, 28), ramp(DARK_IRON))
+        icon.poly([(5, 19), (9, 17), (10, 23), (6, 25)], ramp(PALE_WOOD))
+        icon.put(14, 22, (255, 250, 220))
+    elif kind == "tide_charm":
+        # A spiral shell on a blue cord.
+        icon.line([(3, 4), (16, 12), (29, 4)], 1, ramp(CLOTH_BLUE))
+        icon.ellipse((7, 11, 25, 29), ramp("e8d8c0"))
+        icon.ring((10, 14, 22, 26), 1, ramp("c09a7a"))
+        icon.ring((13, 17, 19, 23), 1, ramp("c09a7a"))
+        icon.dots([(16, 20), (9, 27), (23, 27)], (90, 190, 210))
+    elif kind == "quickstep_spurs":
+        # A silver spur with a star rowel and wind lines.
+        icon.line([(4, 22), (14, 18), (24, 18)], 2, ramp(SILVER))
+        icon.line([(4, 22), (5, 12)], 2, ramp(SILVER))
+        for (dx, dy) in ((0, -5), (4, -3), (5, 1), (3, 5), (-1, 6), (-4, 3), (-4, -2)):
+            icon.line([(26, 18), (26 + dx, 18 + dy)], 1, ramp(STEEL))
+        icon.ellipse((24, 16, 28, 20), ramp(GOLD))
+        icon.dots([(6, 27), (10, 27), (14, 27), (9, 29), (13, 29)], (200, 230, 255))
+    elif kind == "miners_gauntlets":
+        # A dusty glove with iron knuckle plates holding a small ore.
+        icon.poly([(6, 29), (6, 15), (9, 10), (24, 10), (27, 15), (27, 29)], ramp("8a7a6a"))
+        for x in (9, 14, 19, 24):
+            icon.rect((x - 2, 6, x + 1, 11), ramp("8a7a6a"))
+            icon.rect((x - 2, 11, x + 1, 13), ramp(IRON))
+        icon.poly([(13, 18), (20, 17), (22, 23), (15, 25)], ramp(COPPER))
+        icon.put(16, 20, (255, 210, 150))
+    elif kind == "duelists_grips":
+        # A fine red glove, the cuff trimmed in gold, a little rapier hilt.
+        icon.poly([(7, 29), (7, 14), (10, 9), (22, 9), (25, 14), (25, 29)], ramp("b04a5a"))
+        icon.rect((6, 24, 26, 29), ramp(GOLD))
+        for x in (11, 16, 21):
+            icon.rect((x - 2, 5, x + 1, 10), ramp("b04a5a"))
+        icon.ring((13, 15, 21, 22), 1, ramp(GOLD))
+    elif kind == "brawlers_wraps":
+        # Linen wraps crossing a fist, a little blood on the knuckles.
+        icon.ellipse((6, 8, 26, 28), ramp(BONE))
+        for k in range(0, 18, 4):
+            icon.line([(6, 12 + k), (26, 8 + k)], 1, ramp("c8b898"))
+        icon.dots([(10, 9), (15, 8), (20, 9)], (180, 60, 60))
+        icon.line([(26, 22), (30, 30)], 1, ramp("c8b898"))
+    return icon
+
+
+def orb_icon():
+    # The Orb of Awakening: a gold-ringed glass sphere, a slow fire inside.
+    icon = Icon()
+    icon.ellipse((5, 5, 27, 27), ramp("f0d070"))
+    icon.ellipse((8, 8, 24, 24), ramp(EMBER))
+    icon.ellipse((12, 11, 20, 19), ramp("fff0b0"))
+    icon.ring((3, 13, 29, 19), 1, ramp(GOLD))
+    icon.sparkle(11, 9)
+    icon.dots([(20, 22), (9, 18)], (255, 240, 200))
+    return icon
+
 ITEMS = {
+    "hunters_circlet": lambda: trinket_icon("hunters_circlet"),
+    "scholars_band": lambda: trinket_icon("scholars_band"),
+    "cooks_kerchief": lambda: trinket_icon("cooks_kerchief"),
+    "woodwrights_apron": lambda: trinket_icon("woodwrights_apron"),
+    "smiths_vest": lambda: trinket_icon("smiths_vest"),
+    "alchemists_bandolier": lambda: trinket_icon("alchemists_bandolier"),
+    "wayfarers_anklet": lambda: trinket_icon("wayfarers_anklet"),
+    "tide_charm": lambda: trinket_icon("tide_charm"),
+    "quickstep_spurs": lambda: trinket_icon("quickstep_spurs"),
+    "miners_gauntlets": lambda: trinket_icon("miners_gauntlets"),
+    "duelists_grips": lambda: trinket_icon("duelists_grips"),
+    "brawlers_wraps": lambda: trinket_icon("brawlers_wraps"),
+    "orb_of_awakening": lambda: orb_icon(),
     # --- weapons
     "sword": lambda: sword_icon(),
     "dark_sword": lambda: sword_icon(steel="5a4e72", hilt="7a52c0", wrap="2a2038", gem="c08cff", curl=3,

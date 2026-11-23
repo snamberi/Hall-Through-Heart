@@ -8,14 +8,30 @@ const ENCHANT_SLOTS: Array[String] = ["main_hand", "off_hand", "helmet", "chest"
 
 
 ## Why a recipe cannot be made right now, or "".
+## What a recipe takes from this player: a third less wood with the
+## Woodwright's Apron grown into Thrift of Wood.
+static func inputs_for(player: Player, recipe: Dictionary) -> Dictionary:
+	var inputs: Dictionary = recipe["inputs"]
+	if player == null or player.trinkets == null or not player.trinkets.has_power("thrift_of_wood"):
+		return inputs
+	var out := {}
+	for item_id: String in inputs:
+		var amount: int = inputs[item_id]
+		out[item_id] = maxi(ceili(amount * 2.0 / 3.0), 1) if item_id.ends_with("_wood") else amount
+	return out
+
+
 static func blocked_reason(player: Player, recipe: Dictionary) -> String:
+	if recipe.has("power") and (player.trinkets == null or not player.trinkets.has_power(str(recipe["power"]))):
+		return "Only a trinket's %s teaches this." % ("Deep Lore" if recipe["power"] == "deep_lore" else "Masterwork")
 	if not recipe["id"] in RecipeDB.NO_TABLE and not player.near_crafting_table():
 		return "Stand next to a crafting table."
 	if player.professions.level(recipe["profession"]) < recipe["level"]:
 		return "Requires %s %d." % [Professions.NAMES[recipe["profession"]], recipe["level"]]
 	# The bag, the satchel and the player's own chests nearby all count.
-	for item_id: String in recipe["inputs"]:
-		if Stash.available(player, item_id) < recipe["inputs"][item_id]:
+	var inputs := inputs_for(player, recipe)
+	for item_id: String in inputs:
+		if Stash.available(player, item_id) < inputs[item_id]:
 			return "Not enough %s." % ItemDB.ITEMS[item_id]["name"]
 	if player.inventory.free_slots() <= 0:
 		return "Inventory is full."
@@ -35,8 +51,9 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 	var forging := recipe.has("equipment")
 	var rarity_sum := 0.0
 	var units := 0
-	for item_id: String in recipe["inputs"]:
-		var amount: int = recipe["inputs"][item_id]
+	var inputs := inputs_for(player, recipe)
+	for item_id: String in inputs:
+		var amount: int = inputs[item_id]
 		rarity_sum += Stash.take_anywhere(player, item_id, amount, forging) * amount
 		units += amount
 	var material_rarity := rarity_sum / maxf(units, 1.0)
@@ -56,6 +73,8 @@ static func craft(player: Player, recipe: Dictionary) -> String:
 			made.quality *= 1.0 + MATERIAL_RARITY_BONUS * material_rarity
 		else:
 			Events.announcement.emit("THE %s IS FORGED" % str(def["name"]).to_upper(), "Nine bosses' worth of power in one blade")
+		# A Masterwork recipe makes finer gear than the common one.
+		made.quality *= 1.0 + float(recipe.get("quality_bonus", 0.0))
 	else:
 		made = Item.create(recipe["item"], recipe["count"])
 		# A practised cook stretches a pot further: a chance of a spare serving.

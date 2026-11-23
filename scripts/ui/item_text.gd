@@ -36,6 +36,10 @@ static func type_name(item: Item) -> String:
 		return "Saddle" if def["tack"] == "saddle" else "Barding"
 	if item.is_belt():
 		return "Belt"
+	if def.has("trinket"):
+		return "Trinket (%s)" % str(ItemDB.SLOT_NAMES.get(item.slot(), "charm")).to_lower()
+	if def.has("use") and def["use"].has("orb"):
+		return "Orb"
 	if def.has("weapon"):
 		if id in ["club", "halberd", "katana"]:
 			return id.capitalize()
@@ -198,6 +202,11 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 		lines.append("[color=#%s]Heals you for %d%% of damage dealt[/color]" % [UITheme.GOOD.to_html(false), roundi(def["life_steal"] * 100.0)])
 	if def.has("unique"):
 		lines.append("[color=#ff9a2e]Unique: %s[/color]" % Uniques.TEXT[def["unique"]])
+	if def.has("trinket"):
+		# A charm grows: its three levels, the one reached marked.
+		const TRINKETS := preload("res://scripts/items/trinket_db.gd")
+		for line: String in TRINKETS.describe(item.id, item.trinket_level, item.trinket_progress):
+			lines.append("[color=#%s]%s[/color]" % [UITheme.GOLD.to_html(false), line])
 	for modifier in item.rarity_gift():
 		lines.append("[color=#%s]%s: %s[/color]" % [item.color().to_html(false), rarity, ItemDB.describe_modifier(modifier)])
 	for modifier in item.implicit_modifiers():

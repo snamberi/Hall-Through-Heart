@@ -18,12 +18,18 @@ const DOLL_SLOT := 50.0
 const DOLL_PITCH := 62.0
 const DOLL_SIZE := Vector2(336.0, 368.0)
 ## Equipment slots down each side of the character.
-const LEFT_SLOTS: Array[String] = ["necklace", "ring_1", "ring_2", "artifact", "backpack", "belt"]
+## The doll's left column is empty now: necklace, rings, artifact, backpack
+## and belt live in the Trinkets view with the four charms.
+const LEFT_SLOTS: Array[String] = []
+## The Trinkets view: the four charms, then what used to hang on the doll.
+const TRINKET_SLOTS: Array[String] = ["trinket_head", "trinket_body", "trinket_feet", "trinket_hands", "necklace", "ring_1", "ring_2", "artifact", "backpack", "belt"]
+const TRINKETS := preload("res://scripts/items/trinket_db.gd")
 const RIGHT_SLOTS: Array[String] = ["helmet", "chest", "legs", "boots", "off_hand"]
 ## Faint icon shown in an empty equipment slot.
 const SLOT_ICONS := {"necklace": 10, "ring_1": 11, "ring_2": 11, "artifact": 12, "backpack": 93, "belt": 115,
 	"helmet": 6, "chest": 7, "legs": 8, "boots": 9, "off_hand": 5,
-	"combat": 38, "weapon_1": 33, "weapon_2": 0, "weapon_3": 0, "tool_pickaxe": 49, "tool_hatchet": 50, "tool_rod": 51}
+	"combat": 38, "weapon_1": 33, "weapon_2": 0, "weapon_3": 0, "tool_pickaxe": 49, "tool_hatchet": 50, "tool_rod": 51,
+	"trinket_head": 6, "trinket_body": 7, "trinket_feet": 9, "trinket_hands": 5}
 const BELT_SLOT := 42.0
 ## Rows of the bag shown at once; the rest scroll.
 const VISIBLE_ROWS := 8
@@ -38,6 +44,12 @@ var _bag_buttons: Array[Button] = []
 var _bag_counts: Array[Label] = []
 var _bag_locks: Array[TextureRect] = []
 var _slot_buttons: Dictionary[String, Button] = {}
+## [button, hotbar index (-1: the quick item)] for the supplies row.
+var _supply_buttons: Array = []
+var _doll: Control
+var _trinket_view: Control
+var _trinket_switch: Button
+var _trinket_info: VBoxContainer
 var _set_label: Label
 var _detail_icon: TextureRect
 var _detail_frame: PanelContainer
@@ -228,6 +240,15 @@ func _build() -> void:
 	doll.custom_minimum_size = DOLL_SIZE
 	doll.setup(player)
 	middle.add_child(doll)
+	_doll = doll
+	# The Trinkets view, in the doll's place while it is open.
+	_trinket_view = _build_trinket_view()
+	_trinket_view.visible = false
+	middle.add_child(_trinket_view)
+	var switch := UITheme.button("Trinkets", func() -> void: _show_trinkets(not _trinket_view.visible), DOLL_SIZE.x)
+	switch.tooltip_text = "Charms that grow as you use them, and your necklace, rings, artifact, backpack and belt."
+	middle.add_child(switch)
+	_trinket_switch = switch
 	# Every slot down each side gets a whole place of its own: the area is
 	# as tall as the longer column needs.
 	for side: Array in [[LEFT_SLOTS, 0.0], [RIGHT_SLOTS, DOLL_SIZE.x - DOLL_SLOT]]:
@@ -309,6 +330,31 @@ func _build() -> void:
 			var gap := Control.new()
 			gap.custom_minimum_size.x = 6.0
 			belt.add_child(gap)
+	# The supplies and food on the hotbar, and the quick item, beside them.
+	var supply_title := UITheme.heading("Supplies & quick", 15)
+	supply_title.tooltip_text = "What hotbar keys 8, 9 and 0 hold, and the quick item (%s)." % GameSettings.describe("quick_use").split(" / ")[0]
+	supply_title.mouse_filter = Control.MOUSE_FILTER_PASS
+	middle.add_child(supply_title)
+	var supplies := HBoxContainer.new()
+	supplies.add_theme_constant_override("separation", 4)
+	supplies.alignment = BoxContainer.ALIGNMENT_CENTER
+	middle.add_child(supplies)
+	for index: int in [7, 8, Hotbar.FOOD_SLOT, -1]:
+		var button := _item_button(BELT_SLOT)
+		var label := "Quick item" if index < 0 else "%s  (key %d)" % [Hotbar.LABELS[index], (index + 1) % 10]
+		_wire(button, func() -> Item: return player.hotbar.quick_item() if index < 0 else player.hotbar.item_in(index), label)
+		var key := UITheme.label("Q" if index < 0 else str((index + 1) % 10), 14, UITheme.HEADING)
+		key.position = Vector2(4, -2)
+		key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		key.add_theme_color_override("font_outline_color", Color.BLACK)
+		key.add_theme_constant_override("outline_size", 3)
+		button.add_child(key)
+		if index < 0:
+			var gap := Control.new()
+			gap.custom_minimum_size.x = 6.0
+			supplies.add_child(gap)
+		supplies.add_child(button)
+		_supply_buttons.append([button, index])
 	var hint := UITheme.label("Hover: 1-9 hotbar, %s quick use, %s junk, %s lock  ·  Shift-click equips  ·  Ctrl-click splits" % [GameSettings.describe("quick_use").split(" / ")[0], GameSettings.describe("mark_junk").split(" / ")[0], GameSettings.describe("lock_item").split(" / ")[0]], 14, UITheme.DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -553,6 +599,15 @@ func refresh() -> void:
 			# A faint outline of what belongs here.
 			button.icon = ItemDB.icon(SLOT_ICONS[slot])
 			_tint_icon(button, Color(1, 1, 1, 0.3))
+	for pair: Array in _supply_buttons:
+		var index: int = pair[1]
+		var held: Item = player.hotbar.quick_item() if index < 0 else player.hotbar.item_in(index)
+		_style_button(pair[0], held)
+		if held == null:
+			(pair[0] as Button).icon = ItemDB.icon(Hotbar.GHOST_ICONS[index] if index >= 0 else 44)
+			_tint_icon(pair[0], Color(1, 1, 1, 0.3))
+	if _trinket_view and _trinket_view.visible:
+		_fill_trinket_info()
 	var progress := player.equipment.set_progress()
 	var notes: PackedStringArray = []
 	if progress["count"] >= 2:
@@ -961,6 +1016,87 @@ func _equipped_slot(item: Item) -> String:
 
 ## Connects a slot button to whatever item it currently shows.
 ## `empty_text` names the slot in the tooltip when nothing is in it.
+## The Trinkets view: ten slots, and how each worn charm is growing.
+func _build_trinket_view() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	box.custom_minimum_size = Vector2(DOLL_SIZE.x, DOLL_SIZE.y)
+	box.add_child(UITheme.heading("Trinkets", 18))
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 4)
+	box.add_child(grid)
+	for slot: String in TRINKET_SLOTS:
+		var cell := VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 0)
+		var button := _item_button(DOLL_SLOT)
+		var name := str(TRINKETS.SLOT_NAMES.get(slot, Equipment.BELT_NAMES.get(slot, ItemDB.SLOT_NAMES.get(slot, slot))))
+		_wire(button, func() -> Item: return player.equipment.get_item(slot), name)
+		cell.add_child(button)
+		var label := UITheme.label(name.replace(" charm", ""), 12, Color("a89a80"))
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.custom_minimum_size.x = DOLL_SLOT + 6.0
+		cell.add_child(label)
+		grid.add_child(cell)
+		_slot_buttons[slot] = button
+	box.add_child(UITheme.rule(DOLL_SIZE.x))
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(scroll)
+	_trinket_info = VBoxContainer.new()
+	_trinket_info.add_theme_constant_override("separation", 6)
+	_trinket_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_trinket_info)
+	return box
+
+
+func _show_trinkets(on: bool) -> void:
+	_trinket_view.visible = on
+	_doll.visible = not on
+	_trinket_switch.text = "Back to the character" if on else "Trinkets"
+	refresh()
+
+
+## Each worn charm: its level, what it is doing to grow, and its power;
+## an Orb of Awakening, if carried, raises it at once.
+func _fill_trinket_info() -> void:
+	for child in _trinket_info.get_children():
+		child.queue_free()
+	var orbs := player.inventory.count_of(TRINKETS.ORB)
+	var any := false
+	for slot: String in TRINKETS.SLOTS:
+		var item: Item = player.equipment.get_item(slot)
+		if item == null or not TRINKETS.is_trinket(item.id):
+			continue
+		any = true
+		var data: Dictionary = TRINKETS.TRINKETS[item.id]
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 1)
+		_trinket_info.add_child(row)
+		var pips := "●".repeat(item.trinket_level) + "○".repeat(TRINKETS.MAX_LEVEL - item.trinket_level)
+		row.add_child(UITheme.strong("%s   %s" % [data["name"], pips], 14, UITheme.GOLD))
+		var need := TRINKETS.goal(item.id, item.trinket_level)
+		if need > 0:
+			var bar := ProgressBar.new()
+			bar.show_percentage = false
+			bar.custom_minimum_size = Vector2(DOLL_SIZE.x - 20.0, 8)
+			bar.max_value = need
+			bar.value = item.trinket_progress
+			row.add_child(bar)
+			row.add_child(UITheme.label("%s  %d / %d" % [TRINKETS.ACTIVITIES[data["activity"]], int(item.trinket_progress), need], 12, UITheme.DIM))
+			if orbs > 0:
+				row.add_child(UITheme.button("Awaken with an Orb (%d)" % orbs, func() -> void:
+					_report(player.trinkets.awaken(item))
+					refresh()
+				, DOLL_SIZE.x - 20.0))
+		else:
+			row.add_child(UITheme.paragraph("%s: %s" % [data["power_name"], data["power_text"]], DOLL_SIZE.x - 20.0, 12, UITheme.GOOD))
+	if not any:
+		_trinket_info.add_child(UITheme.paragraph("No charms worn. Trinkets come from chests and great monsters; each grows by doing what it is about (slaying, walking, swimming, crafting...), never by gold.", DOLL_SIZE.x - 20.0, 13, UITheme.DIM))
+
+
 func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 	button.pressed.connect(func() -> void:
 		var item: Item = item_of.call()

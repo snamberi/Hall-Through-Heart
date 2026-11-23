@@ -84,6 +84,9 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 	var extra := roll_special(level, info["rank"], magic_find, bonus)
 	if extra:
 		items.append(extra)
+	# Trinkets from the great ones.
+	if randf() < {"champion": 0.03, "miniboss": 0.12, "boss": 0.25}.get(info["rank"], 0.0) * (1.0 + magic_find):
+		items.append(make_trinket())
 	# Gems from the tougher monsters.
 	if randf() < {"normal": 0.004, "elite": 0.06, "champion": 0.2, "miniboss": 0.6}.get(info["rank"], 0.0) * (1.0 + magic_find):
 		items.append(Item.create(Gems.random_gem(level)))
@@ -99,6 +102,15 @@ static func roll_enemy_drops(info: Dictionary, magic_find: float = 0.0) -> Dicti
 			items.append(make_equipment(level, rarity, base, magic_find))
 			break
 	return result
+
+
+## A trinket, any of them, at level 1.
+static func make_trinket(trinket_id: String = "") -> Item:
+	const DB := preload("res://scripts/items/trinket_db.gd")
+	var id := trinket_id if trinket_id != "" else str(DB.TRINKETS.keys().pick_random())
+	var item := Item.create(id)
+	item.rarity = 3
+	return item
 
 
 static func random_rune() -> String:

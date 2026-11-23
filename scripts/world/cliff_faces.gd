@@ -69,6 +69,8 @@ func _is_stairs(x: int, y: int) -> bool:
 func _ready() -> void:
 	# The faces block the climb, but not the drop; steps let one climb.
 	var body := StaticBody2D.new()
+	body.collision_layer = TerrainTiles.CLIFF_COLLISION
+	body.collision_mask = 0
 	var size := span - 2
 	for y in size:
 		var run_start := -1

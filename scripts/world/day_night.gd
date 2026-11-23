@@ -203,6 +203,11 @@ func _apply() -> void:
 			_light.energy = (1.1 + flicker * 0.07) * dying
 			_light.texture_scale = ((1.55 if indoors else 1.8) + flicker * 0.03) * (0.7 + 0.3 * dying)
 			_light.color = Color(1.0, 0.8, 0.52)
+		elif dark > 0.2 and _player and _player.trinkets and _player.trinkets.has_power("night_eyes"):
+			# Night Eyes (the Hunter's Circlet): a wide, cool sight.
+			_light.energy = 0.95
+			_light.texture_scale = 2.3 if indoors else 2.6
+			_light.color = Color(0.72, 0.9, 0.86)
 		elif indoors:
 			# Without a torch, a cave shows little more than arm's reach.
 			_light.energy = lerpf(0.55, 0.5, cave_dark)

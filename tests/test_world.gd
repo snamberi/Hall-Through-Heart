@@ -433,7 +433,7 @@ func test_flight_is_won_in_the_trial_of_panic(t: TestContext) -> void:
 	t.check(player.flying and not instances.is_inside(), "and the player rises into the open sky")
 	t.check(Appearance.layers({"race": "human", "flight_wings": true}).get("wings", {}).get("sheet", "") == "wings_3", "with the wings of flight")
 	player.toggle_flight()
-	t.check(not player.flying and player.collision_mask == 1, "T lands again")
+	t.check(not player.flying and player.collision_mask & TerrainTiles.WALL_COLLISION != 0, "T lands again")
 	t.check(player.save_data().get("flight_unlocked", false), "flight is kept in the save")
 	t.close_game()
 

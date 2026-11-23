@@ -30,6 +30,9 @@ var quality := 1.0
 ## A keeper: the player has locked this piece so that bulk selling, marking,
 ## salvaging and discarding leave it alone. Gear only.
 var locked := false
+## A trinket's level (1 to 3) and how far it is along to the next.
+var trinket_level := 1
+var trinket_progress := 0.0
 ## Marked as junk: sold all at once at any merchant ("Sell junk").
 var junk := false
 ## A number that tells this one piece from every other (gear, tools and
@@ -95,6 +98,8 @@ static func from_dict(data: Dictionary) -> Item:
 	item.junk = bool(data.get("junk", false)) and not item.locked
 	item.runeword = str(data.get("runeword", "")) if Runes.WORDS.has(str(data.get("runeword", ""))) else ""
 	item.fresh = bool(data.get("fresh", false))
+	item.trinket_level = clampi(int(data.get("tl", 1)), 1, 3)
+	item.trinket_progress = float(data.get("tp", 0.0))
 	item.uid = int(data.get("uid", 0))
 	_next_uid = maxi(_next_uid, item.uid + 1)
 	var saved_infusions: Variant = data.get("infusions", [])
@@ -148,6 +153,9 @@ func to_dict() -> Dictionary:
 		data["fresh"] = true
 	if uid != 0:
 		data["uid"] = uid
+	if definition().has("trinket"):
+		data["tl"] = trinket_level
+		data["tp"] = snappedf(trinket_progress, 0.1)
 	return data
 
 
@@ -289,7 +297,7 @@ func implicit_modifiers() -> Array[Dictionary]:
 func rarity_gift() -> Array[Dictionary]:
 	var gift: float = ItemDB.RARITIES[rarity]["gift"]
 	var result: Array[Dictionary] = []
-	if gift <= 0.0 or not is_equipment():
+	if gift <= 0.0 or not is_equipment() or definition().has("trinket"):
 		return result
 	if definition().has("damage"):
 		result.append({"stat": "physical_damage", "kind": "percent", "value": gift})

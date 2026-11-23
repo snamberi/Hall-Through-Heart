@@ -104,6 +104,11 @@ static func roll_chest(level: int, richness: float) -> Array:
 		items.append(LootGenerator.make_equipment(level, maxi(rarity, 2 if richness >= 2.0 else 0)).to_dict())
 	if richness >= 2.0:
 		items.append(Item.create("heart_shard").to_dict())
+	# A trinket now and then; very rarely, the Orb of Awakening.
+	if randf() < 0.03 * richness:
+		items.append(LootGenerator.make_trinket().to_dict())
+	if randf() < 0.01:
+		items.append(Item.create("orb_of_awakening").to_dict())
 	return items
 
 

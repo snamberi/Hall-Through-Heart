@@ -18,6 +18,9 @@ const FRINGE_SOURCE := 1
 ## Physics layers: walls stop everyone; deep water stops walkers only.
 const WALL_COLLISION := 1
 const WATER_COLLISION := 8
+## Cliff faces stand on their own layer, so those who can climb them
+## (the Wayfarer's Anklet's Mountain Goat) can be let through.
+const CLIFF_COLLISION := 32
 
 enum Type {
 	DEEP_WATER, SHALLOW_WATER, MUD, ASH, DEAD_GRASS, DARK_GRASS, BOG, ROCK,

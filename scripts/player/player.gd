@@ -85,6 +85,9 @@ var gather_seconds := 0.0
 var gather_progress := 0.0
 ## True while in deep water: slow, and unable to fight or gather.
 var swimming := false
+## The trinkets worn and what they have grown into (scripts/player/trinkets.gd).
+const TRINKETS_SCRIPT := preload("res://scripts/player/trinkets.gd")
+var trinkets: Node
 ## True while choosing where to set something down; clicks place it
 ## instead of attacking.
 var placing := false
@@ -268,6 +271,12 @@ func _ready() -> void:
 	talents.setup(leveling, stats)
 	_apply_class()
 	equipment.setup(inventory, leveling, attributes)
+	trinkets = TRINKETS_SCRIPT.new()
+	trinkets.name = "Trinkets"
+	add_child(trinkets)
+	trinkets.setup(self)
+	trinkets.changed.connect(_update_ground_mask)
+	_update_ground_mask()
 	if not inventory.starter_given:
 		# A new character starts with its class's kit: the weapon it trains
 		# with in hand, a piece or two of armour on, and supplies in the bag.
@@ -651,6 +660,13 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 func use_item(item: Item) -> String:
 	if item.id == "bedroll" and item in inventory.items:
 		return sleep_rough()
+	if item.definition().get("use", {}).has("orb") and item in inventory.items:
+		# The least awakened trinket worn takes it.
+		var lowest: Item = null
+		for worn: Item in trinkets.worn().values():
+			if worn.trinket_level < 3 and (lowest == null or worn.trinket_level < lowest.trinket_level):
+				lowest = worn
+		return trinkets.awaken(lowest) if lowest else "Wear a trinket that is not yet fully awakened."
 	if item.definition().get("use", {}).has("gate_key") and item in inventory.items:
 		var gates: Gates = get_parent().get_node_or_null("Gates")
 		var problem := gates.use_key(str(item.definition()["use"]["gate_key"])) if gates else "Nothing happens."
@@ -704,7 +720,8 @@ func use_item(item: Item) -> String:
 	if not use.has("buff"):
 		if potion_cooldown_left > 0.0:
 			return "Wait %.0fs before another potion." % ceilf(potion_cooldown_left)
-		potion_cooldown_left = 8.0
+		# The Alchemist's Bandolier, grown, has the next ready sooner.
+		potion_cooldown_left = 8.0 * (0.67 if trinkets and trinkets.has_gift("alchemists_bandolier") else 1.0)
 	if use.has("heal"):
 		health.heal(health.max_health * use["heal"])
 	if use.has("mana"):
@@ -792,6 +809,14 @@ func _read_ground() -> void:
 		Events.splash.emit(global_position)
 	var was_swimming := swimming
 	swimming = TerrainTiles.is_water(tile)
+	# The Tide Charm's Waterwalker: water is ground underfoot.
+	if swimming and trinkets and trinkets.has_power("waterwalker"):
+		swimming = false
+		deep_water = false
+		if not was_swimming:
+			return
+		Events.splash.emit(global_position)
+		return
 	deep_water = tile == TerrainTiles.Type.DEEP_WATER
 	# Some races swim far better (or worse) than others; the cold-blooded
 	# slow on snow.
@@ -799,6 +824,8 @@ func _read_ground() -> void:
 		_ground_speed *= float(RaceTraits.value(race(), "water", 1.0))
 	elif tile in [TerrainTiles.Type.SNOW, TerrainTiles.Type.FROSTPINE, TerrainTiles.Type.PEAK]:
 		_ground_speed *= float(RaceTraits.value(race(), "cold", 1.0))
+	if swimming and trinkets and trinkets.has_gift("tide_charm"):
+		_ground_speed = maxf(_ground_speed, 0.85)
 	if swimming and buffs.has("tidestride"):
 		# The Tidewalker's relic: water is no slower than land.
 		_ground_speed = maxf(_ground_speed, 1.0)
@@ -1323,6 +1350,14 @@ func death_recap() -> String:
 	return "Slain by %s.  %d damage taken in the last 10 s, most of it from %s.\nLast blows: %s" % [last[1], roundi(total), worst, ",  ".join(blows)]
 
 
+## What stops the player on foot: walls, and cliff faces unless a
+## Wayfarer's Anklet has made a Mountain Goat of them.
+func _update_ground_mask() -> void:
+	if flying:
+		return
+	collision_mask = TerrainTiles.WALL_COLLISION | (0 if trinkets and trinkets.has_power("mountain_goat") else TerrainTiles.CLIFF_COLLISION)
+
+
 ## Takes to the air, or lands. Flight is won in the Trial of Panic.
 func toggle_flight() -> void:
 	if not flight_unlocked:
@@ -1347,7 +1382,7 @@ func land() -> void:
 	if not flying:
 		return
 	flying = false
-	collision_mask = 1
+	_update_ground_mask()
 	_visual.position.y = -Mount.seat(mount_id) if mount_id != "" else 0.0
 	Audio.play("flutter", -8.0)
 	apply_look()
@@ -1644,7 +1679,9 @@ func _try_dodge() -> void:
 	state = State.DODGE
 	_state_time_left = dodge_duration
 	_dodge_cooldown_left = dodge_cooldown / stats.get_stat("dodge_efficiency")
-	_invulnerable_left = maxf(_invulnerable_left, dodge_duration)
+	# Quickstep Spurs' Phase Step: untouchable twice as long.
+	_invulnerable_left = maxf(_invulnerable_left, dodge_duration * (2.0 if trinkets and trinkets.has_power("phase_step") else 1.0))
+	Events.codex_event.emit("dashes", 1)
 
 
 ## Feedback for a blow that a dodge's untouchable moment turned away: a

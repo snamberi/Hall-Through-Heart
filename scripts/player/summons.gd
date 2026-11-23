@@ -76,9 +76,9 @@ func dismiss_all() -> void:
 	minions.clear()
 
 
-## Summons stand on their own physics layer (4): solid to walls, to
+## Summons stand on their own physics layer (7): solid to walls, to
 ## monsters and to one another, never to the player.
-const LAYER := 8
+const LAYER := 64
 const BODY_RADIUS := 9.0
 ## How close two summons may stand before they step apart.
 const ELBOW_ROOM := 30.0
@@ -111,7 +111,7 @@ class Minion:
 	func _ready() -> void:
 		add_to_group("summons")
 		collision_layer = Summons.LAYER
-		collision_mask = TerrainTiles.WALL_COLLISION | Summons.LAYER | 4
+		collision_mask = TerrainTiles.WALL_COLLISION | TerrainTiles.CLIFF_COLLISION | Summons.LAYER | 4
 		motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 		var shape := CollisionShape2D.new()
 		var circle := CircleShape2D.new()

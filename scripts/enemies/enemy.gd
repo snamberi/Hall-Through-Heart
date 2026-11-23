@@ -285,7 +285,7 @@ func _ready() -> void:
 	_animator.rebuild()
 	_look = Look.dress(self, _animator)
 	# Walkers are stopped by walls; fliers by nothing.
-	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION
+	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION | TerrainTiles.CLIFF_COLLISION
 	_add_nameplate(rank_data, size)
 	StatusFX.attach(self, func() -> Array: return _statuses.keys(), 40.0 * size, body_radius)
 	health.died.connect(_on_died)

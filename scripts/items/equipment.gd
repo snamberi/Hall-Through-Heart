@@ -23,7 +23,8 @@ const BELT_NAMES := {"combat": "Combat style", "weapon_1": "Magic", "weapon_2": 
 	"tool_hatchet": "Hatchet", "tool_rod": "Fishing rod", "backpack": "Backpack", "belt": "Belt"}
 ## Worn slots, the belt, and the backpack: everything that can hold an item.
 const ALL_SLOTS: Array[String] = ["off_hand", "helmet", "chest", "legs", "boots", "necklace", "ring_1", "ring_2", "artifact",
-	"weapon_1", "weapon_2", "weapon_3", "tool_pickaxe", "tool_hatchet", "tool_rod", "backpack", "belt"]
+	"weapon_1", "weapon_2", "weapon_3", "tool_pickaxe", "tool_hatchet", "tool_rod", "backpack", "belt",
+	"trinket_head", "trinket_body", "trinket_feet", "trinket_hands"]
 
 ## slot id -> Item, only for filled slots.
 var equipped: Dictionary[String, Item] = {}

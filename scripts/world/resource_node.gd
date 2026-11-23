@@ -230,13 +230,15 @@ func harvest(player: Player, perfects := 0) -> void:
 	if item_id != "":
 		if randf() < player.professions.double_chance(profession()):
 			count *= 2
+		elif profession() == "mining" and player.trinkets and player.trinkets.has_power("prospector") and randf() < 0.25:
+			count *= 2
 		# Races with a knack for it get one more now and then.
 		if kind() != "fish" and randf() < float(RaceTraits.value(player.race(), "yield", 0.0)) * (1.0 if profession() == "mining" or player.race() == "goblin" else 0.0):
 			count += 1
 		var item := Item.create_rolled(item_id, count, luck)
 		if player.inventory.add(item):
 			Events.pickup_noted.emit(item.display_name(), count, item.tint().lightened(0.3))
-			Events.resource_gathered.emit({"resource": resource_id, "item": item_id, "count": count})
+			Events.resource_gathered.emit({"resource": resource_id, "item": item_id, "count": count, "kind": kind()})
 		else:
 			DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -30), "Inventory full", UITheme.BAD, 12)
 			return

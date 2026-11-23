@@ -66,7 +66,7 @@ func _ready() -> void:
 	add_to_group("livestock")
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	collision_layer = 0
-	collision_mask = 1
+	collision_mask = TerrainTiles.WALL_COLLISION | TerrainTiles.CLIFF_COLLISION
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
 	circle.radius = 9.0

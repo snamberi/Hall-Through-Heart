@@ -231,6 +231,12 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "trout_stew", "profession": "cooking", "level": 10, "inputs": {"trout": 1, "healing_herb": 1}, "item": "trout_stew", "count": 1, "xp": 24.0},
 	{"id": "eel_pie", "profession": "cooking", "level": 25, "inputs": {"eel": 1, "rare_root": 1}, "item": "eel_pie", "count": 1, "xp": 48.0},
 	{"id": "enchanted_dust", "profession": "enchanting", "level": 1, "inputs": {"essence": 1}, "item": "enchanted_dust", "count": 2, "xp": 12.0},
+	# Known only to those whose trinkets have grown into Deep Lore or Masterwork.
+	{"id": "lore_might_elixir", "profession": "alchemy", "level": 5, "inputs": {"mana_flower": 2, "healing_herb": 2}, "item": "might_elixir", "count": 2, "xp": 30.0, "power": "deep_lore"},
+	{"id": "lore_void_tonic", "profession": "alchemy", "level": 10, "inputs": {"mana_flower": 3, "glowshroom": 1}, "item": "void_tonic", "count": 2, "xp": 40.0, "power": "deep_lore"},
+	{"id": "lore_sunroot_elixir", "profession": "alchemy", "level": 15, "inputs": {"healing_herb": 4, "mana_flower": 2}, "item": "sunroot_elixir", "count": 1, "xp": 50.0, "power": "deep_lore"},
+	{"id": "masterwork_chestplate", "profession": "blacksmithing", "level": 10, "inputs": {"iron_ingot": 6, "leather": 2}, "equipment": "chestplate", "item_level": 20, "xp": 70.0, "power": "masterwork", "quality_bonus": 0.25},
+	{"id": "masterwork_sword", "profession": "blacksmithing", "level": 10, "inputs": {"iron_ingot": 5, "leather": 1}, "equipment": "sword", "item_level": 20, "xp": 70.0, "power": "masterwork", "quality_bonus": 0.25},
 ]
 
 static var _recipes: Array[Dictionary] = []
