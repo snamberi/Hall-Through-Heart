@@ -125,6 +125,7 @@ func wear(gear: Array) -> void:
 		var tint: Variant = wanted[name].get("t", Color.WHITE)
 		(worn.material as ShaderMaterial).set_shader_parameter("tint", tint if tint is Color else Color.WHITE)
 		(worn.material as ShaderMaterial).set_shader_parameter("outline_mix", 0.0)
+		(worn.material as ShaderMaterial).set_shader_parameter("upgrade", float(wanted[name].get("u", 0)))
 		worn.flip_h = _body.flip_h
 		worn.visible = true
 		BodyFit.follow(worn, _body)

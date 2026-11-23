@@ -192,6 +192,8 @@ func _apply() -> void:
 	sky = Color(sky.r * biome.r, sky.g * biome.g, sky.b * biome.b)
 	color = Color(0.82, 0.8, 0.78).lerp(Color(0.07, 0.075, 0.12), cave_dark) if indoors else sky.lerp(Color(0.95, 0.97, 1.0), _lightning)
 	SunShadow.update(time, darkness(), indoors, _lightning)
+	if _player:
+		SunShadow.update_lights(get_tree(), _player.global_position, clampf(gloom() * 1.4, 0.0, 1.0))
 	if _light:
 		var dark := gloom()
 		if torch_left > 0.0 and dark > 0.2:

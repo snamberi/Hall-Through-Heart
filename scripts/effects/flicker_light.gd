@@ -8,6 +8,11 @@ var base_scale := 1.6
 var _phase := randf() * 100.0
 
 
+func _ready() -> void:
+	# Its light throws shadows of what stands near it (SunShadow).
+	add_to_group("shadow_lights")
+
+
 func _process(_delta: float) -> void:
 	var t := Time.get_ticks_msec() / 1000.0 + _phase
 	var wave := sin(t * 9.0) * 0.45 + sin(t * 23.0 + 1.3) * 0.25 + sin(t * 3.1) * 0.5 + sin(t * 41.0) * 0.12

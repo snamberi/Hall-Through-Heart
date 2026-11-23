@@ -130,6 +130,11 @@ uniform float glint = 0.0;
 uniform float glint_period = 5.0;
 uniform float sparkle = 0.0;
 uniform float water_line = 9999.0;
+// Blacksmith upgrades show on the gear itself: +1 polishes it brighter,
+// +3 gilds its rim in a trim of bronze (gold from +6), +6 cuts runes into
+// it that glow in its rarity's colour, +9 sets its outline smouldering.
+uniform float upgrade = 0.0;
+uniform vec4 trim : source_color = vec4(0.78, 0.56, 0.29, 1.0);
 varying float local_y;
 varying vec2 local_pos;
 varying vec4 modulate;
@@ -167,6 +172,28 @@ void fragment() {
 		float sweep = mix(-60.0, 60.0, cycle / 0.16);
 		float band = step(cycle, 0.16) * (1.0 - smoothstep(0.0, 3.5, abs(local_pos.x + local_pos.y * 0.6 - sweep)));
 		result += (rarity_color.rgb * 0.7 + vec3(0.35)) * band * glint * inside;
+	}
+	if (upgrade > 0.5 && inside > 0.5) {
+		result *= 1.0 + 0.05 * min(upgrade, 3.0);
+		float rim = 0.0;
+		for (int k = 0; k < 4; k++) {
+			vec2 d = k == 0 ? vec2(1.0, 0.0) : (k == 1 ? vec2(-1.0, 0.0) : (k == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0)));
+			vec4 n = texture(TEXTURE, UV + d * TEXTURE_PIXEL_SIZE);
+			rim = max(rim, max(1.0 - n.a, step(n.r + n.g + n.b, 0.125) * n.a));
+		}
+		if (upgrade >= 3.0) {
+			vec3 metal = upgrade >= 6.0 ? vec3(0.95, 0.78, 0.32) : trim.rgb;
+			result = mix(result, metal * (0.7 + 0.45 * pixel.g), rim * 0.8);
+		}
+		if (upgrade >= 6.0) {
+			vec2 cell = floor(UV / TEXTURE_PIXEL_SIZE);
+			float rune = step(0.9, hash(floor(cell / 2.0) * 3.1 + 0.5)) * (1.0 - rim);
+			float pulse = 0.55 + 0.45 * sin(TIME * 2.4 + cell.x * 0.4 + cell.y * 0.2);
+			result = mix(result, rarity_color.rgb * 1.25 + vec3(0.18), rune * pulse * 0.85);
+		}
+	}
+	if (upgrade >= 9.0 && outline > 0.5) {
+		result = mix(result, rarity_color.rgb, 0.55 + 0.35 * sin(TIME * 3.0));
 	}
 	// The finest twinkle: a pixel here and there flashes white.
 	if (sparkle > 0.0) {
@@ -652,6 +679,8 @@ func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true,
 	material.set_shader_parameter("glow", 0.0)
 	# Only the weapon in hand shows its rarity, and only as a passing gleam.
 	var look: Array = RARITY_LOOK[clampi(item.rarity, 0, RARITY_LOOK.size() - 1)] if layer == "weapon" and item.is_equipment() else [0.0, 5.0, 0.0]
+	material.set_shader_parameter("upgrade", float(item.upgrade))
+	sprite.set_meta("upgrade", item.upgrade)
 	material.set_shader_parameter("glint", look[0])
 	material.set_shader_parameter("glint_period", look[1])
 	material.set_shader_parameter("sparkle", look[2])
@@ -667,7 +696,7 @@ func worn() -> Array:
 			continue
 		var sprite: AnimatedSprite2D = _layers[name]
 		if sprite.get_meta("worn", false):
-			out.append({"l": name, "s": str(sprite.get_meta("sheet", "")), "t": sprite.get_meta("tint", Color.WHITE)})
+			out.append({"l": name, "s": str(sprite.get_meta("sheet", "")), "t": sprite.get_meta("tint", Color.WHITE), "u": int(sprite.get_meta("upgrade", 0))})
 	return out
 
 

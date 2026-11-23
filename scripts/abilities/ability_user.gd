@@ -14,6 +14,9 @@ signal changed
 
 ## ability id -> seconds left
 var cooldowns: Dictionary[String, float] = {}
+## Each ability's own look (see AbilityFX), and the style of the one being used.
+const FX := preload("res://scripts/effects/ability_fx.gd")
+var _style := "arcane"
 ## What sits in each universal slot ("" for empty).
 var loadout: Array[String] = []
 ## What sits in each class slot ("" for empty).
@@ -318,6 +321,7 @@ func use(id: String) -> bool:
 
 
 func _run(id: String, ability: Dictionary) -> void:
+	_style = FX.style_for(id, ability)
 	var direction := _player.aim_direction()
 	var damage := AbilityDB.damage(id, rank(id))
 	if ability.get("magic", false):
@@ -328,7 +332,7 @@ func _run(id: String, ability: Dictionary) -> void:
 		_player.stats.set_modifiers("ability_crit", {"critical_chance": {"flat": float(ability["crit"])}})
 	if ability.has("heal"):
 		_player.health.heal(_player.health.max_health * float(ability["heal"]))
-		RingBurst.spawn(_player.get_parent(), _player.global_position + Vector2(0, -14), Color(0.6, 1.0, 0.6), 50.0)
+		FX.play(_player.get_parent(), _player.global_position, "life", "aura", Color(0.6, 1.0, 0.6), 50.0, _player)
 	match ability["shape"]:
 		"arc":
 			await _arc(ability, direction, damage, weapon)
@@ -394,7 +398,10 @@ func _spin(ability: Dictionary, damage: float) -> void:
 	for i in hits:
 		_player.play_attack_animation(0.22)
 		_player.show_slash(Vector2.RIGHT.rotated(i * 2.1), ability["radius"], 340.0, 0.24, _color(ability))
-		RingBurst.spawn(_player.get_parent(), _player.global_position + Vector2(0, -14), _color(ability), ability["radius"])
+		if i == 0:
+			FX.play(_player.get_parent(), _player.global_position, _style, "burst", _color(ability), ability["radius"], _player)
+		else:
+			RingBurst.spawn(_player.get_parent(), _player.global_position + Vector2(0, -14), _color(ability), ability["radius"])
 		var hit: Array = []
 		_player.strike_circle(_player.global_position, ability["radius"], damage, ability["knockback"], hit)
 		_apply_status(ability, hit, damage)
@@ -475,11 +482,11 @@ func _blink(ability: Dictionary, damage: float) -> void:
 		landing = from + offset * 0.5
 		if not _player.has_line_to(landing):
 			landing = from
-	RingBurst.spawn(_player.get_parent(), from + Vector2(0, -14), _color(ability), 40.0)
+	FX.play(_player.get_parent(), from, _style, "aura", _color(ability), 36.0)
 	_spawn_trail()
 	_player.global_position = landing
 	_player.grant_invulnerability(0.3)
-	RingBurst.spawn(_player.get_parent(), landing + Vector2(0, -14), _color(ability), 50.0)
+	FX.play(_player.get_parent(), landing, _style, "burst", _color(ability), 50.0)
 	if float(ability.get("radius", 0.0)) > 0.0 and float(ability.get("damage", 0.0)) > 0.0:
 		# Landing hard enough to hurt cracks the ground.
 		FightMarks.leave(get_tree(), FightMarks.for_blast(str(ability.get("status", "")), _color(ability)), landing)
@@ -492,7 +499,7 @@ func _blink(ability: Dictionary, damage: float) -> void:
 ## Darkness or smoke: foes nearby lose the player, and a short boon.
 func _veil(id: String, ability: Dictionary, damage: float) -> void:
 	var at := _player.global_position
-	RingBurst.spawn(_player.get_parent(), at + Vector2(0, -14), _color(ability), 120.0)
+	FX.play(_player.get_parent(), at, _style, "aura", _color(ability), 90.0)
 	if float(ability.get("radius", 0.0)) > 0.0 and float(ability.get("damage", 0.0)) > 0.0:
 		_player.strike_circle(at, ability["radius"], damage, ability["knockback"])
 	for node in get_tree().get_nodes_in_group("enemies"):
@@ -507,6 +514,7 @@ func _veil(id: String, ability: Dictionary, damage: float) -> void:
 func _summon(ability: Dictionary) -> void:
 	_player.begin_ability(0.4)
 	_player.play_attack_animation(0.45, true)
+	FX.play(_player.get_parent(), _player.global_position + _player.aim_direction() * 24.0, "grave", "burst", _color(ability), 50.0)
 	var summons: Summons = _player.get_node_or_null("Summons")
 	if summons:
 		summons.summon(ability["summon"], _color(ability))
@@ -542,8 +550,7 @@ func _chain(ability: Dictionary, direction: Vector2, damage: float) -> void:
 
 func _buff(id: String, ability: Dictionary) -> void:
 	_player.buffs.add(id, ability["name"], ability["duration"], ability["mods"])
-	RingBurst.spawn(_player.get_parent(), _player.global_position + Vector2(0, -14), _color(ability), 80.0)
-	RingBurst.spawn(_player.get_parent(), _player.global_position + Vector2(0, -14), Color.WHITE, 44.0)
+	FX.play(_player.get_parent(), _player.global_position, _style, "aura", _color(ability), 70.0, _player)
 
 
 func _nearest_enemy(point: Vector2, reach: float, excluding: Array) -> Enemy:
@@ -587,7 +594,7 @@ func _color(ability: Dictionary) -> Color:
 func _blast(center: Vector2, ability: Dictionary, damage: float) -> void:
 	FightMarks.leave(get_tree(), FightMarks.for_blast(str(ability.get("status", "")), _color(ability)), center + Vector2(0, 14))
 	RingBurst.spawn(_player.get_parent(), center, _color(ability), ability["radius"])
-	RingBurst.spawn(_player.get_parent(), center, Color(0.9, 0.85, 0.7), ability["radius"] * 0.6)
+	FX.play(_player.get_parent(), center, _style, "burst", _color(ability), ability["radius"])
 	HitSpark.spawn(_player.get_parent(), center, _color(ability), true)
 	_player.shake_camera(9.0)
 	var hit: Array = []
