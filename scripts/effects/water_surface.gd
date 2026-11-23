@@ -187,8 +187,10 @@ void fragment() {
 		// --- the waves. The bank's own ragged edge lies over all this, so
 		// the foam always meets the shore just where it is drawn. Foam comes
 		// in clumps and lace (two drifting noises), never in a pattern.
-		float lace = texture(noise, px / 46.0 + vec2(wave_time * 0.006, wave_time * 0.003)).r * 0.6
-			+ texture(noise, px / 22.0 - vec2(wave_time * 0.005, 0.0)).r * 0.4;
+		// Broad noises only: foam lies in clumps and strands, never in
+		// single loose pixels (those read as glitches against the bank).
+		float lace = texture(noise, px / 70.0 + vec2(wave_time * 0.006, wave_time * 0.003)).r * 0.65
+			+ texture(noise, px / 38.0 - vec2(wave_time * 0.005, 0.0)).r * 0.35;
 		float along = coast * 0.7 + (px.x * 0.55 + px.y) * 0.0011;
 		float phase = fract(wave_time / 5.5 + along);
 		float arrive = clamp(phase / 0.55, 0.0, 1.0);
@@ -222,12 +224,15 @@ void fragment() {
 		// Foam gathered against the bank, breaking into lace further out;
 		// for a while after each wave it spreads a little further.
 		float spread = smoothstep(0.48, 0.62, phase) * left;
-		float reach = 20.0 + 10.0 * spread;
-		float threshold = 0.24 + (d / reach) * 0.5;
-		if (d < reach && lace > threshold) {
-			col = over(col, vec4(lace > threshold + 0.07 ? foam_hi.rgb : foam_mid.rgb, 0.72));
-		} else if (d < 34.0 && hash12(cell + vec2(0.0, floor(wave_time * 1.8))) > 0.985) {
-			col = over(col, vec4(foam_hi.rgb, 0.55));
+		float reach = 18.0 + 10.0 * spread;
+		if (d < 4.0) {
+			// The unbroken line of foam where water meets the bank.
+			col = over(col, vec4(d < 2.0 ? foam_hi.rgb : foam_mid.rgb, 0.8));
+		} else {
+			float threshold = 0.38 + (d / reach) * 0.32;
+			if (d < reach && lace > threshold) {
+				col = over(col, vec4(lace > threshold + 0.06 ? foam_hi.rgb : foam_mid.rgb, 0.66));
+			}
 		}
 	} else if ((wet > 0.002 || damp > 0.002) && mask.g > 0.8 && own.g > 0.5) {
 		// --- puddles in the hollows of the ground

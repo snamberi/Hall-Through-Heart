@@ -164,12 +164,24 @@ func _gui_input(event: InputEvent) -> void:
 		for index in _spots.size():
 			if (_spots[index][0] as Rect2).has_point(event.position):
 				found = index
-		HudMenuButton.hovered = true
+		# A finger leaves no pointer resting on the bar.
+		HudMenuButton.hovered = not TouchControls.active
 		if found != _hover:
 			_hover = found
 			_show_tip()
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and _hover >= 0:
-		var spot: Array = _spots[_hover]
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# A tap on a phone comes as a click with no move before it: find
+		# the slot under it now rather than trust the last hover.
+		var under := -1
+		for index in _spots.size():
+			if (_spots[index][0] as Rect2).has_point(event.position):
+				under = index
+		if TouchControls.active:
+			HudMenuButton.hovered = false
+		if under < 0:
+			return
+		_hover = under
+		var spot: Array = _spots[under]
 		if spot[1] == "hotbar":
 			var problem := _player.hotbar.activate(spot[2])
 			if problem != "":

@@ -120,8 +120,10 @@ func is_cliff_base(cell: Vector2i) -> bool:
 
 ## Land on which raised ground (a plateau of its own ground, an earthen
 ## face along its south side) can stand. Wet and low places stay low.
-const RAISABLE: Array[int] = [T.DEAD_GRASS, T.DARK_GRASS, T.SNOW, T.FROSTPINE, T.SALT, T.THORN, T.CRIMSON, T.FUNGAL, T.SAND,
-	T.CINDER, T.ASH, T.PATH]
+## Ground that rises into plateaus: grass, snow and woods, whose banks read
+## as earth. Sand, salt, ash and cinder stay flat: their banks were the same
+## colour top and bottom and read as stray rectangles on the ground.
+const RAISABLE: Array[int] = [T.DEAD_GRASS, T.DARK_GRASS, T.SNOW, T.FROSTPINE, T.THORN, T.CRIMSON, T.FUNGAL]
 
 
 ## How many steps up the ground stands here: mountains by their rock (1)
@@ -136,7 +138,27 @@ func height_at(cell: Vector2i) -> int:
 		return 0
 	if _highland.get_noise_2d(cell.x, cell.y) <= 0.3 or is_island(cell):
 		return 0
-	return 1
+	return 1 if _broad_highland(cell) else 0
+
+
+## Whether the high ground here is part of a broad rise: most of the tiles
+## round it are high too. Thin spurs, single raised tiles and one-tile notches
+## are smoothed away, so a plateau's edge runs in long curves, not in steps.
+var _broad: Dictionary = {}
+
+
+func _broad_highland(cell: Vector2i) -> bool:
+	if _broad.has(cell):
+		return _broad[cell]
+	if _broad.size() > 20000:
+		_broad.clear()
+	var around := 0
+	for offset: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
+		var near := cell + offset
+		if _highland.get_noise_2d(near.x, near.y) > 0.3 and tile_type_at(near) in RAISABLE:
+			around += 1
+	_broad[cell] = around >= 5
+	return _broad[cell]
 
 
 ## Where a cliff face has steps cut into it, so the high ground can be

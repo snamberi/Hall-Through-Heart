@@ -1471,9 +1471,9 @@ func _process_move(delta: float) -> void:
 		_start_parry()
 	elif Input.is_action_just_pressed("recall_home"):
 		Events.recall_requested.emit()
-	elif Input.is_action_just_pressed("attack") and not placing and not HudMenuButton.hovered and _try_work():
+	elif Input.is_action_just_pressed("attack") and not placing and (TouchControls.active or not HudMenuButton.hovered) and _try_work():
 		pass
-	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing and not HudMenuButton.hovered and not blocking:
+	elif Input.is_action_pressed("attack") and _attack_cooldown_left == 0.0 and not placing and (TouchControls.active or not HudMenuButton.hovered) and not blocking:
 		attack(aim_direction())
 
 
@@ -1817,7 +1817,12 @@ var _confirm_break_left := 0.0
 
 
 ## Finds what the mouse is pointing at, each frame the player is free.
+## By touch there is no pointer: the nearest thing in reach is lit instead,
+## unless a foe is close (then the attack button fights).
 func _update_hover() -> void:
+	if TouchControls.active:
+		_update_touch_hover()
+		return
 	var mouse := pointer()
 	var found: ResourceNode = null
 	var best := POINT_RADIUS
@@ -1840,6 +1845,33 @@ func _update_hover() -> void:
 		var buildings: Buildings = get_parent().get_node_or_null("Buildings")
 		if buildings:
 			hover_record = buildings.record_at(mouse, global_position)
+
+
+func _update_touch_hover() -> void:
+	var found: ResourceNode = null
+	var foe_near := false
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy and enemy.state != Enemy.State.DEAD and not enemy.is_wild() and not enemy._at_peace() \
+				and enemy.global_position.distance_to(global_position) < 150.0:
+			foe_near = true
+			break
+	if not foe_near:
+		var best := ResourceNode.REACH + 14.0
+		for node: ResourceNode in get_tree().get_nodes_in_group("resource_nodes"):
+			# Nearer counts for more, and more again in front.
+			var offset := node.global_position - global_position
+			var distance := offset.length() - maxf(facing.dot(offset.normalized()), 0.0) * 10.0
+			if distance < best:
+				best = distance
+				found = node
+	if found != hover_node:
+		if is_instance_valid(hover_node):
+			hover_node.set_lit(false)
+		hover_node = found
+		if found:
+			found.set_lit(true)
+	hover_record = {}
 
 
 ## Left click on something to work on: gather a node, or break down

@@ -44,6 +44,55 @@ void fragment() {
 }
 """
 
+## Each wave running a little way up the bank: a thin wet sheet with a
+## lace of foam at its edge, then the dark of wet ground as it draws back.
+## Timed with the waves in the water (WaterSurface), so the wash follows
+## the wave that brought it.
+const WASH_SHADER := """
+shader_type canvas_item;
+uniform sampler2D noise : repeat_enable, filter_linear;
+uniform float wave_time = 0.0;
+uniform sampler2D land_mask : filter_linear;
+uniform vec2 mask_origin = vec2(0.0);
+uniform vec2 mask_size = vec2(1.0);
+uniform vec4 film : source_color;
+uniform vec4 foam : source_color;
+varying vec2 world;
+
+void vertex() {
+	world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+}
+
+void fragment() {
+	vec2 cell = floor(world / 2.0);
+	vec2 px = cell * 2.0 + 1.0;
+	float land = texture(land_mask, (px - mask_origin) / mask_size).r;
+	float coast = texture(noise, px / 300.0).r;
+	COLOR = vec4(0.0);
+	// The bank's ragged fringe reaches half a tile out over the water, so
+	// the visible edge lies where the mask is about a quarter.
+	float inland = (land - 0.24 + (coast - 0.5) * 0.12) * 44.0;
+	if (land > 0.02 && land < 0.9 && inland > 0.0) {
+		float phase = fract(wave_time / 5.5 + coast * 0.7 + (px.x * 0.55 + px.y) * 0.0011);
+		float run = smoothstep(0.44, 0.6, phase) * (1.0 - smoothstep(0.62, 0.9, phase));
+		float wobble = (texture(noise, px / 26.0).r - 0.5) * 5.0;
+		float up = 1.0 + 10.0 * run + wobble * run;
+		if (run > 0.03 && inland < up) {
+			COLOR = vec4(film.rgb, 0.34 * run);
+			if (inland > up - 2.0) {
+				COLOR = vec4(foam.rgb, 0.75 * run);
+			}
+		} else {
+			// Ground the wave has just left stays dark a moment.
+			float wet = smoothstep(0.6, 0.66, phase) * (1.0 - smoothstep(0.7, 1.0, phase));
+			if (inland < 10.0 * wet + wobble * wet) {
+				COLOR = vec4(0.03, 0.04, 0.06, 0.22 * wet);
+			}
+		}
+	}
+}
+"""
+
 ## How deep the snow lies, 0 to 1. Shared so the minimap or others can ask.
 static var snow := 0.0
 ## How much rain lies in puddles, 0 to 1, and how damp the ground still is.
@@ -71,6 +120,8 @@ var _clouds: Array = []
 const CLOUD_FIELD := Vector2(2600.0, 1700.0)
 var _snow_layer: Node2D
 var _snow_material: ShaderMaterial
+var _wash_layer: Node2D
+var _wash_material: ShaderMaterial
 var _snow_drawn := false
 var _mask: ImageTexture
 var _mask_rect := Rect2()
@@ -105,6 +156,19 @@ func setup(player: Player, world: World, day_night: DayNight) -> void:
 	_snow_layer.z_index = -9
 	_snow_layer.draw.connect(_draw_snow)
 	add_child(_snow_layer)
+	var wash := Shader.new()
+	wash.code = WASH_SHADER
+	_wash_material = ShaderMaterial.new()
+	_wash_material.shader = wash
+	_wash_material.set_shader_parameter("noise", WaterSurface.shared_material().get_shader_parameter("noise"))
+	_wash_material.set_shader_parameter("film", WaterSurface.FILM)
+	_wash_material.set_shader_parameter("foam", WaterSurface.FOAM_HI)
+	_wash_layer = Node2D.new()
+	_wash_layer.material = _wash_material
+	_wash_layer.z_as_relative = false
+	_wash_layer.z_index = -9
+	_wash_layer.draw.connect(func() -> void: _wash_layer.draw_rect(_mask_rect, Color.WHITE))
+	add_child(_wash_layer)
 
 
 
@@ -147,11 +211,16 @@ func _rescan() -> void:
 	if _mask == null:
 		_mask = ImageTexture.create_from_image(image)
 		_snow_material.set_shader_parameter("land_mask", _mask)
+		_wash_material.set_shader_parameter("land_mask", _mask)
 	else:
 		_mask.update(image)
 	_mask_rect = Rect2(Vector2(corner) * size, Vector2(span) * size)
-	_snow_material.set_shader_parameter("mask_origin", _mask_rect.position)
-	_snow_material.set_shader_parameter("mask_size", _mask_rect.size)
+	for material: ShaderMaterial in [_snow_material, _wash_material]:
+		material.set_shader_parameter("mask_origin", _mask_rect.position)
+		material.set_shader_parameter("mask_size", _mask_rect.size)
+	# Only near water is there anything to wash.
+	_wash_layer.visible = not _water.is_empty()
+	_wash_layer.queue_redraw()
 	_snow_drawn = false
 
 
@@ -322,6 +391,7 @@ func _update_surface(delta: float) -> void:
 	var centre := camera.get_screen_center_position() if camera else _player.global_position
 	var m := WaterSurface.shared_material()
 	m.set_shader_parameter("wave_time", _wave_time)
+	_wash_material.set_shader_parameter("wave_time", _wave_time)
 	m.set_shader_parameter("daylight", 1.0 - _day_night.darkness())
 	m.set_shader_parameter("star_boost", clampf(0.95 / maxf(light, 0.2), 1.0, 3.5))
 	m.set_shader_parameter("moon_x", roundf(centre.x + view.x * 0.2))

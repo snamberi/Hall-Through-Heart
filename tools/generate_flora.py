@@ -1446,6 +1446,94 @@ def decor(kind):
                 c.put(x, 58, C("4f6a34"))
         for (x, y) in [(17, 59), (45, 58), (47, 60)]:
             c.shade("ellipse", (x - 2, y - 1, x + 2, y + 1), STONE)
+    elif kind == "menhir":
+        # One stone of a ring: a broad, uncut slab of dark gneiss, flat-
+        # topped and leaning, with banded grain, orange and grey lichen,
+        # a split down one side and moss and fallen chips at its foot. No
+        # plinth, no runes: nothing like a waystone.
+        gneiss = ramp("9c98a6", "76727f", "4e4a58")
+        c.shadow(32, 60, 15, 2, 80)
+        c.shade("ellipse", (14, 55, 50, 62), ramp("5e7048", "4a5a38", "36422a"))
+        c.shade("poly", [(17, 58), (16, 44), (18, 28), (21, 19), (27, 15), (37, 14), (43, 17), (46, 27), (47, 42), (47, 58)], gneiss)
+        c.fill("poly", [(18, 56), (18, 30), (21, 20), (25, 17), (22, 32), (21, 56)], C("b4b0bc"))
+        c.fill("poly", [(42, 18), (46, 28), (47, 44), (47, 57), (43, 57), (43, 32)], C("4a4654"))
+        c.fill("line", (27, 15, 37, 14), C("c4c0cc"))
+        # Banded grain running across the slab, slightly tilted.
+        grain = random.Random(62)
+        for y in (26, 37, 49):
+            # Broken, wavering streaks of darker mineral, not courses of brick.
+            x = 20
+            while x < 44:
+                run = grain.randrange(3, 8)
+                if grain.random() < 0.65:
+                    dy = 0 if grain.random() < 0.6 else 1
+                    c.fill("line", (x, y + dy - (x - 20) // 12, min(x + run, 45), y + dy - (x - 20) // 12), C("68647a"), 1)
+                x += run + grain.randrange(1, 4)
+        # The split.
+        for (x0, y0), (x1, y1) in zip([(40, 15), (38, 22), (40, 29), (39, 35)], [(38, 22), (40, 29), (39, 35), (41, 40)]):
+            c.fill("line", (x0, y0, x1, y1), C("2e2b36"), 1)
+        r = random.Random(61)
+        for _ in range(40):
+            x, y = r.randrange(18, 47), r.randrange(15, 58)
+            if (x, y) in c.filled:
+                c.put(x, y, C("6a6676") if r.random() < 0.6 else C("aeaab8"))
+        # Lichen: rusty orange patches and grey-green crust.
+        for (x, y, k) in [(24, 22, 0), (25, 22, 0), (24, 23, 0), (34, 36, 1), (35, 36, 1), (35, 37, 1), (28, 47, 0), (29, 47, 0),
+                          (43, 24, 1), (21, 40, 1), (22, 40, 1), (31, 19, 0)]:
+            c.put(x, y, C("d0883a") if k == 0 else C("9aa478"))
+        for x in range(16, 48):
+            if r.random() < 0.5:
+                c.put(x, 57 - r.randrange(0, 3), C("5d7a3f") if r.random() < 0.6 else C("86a456"))
+        for (x, y) in [(13, 59), (50, 58), (52, 61)]:
+            c.shade("ellipse", (x - 2, y - 1, x + 2, y + 1), gneiss)
+    elif kind == "lever":
+        # A puzzle lever: a squat iron-banded stone block with a slot, an
+        # iron arm with a worn wooden grip thrown forward, bolts at the
+        # pivot, and wear on the stone where hands have rested.
+        block = ramp("a29eac", "7a7684", "504c5a")
+        iron = ramp("9a98a4", "5e5c68", "34323c")
+        c.shadow(32, 60, 13, 2, 80)
+        c.shade("poly", [(18, 60), (46, 60), (46, 40), (43, 37), (21, 37), (18, 40)], block)
+        c.fill("line", (21, 37, 43, 37), C("c4c0cc"))
+        c.fill("rect", (18, 45, 46, 47), iron[1])
+        c.fill("line", (18, 45, 46, 45), iron[0])
+        for x in (21, 31, 43):
+            c.put(x, 46, C("d0ccd8"))
+        c.fill("rect", (29, 37, 35, 40), C("2a2834"))
+        # The arm, thrown forward and up to the right.
+        c.fill("line", (32, 39, 41, 20), iron[1], 2)
+        c.fill("line", (31, 39, 40, 20), iron[0], 1)
+        c.shade("rect", (38, 14, 44, 22), ramp("a87c4c", "7a5432", "4e341e"))
+        c.fill("line", (38, 14, 44, 14), C("c89a62"))
+        c.shade("ellipse", (29, 36, 35, 42), iron)
+        c.put(31, 38, C("d8d4e0"))
+        for (x, y) in [(22, 52), (40, 55), (25, 41)]:
+            c.put(x, y, C("6e6a78"))
+        for x in range(18, 47):
+            if (x * 7) % 5 < 2:
+                c.put(x, 59, C("5d7a3f"))
+    elif kind == "answer_tablet":
+        # A low tablet to choose an answer at: a slanted slab of pale stone
+        # on a short plinth, a blank recessed panel for the glyph the puzzle
+        # lights, chipped corners, moss at the base.
+        slab = ramp("c4c0cc", "9a96a4", "6a6676")
+        c.shadow(32, 60, 14, 2, 80)
+        c.shade("rect", (20, 50, 44, 60), ramp("8e8a98", "6a6676", "48444f"))
+        c.fill("line", (20, 50, 44, 50), C("b4b0bc"))
+        c.shade("poly", [(17, 50), (47, 50), (44, 24), (20, 24)], slab)
+        c.fill("line", (20, 24, 44, 24), C("e0dce6"))
+        c.fill("line", (17, 50, 20, 24), C("dcd8e2"))
+        c.fill("line", (47, 50, 44, 24), C("5e5a68"))
+        c.fill("rect", (24, 29, 40, 45), C("6a6676"))
+        c.fill("rect", (25, 30, 40, 45), C("8a8694"))
+        c.fill("line", (24, 29, 40, 29), C("4a4654"))
+        c.fill("line", (24, 29, 24, 45), C("4a4654"))
+        for (x, y) in [(44, 25), (45, 26), (18, 49)]:
+            c.put(x, y, (0, 0, 0, 0))
+        for x in range(19, 46):
+            if (x * 5) % 7 < 3:
+                c.put(x, 59, C("5d7a3f"))
+                c.put(x, 58 - (x % 2), C("86a456"))
     elif kind == "carved_pillar":
         # A squared stone pillar: base, shaft with carved bands, capital.
         lit, dark = ramp("c0bcc8", "a6a2ae", "8e8a96"), ramp("86828e", "706c7a", "5a5664")
@@ -2669,7 +2757,9 @@ DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate",
          "manor", "iron_gate", "carriage", "hatch", "horn_post",
          # Furnishings for the inside of houses, by who lives there.
          "writing_desk", "cauldron", "herb_rack", "jar_shelf", "loom", "spinning_wheel", "grain_sacks", "tool_rack",
-         "pelt_rug", "antler_mount", "stool", "firewood", "dresser", "cradle", "pots_rack", "yarn_basket"]
+         "pelt_rug", "antler_mount", "stool", "firewood", "dresser", "cradle", "pots_rack", "yarn_basket",
+         # Each thing its own art: the ring of a henge is not made of waystones.
+         "menhir", "lever", "answer_tablet"]
 
 
 def sheet(images, w, h):

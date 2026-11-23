@@ -170,7 +170,7 @@ func _build(k: int) -> void:
 				var lamp := _plate(_cell(k, Vector2i(-2 + index * 2, -2)), "", Color(1.0, 0.8, 0.4))
 				lamp.round = true
 				state["lamps"].append(lamp)
-				_stone(Prop.Decor.SIGNPOST, _cell(k, Vector2i(-2 + index * 2, 1)), "Pull the lever", func() -> void: _pull(k, index))
+				_stone(Prop.Decor.LEVER, _cell(k, Vector2i(-2 + index * 2, 1)), "Pull the lever", func() -> void: _pull(k, index))
 			_show_lamps(k)
 		"bells", "echo":
 			var pitches := [0.62, 0.8, 1.0, 1.26]
@@ -226,7 +226,7 @@ func _build(k: int) -> void:
 			answers.shuffle()
 			for index in 3:
 				var answer: String = answers[index]
-				_stone(Prop.Decor.SIGNPOST, _cell(k, Vector2i(-2 + index * 2, 1)), "Answer: %s" % answer, func() -> void: _answer(k, answer == right))
+				_stone(Prop.Decor.ANSWER_TABLET, _cell(k, Vector2i(-2 + index * 2, 1)), "Answer: %s" % answer, func() -> void: _answer(k, answer == right))
 		"missing":
 			var shown := [0, 1, 2, 3, 4]
 			shown.shuffle()
@@ -239,7 +239,7 @@ func _build(k: int) -> void:
 				state["orbs"].append(orb)
 			for index in 5:
 				var colour := index
-				var tablet := _stone(Prop.Decor.SIGNPOST, _cell(k, Vector2i(-4 + index * 2, 2)), "Name it %s" % COLOUR_NAMES[colour], func() -> void: _name_colour(k, colour))
+				var tablet := _stone(Prop.Decor.ANSWER_TABLET, _cell(k, Vector2i(-4 + index * 2, 2)), "Name it %s" % COLOUR_NAMES[colour], func() -> void: _name_colour(k, colour))
 				tablet.sprite().modulate = COLOURS[colour].lightened(0.3)
 
 

@@ -129,10 +129,20 @@ func site_for(chunk: Vector2i) -> Dictionary:
 	if not story.is_empty():
 		_sites[chunk] = story
 		return story
+	# Places stand apart: only one chunk in each block of SPREAD x SPREAD
+	# may hold one, and never right beside another block's.
+	if not _may_hold_site(chunk):
+		_sites[chunk] = site
+		return site
 	var random := RandomNumberGenerator.new()
 	random.seed = hash(Vector3i(chunk.x, chunk.y, _world.generator.world_seed + 4242))
 	var cell := chunk * World.CHUNK_SIZE + Vector2i(random.randi_range(4, World.CHUNK_SIZE - 5), random.randi_range(4, World.CHUNK_SIZE - 5))
-	var roll := random.randf()
+	var roll := random.randf() * SITE_ROLL
+	# A few tries for open, level, dry ground in the chunk.
+	for attempt in 5:
+		if _world.generator.is_island(cell) or _clear_ground(cell):
+			break
+		cell = chunk * World.CHUNK_SIZE + Vector2i(random.randi_range(4, World.CHUNK_SIZE - 5), random.randi_range(4, World.CHUNK_SIZE - 5))
 	if _story_grounds(cell, 8.0):
 		pass
 	elif Vector2(cell).length() > CLEAR_RADIUS and _world.generator.is_island(cell) and _clear_ground(cell) and roll < 0.4:
@@ -148,6 +158,36 @@ func site_for(chunk: Vector2i) -> Dictionary:
 				break
 	_sites[chunk] = site
 	return site
+
+
+## Structures stand at most one to a block of this many chunks a side...
+const SPREAD := 2
+## ...and the roll for what stands there is scaled by this (under 1 makes
+## a place likelier where one may stand at all).
+const SITE_ROLL := 0.42
+
+
+func _candidate_of(block: Vector2i) -> Vector2i:
+	var h := absi(hash(Vector3i(block.x, block.y, _world.generator.world_seed + 515)))
+	return block * SPREAD + Vector2i(h % SPREAD, (h / SPREAD) % SPREAD)
+
+
+func _site_rank(chunk: Vector2i) -> int:
+	return absi(hash(Vector3i(chunk.x, chunk.y, _world.generator.world_seed + 77)))
+
+
+func _may_hold_site(chunk: Vector2i) -> bool:
+	var block := Vector2i((Vector2(chunk) / SPREAD).floor())
+	if _candidate_of(block) != chunk:
+		return false
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var other := _candidate_of(block + Vector2i(dx, dy))
+			if maxi(absi(other.x - chunk.x), absi(other.y - chunk.y)) <= 1 and _site_rank(other) < _site_rank(chunk):
+				return false
+	return true
 
 
 func _story_site(chunk: Vector2i) -> Dictionary:
@@ -257,6 +297,10 @@ func _clear_ground(cell: Vector2i) -> bool:
 		return false
 	for offset: Vector2i in [Vector2i.ZERO, Vector2i(3, 0), Vector2i(-3, 0), Vector2i(0, 3), Vector2i(0, -3)]:
 		if not _world.generator.is_dry_land(cell + offset):
+			return false
+	# Not on a plateau: levelling one dug a square pit with cliffs round it.
+	for offset: Vector2i in [Vector2i.ZERO, Vector2i(5, 0), Vector2i(-5, 0), Vector2i(0, 5), Vector2i(0, -5), Vector2i(4, 4), Vector2i(-4, 4), Vector2i(4, -4), Vector2i(-4, -4)]:
+		if _world.generator.height_at(cell + offset) > 0:
 			return false
 	return true
 
@@ -864,7 +908,7 @@ func _build_henge(cell: Vector2i, _key: String, _level: int, random: RandomNumbe
 	for index in 8:
 		var spot := cell + Vector2i((Vector2.from_angle(TAU * index / 8.0 + 0.2) * Vector2(4.2, 3.6)).round())
 		if random.randf() < 0.85:
-			_decor(placed, Prop.Decor.WAYSTONE, spot, 10.0)
+			_decor(placed, Prop.Decor.MENHIR, spot, 10.0)
 		else:
 			_decor(placed, Prop.Decor.RUBBLE, spot)
 	var stone := Prop.create_decor(Prop.Decor.STANDING_STONE, _at(cell), 12.0, "Lay a hand on the old stone", func(player: Player) -> void:

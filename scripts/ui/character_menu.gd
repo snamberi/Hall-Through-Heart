@@ -209,9 +209,12 @@ func _change(id: String, by: int) -> void:
 
 
 func _apply_plan() -> void:
-	for id: String in _plan:
-		player.attributes.spend(id, int(_plan[id]))
+	# Each point spent refreshes this menu, which drops a plan bigger than
+	# the points left: take the plan out first, then spend all of it.
+	var plan := _plan.duplicate()
 	_plan.clear()
+	for id: String in plan:
+		player.attributes.spend(id, int(plan[id]))
 	Audio.play("level_up", -12.0, 0.1)
 	refresh()
 

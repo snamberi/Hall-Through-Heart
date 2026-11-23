@@ -83,13 +83,15 @@ static func is_food(item_id: String) -> bool:
 
 
 ## Supplies: what is used up from the bag that is not food (potions,
-## salves, bandages, scrolls, treats for pets, whistles), and torches.
+## salves, bandages, scrolls, treats for pets, whistles), and whatever is
+## set down (torches, crafting tables, chests, walls).
 static func is_supply(item_id: String) -> bool:
 	if not ItemDB.ITEMS.has(item_id) or is_food(item_id):
 		return false
 	var item := Item.create(item_id)
 	if item.is_placeable():
-		return item_id == "torch"
+		# Torches, tables, chests, walls: anything set down from the belt.
+		return true
 	return item.is_consumable() and Crops.by_seed(item_id) == ""
 
 
@@ -97,7 +99,7 @@ static func is_supply(item_id: String) -> bool:
 static func slot_problem(index: int, item_id: String) -> String:
 	if index == FOOD_SLOT:
 		return "" if is_food(item_id) else "Slot 0 is for food: meals, drinks and treats."
-	return "" if is_supply(item_id) else ("Food goes in slot 0." if is_food(item_id) else "Slots 8 and 9 are for supplies: potions, bandages, scrolls, torches.")
+	return "" if is_supply(item_id) else ("Food goes in slot 0." if is_food(item_id) else "Slots 8 and 9 are for supplies: potions, bandages, scrolls, torches and things to set down.")
 
 
 func set_quick(item: Item) -> String:

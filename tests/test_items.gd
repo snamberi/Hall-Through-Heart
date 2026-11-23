@@ -455,7 +455,8 @@ func test_food_and_supply_slots(t: TestContext) -> void:
 	t.check(player.hotbar.assign(7, pie) != "", "food does not go in a supply slot")
 	t.check(player.hotbar.assign(Hotbar.FOOD_SLOT, potion) != "", "a potion does not go in the food slot")
 	t.equal(player.hotbar.assign(Hotbar.FOOD_SLOT, pie), "", "food goes in the food slot")
-	t.check(player.hotbar.assign(8, wall) != "", "a wall goes in neither")
+	t.check(player.hotbar.assign(Hotbar.FOOD_SLOT, wall) != "", "a wall is not food")
+	t.equal(player.hotbar.assign(8, wall), "", "but anything set down goes in a supply slot")
 	t.check(Hotbar.is_supply("torch"), "torches are supplies")
 	t.check(Hotbar.is_food("wild_berries"), "berries are food")
 

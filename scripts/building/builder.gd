@@ -35,6 +35,9 @@ var _material: ShaderMaterial
 var _flip := false
 ## While the button is held over walls or ground, each new tile is laid.
 var _painting := false
+## By touch: where the last tap aimed the blueprint (a second tap there
+## places it), or Vector2.INF before any.
+var _touch_at := Vector2.INF
 
 
 func setup(buildings: Buildings, player: Player) -> void:
@@ -75,6 +78,7 @@ func begin(item: Item) -> void:
 	_ghost.visible = not _kind in ["floor", "ground", "wall"]
 	_ghost.flip_h = _flip
 	_player.placing = true
+	_touch_at = Vector2.INF
 
 
 func cancel() -> void:
@@ -90,7 +94,7 @@ func _process(_delta: float) -> void:
 	if _player.is_dead() or not _item in _player.inventory.items:
 		cancel()
 		return
-	var at := _snapped(_player.pointer())
+	var at := _target()
 	_problem = _buildings.placement_problem(_kind, at)
 	# Dragging lays a run of walls or ground, one tile at a time.
 	if _painting and _kind in ["ground", "wall"]:
@@ -108,7 +112,7 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	if _item == null:
 		return
-	var at := to_local(_snapped(_player.pointer()))
+	var at := to_local(_target())
 	var tile := float(TerrainTiles.TILE_SIZE)
 	var half := tile * (1.5 if _kind == "house" else 0.5)
 	var color := Color(0.45, 0.85, 1.0) if _problem == "" else UITheme.BAD
@@ -150,6 +154,9 @@ func _draw() -> void:
 	var how := "Hold and drag: lay a run" if _kind in ["ground", "wall", "floor"] else "T: mirror"
 	var first := "Click: place  ·  %d left" % left if _problem == "" else _problem
 	var second := "%s  ·  Right-click: put away  ·  Click your own builds later to take them down" % how
+	if TouchControls.active:
+		first = "Tap again to place  ·  %d left" % left if _problem == "" else _problem
+		second = "Tap the ground to move it  ·  Back: put away"
 	var font := UITheme.body_bold()
 	for line in 2:
 		var words: String = [first, second][line]
@@ -162,12 +169,28 @@ func _draw() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _item == null:
 		return
+	if TouchControls.active:
+		# A finger aims with one tap and places with a second on the same
+		# spot; the mouse click a touch also makes is not used.
+		if event is InputEventScreenTouch and not event.pressed:
+			var world := get_viewport().get_canvas_transform().affine_inverse() * (event as InputEventScreenTouch).position
+			var spot := _snapped(world)
+			if _touch_at != Vector2.INF and spot.distance_to(_touch_at) < TerrainTiles.TILE_SIZE * 0.75:
+				confirm(spot)
+			else:
+				_touch_at = spot
+			get_viewport().set_input_as_handled()
+			return
+		if event is InputEventMouseButton:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				get_viewport().set_input_as_handled()
+			return
 	if event.is_action_pressed("ui_cancel") or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT):
 		cancel()
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		get_viewport().set_input_as_handled()
-		confirm(_snapped(_player.pointer()))
+		confirm(_target())
 		_painting = _kind in ["ground", "wall"]
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_T:
 		_flip = not _flip
@@ -194,6 +217,14 @@ func confirm(at: Vector2) -> bool:
 	else:
 		cancel()
 	return true
+
+
+## Where the blueprint stands: under the mouse, or by touch where the
+## last tap put it (in front of the player before any tap).
+func _target() -> Vector2:
+	if TouchControls.active and _touch_at != Vector2.INF:
+		return _touch_at
+	return _snapped(_player.pointer())
 
 
 ## The middle of the tile under a point.

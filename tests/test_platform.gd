@@ -54,6 +54,9 @@ func test_touch_controls_send_the_same_actions_as_keys(t: TestContext) -> void:
 	t.check(player.aim_direction().y < -0.9, "dragging the attack button aims (%s)" % player.aim_direction())
 	press.pressed = false
 	touch._input(press)
+	# A quick tap is held through a physics frame so the blow lands.
+	for step in 4:
+		await t.tree.physics_frame
 	await t.frames(1)
 	t.check(not Input.is_action_pressed("attack"), "and letting go stops")
 	# The stick.

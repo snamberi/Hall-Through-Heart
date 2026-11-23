@@ -259,9 +259,20 @@ func _in_stick_zone(point: Vector2) -> bool:
 	return point.x < _size.x * 0.42 and point.y > _size.y * 0.3 and point.y < _size.y - 96.0
 
 
+## action -> physics frame it was pressed in.
+var _pressed_at: Dictionary = {}
+
+
 func _send(action: String, pressed: bool) -> void:
 	if not InputMap.has_action(action):
 		return
+	if pressed:
+		_pressed_at[action] = Engine.get_physics_frames()
+	elif int(_pressed_at.get(action, -10)) >= Engine.get_physics_frames() - 1:
+		# A quick tap: hold it down through a physics frame, or the game
+		# never sees it pressed and the blow is lost.
+		await get_tree().physics_frame
+		await get_tree().physics_frame
 	var event := InputEventAction.new()
 	event.action = action
 	event.pressed = pressed
