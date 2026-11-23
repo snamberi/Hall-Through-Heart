@@ -748,6 +748,7 @@ const ITEMS := {
 	"flower_bed": {"name": "Flower Bed", "decor": Prop.Decor.FLOWER_BED, "icon": 54, "material_rarity": 0, "place": "flower_bed", "value": 24, "text": "A wooden box of flowers. Use it to set it down."},
 	"cupboard": {"name": "Cupboard", "decor": Prop.Decor.CUPBOARD, "icon": 54, "material_rarity": 1, "place": "cupboard", "value": 60, "text": "A tall painted cupboard with plates on top. Use it to set it down."},
 	"fountain": {"name": "Fountain", "decor": Prop.Decor.FOUNTAIN, "icon": 54, "material_rarity": 2, "place": "fountain", "value": 220, "text": "A round stone fountain. Outdoors only. Use it to set it down."},
+	"waygate": {"name": "Waygate", "decor": Prop.Decor.WAYGATE, "icon": 54, "material_rarity": 2, "place": "waygate", "value": 260, "text": "A rune pillar of your own making. It joins the waystones: step between it and any stone you have woken. Outdoors only."},
 	"stone_planter": {"name": "Stone Planter", "decor": Prop.Decor.STONE_PLANTER, "icon": 54, "material_rarity": 0, "place": "stone_planter", "value": 30, "text": "A square stone planter with a trimmed shrub. Use it to set it down."},
 	"trophy_stand": {"name": "Trophy Stand", "decor": Prop.Decor.TROPHY_STAND, "icon": 149, "material_rarity": 1, "place": "trophy_stand", "value": 120,
 		"text": "A stand for a beaten boss's trophy. Set it inside a house, then choose a trophy for it: each one on show gives a small lasting bonus."},

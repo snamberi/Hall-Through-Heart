@@ -94,6 +94,7 @@ const HAND_WRITTEN: Array[Dictionary] = [
 	{"id": "flower_bed", "profession": "building", "level": 2, "inputs": {"oak_wood": 3, "healing_herb": 2, "mana_flower": 1}, "item": "flower_bed", "count": 1, "xp": 8.0},
 	{"id": "cupboard", "profession": "building", "level": 6, "inputs": {"oak_wood": 10, "copper_ingot": 1}, "item": "cupboard", "count": 1, "xp": 16.0},
 	{"id": "fountain", "profession": "building", "level": 15, "inputs": {"stone": 30, "water_bucket": 4, "silver_ingot": 2}, "item": "fountain", "count": 1, "xp": 50.0},
+	{"id": "waygate", "profession": "building", "level": 12, "inputs": {"stone": 40, "iron_ingot": 6, "void_shard": 2, "essence": 2}, "item": "waygate", "count": 1, "xp": 60.0},
 	{"id": "stone_planter", "profession": "building", "level": 3, "inputs": {"stone": 6, "healing_herb": 2}, "item": "stone_planter", "count": 1, "xp": 8.0},
 	{"id": "trophy_stand", "profession": "building", "level": 6, "inputs": {"oak_wood": 12, "stone": 6, "leather": 2, "gold_ingot": 1}, "item": "trophy_stand", "count": 1, "xp": 30.0},
 	{"id": "stone_statue", "profession": "building", "level": 4, "inputs": {"stone": 20}, "item": "stone_statue", "count": 1, "xp": 22.0},

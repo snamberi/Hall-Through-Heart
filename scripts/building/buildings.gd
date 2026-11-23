@@ -52,6 +52,9 @@ const KINDS := {
 	"cupboard": {"item": "cupboard", "decor": Prop.Decor.CUPBOARD, "solid": 12.0},
 	"fountain": {"item": "fountain", "decor": Prop.Decor.FOUNTAIN, "solid": 22.0, "outdoors": true},
 	"stone_planter": {"item": "stone_planter", "decor": Prop.Decor.STONE_PLANTER, "solid": 12.0},
+	## A waygate: joins the waystones (see Waystones), so you can travel to
+	## and from your own base.
+	"waygate": {"item": "waygate", "decor": Prop.Decor.WAYGATE, "solid": 12.0, "outdoors": true},
 	## One tile of floor inside a house; the record keeps the item and tile.
 	"floor": {"item": "", "solid": 0.0, "flat": true},
 	## One tile of laid ground outdoors (path, decking, turf, pond...); the
@@ -321,6 +324,9 @@ func place(kind: String, at: Vector2, item_id: String = "", flip: bool = false) 
 		Events.codex_event.emit("built", 1)
 	var where := current_place()
 	var record := {"id": _new_id(), "kind": kind, "where": where, "x": at.x, "y": at.y, "items": []}
+	if kind == "waygate":
+		var count := records.filter(func(r: Dictionary) -> bool: return r["kind"] == "waygate").size()
+		record["name"] = "Your Waygate" if count == 0 else "Your Waygate %d" % (count + 1)
 	if flip:
 		record["flip"] = true
 	if kind in ["ground", "wall"]:
@@ -512,6 +518,10 @@ func take_down(record: Dictionary) -> String:
 	records.erase(record)
 	if record["kind"] == "trophy_stand":
 		apply_trophies()
+	if record["kind"] == "waygate":
+		var stones: Waystones = get_parent().get_node_or_null("Waystones")
+		if stones:
+			stones.known.erase("gate:%d" % int(record["id"]))
 	Audio.play("pickup", -6.0, 0.1)
 	SaveGame.request_save()
 	return ""
@@ -747,6 +757,8 @@ func _spawn(record: Dictionary) -> void:
 			prop.on_interact = func(_player: Player) -> void:
 				Events.trophy_stand_opened.emit(record)
 			view.changed.connect(func() -> void: prop.prompt_text = name_of.call())
+		if record["kind"] == "waygate" and not in_room:
+			_spawn_waygate(prop, record)
 		if record["kind"] == "root_hollow":
 			prop.prompt_text = "Open the root hollow"
 			prop.on_interact = func(_player: Player) -> void: Events.storage_opened.emit(record)
@@ -780,6 +792,24 @@ func _spawn(record: Dictionary) -> void:
 		_room_props.append(prop)
 	else:
 		add_child(prop)
+
+
+## A waygate joins the waystones as a stone already awake, named for the
+## player's base, and travels like one.
+func _spawn_waygate(prop: Prop, record: Dictionary) -> void:
+	var stones: Waystones = get_parent().get_node_or_null("Waystones")
+	if stones == null:
+		return
+	var key := "gate:%d" % int(record["id"])
+	var cell := _world().world_to_cell(Vector2(record["x"], record["y"]))
+	var name_of := str(record.get("name", "Your Waygate"))
+	if not stones.known.has(key):
+		stones.known[key] = {"name": name_of, "cell": [cell.x, cell.y], "built": true}
+	prop.prompt_text = "Use the waygate"
+	prop.on_interact = func(_player: Player) -> void: stones.use(key, name_of, cell)
+	prop.set_meta("waystone", key)
+	prop.add_light(0.5, 1.1, Waystones.GLOW)
+	prop.add_child(WaystoneGlow.new())
 
 
 ## A farmhouse: bigger than other furniture, its produce kept like a

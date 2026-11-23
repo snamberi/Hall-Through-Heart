@@ -3359,7 +3359,8 @@ def main():
         props.paste(draw_icon(parts, NODE), (index * NODE, 0))
     # The chests and the altar are drawn with the decor canvas instead.
     import generate_flora
-    for index, image in ((2, generate_flora.chest(False)), (3, generate_flora.chest(True)), (4, generate_flora.altar())):
+    for index, image in ((2, generate_flora.chest(False)), (3, generate_flora.chest(True)), (4, generate_flora.altar()),
+                         (7, generate_flora.ladder()), (13, generate_flora.house())):
         props.paste(image, (index * NODE, 0))
     props.save(os.path.join(ROOT, "sprites", "props.png"))
 

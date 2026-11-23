@@ -1628,6 +1628,16 @@ def furniture_icon(kind):
             icon.put(x, y, (170, 220, 250), part=False)
             icon.no_outline.add((x, y))
         icon.dots([(8, 22), (22, 23), (12, 24)], (200, 236, 255))
+    elif kind == "waygate":
+        # A squared rune pillar on a round dais, a crystal hanging over it.
+        icon.ellipse((3, 24, 29, 31), ramp(STONE))
+        icon.rect((11, 9, 21, 27), ramp(STONE))
+        icon.rect((10, 6, 22, 9), ramp(GOLD))
+        icon.rect((10, 16, 22, 17), ramp(GOLD))
+        icon.line([(15, 11), (15, 14)], 1, ramp("6ae0f8"))
+        icon.line([(14, 20), (17, 23)], 1, ramp("6ae0f8"))
+        icon.line([(17, 20), (14, 23)], 1, ramp("6ae0f8"))
+        icon.poly([(16, 0), (19, 2), (16, 5), (13, 2)], ramp("8ae8fa"))
     elif kind == "furnace":
         icon.rect((3, 6, 29, 30), ramp(DARK_STONE))
         icon.rect((12, 1, 20, 7), ramp(DARK_STONE))
@@ -3082,7 +3092,7 @@ ITEMS = {
         "farm_plot", "farmhouse_kit", "fence", "fireplace", "flower_bed", "fountain", "furnace", "hay_bale", "lantern_post",
         "palisade_wall", "potted_plant", "root_hollow", "rootling_delver", "rootling_tender", "rootling_woodcutter", "rug",
         "scarecrow", "spike_trap", "stone_planter", "stone_statue", "trophy_stand", "wall_banner", "weapon_rack",
-        "bed", "crafting_table", "house_kit", "storage_chest", "torch")},
+        "bed", "crafting_table", "house_kit", "storage_chest", "torch", "waygate")},
     "treasure_map": map_icon,
     "rowboat": boat_icon,
     "bandage": bandage_icon,

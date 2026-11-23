@@ -299,14 +299,76 @@ def crimson_tree(seed=4):
 
 
 def giant_mushroom(seed=5):
+    """A towering toadstool: a swollen, root-gripped foot in moss, a pale
+    stalk with a torn gill skirt hanging from it, a domed cap in two tiers of
+    violet-rose with raised warts, a gilled underside in shadow, and a few
+    little ones sprouting at its foot."""
+    rnd = random.Random(seed)
     c = Canvas(64, 96)
-    c.shadow(32, 90, 16, 4)
-    c.shade("poly", [(26, 90), (28, 44), (36, 44), (38, 90)], ramp("e8e0c8", "c8bca0", "9a8e74"))
-    c.shade("ellipse", (8, 22, 56, 54), ramp("d070a0", "a04878", "6c2c52"))
-    c.fill("rect", (10, 44, 54, 48), C("4a2038"))
-    for (x, y, w) in [(18, 30, 6), (34, 28, 7), (44, 36, 5), (26, 40, 4), (14, 40, 3)]:
-        c.fill("ellipse", (x, y, x + w, y + w - 1), C("f0d0e8"))
+    c.shadow(32, 90, 20, 5)
+    stalk = ramp("f0e8d4", "cfc2a4", "948664")
+    # Roots splaying from the foot, then the swollen foot itself.
+    root = ramp("b8a882", "8a7c5c", "5e5440")
+    for (x0, x1, y1) in [(26, 15, 90), (29, 22, 92), (36, 44, 92), (38, 50, 89)]:
+        c.shade("line", [(x0, 84), (x1, y1)], root, width=2, dither=False)
+    c.shade("ellipse", (21, 74, 43, 91), stalk)
+    # The stalk, a little bent, narrowing up to the cap.
+    c.shade("poly", [(24, 82), (25, 64), (27, 50), (29, 42), (37, 42), (38, 50), (39, 64), (41, 82)], stalk)
+    # Fibres along the stalk.
+    for (x, y0, y1) in [(28, 50, 70), (31, 46, 78), (35, 52, 74), (38, 60, 80)]:
+        for y in range(y0, y1, 3):
+            c.put(x + (1 if y % 6 == 0 else 0), y, C("b8aa88"))
+    # The skirt: a torn ring of gill-flesh hanging from under the cap.
+    skirt = ramp("e8dcc0", "c4b490", "8a7a5a")
+    c.shade("poly", [(25, 50), (39, 50), (42, 56), (39, 55), (37, 59), (34, 55), (31, 60), (29, 55), (26, 58), (22, 56)], skirt)
+    c.fill("line", [(25, 51), (39, 51)], C("faf2e0"))
+    # Moss on the foot.
+    moss = ramp("8ab05a", "5a8040", "345030")
+    for (x, y, r) in [(22, 86, 4), (40, 87, 4), (31, 89, 3), (19, 89, 2)]:
+        c.shade("ellipse", (x - r, y - r + 1, x + r, y + r - 1), moss)
+    # Under the cap: dark gills fanning from the stalk.
+    c.fill("ellipse", (7, 36, 57, 50), C("4a1e3a"))
+    gill = C("6e3456")
+    for k in range(-11, 12):
+        x = 32 + k * 2
+        c.fill("line", [(32 + k // 3, 44), (x, 39 + abs(k) // 4)], gill)
+    # The cap: a broad lower tier, then a higher dome over it.
+    cap = ramp("e080b0", "b04e86", "6e2a56")
+    c.shade("ellipse", (4, 22, 60, 46), cap)
+    c.shade("ellipse", (12, 10, 52, 38), ramp("ec92bc", "bc5a90", "7a3060"))
+    # A lip of shade where the dome sits on the brim, and a lit rim.
+    for x in range(14, 51):
+        dy = int(round(((x - 32) / 20.0) ** 2 * 5))
+        c.put(x, 35 - dy + 2, C("8a3a68"))
+    for x in range(10, 30):
+        dy = int(round(((x - 32) / 28.0) ** 2 * 7))
+        c.put(x, 25 + dy - 1, C("f6b4d4"))
+    c.fill("line", [(20, 13), (30, 11)], C("fcd0e4"))
+    c.fill("line", [(16, 17), (19, 14)], C("fcd0e4"))
+    # The rim curls under: a band of darker flesh along the edge.
+    for x in range(6, 59):
+        t = (x - 32) / 27.0
+        y = int(round(34 + (1 - t * t) ** 0.5 * 11))
+        c.put(x, y, C("5a2246"))
+        c.put(x, y - 1, C("8a3a68"))
+    # Raised warts, each with a shadow, a body and a bright top.
+    spots = [(20, 18, 4), (33, 15, 5), (44, 20, 4), (26, 27, 3), (39, 28, 3), (12, 33, 3), (51, 33, 3), (31, 35, 2), (22, 37, 2), (46, 38, 2)]
+    for (x, y, r) in spots:
+        c.fill("ellipse", (x - r + 1, y - r + 2, x + r + 1, y + r + 1), C("7a3060"))
+        c.fill("ellipse", (x - r, y - r + 1, x + r, y + r), C("e8d4dc"))
+        c.fill("ellipse", (x - r, y - r + 1, x + r - 1, y + r - 1), C("fff4f8"))
+        if r >= 3:
+            c.put(x + r - 1, y + r - 1, C("c0a8b8"))
     c.outline()
+    # Two little ones at the foot (drawn after the outline: their own).
+    for (x, h, w, col) in [(13, 9, 5, ("e080b0", "b04e86", "6e2a56")), (49, 7, 4, ("ec92bc", "bc5a90", "7a3060")), (54, 5, 3, ("e080b0", "b04e86", "6e2a56"))]:
+        small = Canvas(64, 96)
+        small.shade("rect", (x - 1, 91 - h, x + 1, 91), stalk, dither=False)
+        small.shade("ellipse", (x - w, 91 - h - w, x + w, 91 - h + 2), ramp(*col))
+        small.put(x - 1, 91 - h - w + 2, C("fff4f8"))
+        small.put(x + 1, 91 - h - 1, C("fff4f8"))
+        small.outline()
+        c.img.alpha_composite(small.img)
     return c.img
 
 
@@ -1122,8 +1184,455 @@ WOOD = ramp("9a7a58", "6b4f36", "4a3626")
 CLOTH = ramp("c05a5a", "8a2c37", "5c1c28")
 
 
+
+
+# ----------------------------------------------------------------------
+# Props redrawn with more care: every plank, stone and stitch placed, a
+# ground shadow under each, light from the upper left, and the outline the
+# sheet gives everything. (They replace the older, plainer ones of the same
+# name; the frame numbers do not change.)
+# ----------------------------------------------------------------------
+
+PLANK = ramp("c09468", "8e6640", "5e4028")
+PLANK_TOP = ramp("d8b080", "a8805a", "7a5638")
+PLANK_SIDE = ramp("8a6440", "64462c", "40301e")
+IRON = ramp("9a98a4", "62606c", "3a3844")
+SOILR = ramp("7a5636", "553a24", "3a2618")
+STRAW_R = ramp("f0d878", "c8a448", "8a6c2c")
+BURLAP = ramp("d8c098", "b09870", "7a6448")
+CANVAS_R = ramp("e8dcc0", "c4b494", "8e7e64")
+TERRA = ramp("e08a5a", "b0603a", "783c24")
+LEAFR = ramp("8acc68", "58944a", "34602e")
+
+
+def _nails(c, spots, colour="2a2220"):
+    for (x, y) in spots:
+        c.put(x, y, C(colour))
+
+
+def prop_crate(c):
+    # A shipping crate in three-quarter view: three wide planks a face with
+    # dark gaps, a cross brace on the front, a lit top of boards, iron
+    # corner straps with rivets, and a stencilled mark.
+    c.shadow(33, 60, 20, 3, 90)
+    c.shade("poly", [(12, 28), (40, 28), (52, 21), (24, 21)], PLANK_TOP)
+    for x in (19, 26, 33):
+        c.fill("line", (x - 2, 28, x + 10, 21), C("6a4a30"), 1)
+    c.shade("rect", (12, 28, 40, 60), PLANK)
+    for y in (38, 49):
+        c.fill("line", (13, y, 39, y), C("3a2818"), 1)
+        c.fill("line", (13, y + 1, 39, y + 1), C("caa070"), 1)
+    c.shade("poly", [(40, 28), (52, 21), (52, 53), (40, 60)], PLANK_SIDE)
+    for y in (37, 48):
+        c.fill("line", (41, y, 51, y - 7), C("2e2014"), 1)
+    c.shade("line", (14, 30, 38, 58), PLANK, width=3, dither=False)
+    c.fill("line", (14, 30, 38, 58), C("d8ac78"), 1)
+    for (x, y) in ((12, 28), (37, 28), (12, 57), (37, 57)):
+        c.fill("rect", (x, y, x + 3, y + 3), IRON[1])
+        c.put(x + 1, y + 1, C("d0ccd8"))
+    c.fill("rect", (48, 21, 51, 24), IRON[1])
+    c.fill("rect", (48, 50, 51, 53), IRON[2])
+    _nails(c, [(25, 30), (25, 58), (15, 44), (37, 44), (46, 30), (46, 52)])
+    # A painted mark: a ring with a stroke, in faded red.
+    for (x, y) in ((22, 41), (23, 40), (24, 40), (25, 41), (25, 42), (24, 43), (23, 43), (22, 42), (28, 40), (28, 41), (28, 42), (28, 43)):
+        c.put(x, y, C("8a3a34"))
+
+
+def prop_barrel(c):
+    # A cooper's barrel: bulging staves in three tones, the lid of boards
+    # seen from above with its rim, two iron hoops catching the light, a
+    # bung, and a damp dark ring where it meets the ground.
+    c.shadow(32, 61, 16, 3, 90)
+    body = [(20, 27), (44, 27), (47, 35), (48, 45), (46, 55), (42, 61), (22, 61), (18, 55), (16, 45), (17, 35)]
+    c.shade("poly", body, PLANK)
+    for x, tone in ((21, "d0a474"), (26, "a07850"), (31, "8e6640"), (36, "7a5636"), (41, "5e4028")):
+        c.fill("line", (x, 29, x + (1 if x > 31 else -1) * 1, 60), C(tone), 2)
+    for x in (24, 29, 34, 39):
+        c.fill("line", (x, 29, x + (1 if x > 31 else -1), 60), C("3e2a1a"), 1)
+    c.shade("ellipse", (19, 22, 45, 32), PLANK_TOP)
+    c.fill("ellipse", (22, 24, 42, 30), C("9a7048"))
+    for y in (26, 28):
+        c.fill("line", (24, y, 40, y), C("6a4a30"), 1)
+    hoop = IRON
+    for (y, inset) in ((35, 1), (51, 0)):
+        c.shade("poly", [(17 + inset, y), (47 - inset, y), (47 - inset, y + 3), (17 + inset, y + 3)], hoop)
+        c.fill("line", (18 + inset, y, 46 - inset, y), C("dcd8e2"), 1)
+        for x in (20, 44):
+            c.put(x, y + 1, C("2a2830"))
+    c.fill("ellipse", (29, 42, 35, 48), C("3a2818"))
+    c.fill("rect", (31, 44, 33, 46), C("a07a4e"))
+    c.put(31, 44, C("d0a474"))
+
+
+def prop_well(c):
+    # A village well: a ring of fitted stones (each its own, mortar between),
+    # dark water with a glint, two posts and a beam with a windlass and its
+    # crank, a rope down to a bucket, and a shingled roof with a ridge.
+    c.shadow(32, 60, 26, 4, 90)
+    c.shade("ellipse", (8, 36, 56, 62), ramp("b4b0bc", "86828f", "57535f"))
+    r = random.Random(81)
+    for row, (y0, y1) in enumerate(((44, 49), (49, 54), (54, 59))):
+        x = 10 + (row % 2) * 4
+        while x < 54:
+            w = r.randrange(6, 10)
+            c.fill("line", (x, y0, x, y1), C("4a4652"), 1)
+            c.fill("line", (x + 1, y0, min(x + w - 1, 54), y0), C("c8c4d0"), 1)
+            x += w
+        c.fill("line", (10, y1, 54, y1), C("4a4652"), 1)
+    c.fill("ellipse", (14, 37, 50, 48), C("1a2430"))
+    c.fill("ellipse", (18, 40, 46, 47), C("0c121c"))
+    c.fill("line", (26, 42, 32, 42), C("5a7a9a"), 1)
+    c.shade("rect", (10, 12, 14, 46), PLANK)
+    c.shade("rect", (50, 12, 54, 46), PLANK)
+    c.shade("rect", (10, 17, 54, 20), PLANK_TOP)
+    c.shade("ellipse", (26, 15, 38, 22), PLANK_SIDE)
+    c.fill("line", (54, 18, 59, 18), IRON[1], 2)
+    c.fill("line", (59, 18, 59, 24), IRON[1], 2)
+    c.fill("line", (31, 22, 31, 33), C("c8b890"), 1)
+    c.shade("poly", [(27, 33), (35, 33), (34, 40), (28, 40)], PLANK_SIDE)
+    c.fill("line", (27, 34, 35, 34), IRON[0], 1)
+    roof = ramp("8a5a3a", "6a3e28", "48281a")
+    c.shade("poly", [(4, 16), (32, 3), (60, 16), (55, 18), (9, 18)], roof)
+    for k, y in enumerate((8, 12, 16)):
+        for x in range(8 + (k % 2) * 3, 58, 6):
+            if abs(x - 32) < (y - 3) * 2.1:
+                c.put(x, y, C("3a2014"))
+    c.fill("line", (6, 16, 58, 16), C("a87048"), 1)
+    c.fill("line", (31, 3, 33, 3), C("b88a5a"), 1)
+
+
+def prop_fence(c):
+    # A split-rail fence: three posts with cut tops sunk in grass, two rails
+    # with their grain, darker beneath, and nails where they cross.
+    c.shadow(32, 61, 28, 2, 70)
+    for x in (5, 29, 53):
+        c.shade("rect", (x, 28, x + 5, 61), PLANK)
+        c.shade("poly", [(x, 28), (x + 5, 28), (x + 5, 26), (x + 2, 24), (x, 26)], PLANK_TOP)
+        c.fill("line", (x + 1, 30, x + 1, 58), C("c09468"), 1)
+    for y in (35, 47):
+        c.shade("rect", (3, y, 61, y + 4), PLANK)
+        c.fill("line", (3, y, 61, y), C("d4aa7a"), 1)
+        c.fill("line", (3, y + 4, 61, y + 4), C("4a3220"), 1)
+        for x in (12, 21, 40, 47):
+            c.put(x, y + 2, C("6a4a30"))
+            c.put(x + 2, y + 2, C("6a4a30"))
+        for x in (7, 31, 55):
+            c.put(x, y + 2, C("2a2220"))
+    for x in range(2, 62, 3):
+        c.put(x, 61 - (x * 7) % 3, C("5d7a3f"))
+        c.put(x + 1, 61, C("86a456"))
+
+
+def prop_soil(c):
+    # A tilled plot, plainly farmland: a frame of boards, four raised rows of
+    # dark earth with a lit crest and a shadowed furrow, green shoots coming
+    # up along them, and a few pebbles.
+    board = ramp("a07a4e", "7a5636", "54381f")
+    c.shade("rect", (3, 18, 61, 60), board)
+    c.fill("rect", (6, 21, 58, 57), C("3a2618"))
+    for k, y in enumerate((23, 32, 41, 50)):
+        c.shade("rect", (7, y, 57, y + 6), SOILR, dither=False)
+        c.fill("line", (7, y, 57, y), C("9a7048"), 1)
+        c.fill("line", (7, y + 6, 57, y + 6), C("24160e"), 1)
+        for x in range(10 + (k % 2) * 4, 56, 7):
+            c.put(x, y - 1, C("5ab04a"))
+            c.put(x, y - 2, C("8ad868"))
+            c.put(x + 1, y - 1, C("3e8034"))
+    for (x, y) in ((14, 30), (44, 39), (28, 48), (50, 56)):
+        c.put(x, y, C("8a8494"))
+    c.fill("line", (3, 18, 61, 18), C("c49a68"), 1)
+
+
+def prop_scarecrow(c):
+    # A scarecrow: a post and crossbar; a burlap sack head stitched with
+    # cross eyes and a crooked mouth; a wide straw hat with a red band; a
+    # patched plaid shirt with straw sticking from the cuffs and collar;
+    # a crow perched on one arm.
+    c.shadow(32, 61, 10, 2, 80)
+    c.shade("rect", (30, 22, 33, 61), PLANK)
+    c.shade("rect", (8, 30, 56, 33), PLANK)
+    c.shade("poly", [(22, 30), (42, 30), (44, 50), (20, 50)], ramp("b04a3a", "8a3028", "5a2018"))
+    for x in (24, 30, 36, 42):
+        c.fill("line", (x, 31, x - 1, 49), C("d8b060"), 1)
+    for y in (36, 43):
+        c.fill("line", (21, y, 43, y), C("d8b060"), 1)
+    c.shade("rect", (33, 40, 39, 46), ramp("5a7ab0", "3e5a8a", "2a3e60"))
+    _nails(c, [(34, 41), (38, 41), (34, 45), (38, 45)], "e8e0c8")
+    for (x0, x1) in ((8, 14), (50, 56)):
+        c.shade("rect", (x0, 29, x1, 34), ramp("b04a3a", "8a3028", "5a2018"))
+    for (x, y) in ((6, 30), (5, 33), (7, 35), (58, 30), (59, 33), (57, 35), (26, 51), (30, 52), (35, 51), (39, 52)):
+        c.fill("line", (x, y, x + (2 if x > 32 else -2), y + 2), STRAW_R[1], 1)
+    c.shade("ellipse", (24, 13, 40, 30), BURLAP)
+    for (x, y) in ((27, 19), (29, 21), (29, 19), (27, 21), (35, 19), (37, 21), (37, 19), (35, 21)):
+        c.put(x, y, C("2a2018"))
+    for x in range(27, 38, 2):
+        c.put(x, 25 + (x // 2) % 2, C("2a2018"))
+    c.fill("line", (24, 28, 40, 28), C("6a5438"), 1)
+    c.shade("ellipse", (14, 10, 50, 17), STRAW_R)
+    c.shade("poly", [(24, 12), (26, 3), (38, 3), (40, 12)], STRAW_R)
+    c.fill("rect", (25, 9, 39, 11), C("a83030"))
+    # The crow.
+    c.shade("ellipse", (47, 22, 55, 29), ramp("4a4858", "2e2c38", "1a1820"))
+    c.shade("ellipse", (52, 19, 57, 24), ramp("4a4858", "2e2c38", "1a1820"))
+    c.put(55, 21, C("e8d070"))
+    c.fill("line", (57, 22, 59, 22), C("d8a838"), 1)
+    c.fill("line", (46, 27, 43, 30), C("2e2c38"), 1)
+
+
+def prop_cart(c):
+    # A farm cart: a plank bed with side boards, two shafts forward, a big
+    # spoked wheel with an iron tyre and hub, and a load of sacks and hay.
+    c.shadow(30, 61, 24, 3, 90)
+    c.fill("line", (40, 40, 60, 30), PLANK[1], 2)
+    c.fill("line", (40, 44, 60, 36), PLANK[2], 2)
+    c.shade("poly", [(4, 30), (44, 30), (46, 44), (6, 44)], PLANK)
+    for x in (12, 20, 28, 36):
+        c.fill("line", (x, 31, x + 1, 43), C("4a3220"), 1)
+    c.shade("poly", [(4, 26), (44, 26), (44, 31), (4, 31)], PLANK_TOP)
+    # The load.
+    c.shade("ellipse", (8, 14, 24, 30), BURLAP)
+    c.fill("line", (13, 15, 19, 15), C("7a6448"), 1)
+    c.shade("ellipse", (20, 12, 36, 28), BURLAP)
+    c.fill("line", (25, 13, 31, 13), C("7a6448"), 1)
+    c.shade("poly", [(32, 26), (34, 16), (42, 14), (46, 26)], STRAW_R)
+    for x in range(34, 45, 2):
+        c.fill("line", (x, 26, x - 1, 16), C("a8843a"), 1)
+    # The wheel.
+    c.shade("ellipse", (12, 36, 36, 60), IRON)
+    c.fill("ellipse", (15, 39, 33, 57), C("2a2018"))
+    hub = (24, 48)
+    for k in range(8):
+        a = k * math.pi / 4
+        c.fill("line", (hub[0], hub[1], round(hub[0] + math.cos(a) * 8), round(hub[1] + math.sin(a) * 8)), PLANK[1], 1)
+    c.shade("ellipse", (21, 45, 27, 51), IRON)
+    c.put(23, 47, C("d0ccd8"))
+
+
+def prop_tent(c):
+    # A traveller's tent: a canvas A-frame with a ridge pole showing at both
+    # ends, the near flap tied back on a dark inside, folds and a patch,
+    # guy ropes out to pegs.
+    c.shadow(32, 61, 28, 3, 90)
+    c.shade("poly", [(32, 6), (60, 58), (4, 58)], CANVAS_R)
+    c.shade("poly", [(32, 6), (60, 58), (46, 58)], ramp("b4a484", "948468", "6e604a"))
+    c.shade("poly", [(32, 20), (42, 58), (22, 58)], ramp("2a2420", "1a1614", "0e0c0a"))
+    c.shade("poly", [(32, 20), (22, 58), (16, 58), (28, 24)], ramp("f0e6cc", "d4c6a4", "a49474"))
+    c.fill("line", (22, 40, 18, 44), C("8a6440"), 1)
+    for (x0, y0, x1, y1) in ((32, 8, 12, 52), (32, 8, 52, 52), (32, 8, 40, 30)):
+        c.fill("line", (x0, y0, x1, y1), C("b4a484"), 1)
+    c.shade("rect", (46, 40, 52, 46), ramp("8a7a5a", "6e604a", "52483a"))
+    _nails(c, [(46, 40), (52, 40), (46, 46), (52, 46)], "4a3a2a")
+    c.fill("line", (32, 2, 32, 8), PLANK[1], 2)
+    c.fill("line", (6, 56, 1, 61), C("c8b890"), 1)
+    c.fill("line", (58, 56, 63, 61), C("c8b890"), 1)
+    for (x, y) in ((1, 61), (62, 61)):
+        c.fill("rect", (x - 1, y - 2, x, y), PLANK[1])
+
+
+def prop_stall(c):
+    # A merchant's stall: a striped awning of bronze and cream with a
+    # scalloped edge, a counter under a blue cloth, crates of goods below,
+    # hanging lamps and wares, and a little painted sign.
+    c.shadow(32, 61, 28, 3, 90)
+    for x in (8, 52):
+        c.shade("rect", (x, 8, x + 3, 61), PLANK)
+    for k in range(7):
+        col = ramp("d8a050", "b07a34", "7a5020") if k % 2 == 0 else ramp("f0e6cc", "d4c6a4", "a49474")
+        x0 = 4 + k * 8
+        c.shade("poly", [(x0, 6), (x0 + 8, 6), (x0 + 8, 15), (x0, 15)], col, dither=False)
+        c.shade("ellipse", (x0, 12, x0 + 8, 19), col, dither=False)
+    c.fill("line", (4, 6, 60, 6), C("5a3a20"), 1)
+    for x in (18, 44):
+        c.fill("line", (x, 19, x, 23), C("4a4652"), 1)
+        c.shade("rect", (x - 2, 23, x + 2, 28), ramp("f8e0a0", "e0b060", "a87830"))
+    c.shade("rect", (6, 34, 58, 42), ramp("5a7ab0", "3e5a8a", "2a3e60"))
+    c.fill("line", (6, 34, 58, 34), C("8aa8d8"), 1)
+    for x in range(8, 58, 6):
+        c.fill("line", (x, 42, x + 3, 45), C("2a3e60"), 1)
+    for (x, col) in ((12, ("e05a4a", "b03a32", "702424")), (20, ("f0d060", "c8a038", "8a6c20")), (28, ("8ad068", "58944a", "34602e")),
+                     (36, ("f0a060", "c87038", "8a4820")), (44, ("d080e0", "a058b8", "6a3a80"))):
+        c.shade("ellipse", (x, 28, x + 6, 34), ramp(*col))
+    c.shade("rect", (12, 46, 28, 60), PLANK)
+    c.shade("rect", (34, 48, 50, 60), PLANK_SIDE)
+    c.fill("line", (12, 53, 28, 53), C("3a2818"), 1)
+    for (x, y) in ((15, 47), (19, 48), (23, 47), (37, 49), (42, 49), (46, 50)):
+        c.shade("ellipse", (x - 2, y - 2, x + 2, y + 1), ramp("f0d060", "c8a038", "8a6c20"))
+    c.shade("rect", (24, 20, 40, 26), PLANK_TOP)
+    c.fill("rect", (27, 22, 37, 24), C("8a3a34"))
+
+
+def prop_plant_pot(c):
+    # A terracotta pot with a lit rim and a painted band, a bushy plant with
+    # layered leaves and three little flowers.
+    c.shadow(32, 61, 12, 2, 80)
+    c.shade("poly", [(20, 44), (44, 44), (41, 61), (23, 61)], TERRA)
+    c.shade("rect", (18, 40, 46, 45), ramp("f0a070", "c87040", "8a4a28"))
+    c.fill("line", (18, 40, 46, 40), C("ffc898"), 1)
+    c.fill("line", (22, 52, 42, 52), C("e8d0a0"), 1)
+    c.fill("ellipse", (20, 38, 44, 43), C("3a2618"))
+    for (x, y, r) in ((24, 30, 8), (38, 28, 8), (31, 22, 9), (29, 34, 7), (40, 36, 6), (21, 37, 5)):
+        c.shade("ellipse", (x - r, y - r, x + r, y + r), LEAFR)
+    for (x, y) in ((27, 24), (36, 23), (31, 31), (22, 32), (41, 33)):
+        c.put(x, y, C("aee888"))
+    for (x, y, col) in ((26, 20, "f0e070"), (37, 26, "e888c0"), (30, 30, "f0f0e8")):
+        c.fill("rect", (x - 1, y - 1, x + 1, y + 1), C(col))
+        c.put(x, y, C("c89030"))
+
+
+def prop_flower_bed(c):
+    # A raised bed of boards full of dark soil, rows of flowers of five kinds
+    # on their stems, leaves at their feet.
+    c.shadow(32, 61, 28, 2, 80)
+    c.shade("rect", (4, 44, 60, 60), PLANK)
+    c.fill("line", (4, 44, 60, 44), C("d4aa7a"), 1)
+    c.fill("line", (4, 52, 60, 52), C("4a3220"), 1)
+    c.fill("rect", (6, 40, 58, 45), C("3a2618"))
+    r = random.Random(91)
+    colours = [("f0e070", "c8a838"), ("e05a6a", "a83a48"), ("f0f0e8", "c8c8c0"), ("a070e0", "7048b0"), ("f0a050", "c07030")]
+    for k, x in enumerate(range(8, 58, 5)):
+        top = 24 + r.randrange(0, 10)
+        c.fill("line", (x, 42, x, top + 3), C("3e8034"), 1)
+        c.fill("line", (x, 40, x - 2, 38), C("5ab04a"), 1)
+        c.fill("line", (x, 39, x + 2, 37), C("5ab04a"), 1)
+        light, dark = colours[k % len(colours)]
+        c.fill("rect", (x - 2, top, x + 2, top + 3), C(dark))
+        c.fill("rect", (x - 1, top, x + 1, top + 2), C(light))
+        c.put(x, top + 1, C("f8d040") if light != "f0e070" else C("a87830"))
+
+
+def prop_stone_planter(c):
+    # A carved stone planter: a squared trough with a lit lip, a carved band
+    # of diamonds, and a clipped round shrub with berries.
+    c.shadow(32, 61, 18, 3, 90)
+    c.shade("rect", (14, 40, 50, 61), ramp("b4b0bc", "86828f", "57535f"))
+    c.shade("rect", (12, 36, 52, 41), ramp("d0ccd8", "a8a4b0", "7a7684"))
+    c.fill("line", (12, 36, 52, 36), C("e8e4ee"), 1)
+    for x in range(18, 48, 7):
+        for (dx, dy) in ((0, 0), (1, -1), (2, 0), (1, 1)):
+            c.put(x + dx, 50 + dy, C("4a4652"))
+    c.fill("line", (14, 56, 50, 56), C("4a4652"), 1)
+    for (x, y, r) in ((32, 24, 14), (22, 30, 8), (42, 30, 8)):
+        c.shade("ellipse", (x - r, y - r, x + r, y + r), ramp("6ab050", "40803a", "285428"))
+    for (x, y) in ((26, 18), (35, 16), (40, 24), (28, 26), (22, 28), (36, 30)):
+        c.put(x, y, C("8ad068"))
+    for (x, y) in ((30, 20), (38, 22), (25, 30), (41, 31)):
+        c.put(x, y, C("d83a4a"))
+
+
+def prop_bone_pile(c):
+    # Old bones in the grass: a skull turned a little, with a domed crown, a
+    # brow ridge, deep sockets shaded inside, cheekbones, a nose hole and a
+    # row of teeth with gaps; its jaw fallen beside it; a curve of ribs; a
+    # thigh bone with knobbed ends; finger bones; a crack, a little moss.
+    bone = ramp("f6f2e4", "d6d0bc", "a09a86")
+    c.shadow(32, 58, 24, 4, 70)
+    c.fill("ellipse", (8, 52, 58, 62), C("4a3a2a", 90))
+    # The thigh bone.
+    c.shade("line", (8, 57, 27, 51), bone, width=3, dither=False)
+    for end in ((8, 57), (27, 51)):
+        c.shade("ellipse", (end[0] - 3, end[1] - 3, end[0] + 3, end[1] + 2), bone)
+    # Ribs, each a curve.
+    for k in range(4):
+        x0 = 40 + k * 4
+        c.fill("line", (x0, 47 - k, x0 + 3, 52 - k), bone[1], 1)
+        c.fill("line", (x0 + 3, 52 - k, x0 + 2, 57 - k), bone[1], 1)
+        c.fill("line", (x0 + 1, 47 - k, x0 + 4, 52 - k), bone[2], 1)
+    c.fill("line", (39, 46, 56, 41), bone[2], 1)
+    # The skull: crown, face, cheekbones.
+    c.shade("ellipse", (21, 26, 45, 48), bone)
+    c.shade("poly", [(24, 42), (42, 42), (40, 52), (26, 52)], bone)
+    c.fill("line", (23, 36, 43, 36), bone[0], 1)
+    for (x0, x1) in ((25, 31), (35, 41)):
+        c.fill("ellipse", (x0, 37, x1, 44), C("1c1418"))
+        c.fill("line", (x0 + 1, 37, x1 - 1, 37), C("6a6252"), 1)
+        c.put(x0 + 2, 40, C("3a2e30"))
+    c.fill("poly", [(32, 45), (34, 45), (33, 48)], C("1c1418"))
+    for (x, y) in ((24, 45), (42, 45)):
+        c.fill("line", (x, y, x + (2 if x < 33 else -2), y + 1), bone[2], 1)
+    c.fill("rect", (27, 50, 39, 52), C("e8e2d0"))
+    for x in (28, 30, 32, 34, 36, 38):
+        c.put(x, 51, C("5a5446") if x != 34 else C("1c1418"))
+    c.fill("line", (37, 28, 35, 33), C("8a8474"), 1)
+    c.fill("line", (35, 33, 36, 35), C("8a8474"), 1)
+    for (x, y) in ((24, 30), (25, 29), (22, 34)):
+        c.put(x, y, C("6d8a44"))
+    # The jaw, fallen.
+    c.shade("poly", [(12, 46), (22, 46), (21, 50), (13, 50)], bone)
+    for x in (14, 16, 18, 20):
+        c.put(x, 46, C("5a5446"))
+    # Finger bones.
+    for (x, y) in ((48, 58), (52, 60), (56, 57)):
+        c.fill("line", (x, y, x + 2, y - 1), bone[1], 1)
+
+
+def prop_waygate(c):
+    """A waygate the player builds: a squared pillar of dressed stone on a
+    round three-step dais, a band of bronze at its waist and crown, runes cut
+    down its face and lit cold blue, and a shard of crystal hanging in the air
+    over its top; four rune pebbles mark the dais."""
+    stone = ramp("c2bed0", "8e8a9c", "5c5868")
+    dark = C("3a3644")
+    # The dais: three round steps.
+    c.shadow(32, 58, 26, 5, 80)
+    for (x0, y0, x1, y1) in [(5, 50, 59, 62), (10, 47, 54, 58), (15, 44, 49, 54)]:
+        c.shade("ellipse", (x0, y0, x1, y1), ramp("aaa6b8", "7a7688", "504c5c"), dither=False)
+        c.fill("line", [(x0 + 6, y0 + 1), (x1 - 6, y0 + 1)], C("d4d0de"))
+    for (x, y) in [(10, 57), (54, 57), (19, 60), (45, 60)]:
+        c.fill("ellipse", (x - 2, y - 1, x + 2, y + 1), C("6a6678"))
+        c.put(x, y - 1, C("6ae0f8"))
+    # The pillar: a lit front face and a shaded right side, tapering up.
+    c.shade("poly", [(23, 49), (24, 14), (39, 14), (40, 49)], stone, dither=False)
+    c.fill("poly", [(37, 14), (39, 14), (40, 49), (37, 49)], C("6a6678"))
+    c.fill("line", [(24, 15), (23, 48)], C("d8d4e2"))
+    # Mortar lines between its courses.
+    for y in (24, 34, 43):
+        c.fill("line", [(24, y), (39, y)], dark)
+        c.fill("line", [(24, y + 1), (36, y + 1)], C("aaa6b8"))
+    # The bronze bands and the crown.
+    bronze = ramp("f0c878", "c8904a", "7a5226")
+    c.shade("rect", (22, 29, 41, 31), bronze, dither=False)
+    c.shade("poly", [(20, 14), (43, 14), (41, 9), (22, 9)], bronze, dither=False)
+    c.fill("line", [(22, 9), (41, 9)], C("fff0b8"))
+    c.fill("line", [(20, 14), (43, 14)], C("5a3a18"))
+    for x in (24, 31, 38):
+        c.fill("rect", (x, 6, x + 1, 9), bronze[1])
+        c.put(x, 6, C("fff0b8"))
+    # Runes cut down the face, each its own glyph, lit from within.
+    glyphs = [[(0, 0, 3, 0), (1, 0, 1, 5), (3, 2, 0, 5)], [(0, 0, 0, 5), (0, 2, 3, 0), (0, 2, 3, 5)],
+              [(0, 5, 2, 0), (2, 0, 3, 5), (1, 3, 3, 3)], [(0, 0, 3, 5), (3, 0, 0, 5)]]
+    for (gx, gy), glyph in zip([(29, 17), (29, 35), (30, 23), (29, 41)], glyphs):
+        if gy > 40:
+            gy = 42
+        for (x0, y0, x1, y1) in glyph:
+            c.fill("line", (gx + x0 + 1, gy + y0 + 1, gx + x1 + 1, gy + y1 + 1), C("1a3a4a"), 1)
+            c.fill("line", (gx + x0, gy + y0, gx + x1, gy + y1), C("6ae0f8"), 1)
+    for (x, y) in [(29, 17), (32, 36), (31, 24)]:
+        c.put(x, y, C("e8ffff"))
+    # Moss in the joints, a chip off one corner.
+    for (x, y) in [(25, 47), (26, 48), (38, 44), (24, 26)]:
+        c.put(x, y, C("6a8a48"))
+    c.fill("poly", [(39, 36), (40, 40), (38, 40)], C("4a4656"))
+    # The crystal, floating: drawn last so it sits clear of the crown.
+    crystal = ramp("e8ffff", "6ae0f8", "2a7aa8")
+    c.shade("poly", [(31, 0), (35, 2), (34, 5), (31, 7), (28, 5), (28, 2)], crystal, dither=False)
+    c.put(30, 1, C("ffffff"))
+    c.put(31, 4, C("ffffff"))
+
+
+PROPS_V2 = {
+    "crate": prop_crate, "barrel": prop_barrel, "well": prop_well, "fence": prop_fence, "soil": prop_soil,
+    "scarecrow": prop_scarecrow, "cart": prop_cart, "tent": prop_tent, "stall": prop_stall,
+    "plant_pot": prop_plant_pot, "flower_bed": prop_flower_bed, "stone_planter": prop_stone_planter,
+    "bone_pile": prop_bone_pile, "waygate": prop_waygate,
+}
+
+
 def decor(kind):
     c = Canvas(64, 64)
+    if kind in PROPS_V2:
+        PROPS_V2[kind](c)
+        c.outline()
+        return c.img
     if kind == "floor":                           # flat stone slabs, laid under ruins
         r = random.Random(4)
         for y in range(4, 62, 10):
@@ -2658,6 +3167,100 @@ def manor():
     return c.img
 
 
+
+def ladder():
+    """A sturdy ladder: two split rails with bark at the edges, six rungs
+    pegged through them (the pegs showing), rope lashings at the top, and
+    a little shadow on the wall behind."""
+    c = Canvas(64, 64)
+    rail = ramp("b08a5c", "84603e", "54381f")
+    c.fill("rect", (20, 6, 46, 62), C("000000", 40))
+    for x in (18, 40):
+        c.shade("rect", (x, 2, x + 5, 62), rail)
+        c.fill("line", (x + 1, 3, x + 1, 61), C("d0a474"), 1)
+        c.fill("line", (x + 5, 3, x + 5, 61), C("40301e"), 1)
+    for k, y in enumerate(range(8, 60, 9)):
+        c.shade("rect", (23, y, 40, y + 3), ramp("c09468", "8e6640", "5e4028"))
+        c.fill("line", (23, y, 40, y), C("e0b888"), 1)
+        c.fill("line", (23, y + 3, 40, y + 3), C("3a2818"), 1)
+        for x in (19, 43):
+            c.put(x, y + 1, C("4a3220"))
+            c.put(x + 1, y + 1, C("6a4a30"))
+    for x in (18, 40):
+        for y in (3, 5):
+            c.fill("line", (x - 1, y, x + 6, y + 1), C("c8b890"), 1)
+    c.outline()
+    return c.img
+
+
+def house():
+    """A village cottage in three-quarter view, with depth: a timber-framed
+    gable front, its plaster lit; a side wall falling back into shade; a
+    shingled roof with a thick eave and the far slope showing; a stone
+    chimney; a foundation of fitted stones; a door with its frame and step;
+    shuttered windows lit warm; a flower box; and a shadow on the ground."""
+    c = Canvas(64, 64)
+    plaster = ramp("f0e4c8", "d8c8a4", "a8987a")
+    plaster_side = ramp("c4b494", "a49474", "7a6c54")
+    timber = ramp("7a5636", "5a3e28", "3a2818")
+    roof = ramp("b0503c", "86382c", "5a241c")
+    roof_far = ramp("8a3a2c", "6a2a22", "461a16")
+    stone = ramp("a8a4b0", "7c7888", "52505e")
+    c.shadow(34, 61, 30, 3, 90)
+    # The side wall, going back to the right.
+    c.shade("poly", [(42, 32), (58, 24), (58, 54), (42, 60)], plaster_side, dither=False)
+    for y in (36, 46):
+        c.fill("line", (42, y, 58, y - 8), timber[1], 1)
+    c.fill("line", (50, 28, 50, 57), timber[1], 1)
+    c.shade("rect", (51, 38, 55, 44), ramp("f8d888", "d8a050", "8a5a2a"))
+    c.fill("line", (42, 32, 42, 60), timber[2], 1)
+    # The front gable wall.
+    c.shade("poly", [(6, 32), (24, 16), (42, 32), (42, 60), (6, 60)], plaster, dither=False)
+    for (a, b) in (((6, 32), (42, 32)), ((6, 46), (42, 46)), ((6, 32), (6, 60)), ((42, 32), (42, 60)), ((24, 18), (24, 32))):
+        c.fill("line", (a[0], a[1], b[0], b[1]), timber[1], 2)
+    c.fill("line", (8, 32, 22, 46), timber[1], 1)
+    c.fill("line", (40, 32, 26, 46), timber[1], 1)
+    # Foundation stones.
+    for k, x in enumerate(range(5, 58, 5)):
+        y0 = 57 if x < 43 else 57 - (x - 42) * 8 // 16
+        c.shade("rect", (x, y0, x + 4, y0 + 3), stone, dither=False)
+    # The door, its frame and a step.
+    c.shade("rect", (19, 47, 29, 59), timber)
+    c.shade("rect", (20, 48, 28, 59), ramp("8a5a34", "6a4428", "4a2e1a"))
+    c.fill("line", (24, 48, 24, 59), C("3a2414"), 1)
+    c.put(26, 53, C("e8c060"))
+    c.shade("rect", (17, 59, 31, 61), stone)
+    # Windows with shutters, lit warm.
+    for x in (9, 33):
+        c.shade("rect", (x, 49, x + 6, 55), ramp("ffe8a0", "f0c060", "b08030"))
+        c.fill("line", (x + 3, 49, x + 3, 55), timber[2], 1)
+        c.fill("line", (x, 52, x + 6, 52), timber[2], 1)
+        c.shade("rect", (x - 2, 49, x - 1, 55), ramp("5a7ab0", "3e5a8a", "2a3e60"))
+        c.shade("rect", (x + 7, 49, x + 8, 55), ramp("5a7ab0", "3e5a8a", "2a3e60"))
+        c.shade("rect", (x - 1, 56, x + 7, 57), timber)
+        for k in range(4):
+            c.put(x + k * 2, 55, C(["e05a6a", "f0e070", "f0f0e8", "a070e0"][k]))
+    c.shade("rect", (21, 36, 27, 42), ramp("ffe8a0", "f0c060", "b08030"))
+    c.fill("line", (24, 36, 24, 42), timber[2], 1)
+    # The roof: far slope, near slope over the gable with a thick eave.
+    c.shade("poly", [(24, 10), (40, 4), (62, 22), (46, 30)], roof_far)
+    c.shade("poly", [(24, 10), (46, 30), (42, 34), (20, 14)], roof)
+    c.shade("poly", [(24, 10), (2, 32), (6, 35), (24, 16), (42, 35), (46, 30)], roof)
+    c.fill("line", (2, 32, 24, 10), C("e07a5a"), 1)
+    c.fill("line", (6, 35, 24, 17), C("3a1610"), 1)
+    c.fill("line", (24, 17, 42, 35), C("3a1610"), 1)
+    for k in range(5):
+        y = 14 + k * 4
+        for x in range(28 + k * 3, 58, 5):
+            c.put(x, y + (x - 28) // 6, C("5a241c"))
+    # The chimney.
+    c.shade("rect", (48, 6, 54, 20), stone)
+    c.shade("rect", (47, 4, 55, 7), ramp("c4c0cc", "9a96a4", "6a6676"))
+    for y in (10, 14, 18):
+        c.fill("line", (48, y, 54, y), C("4a4652"), 1)
+    c.outline()
+    return c.img
+
 def chest(open_lid):
     c = Canvas(64, 64)
     if not open_lid:
@@ -2759,7 +3362,9 @@ DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate",
          "writing_desk", "cauldron", "herb_rack", "jar_shelf", "loom", "spinning_wheel", "grain_sacks", "tool_rack",
          "pelt_rug", "antler_mount", "stool", "firewood", "dresser", "cradle", "pots_rack", "yarn_basket",
          # Each thing its own art: the ring of a henge is not made of waystones.
-         "menhir", "lever", "answer_tablet"]
+         "menhir", "lever", "answer_tablet",
+         # The waygate the player builds, linked to the waystones.
+         "waygate"]
 
 
 def sheet(images, w, h):

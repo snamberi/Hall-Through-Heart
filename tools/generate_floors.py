@@ -41,8 +41,90 @@ STYLES = [
 ]
 
 
+def draw_cobbles(style, variant, worn):
+    """Ruin paving: no courses at all, but old, uneven cobbles of every
+    shape packed together, earth and grass growing up between them, a few
+    sunk or tipped. Seamless: the cells wrap round the tile's edges."""
+    name, light, mid, dark, mortar, accent, accent_chance = style
+    light, mid, dark, accent = C(light), C(mid), C(dark), C(accent)
+    earth, grass, grass_light = C("3e3428"), C("4e6a34"), C("6e8e44")
+    r = random.Random("%s:%d:%d" % (name, variant, worn))
+    # The cobbles round the edge are the same in every tile, so any tile
+    # meets any other without a seam; only the middle ones change.
+    rim = random.Random("cobble-rim")
+    seeds = []
+    for gy in range(3):
+        for gx in range(3):
+            if gx == 1 and gy == 1:
+                continue
+            seeds.append((gx * N / 3 + rim.uniform(3, N / 3 - 3), gy * N / 3 + rim.uniform(3, N / 3 - 3)))
+    for _ in range(r.choice([1, 2, 2])):
+        seeds.append((r.uniform(17, 27), r.uniform(17, 27)))
+
+    def wrap(d):
+        d = abs(d) % N
+        return min(d, N - d)
+
+    def nearest(x, y):
+        ds = sorted((wrap(x - sx) ** 2 + wrap(y - sy) ** 2, i) for i, (sx, sy) in enumerate(seeds))
+        return ds[0][1], ds[1][0] ** 0.5 - ds[0][0] ** 0.5
+    owner, gap = {}, {}
+    for y in range(N):
+        for x in range(N):
+            owner[x, y], gap[x, y] = nearest(x + 0.5, y + 0.5)
+    tones = [shift(mid, r.randrange(-14, 12)) for _ in seeds]
+    gone = set(r.sample(range(len(seeds)), r.choice([2, 3]))) if worn else set()
+    sunk = {r.randrange(len(seeds))}
+    img = Image.new("RGBA", (N, N), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(N):
+        for x in range(N):
+            i = owner[x, y]
+            if i in gone:
+                continue
+            if gap[x, y] < 2.2:
+                # The joint: earth, with grass pushing up through it.
+                n = r.random()
+                px[x, y] = grass_light if n < 0.18 else grass if n < 0.55 else earth
+                continue
+            tone = tones[i]
+            if i in sunk:
+                tone = shift(tone, -16)
+            # Lit where the cobble's edge faces up and left.
+            up = owner[x, (y - 2) % N] != i or owner[(x - 2) % N, y] != i
+            down = owner[x, (y + 2) % N] != i or owner[(x + 2) % N, y] != i
+            c = mix(tone, light, 0.55) if up and not down else mix(tone, dark, 0.6) if down and not up else tone
+            if r.random() < 0.08:
+                c = shift(c, r.choice([-12, 10]))
+            px[x, y] = c
+    # Cracks, lichen spots, and a tuft of grass on some cobbles.
+    for i, (sx, sy) in enumerate(seeds):
+        if i in gone:
+            continue
+        x, y = int(sx) % N, int(sy) % N
+        if r.random() < 0.45:
+            for _ in range(r.randrange(3, 7)):
+                if owner[x, y] == i and gap[x, y] >= 3:
+                    px[x, y] = mix(tones[i], earth, 0.7)
+                x, y = (x + r.choice([-1, 0, 1])) % N, (y + 1) % N
+        if r.random() < accent_chance:
+            for _ in range(4):
+                lx, ly = (int(sx) + r.randrange(-3, 4)) % N, (int(sy) + r.randrange(-3, 4)) % N
+                if owner[lx, ly] == i and gap[lx, ly] >= 3:
+                    px[lx, ly] = accent
+    if worn:
+        # Earth and pebbles where cobbles have gone.
+        for y in range(N):
+            for x in range(N):
+                if owner[x, y] in gone and r.random() < 0.06:
+                    px[x, y] = shift(mid, -20) if r.random() < 0.6 else earth
+    return img
+
+
 def draw(style, variant, worn):
     name, light, mid, dark, mortar, accent, accent_chance = style
+    if name == "ruin":
+        return draw_cobbles(style, variant, worn)
     light, mid, dark, mortar, accent = C(light), C(mid), C(dark), C(mortar), C(accent)
     r = random.Random("%s:%d:%d" % (name, variant, worn))
     img = Image.new("RGBA", (N, N), mortar)

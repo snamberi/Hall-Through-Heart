@@ -112,6 +112,9 @@ var _day_night: DayNight
 var _fog: ColorRect
 var _material: ShaderMaterial
 var _particles: CPUParticles2D
+## Rain and storms are drawn in whole pixels (RainFX), not as particles.
+const RAIN_FX := preload("res://scripts/effects/rain_fx.gd")
+var _rain: Node2D
 var _kind := ""
 var _check_left := 0.0
 var _density := 0.1
@@ -183,6 +186,8 @@ func setup(player: Player, world: World, day_night: DayNight) -> void:
 	_particles.z_index = 40
 	_particles.emitting = false
 	player.add_child(_particles)
+	_rain = RAIN_FX.new()
+	player.add_child(_rain)
 
 
 func _process(delta: float) -> void:
@@ -262,8 +267,10 @@ func _read_place() -> void:
 	if kind == _kind:
 		return
 	_kind = kind
-	_particles.emitting = kind != ""
-	if kind == "":
+	_particles.emitting = kind != "" and kind not in ["rain", "storm"]
+	_rain.power = 2.0 if kind == "storm" else 1.0 if kind == "rain" else 0.0
+	_rain.slant = 0.24 if kind == "storm" else 0.1
+	if kind == "" or kind in ["rain", "storm"]:
 		return
 	var settings: Dictionary = PARTICLES[kind]
 	_particles.amount = maxi(1, roundi(float(settings["amount"]) * GameSettings.weather_share()))

@@ -429,3 +429,4 @@ smiths_vest
 tide_charm
 wayfarers_anklet
 woodwrights_apron
+waygate

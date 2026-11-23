@@ -443,6 +443,7 @@ const INDEX := {
 	"tide_charm": 428,
 	"wayfarers_anklet": 429,
 	"woodwrights_apron": 430,
+	"waygate": 431,
 }
 
 static func has(id: String) -> bool:

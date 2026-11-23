@@ -77,7 +77,10 @@ float lean_px() {
 	float gust = gust_at(place);
 	float flutter = sin(TIME * 9.0 + place.x * 0.3) * 0.35;
 	float lean = (sway * strength * (1.0 - gust * 0.6) + gust * gust_power * (sign(gust_dir.x) + flutter)) * lift * lift;
-	return clamp(floor(lean + 0.5), -5.0, 5.0);
+	// The leaves rustle: a ripple running up through the crown, a pixel
+	// either way row by row, livelier in a gust.
+	float rustle = sin(TIME * 3.4 - lift * 16.0 + place.x * 0.11) * (0.55 + 0.2 * strength + gust) * smoothstep(0.38, 0.8, lift);
+	return clamp(floor(lean + rustle + 0.5), -6.0, 6.0);
 }
 
 void fragment() {
@@ -186,7 +189,10 @@ float lean_px() {
 	float gust = gust_at(place);
 	float flutter = sin(TIME * 9.0 + place.x * 0.3) * 0.35;
 	float lean = (sway * strength * (1.0 - gust * 0.6) + gust * gust_power * (sign(gust_dir.x) + flutter)) * lift * lift;
-	return clamp(floor(lean + 0.5), -5.0, 5.0);
+	// The leaves rustle: a ripple running up through the crown, a pixel
+	// either way row by row, livelier in a gust.
+	float rustle = sin(TIME * 3.4 - lift * 16.0 + place.x * 0.11) * (0.55 + 0.2 * strength + gust) * smoothstep(0.38, 0.8, lift);
+	return clamp(floor(lean + rustle + 0.5), -6.0, 6.0);
 }
 
 float hash12(vec2 p) {

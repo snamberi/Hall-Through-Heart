@@ -69,3 +69,18 @@ func test_a_character_can_be_made_for_servers(t: TestContext) -> void:
 	for slot: Dictionary in made:
 		SaveGame.delete_slot(slot["id"])
 	menu.queue_free()
+
+
+func test_a_built_waygate_joins_the_waystones(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var buildings: Buildings = main.get_node("Buildings")
+	var stones: Waystones = main.get_node("Waystones")
+	t.check(RecipeDB.all().any(func(r: Dictionary) -> bool: return r.get("item", "") == "waygate"), "a waygate can be crafted")
+	buildings.place("waygate", player.global_position + Vector2(80, 0), "waygate")
+	var record: Dictionary = buildings.records.back()
+	var key := "gate:%d" % int(record["id"])
+	t.check(stones.known.has(key), "it is a stone you can travel to at once")
+	t.equal(str(stones.known[key]["name"]), "Your Waygate", "named for you")
+	t.equal(buildings.take_down(record), "", "it can be taken down")
+	t.check(not stones.known.has(key), "and then it is no longer on the list")
