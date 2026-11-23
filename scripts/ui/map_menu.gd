@@ -69,6 +69,7 @@ static func tracked_pin() -> int:
 	return -1
 
 var _view: Control
+var _ground: TextureRect
 var _hover: Label
 var _minimap: CheckBox
 var _region: Label
@@ -160,6 +161,15 @@ func _build() -> void:
 	_view.mouse_filter = Control.MOUSE_FILTER_STOP
 	_view.gui_input.connect(_on_view_input)
 	_view.draw.connect(_draw_view)
+	# The land itself, blended smoothly between cells (its own filter, so
+	# the markers drawn over it stay crisp); drawn behind the view's marks.
+	_ground = TextureRect.new()
+	_ground.show_behind_parent = true
+	_ground.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_ground.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_ground.stretch_mode = TextureRect.STRETCH_SCALE
+	_ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_view.add_child(_ground)
 	left.add_child(_view)
 	_hover = UITheme.label("", 15)
 	_hover.custom_minimum_size.x = VIEW.x
@@ -564,8 +574,9 @@ func _draw_view() -> void:
 		_dirty = false
 		_render(origin, cells, clampi(int(scale / 3.0), 1, 4))
 	var offset := (Vector2(origin) - _center) * scale + _view.size / 2.0
-	_view.draw_rect(Rect2(Vector2.ZERO, _view.size), Color("07080c"))
-	_view.draw_texture_rect(_texture, Rect2(offset, Vector2(cells) * scale), false)
+	_ground.texture = _texture
+	_ground.position = offset
+	_ground.size = Vector2(cells) * scale
 	_collect_icons(origin, cells, offset, scale)
 	for icon: Array in _icons:
 		_draw_icon(icon[0], icon[1])

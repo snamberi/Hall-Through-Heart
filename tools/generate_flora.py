@@ -108,16 +108,31 @@ def trunk(c, x, top, bottom, width, colours=BARK, roots=True):
 
 
 def canopy(c, blobs, colours, seed, highlights=True):
-    """A canopy built of overlapping leaf clumps, then leaf texture."""
+    """A canopy built of overlapping leaf clumps, then leaf texture: small
+    tufts of leaves, each a little arc lit on top, so the crown reads as
+    leaves and not as noise."""
     r = random.Random(seed)
     pts = []
     for (cx, cy, rx, ry) in blobs:
         pts += c.shade("ellipse", (cx - rx, cy - ry, cx + rx, cy + ry), colours)
     if highlights:
-        for _ in range(len(pts) // 14):
-            x, y = r.choice(pts)
-            c.put(x, y, colours[0] if r.random() < 0.6 else colours[2])
-            c.put(x + 1, y, colours[0] if r.random() < 0.6 else colours[2])
+        have = set(pts)
+        for (cx, cy, rx, ry) in blobs:
+            for gy in range(int(cy - ry) + 2, int(cy + ry) - 1, 4):
+                for gx in range(int(cx - rx) + 2 + (gy // 4) % 2 * 2, int(cx + rx) - 1, 4):
+                    if (gx, gy) not in have or (gx, gy + 2) not in have:
+                        continue
+                    # Which side of the clump this tuft is on: lit or shaded.
+                    t = (gx - cx) / rx * -0.6 + (gy - cy) / ry * -0.8
+                    top = colours[0] if t > -0.1 else colours[1]
+                    under = colours[2]
+                    gx += r.randint(-1, 1)
+                    gy += r.randint(-1, 0)
+                    if r.random() < 0.72:
+                        c.put(gx - 1, gy + 1, top)
+                        c.put(gx, gy, top)
+                        c.put(gx + 1, gy + 1, top)
+                        c.put(gx, gy + 2, under)
 
 
 # ----------------------------------------------------------------- tall
@@ -420,17 +435,52 @@ def salt_pillar():
 
 
 def willow(seed=6):
+    """The jungle's hanging tree: a mossy, twisted trunk, a broad crown, and
+    leafy vines falling from it: each vine a wavering strand with leaves
+    set left and right along it, some ending in a curl or a pale flower,
+    and a liana looping between the boughs."""
     c = Canvas(64, 96)
-    c.shadow(32, 90, 20, 5)
-    trunk(c, 32, 46, 90, 9, DARK_BARK)
-    green = ramp("7a9a5a", "56784a", "3a5434")
-    canopy(c, [(32, 30, 22, 14), (32, 18, 14, 10)], green, seed)
     r = random.Random(seed)
-    for x in range(12, 54, 2):
-        length = r.randrange(16, 36)
+    c.shadow(32, 90, 21, 5)
+    trunk(c, 32, 46, 90, 10, DARK_BARK)
+    # Moss on the trunk's lit side and a few buttress roots.
+    moss = ramp("8ab05a", "5e8a40", "3c6030")
+    for (y0, y1) in ((52, 60), (66, 72), (78, 84)):
+        c.shade("ellipse", (27, y0, 31, y1), moss, dither=False)
+    for (x0, x1) in ((20, 26), (38, 44)):
+        c.shade("poly", [(x0, 91), (32, 76), (x1, 91)], DARK_BARK, dither=False)
+    green = ramp("86a85e", "5e8048", "3a5834")
+    deep = ramp("4e7040", "3a5834", "263e24")
+    canopy(c, [(32, 30, 24, 15), (20, 22, 12, 9), (44, 22, 12, 9)], deep, seed, highlights=False)
+    canopy(c, [(32, 26, 21, 12), (19, 20, 10, 8), (45, 20, 10, 8), (32, 14, 13, 8)], green, seed)
+    vine = ramp("7ea85a", "4e7a3a", "2e4e26")
+    leaf = C("9ac86a")
+    # A liana slung between the boughs.
+    for k in range(0, 31):
+        x = 17 + k
+        y = 40 + int(4 * math.sin(k / 30 * math.pi))
+        c.put(x, y, vine[2])
+        if k % 4 == 0:
+            c.put(x, y + 1, leaf)
+    # Hanging vines, each its own length and sway.
+    for x in range(11, 55, 3):
+        length = r.randrange(14, 40)
+        phase = r.random() * 6.0
+        top = 36 + r.randrange(-3, 3)
         for k in range(length):
-            if (x, 34 + k) not in c.filled:
-                c.put(x + (1 if k > length // 2 and x % 4 == 0 else 0), 34 + k, green[1] if k % 4 else green[2])
+            vx = x + int(round(math.sin(k * 0.35 + phase) * 1.0))
+            vy = top + k
+            c.put(vx, vy, vine[1] if k % 3 else vine[2])
+            if k % 4 == 2:
+                side = 1 if (k // 4) % 2 else -1
+                c.put(vx + side, vy, leaf if k < length - 3 else vine[0])
+                c.put(vx + side * 2, vy - 1, vine[0])
+        end = (x + int(round(math.sin(length * 0.35 + phase))), top + length)
+        if r.random() < 0.35:
+            c.put(end[0], end[1], C("f0e4c8"))
+            c.put(end[0] + 1, end[1], C("e8c0d0"))
+        elif r.random() < 0.5:
+            c.put(end[0] + 1, end[1] - 1, vine[2])
     c.outline()
     return c.img
 
@@ -567,9 +617,30 @@ def _bloom(c, kind, x, y, size, petals, centre):
         c.put(x - 1, y - 1, C("c08a3a"))
 
 
+def calm(colour):
+    """A flower colour toned down to sit with the land: less saturated,
+    reds most of all, turned a touch toward rose and brick rather than
+    shouting scarlet; whites and near-greys are left as they are."""
+    import colorsys
+    r, g, b, a = colour
+    h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+    if s < 0.15:
+        return colour
+    red = h < 0.045 or h > 0.93
+    s *= 0.6 if red else 0.78
+    v *= 0.88 if red else 0.95
+    if red:
+        h = (h - 0.012) % 1.0
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    return (int(r * 255), int(g * 255), int(b * 255), a)
+
+
 def flower(kind, petals, centre=None, seed=0):
     """A clump of flowers: leaves at the foot, two or three stems of
-    different heights, each with a shaded head."""
+    different heights, each with a shaded head. Colours are calmed (see
+    calm) so a meadow is gentle, not loud."""
+    petals = tuple(calm(p) for p in petals)
+    centre = calm(centre) if centre else None
     c = Canvas(32, 32)
     rnd = random.Random(seed * 31 + len(kind))
     centre = centre or petals[0]
@@ -649,6 +720,8 @@ def mushrooms(cap, seed=0, glow=False):
     foot."""
     c = Canvas(32, 32)
     r = random.Random(seed)
+    if not glow:
+        cap = tuple(calm(x) for x in cap)
     spots = C("ffffff") if glow else C("f4eee0")
     sizes = [(r.randrange(13, 17), r.randrange(7, 10), 6), (r.randrange(20, 25), r.randrange(4, 6), 4), (r.randrange(6, 10), r.randrange(3, 5), 3)]
     for x, h, w in sorted(sizes, key=lambda v: v[1]):
@@ -951,21 +1024,30 @@ def critter(kind, frame):
             c.put(21, 10, beak); c.put(22, 10, beak)
             c.put(18, 9, OUTLINE)
     elif kind == "butterfly":
-        wing = ramp("ffe08a", "f0a030", "a06018")
-        spots = C("fff6d0")
-        edge = C("5a3010")
-        spread = [8, 6, 3, 6][frame]
-        c.fill("rect", (11, 8, 12, 16), OUTLINE)
-        c.put(10, 6, OUTLINE); c.put(9, 5, OUTLINE); c.put(13, 6, OUTLINE); c.put(14, 5, OUTLINE)
+        # Seen from above: a slim dark body, and four crisp wings with a dark
+        # rim, a pale eye-spot and veins, beating open, half, shut, half.
+        fore = (C("f4d08a"), C("e0a050"), C("9a6028"))
+        hind = (C("e8b878"), C("c88a44"), C("7a4c20"))
+        rim = C("3a2416")
+        open_ = [4, 3, 1, 3][frame]
         for side in (-1, 1):
             x0 = 11 if side < 0 else 12
-            c.shade("ellipse", (min(x0, x0 + side * (spread + 2)), 4, max(x0, x0 + side * (spread + 2)), 12), wing)
-            c.shade("ellipse", (min(x0, x0 + side * spread), 11, max(x0, x0 + side * spread), 18), wing)
-            if spread > 3:
-                c.put(x0 + side * (spread - 1), 7, spots); c.put(x0 + side * (spread - 2), 8, spots)
-                c.put(x0 + side * (spread - 2), 14, spots)
-                c.put(x0 + side * (spread + 1), 6, edge); c.put(x0 + side * (spread + 1), 9, edge)
-                c.put(x0 + side * (spread - 1), 16, edge)
+            if open_ >= 2:
+                xa, xb = sorted((x0 + side * 1, x0 + side * (open_ + 4)))
+                c.shade("poly", [(x0 + side, 9), (x0 + side * (open_ + 4), 5), (x0 + side * (open_ + 5), 8), (x0 + side * 2, 12)], fore, dither=False)
+                c.shade("poly", [(x0 + side, 12), (x0 + side * (open_ + 3), 13), (x0 + side * (open_ + 2), 17), (x0 + side, 15)], hind, dither=False)
+                c.put(x0 + side * (open_ + 2), 7, C("fff4dc"))
+                c.put(x0 + side * (open_ + 4), 6, rim)
+                c.put(x0 + side * (open_ + 5), 8, rim)
+                c.put(x0 + side * (open_ + 2), 16, rim)
+                c.fill("line", (x0 + side * 2, 10, x0 + side * (open_ + 3), 7), fore[2])
+            else:
+                # Wings shut: seen edge-on, a thin upright pair.
+                c.fill("rect", (x0 + side, 6, x0 + side, 13), fore[1])
+                c.put(x0 + side, 6, rim)
+        c.fill("rect", (11, 8, 12, 16), C("2a1c14"))
+        c.put(11, 8, C("5a4434"))
+        c.put(10, 6, rim); c.put(9, 5, rim); c.put(13, 6, rim); c.put(14, 5, rim)
     elif kind == "frog":
         skin = ramp("9ad870", "5aa048", "356a2a")
         belly = ramp("e8f0c0", "c8d8a0", "98b070")
@@ -1101,9 +1183,9 @@ def critter_fidget(kind, step):
             c.put(18, 13, beak); c.put(19, 13, beak)
             c.put(15, 12, closed); c.put(16, 12, closed)
     elif kind == "butterfly":
-        wing = ramp("ffe08a", "f0a030", "a06018")
         if step == 2:
-            c.fill("rect", (11, 9, 12, 17), OUTLINE)
+            # A stretch: the wings opened wide, as in flight.
+            return critter("butterfly", 0)
         if step != 2:
             # Wings shut upright over the back, seen side on: the pale
             # undersides with their veins and an eye-spot; it cleans its

@@ -184,6 +184,28 @@ void fragment() {
 				}
 			}
 		}
+		// --- the open water's own movement: short crests of light that
+		// drift with the current and wink in and out, a dark trough under
+		// each, whole pixels only; fewer far out, more where it is shallow.
+		if (d > 6.0) {
+			float drift = wave_time * 0.32;
+			vec2 lane = vec2(floor(cell.x / 10.0 + drift + floor(cell.y / 6.0) * 0.37), floor(cell.y / 6.0));
+			float h = hash12(lane);
+			float busy = d > 60.0 ? 0.8 : 0.68;
+			if (h > busy) {
+				float lx = floor(fract(cell.x / 10.0 + drift + floor(cell.y / 6.0) * 0.37) * 10.0);
+				float ly = mod(cell.y, 6.0);
+				float life = 0.5 + 0.5 * sin(wave_time * 1.15 + h * 53.0);
+				float len = 2.0 + floor(fract(h * 13.7) * 4.0);
+				if (life > 0.3 && lx >= 3.0 && lx < 3.0 + len) {
+					if (ly < 1.0) {
+						col = over(col, vec4(swell.rgb, (0.26 + 0.2 * life) * (0.45 + 0.55 * daylight)));
+					} else if (ly < 2.0 && lx >= 4.0) {
+						col = over(col, vec4(0.0, 0.02, 0.07, 0.16 * life));
+					}
+				}
+			}
+		}
 		// --- the waves. The bank's own ragged edge lies over all this, so
 		// the foam always meets the shore just where it is drawn. Foam comes
 		// in clumps and lace (two drifting noises), never in a pattern.
