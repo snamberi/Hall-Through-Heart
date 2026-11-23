@@ -6,6 +6,10 @@ extends CharacterBody2D
 ## Every attack has a wind-up the player can read: a red tint, and for area
 ## attacks a circle on the ground showing where it will land.
 
+## Loaded by path, so a game whose script cache predates these still runs.
+const SharedWorld := preload("res://scripts/net/net_world.gd")
+const Look := preload("res://scripts/enemies/monster_look.gd")
+
 signal died(enemy: Enemy)
 
 enum State { WANDER, CHASE, WINDUP, LUNGE, RECOVER, STAGGER, DEAD }
@@ -275,7 +279,7 @@ func _ready() -> void:
 	_visual.modulate = _tint
 	_animator.sheet = EnemyDB.sheet(enemy_id)
 	_animator.rebuild()
-	_look = MonsterLook.dress(self, _animator)
+	_look = Look.dress(self, _animator)
 	# Walkers are stopped by walls; fliers by nothing.
 	collision_mask = 0 if _data.get("flying", false) else TerrainTiles.WALL_COLLISION
 	_add_nameplate(rank_data, size)
@@ -287,8 +291,8 @@ func _ready() -> void:
 		Events.enemy_killed.connect(_on_death_nearby)
 	_pick_wander()
 	# Shared with the other players nearby (or shown, for a copy).
-	if NetWorld.current and not net_puppet:
-		NetWorld.current.adopt(self)
+	if SharedWorld.current and not net_puppet:
+		SharedWorld.current.adopt(self)
 
 
 ## Experience this enemy is worth at its level and rank.
@@ -712,7 +716,7 @@ func take_damage(
 		return 0.0
 	if net_puppet:
 		# Someone else's game runs it: the blow goes to them.
-		return NetWorld.current.strike_copy(self, amount, knockback, critical, weapon_type, element) if NetWorld.current else 0.0
+		return SharedWorld.current.strike_copy(self, amount, knockback, critical, weapon_type, element) if SharedWorld.current else 0.0
 	# Striking one of a faction at peace ends the treaty.
 	if faction != "" and element == "":
 		var factions: Factions = get_tree().get_first_node_in_group("factions")
@@ -818,8 +822,8 @@ func apply_status(id: String, duration: float, power: float, weapon_type: String
 	if state == State.DEAD:
 		return
 	if net_puppet:
-		if NetWorld.current:
-			NetWorld.current.forward(self, "status", {"s": id, "d": duration, "w": power, "t": weapon_type})
+		if SharedWorld.current:
+			SharedWorld.current.forward(self, "status", {"s": id, "d": duration, "w": power, "t": weapon_type})
 		return
 	var current: Dictionary = _statuses.get(id, {})
 	_statuses[id] = {
@@ -898,8 +902,8 @@ func expose(seconds: float) -> void:
 		return
 	if net_puppet:
 		exposed_left = seconds * (0.6 if rank >= Rank.MINIBOSS else 1.0)
-		if NetWorld.current:
-			NetWorld.current.forward(self, "expose", {"d": seconds})
+		if SharedWorld.current:
+			SharedWorld.current.forward(self, "expose", {"d": seconds})
 		return
 	exposed_left = seconds * (0.6 if rank >= Rank.MINIBOSS else 1.0)
 	stun(seconds * 0.8)
@@ -911,8 +915,8 @@ func stun(seconds: float) -> void:
 	if state == State.DEAD:
 		return
 	if net_puppet:
-		if NetWorld.current:
-			NetWorld.current.forward(self, "stun", {"d": seconds})
+		if SharedWorld.current:
+			SharedWorld.current.forward(self, "stun", {"d": seconds})
 		return
 	_enter(State.STAGGER, seconds * (0.4 if rank >= Rank.MINIBOSS else 1.0))
 	velocity = Vector2.ZERO
@@ -994,8 +998,8 @@ func _strike(has_target: bool) -> void:
 			_blast()
 			if _attack["kind"] == "cloud":
 				HazardZone.spawn(get_parent(), global_position, target, _attack["radius"], _attack["linger"], _attack["color"], _attack["status"], _current_damage())
-				if NetWorld.current:
-					NetWorld.current.share_strike(self, {"k": "cloud", "r": _attack["radius"], "l": _attack["linger"], "c": _attack["color"], "st": _attack["status"]})
+				if SharedWorld.current:
+					SharedWorld.current.share_strike(self, {"k": "cloud", "r": _attack["radius"], "l": _attack["linger"], "c": _attack["color"], "st": _attack["status"]})
 			_enter(State.RECOVER, _attack["recover"])
 		"explode":
 			_blast()
@@ -1010,8 +1014,8 @@ func _swipe(arc_degrees: float) -> void:
 	var claws := 1 if _attack["kind"] == "thrust" else int(_attack.get("claws", 3))
 	ClawSwipe.spawn(get_parent(), global_position, _direction, reach, arc_degrees, _attack.get("color", Color(1.0, 0.92, 0.8)), claws)
 	Audio.play("swing", -10.0, 0.2)
-	if NetWorld.current:
-		NetWorld.current.share_strike(self, {"k": "swipe", "r": reach, "a": arc_degrees, "c": _attack.get("color", Color(1.0, 0.92, 0.8)), "cl": claws})
+	if SharedWorld.current:
+		SharedWorld.current.share_strike(self, {"k": "swipe", "r": reach, "a": arc_degrees, "c": _attack.get("color", Color(1.0, 0.92, 0.8)), "cl": claws})
 	if target == null or target.is_dead():
 		return
 	var offset := target.global_position - global_position
@@ -1030,8 +1034,8 @@ func _blast(radius: float = -1.0) -> void:
 	var color: Color = _attack.get("color", Color(1.0, 0.6, 0.3))
 	RingBurst.spawn(get_parent(), global_position, color, radius)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -10), color, true)
-	if NetWorld.current:
-		NetWorld.current.share_strike(self, {"k": "blast", "r": radius, "c": color})
+	if SharedWorld.current:
+		SharedWorld.current.share_strike(self, {"k": "blast", "r": radius, "c": color})
 	if target and not target.is_dead() and target.global_position.distance_to(global_position) < radius:
 		if _hit_target(_current_damage()):
 			target.shake_camera(7.0)
@@ -1553,7 +1557,7 @@ func _on_died() -> void:
 	}
 	# In a shared world, the kill (its experience, its drops) belongs to
 	# whoever struck last, in their own game.
-	var ours := NetWorld.current.enemy_fell(self, info) if NetWorld.current and net_id != 0 else true
+	var ours := SharedWorld.current.enemy_fell(self, info) if SharedWorld.current and net_id != 0 else true
 	if ours:
 		DamageNumber.spawn_text(
 			get_parent(), global_position + Vector2(0, -24), "+%d XP" % xp, Color(0.45, 0.7, 1.0), 12
@@ -1576,7 +1580,7 @@ func _fade_out() -> void:
 		_flash_tween.kill()
 	$HealthBar.visible = false
 	# Each family meets its end its own way (MonsterLook).
-	MonsterLook.fall(self, _animator, _look, _animator.death_seconds(), _tint, queue_free)
+	Look.fall(self, _animator, _look, _animator.death_seconds(), _tint, queue_free)
 
 
 func _add_nameplate(rank_data: Dictionary, size: float) -> void:

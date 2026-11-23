@@ -2,6 +2,9 @@ class_name Pickup
 extends Node2D
 ## An item or pile of gold on the ground. Flies to the player when close.
 
+## Loaded by path, so a game whose script cache predates these still runs.
+const SharedWorld := preload("res://scripts/net/net_world.gd")
+
 const MAGNET_RADIUS := 110.0
 const COLLECT_RADIUS := 22.0
 const MAGNET_SPEED := 460.0
@@ -53,8 +56,8 @@ func _ready() -> void:
 		# Gold lies at its own size (no stretched pixels).
 		_sprite.scale = Vector2.ONE
 	add_child(_sprite)
-	if NetWorld.current and not net_replica:
-		NetWorld.current.share_pickup.call_deferred(self)
+	if SharedWorld.current and not net_replica:
+		SharedWorld.current.share_pickup.call_deferred(self)
 
 
 ## Tosses the pickup a short way from where it appeared.
@@ -152,7 +155,7 @@ func _pixel_pool(color: Color, radius: float, alpha: float) -> void:
 func _collect() -> void:
 	if net_id != 0 and not net_granted:
 		# Shared: ask first; the answer collects it (or it was someone else's).
-		if _claiming or NetWorld.current == null:
+		if _claiming or SharedWorld.current == null:
 			return
 		if item and not item.is_relic() and not _player.inventory.has_room_for(item):
 			DamageNumber.spawn_text(get_parent(), _player.global_position + Vector2(0, -20), "Inventory full", Color(0.9, 0.4, 0.4), 12)
@@ -160,7 +163,7 @@ func _collect() -> void:
 			return
 		_claiming = true
 		visible = false
-		NetWorld.current.claim_pickup(self)
+		SharedWorld.current.claim_pickup(self)
 		return
 	var text_position := _player.global_position + Vector2(0, -20)
 	Audio.play("pickup", -8.0)

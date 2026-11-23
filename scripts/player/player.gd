@@ -5,6 +5,9 @@ extends CharacterBody2D
 ## Progression lives in the child modules (Leveling, Attributes, Mastery,
 ## Stats); this script only reads the numbers they produce.
 
+## Loaded by path, so a game whose script cache predates these still runs.
+const SharedWorld := preload("res://scripts/net/net_world.gd")
+
 signal died(xp_lost: int)
 ## The rebirth animation has ended and the player can move again.
 signal rebirth_finished
@@ -501,11 +504,11 @@ func strike_circle(
 ## A blow on another player, where fighting between players is allowed:
 ## their own game takes it (and their armour, dodges and blocks count).
 func hit_rival(rival: RemotePlayer, multiplier: float) -> void:
-	if NetWorld.current == null:
+	if SharedWorld.current == null:
 		return
 	var critical := randf() < stats.get_stat("critical_chance")
 	var damage := stats.get_stat("physical_damage") * multiplier * (stats.get_stat("critical_damage") if critical else 1.0)
-	NetWorld.current.strike_rival(rival, damage, critical, weapon_type)
+	SharedWorld.current.strike_rival(rival, damage, critical, weapon_type)
 
 
 func show_slash(

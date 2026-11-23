@@ -5,6 +5,9 @@ extends Node
 ## hour, shares experience for monsters felled near friends, carries the
 ## chat, and sees a guest home when the host leaves.
 
+## Loaded by path, so a game whose script cache predates these still runs.
+const SharedWorld := preload("res://scripts/net/net_world.gd")
+
 ## How often this player's place goes out.
 const SEND_EVERY := 1.0 / 15.0
 const CLOCK_EVERY := 2.0
@@ -83,8 +86,8 @@ func world_now(_peer: int = 0, _info: Dictionary = {}) -> Dictionary:
 	built.erase("recall_left")
 	var sections := {"buildings": built}
 	# The world as it stands: chests, things used up, what was gathered.
-	if NetWorld.current:
-		sections.merge(NetWorld.current.world_sections())
+	if SharedWorld.current:
+		sections.merge(SharedWorld.current.world_sections())
 	return {"seed": _seed(), "name": _world_name, "difficulty": Difficulty.current, "hardcore": false,
 		"day": _day_night.day, "time": _day_night.time, "storminess": Atmosphere._storminess,
 		"spawn": _player.global_position if not _instances.is_inside() else _instances.return_position(),
@@ -133,7 +136,7 @@ func _process(delta: float) -> void:
 			"a": sprite.animation if sprite else "idle",
 			"hp": _player.health.current, "mhp": _player.health.max_health,
 			"lv": _player.leveling.level, "d": _player.is_dead(), "in": _instances.is_inside(),
-			"ik": NetWorld.current.instance_key() if NetWorld.current else "",
+			"ik": SharedWorld.current.instance_key() if SharedWorld.current else "",
 		})
 	if Net.is_host():
 		_clock_left -= delta
@@ -144,7 +147,7 @@ func _process(delta: float) -> void:
 	if _gear_left <= 0.0:
 		_gear_left = 1.0
 		_tell_gear(false)
-	var here := NetWorld.current.instance_key() if NetWorld.current else ""
+	var here := SharedWorld.current.instance_key() if SharedWorld.current else ""
 	for peer in players:
 		(players[peer] as RemotePlayer).local_place = here
 

@@ -17,6 +17,10 @@ extends Node
 ## carry, learn and earn goes home with them (SaveGame.guest), and the
 ## host's world is never written to their save.
 
+## Loaded by path, so a game whose script cache predates these still runs.
+const SharedWorld := preload("res://scripts/net/net_world.gd")
+const Referee := preload("res://scripts/net/world_referee.gd")
+
 signal status_changed(text: String)
 ## The host took us in: `world` holds what we need to load their world.
 signal welcomed
@@ -87,7 +91,7 @@ var places: Dictionary = {}
 var rules: Dictionary = {}
 ## The world's referee (who runs which monster, who gets which drop), kept
 ## by the host's game or the dedicated server.
-var referee: WorldReferee
+var referee: Referee
 
 ## How far a player hears of the world around them, unless the host says.
 const INTEREST := 1800.0
@@ -507,7 +511,7 @@ func hears(peer: int, at: Vector2, instance: String, slack: float = 1.0) -> bool
 func _start_referee(settings: Dictionary) -> void:
 	if referee:
 		referee.queue_free()
-	referee = WorldReferee.new()
+	referee = Referee.new()
 	referee.name = "Referee"
 	referee.configure(settings)
 	add_child(referee)

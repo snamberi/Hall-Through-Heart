@@ -13,6 +13,9 @@ extends Node2D
 ##   status     {"status", "duration", "power"} applied to enemies hit
 ##   color      tint for the impact effects
 
+## Loaded by path, so a game whose script cache predates these still runs.
+const SharedWorld := preload("res://scripts/net/net_world.gd")
+
 const SHEET: Texture2D = preload("res://assets/effects/projectiles.png")
 
 var _player: Player
@@ -42,8 +45,8 @@ static func fire(player: Player, direction: Vector2, config: Dictionary, multipl
 	projectile.rotation = direction.angle()
 	projectile.z_index = 30
 	player.get_parent().add_child(projectile)
-	if NetWorld.current:
-		NetWorld.current.share_bolt(projectile.position, direction, config)
+	if SharedWorld.current:
+		SharedWorld.current.share_bolt(projectile.position, direction, config)
 	return projectile
 
 

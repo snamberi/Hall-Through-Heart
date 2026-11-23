@@ -1,5 +1,8 @@
 extends Node2D
 
+## Loaded by path, so a game whose script cache predates these still runs.
+const SharedWorld := preload("res://scripts/net/net_world.gd")
+
 const START_NAME := "the Sanctuary"
 
 ## World seed. Leave at 0 to use the saved world, or a new random one if
@@ -288,7 +291,7 @@ func _ready() -> void:
 	party.setup(_player, _day_night, _instances)
 	if Net.online():
 		# The shared world: monsters, drops, chests and gathering in step.
-		var shared := NetWorld.new()
+		var shared := SharedWorld.new()
 		shared.name = "NetWorld"
 		shared.setup(_player, _spawner, _loot, _instances, _structures, _resources)
 		add_child(shared)

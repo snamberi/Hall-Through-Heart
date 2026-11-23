@@ -4,6 +4,9 @@ extends Node2D
 ##
 ## Nothing spawns near the world origin, so the starting area stays safe.
 
+## Loaded by path, so a game whose script cache predates these still runs.
+const SharedWorld := preload("res://scripts/net/net_world.gd")
+
 @export var enemy_scene: PackedScene
 ## Modifiers every new enemy gets while they are set (a Heart Rift's affixes).
 var forced_modifiers: Array[String] = []
@@ -112,7 +115,7 @@ func _try_spawn() -> void:
 		return
 	# In a shared world, the nearest player's game stirs the monsters there
 	# (so two friends together do not get twice as many).
-	if NetWorld.current and not NetWorld.current.nearest_to(spawn_position):
+	if SharedWorld.current and not SharedWorld.current.nearest_to(spawn_position):
 		return
 	# Nothing appears in water or inside rock.
 	if not _world.generator.is_dry_land(cell):

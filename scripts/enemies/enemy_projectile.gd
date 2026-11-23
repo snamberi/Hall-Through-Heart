@@ -3,6 +3,9 @@ extends Node2D
 ## A shot fired at the player. It flies straight, so it can be sidestepped
 ## or dodged through.
 
+## Loaded by path, so a game whose script cache predates these still runs.
+const SharedWorld := preload("res://scripts/net/net_world.gd")
+
 const SHEET: Texture2D = preload("res://assets/effects/projectiles.png")
 const RANGE := 620.0
 
@@ -32,8 +35,8 @@ static func fire(from: Enemy, target: Player, attack: Dictionary, damage: float,
 	shot._dress(int(attack["sprite"]), attack.get("color", Color.WHITE))
 	from.get_parent().add_child(shot)
 	# Everyone near sees it fly, and it can hit them too.
-	if NetWorld.current:
-		NetWorld.current.share_shot(from, shot.position, shot._direction, shot._speed, damage, attack)
+	if SharedWorld.current:
+		SharedWorld.current.share_shot(from, shot.position, shot._direction, shot._speed, damage, attack)
 
 
 ## The same shot in another player's game, aimed at nobody in particular:
