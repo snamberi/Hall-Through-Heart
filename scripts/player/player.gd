@@ -70,6 +70,8 @@ var _surge_speed := 0.0
 var _dodge_direction := Vector2.ZERO
 ## The level the class was chosen at, and ranks learned in its tree.
 var class_chosen_at := 10
+## The second class, taken up at level 75 ("" until then).
+var second_class := ""
 ## Passive ranks bought in the class tree (abilities open by class level).
 var class_ranks: Dictionary = {}
 ## Class level and the experience toward the next (see HeroClasses).
@@ -860,6 +862,26 @@ func choose_class(id: String) -> String:
 	return ""
 
 
+## Takes up a second class, for good. "" on success, or why not.
+func choose_second_class(id: String) -> String:
+	if class_id == "adventurer":
+		return "Choose your first class first."
+	if second_class != "":
+		return "Your second path is already chosen."
+	if leveling.level < HeroClasses.SECOND_CLASS_LEVEL:
+		return "Requires level %d." % HeroClasses.SECOND_CLASS_LEVEL
+	if not id in HeroClasses.CHOICES or id == class_id:
+		return "Choose a class other than your own."
+	second_class = id
+	_apply_class()
+	_on_equipment_changed()
+	Events.announcement.emit("SECOND CLASS: %s" % str(HeroClasses.CLASSES[id]["name"]).to_upper(), "Half its strengths, its weapons, and its first abilities on your Class set.")
+	class_changed.emit()
+	abilities.changed.emit()
+	SaveGame.request_save()
+	return ""
+
+
 ## Class points earned so far: one per class level.
 func class_points_total() -> int:
 	if class_id == "adventurer":
@@ -1225,7 +1247,7 @@ func take_up_magic(school: String) -> String:
 
 
 func save_data() -> Dictionary:
-	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "class_level": class_level, "class_xp": class_xp, "appearance": appearance.duplicate(), "flight_unlocked": flight_unlocked, "pinned_recipe": pinned_recipe}
+	return {"evolution_path": evolution_path, "evolution_stage": evolution_stage, "magic_school": magic_school, "magic_schools": magic_schools.duplicate(), "class_id": class_id, "second_class": second_class, "show_helmet": show_helmet, "class_chosen_at": class_chosen_at, "class_ranks": class_ranks.duplicate(), "class_level": class_level, "class_xp": class_xp, "appearance": appearance.duplicate(), "flight_unlocked": flight_unlocked, "pinned_recipe": pinned_recipe}
 
 
 ## Sleeps on a bedroll till morning, if it is night and no monster is
@@ -1369,6 +1391,7 @@ func load_data(data: Dictionary) -> void:
 	flight_unlocked = bool(data.get("flight_unlocked", false))
 	pinned_recipe = str(data.get("pinned_recipe", ""))
 	class_id = str(data.get("class_id", class_id))
+	second_class = str(data.get("second_class", ""))
 	magic_school = str(data.get("magic_school", ""))
 	if not MagicDB.SCHOOLS.has(magic_school):
 		magic_school = ""
@@ -1697,7 +1720,8 @@ func _on_equipment_changed() -> void:
 ## What the class makes of the weapon in hand: a bonus for its own kind,
 ## a penalty for anything else it does not train with.
 func class_weapon_mods() -> Dictionary:
-	var favoured: Array = HeroClasses.CLASSES.get(class_id, {}).get("weapons", [])
+	var favoured: Array = HeroClasses.CLASSES.get(class_id, {}).get("weapons", []).duplicate()
+	favoured.append_array(HeroClasses.CLASSES.get(second_class, {}).get("weapons", []))
 	if weapon_type in favoured:
 		return {"physical_damage": {"percent": HeroClasses.WEAPON_BONUS}}
 	if favoured.is_empty() or equipment == null or equipment.weapon() == null or fighting_bare():
@@ -2044,6 +2068,7 @@ func _apply_class() -> void:
 	if not HeroClasses.CLASSES.has(class_id):
 		class_id = "adventurer"
 	stats.set_modifiers("class", HeroClasses.CLASSES[class_id]["mods"])
+	stats.set_modifiers("second_class", HeroClasses.second_mods(second_class) if second_class != "" else {})
 	# Passives learned in the class tree.
 	var totals := {}
 	if HeroClasses.TREES.has(class_id):

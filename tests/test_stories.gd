@@ -337,7 +337,7 @@ func test_the_aura_cows_the_weak_and_not_the_great(t: TestContext) -> void:
 	t.close_game()
 
 
-func test_the_pact_is_won_in_the_chapel_and_keeps_a_daily_rite(t: TestContext) -> void:
+func test_the_pact_is_won_in_the_chapel_and_keeps_a_tenday_road(t: TestContext) -> void:
 	var main := await t.game()
 	var player: Player = main.get_node("Player")
 	var pact: ThePact = main.get_node("ThePact")
@@ -375,11 +375,15 @@ func test_the_pact_is_won_in_the_chapel_and_keeps_a_daily_rite(t: TestContext) -
 	pact.rite["gathered"] = pact.goal("gathered")
 	pact._check_rite()
 	t.check(pact.rite_done and player.attributes.unspent == points + 3, "a finished rite gives three points")
-	# An unfinished one means the Pit.
+	# The road runs ten days: the next morning is no judgement yet...
 	pact.rite_done = false
-	day_night.day += 1
+	day_night.day = pact.rite_day + 1
 	pact._on_new_day(day_night.day)
-	t.check(pact.penalty_due, "an unfinished rite brings a penalty")
+	t.check(not pact.penalty_due and pact.days_left() == ThePact.ROAD_DAYS - 1, "a day into the Tenday Road, nine are left")
+	# ...but an unfinished road at its end means the Pit.
+	day_night.day = pact.rite_day + ThePact.ROAD_DAYS
+	pact._on_new_day(day_night.day)
+	t.check(pact.penalty_due, "an unfinished road brings a penalty")
 	pact._penalty_wait = 0.0
 	pact._physics_process(0.1)
 	await t.frames(3)

@@ -4,10 +4,11 @@ extends Node
 ## Drowned Chapel (a deadly place that opens near you once, at level 6).
 ## Accept it and it keeps your tally from then on, in windows of navy and
 ## bronze:
-##   - a Daily Rite (blows struck, ground walked, monsters slain, things
-##     gathered): finish it for attribute points, gold, and now and then a
-##     gate key; leave it unfinished and the next day it takes you to the
-##     Pit of Atonement, to survive until it lets you go;
+##   - the Tenday Road (blows struck, ground walked, monsters slain, things
+##     gathered, over ten days): finish it for attribute points, gold, and
+##     now and then a gate key; leave it unfinished when the ten days are out
+##     and it takes you to the Pit of Atonement, to survive until it lets
+##     you go;
 ##   - your status, and attribute points to spend (the P key);
 ##   - at level 30, a hidden quest: the Vigil of Ashes, a job change. Hold
 ##     the grave-ring through the waves of the dead and the Warden of Ashes,
@@ -18,13 +19,16 @@ const VIGIL_LEVEL := 30
 const PIT_SECONDS := 150.0
 const CHAPEL_TOLLS := 6
 const TOLL_EVERY := 13.0
-## The rite's goals grow with you: [base, per level, cap].
+## The road's goals grow with you, for all ten days together:
+## [what, base, per level, cap]. Smaller than the old one day's rite.
 const RITE := {
-	"blows": ["Strike blows", 150, 2.0, 500],
-	"steps": ["Walk tiles of ground", 800, 4.0, 2000],
-	"kills": ["Slay monsters", 25, 0.25, 80],
-	"gathered": ["Gather materials", 20, 0.2, 60],
+	"blows": ["Strike blows", 100, 1.5, 320],
+	"steps": ["Walk tiles of ground", 500, 3.0, 1200],
+	"kills": ["Slay monsters", 15, 0.2, 50],
+	"gathered": ["Gather materials", 12, 0.15, 40],
 }
+## How many days the road runs before it is judged.
+const ROAD_DAYS := 10
 ## The Chapel's commandments, one called before each toll of the bell.
 const COMMANDMENTS := {
 	"kneel": ["KNEEL", "Do not move when the bell tolls."],
@@ -138,28 +142,37 @@ func _check_rite() -> void:
 	_player.attributes.grant_points(3)
 	var gold := 40 + _player.leveling.level * 6
 	_player.inventory.add_gold(gold)
-	var lines: Array = ["The Daily Rite is complete.", "+3 attribute points  ·  +%d gold" % gold]
+	var lines: Array = ["The Tenday Road is complete.", "+3 attribute points  ·  +%d gold" % gold]
 	if randf() < 0.35:
 		var key_item := Gates.key_for_level(_player.leveling.level)
 		_player.inventory.add(Item.create(key_item))
 		lines.append("+1 %s" % ItemDB.ITEMS[key_item]["name"])
-	Voices.pact(get_tree(), "RITE COMPLETE", lines)
+	Voices.pact(get_tree(), "ROAD COMPLETE", lines)
 	Events.codex_event.emit("rites", 1)
 	changed.emit()
 	SaveGame.request_save()
 
 
-## Each morning: an unfinished rite means the Pit; a fresh rite begins.
+## How many days of the road are left, counting today.
+func days_left() -> int:
+	return maxi(rite_day + ROAD_DAYS - _day_night.day, 0) if _day_night else ROAD_DAYS
+
+
+## Each morning, once the ten days are out: an unfinished road means the
+## Pit; a fresh road begins.
 func _on_new_day(day: int) -> void:
-	if awakened and GameSettings.system_window and not rite_done and day > rite_day:
+	if day < rite_day + ROAD_DAYS:
+		changed.emit()
+		return
+	if awakened and GameSettings.system_window and not rite_done:
 		penalty_due = true
 		_penalty_wait = 8.0
-		Voices.pact(get_tree(), "PENALTY", ["The Daily Rite was not finished.", "You will be taken to the Pit of Atonement."])
+		Voices.pact(get_tree(), "PENALTY", ["The Tenday Road was not finished.", "You will be taken to the Pit of Atonement."])
 	rite_day = day
 	rite = {"blows": 0, "steps": 0.0, "kills": 0, "gathered": 0}
 	rite_done = false
 	if awakened and GameSettings.system_window:
-		Voices.pact(get_tree(), "DAILY RITE", _rite_lines())
+		Voices.pact(get_tree(), "TENDAY ROAD", _rite_lines())
 	changed.emit()
 	SaveGame.request_save()
 
@@ -381,7 +394,7 @@ func _accept() -> void:
 	rite_done = false
 	Events.codex_event.emit("awakened", 1)
 	Voices.heart(get_tree(), "The Pact is sealed.", "Press %s to open its window." % GameSettings.describe("open_system"))
-	Voices.pact(get_tree(), "WELCOME, BEARER", ["Your tally begins.", "DAILY RITE: " + ", ".join(_rite_lines())])
+	Voices.pact(get_tree(), "WELCOME, BEARER", ["Your tally begins.", "TENDAY ROAD: " + ", ".join(_rite_lines())])
 	var gates: Gates = get_tree().get_first_node_in_group("gates")
 	if gates:
 		gates.chapel_done()

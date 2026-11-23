@@ -2,11 +2,11 @@ class_name PactMenu
 extends GameMenu
 ## The Pact's window (P): four pages in its navy and bronze.
 ##   Status: name, level, job, the six attributes with points to spend.
-##   Rite:   today's Daily Rite, and the penalty for leaving it.
+##   Road:   the Tenday Road, and the penalty for leaving it.
 ##   Shadows: your shadow soldiers (a Shade Sovereign's), called or not.
 ##   Gates:  the open gates, cleared gates, Monarchs fallen, and the Vigil.
 
-const PAGES: Array[Array] = [["status", "Status"], ["rite", "Daily Rite"], ["shadows", "Shadows"], ["gates", "Gates"]]
+const PAGES: Array[Array] = [["status", "Status"], ["rite", "Tenday Road"], ["shadows", "Shadows"], ["gates", "Gates"]]
 const ICE := Color("bfe4f0")
 const BRONZE := Color("c8904a")
 
@@ -132,7 +132,8 @@ func _status(pact: ThePact) -> void:
 
 
 func _rite(pact: ThePact) -> void:
-	_body.add_child(_line("DAILY RITE  ·  Day %d" % pact.rite_day, 18, ICE))
+	var left := pact.days_left()
+	_body.add_child(_line("TENDAY ROAD  ·  %d day%s left" % [left, "" if left == 1 else "s"], 18, ICE))
 	for key: String in ThePact.RITE:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
@@ -150,11 +151,11 @@ func _rite(pact: ThePact) -> void:
 		row.add_child(_line("%d / %d" % [pact.progress(key), pact.goal(key)], 14, UITheme.DIM))
 	_body.add_child(UITheme.rule(740))
 	if pact.rite_done:
-		_body.add_child(_line("Complete. The Pact is satisfied for today.", 15, UITheme.GOOD))
+		_body.add_child(_line("Complete. The Pact is satisfied until a new road begins.", 15, UITheme.GOOD))
 	else:
 		_body.add_child(UITheme.paragraph("Reward: 3 attribute points, gold, and sometimes a gate key.", 740, 14, UITheme.TEXT))
-		_body.add_child(UITheme.paragraph("WARNING: leave the rite unfinished at the day's end and you will be taken to the Pit of Atonement, to survive there until it lets you go.", 740, 14, Color("e0805a")))
-	_body.add_child(UITheme.paragraph("(The rite and its messages can be turned off in Settings, Interface.)", 740, 12, UITheme.DIM))
+		_body.add_child(UITheme.paragraph("WARNING: leave the road unfinished when its ten days are out and you will be taken to the Pit of Atonement, to survive there until it lets you go.", 740, 14, Color("e0805a")))
+	_body.add_child(UITheme.paragraph("(The road and its messages can be turned off in Settings, Interface.)", 740, 12, UITheme.DIM))
 
 
 func _shadows() -> void:

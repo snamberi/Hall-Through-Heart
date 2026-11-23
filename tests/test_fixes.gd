@@ -47,3 +47,25 @@ func test_places_stand_apart(t: TestContext) -> void:
 				crowded += 1
 	t.equal(crowded, 0, "no two places in neighbouring chunks")
 	t.check(holding.size() > 4 and holding.size() < 441 / 8, "places are rare but still found (%d in 441 chunks)" % holding.size())
+
+
+func test_a_character_can_be_made_for_servers(t: TestContext) -> void:
+	var menu: Node = load("res://scenes/menu.tscn").instantiate()
+	t.tree.root.add_child(menu)
+	await t.frames(2)
+	var before := SaveGame.list_slots().size()
+	menu.create_for_server("servers")
+	t.check(menu._pages["new"].visible, "New character opens the creator")
+	t.equal(menu._next_button.text if menu._step == "world" else "Create Character  >", "Create Character  >", "which makes a character, not a world")
+	menu._name_field.text = "Server Hero"
+	menu._create()
+	await t.frames(2)
+	var made: Array = SaveGame.list_slots().filter(func(s: Dictionary) -> bool: return (s["meta"] as Dictionary).get("server_character", false))
+	t.equal(SaveGame.list_slots().size(), before + 1, "a character is made")
+	t.check(not made.is_empty(), "marked as made for servers")
+	t.check(menu._pages["servers"].visible, "and you are back on the servers page")
+	var servers: ServersPage = menu._pages["servers"]
+	t.equal((servers._chosen() as Dictionary).get("id", ""), (made[0] as Dictionary)["id"] if not made.is_empty() else "?", "with it chosen to play as")
+	for slot: Dictionary in made:
+		SaveGame.delete_slot(slot["id"])
+	menu.queue_free()

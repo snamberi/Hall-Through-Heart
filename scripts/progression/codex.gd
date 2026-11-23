@@ -46,7 +46,7 @@ const ACHIEVEMENTS: Array[Dictionary] = [
 	{"id": "townsfolk", "name": "Monster Town", "text": "Have 5 monsters settle in your town.", "stat": "citizens", "goal": 5, "gold": 600, "title": "Lord of Monsters"},
 	{"id": "rising", "name": "The Rising", "text": "Hold the Festival of Rising.", "stat": "festivals", "goal": 1, "gold": 300},
 	{"id": "awakened", "name": "The Pact", "text": "Survive the Drowned Chapel and accept the Pact.", "stat": "awakened", "goal": 1, "gold": 300, "title": "the Bearer"},
-	{"id": "rites", "name": "Diligence", "text": "Finish the Daily Rite 10 times.", "stat": "rites", "goal": 10, "gold": 500},
+	{"id": "rites", "name": "Diligence", "text": "Finish the Tenday Road 10 times.", "stat": "rites", "goal": 10, "gold": 500},
 	{"id": "penalty", "name": "Atonement", "text": "Survive the Pit of Atonement.", "stat": "penalties", "goal": 1, "gold": 150},
 	{"id": "gatebreaker", "name": "Gatebreaker", "text": "Clear 25 gates.", "stat": "gates", "goal": 25, "gold": 800, "title": "Gatebreaker"},
 	{"id": "red_gate", "name": "Seen Red", "text": "Come out of a red gate alive.", "stat": "red_gates", "goal": 1, "gold": 400},

@@ -97,7 +97,7 @@ func _ready() -> void:
 		_check(page, "enemy_info", "Show what a monster is when the mouse rests on it")
 		_check(page, "inner_voice", "The Still Voice: quiet advice and analysis of monsters")
 		_check(page, "remnants", "Fallen monsters leave remnants to devour")
-		_check(page, "system_window", "The System: daily training and its messages")
+		_check(page, "system_window", "The Pact: the Tenday Road and its messages")
 		_check(page, "dps_meter", "Damage-per-second meter")
 		_choice(page, "pickup_radius", "Loot pulled in from", [[0.5, "Close"], [1.0, "Normal"], [1.5, "Far"], [2.0, "Very far"]], 112.0)
 		_choice(page, "loot_filter", "Pick gear up by walking over", [[0, "All"], [1, "Uncommon+"], [2, "Rare+"], [3, "Epic+"]], 112.0)

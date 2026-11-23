@@ -191,7 +191,7 @@ var enemy_info := true
 var inner_voice := true
 ## Fallen monsters leave a remnant to devour (once the gift has woken).
 var remnants := true
-## The System's daily training and its messages.
+## The Pact: the Tenday Road and its messages.
 var system_window := true
 ## On-screen controls for a phone or tablet: "auto" (on when the device is
 ## one), "on" or "off".

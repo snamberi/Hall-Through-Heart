@@ -59,10 +59,12 @@ func _ready() -> void:
 	together.back.connect(show_page.bind("home"))
 	together.play.connect(_enter_world)
 	together.servers.connect(show_page.bind("servers"))
+	together.create_character.connect(create_for_server.bind("together"))
 	_pages["together"] = together
 	_servers = ServersPage.new()
 	_servers.back.connect(show_page.bind("together"))
 	_servers.play.connect(_enter_world)
+	_servers.create_character.connect(create_for_server.bind("servers"))
 	_pages["servers"] = _servers
 	var settings := SettingsPanel.new()
 	settings.closed.connect(show_page.bind("home"))
@@ -619,8 +621,8 @@ func _show_step(step: String) -> void:
 	for id in _step_pages:
 		_step_pages[id].visible = id == step
 		_step_buttons[id].set_pressed_no_signal(id == step)
-	_next_button.text = "Create World  >" if step == "world" else "Next  >"
-	_back_button.text = "<  Worlds" if step == "look" else "<  Back"
+	_next_button.text = ("Create Character  >" if _for_server != "" else "Create World  >") if step == "world" else "Next  >"
+	_back_button.text = ("<  Servers" if _for_server != "" else "<  Worlds") if step == "look" else "<  Back"
 	if step == "world":
 		_update_summary()
 
@@ -636,7 +638,9 @@ func _step_next() -> void:
 func _step_back() -> void:
 	var index := STEPS.map(func(s: Array) -> String: return s[0]).find(_step)
 	if index <= 0:
-		show_page("load")
+		var back_to := _for_server if _for_server != "" else "load"
+		_for_server = ""
+		show_page(back_to)
 	else:
 		_show_step(STEPS[index - 1][0])
 
@@ -780,10 +784,30 @@ func _choose_class(id: String) -> void:
 	_update_summary()
 
 
+## A character made to play on servers rather than a world to play in:
+## the same creator, and back to `page` (with it chosen) when it is made.
+var _for_server := ""
+
+
+func create_for_server(page: String) -> void:
+	_for_server = page
+	show_page("new")
+	_show_step("look")
+
+
 func _create() -> void:
 	var world_name := _name_field.text.strip_edges()
 	if world_name == "":
 		world_name = _name_field.placeholder_text
+	if _for_server != "":
+		SaveGame.create_slot(world_name, _difficulty, 0, _appearance, _class, false)
+		SaveGame.set_meta_value("server_character", true)
+		var back_to := _for_server
+		_for_server = ""
+		# Shown again, the page fills its list and picks the newest (the
+		# last slot used).
+		show_page(back_to)
+		return
 	var seed_text := _seed_field.text.strip_edges()
 	var world_seed := 0
 	if seed_text != "":

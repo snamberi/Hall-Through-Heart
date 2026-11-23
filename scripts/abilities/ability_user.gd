@@ -71,6 +71,10 @@ func known_class() -> Array[String]:
 	for entry: Array in HeroClasses.TREES.get(_player.class_id, {}).get("abilities", []):
 		if rank(entry[0]) > 0:
 			ids.append(entry[0])
+	# The second class's first abilities follow your own.
+	for id: String in HeroClasses.second_abilities(_player.second_class):
+		if rank(id) > 0 and not id in ids:
+			ids.append(id)
 	return ids
 
 
@@ -184,6 +188,9 @@ func rank(id: String) -> int:
 			return 0
 		return AbilityDB.rank(id, _player.leveling.level)
 	if ability.has("class"):
+		if _player.second_class != "" and ability["class"] == _player.second_class and id in HeroClasses.second_abilities(_player.second_class):
+			# Lent by the second class, growing with your class level.
+			return mini(1 + _player.class_level / 8, AbilityDB.MAX_RANK)
 		var opens := HeroClasses.ability_level(_player.class_id, id)
 		if ability["class"] != _player.class_id or opens <= 0 or _player.class_level < opens:
 			return 0

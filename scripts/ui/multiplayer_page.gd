@@ -9,6 +9,8 @@ extends PanelContainer
 signal back
 ## Open My Servers.
 signal servers
+## Make a new character to bring along (the title screen's creator).
+signal create_character
 ## A world to load: the slot, and whether as a guest in someone else's.
 signal play(slot_id: String, as_guest: bool)
 
@@ -56,6 +58,7 @@ func _ready() -> void:
 	_character = OptionButton.new()
 	_character.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	who.add_child(_character)
+	who.add_child(UITheme.button("New character", func() -> void: create_character.emit()))
 	box.add_child(UITheme.rule())
 	# Host.
 	var host_row := HBoxContainer.new()
@@ -156,9 +159,10 @@ static func fill_characters(picker: OptionButton) -> Array[Dictionary]:
 		slots.append(slot)
 		var race := str(Appearance.RACES.get(str((meta.get("appearance", {}) as Dictionary).get("race", "human")), Appearance.RACES["human"])["name"])
 		var calling := str(HeroClasses.CLASSES.get(str(meta.get("class", meta.get("class_id", "warrior"))), HeroClasses.CLASSES["warrior"])["name"])
-		picker.add_item("%s %s, level %d   (%s)" % [race, calling, int(meta.get("level", 1)), str(meta.get("name", "World"))])
+		var place := str(meta.get("name", "World")) + (", made for servers" if meta.get("server_character", false) else "")
+		picker.add_item("%s %s, level %d   (%s)" % [race, calling, int(meta.get("level", 1)), place])
 	if slots.is_empty():
-		picker.add_item("No characters yet: make one under Play first")
+		picker.add_item("No characters yet: press New character")
 		picker.disabled = true
 	else:
 		picker.disabled = false

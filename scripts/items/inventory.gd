@@ -5,7 +5,7 @@ extends Node
 signal changed
 
 ## Slots in the bag itself; a backpack adds more.
-const BASE := 60
+const BASE := 100
 ## Extra slots from the backpack worn (kept up to date by Equipment).
 var bonus_slots := 0
 ## Slots a race carries more (an orc) or fewer (a fairy) than others.

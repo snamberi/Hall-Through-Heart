@@ -16,6 +16,11 @@ extends RefCounted
 const CHOICE_LEVEL := 10
 const WEAPON_BONUS := 0.1
 const MAX_CLASS_LEVEL := 25
+## At this character level a second class can be taken up: half its
+## strengths, its weapons as your own, and the first of its abilities.
+const SECOND_CLASS_LEVEL := 75
+const SECOND_SHARE := 0.5
+const SECOND_ABILITIES := 3
 ## (Older saves: class points once came every CLASS_POINT_LEVELS levels.)
 const CLASS_POINT_LEVELS := 2
 ## Class experience: per ability used (class abilities give more), and per
@@ -148,6 +153,25 @@ const CHOICES: Array[String] = ["warrior", "guardian", "ranger", "assassin", "ma
 
 
 ## Class experience needed to go from a class level to the next.
+## The abilities a second class lends: the first few of its tree.
+static func second_abilities(id: String) -> Array[String]:
+	var out: Array[String] = []
+	for entry: Array in TREES.get(id, {}).get("abilities", []).slice(0, SECOND_ABILITIES):
+		out.append(str(entry[0]))
+	return out
+
+
+## A class's strengths at the share a second class gives.
+static func second_mods(id: String) -> Dictionary:
+	var out := {}
+	var mods: Dictionary = CLASSES.get(id, {}).get("mods", {})
+	for stat: String in mods:
+		out[stat] = {}
+		for kind: String in mods[stat]:
+			out[stat][kind] = float(mods[stat][kind]) * SECOND_SHARE
+	return out
+
+
 static func xp_to_next(level: int) -> int:
 	return int(30.0 + 18.0 * pow(float(level), 1.25))
 

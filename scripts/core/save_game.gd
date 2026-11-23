@@ -83,6 +83,14 @@ func create_slot(world_name: String, difficulty: String, world_seed: int = 0, ap
 	return id
 
 
+## Sets one thing in the current slot's meta and writes it.
+func set_meta_value(key: String, value: Variant) -> void:
+	if not _data.has("meta"):
+		_data["meta"] = {}
+	_data["meta"][key] = value
+	_write()
+
+
 ## Selects a slot and reads it from disk.
 func use_slot(id: String, as_guest: bool = false) -> void:
 	guest = as_guest

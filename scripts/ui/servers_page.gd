@@ -10,6 +10,8 @@ extends PanelContainer
 ## world you already have), and a server's log and backups.
 
 signal back
+## Make a new character to play here (the title screen's creator).
+signal create_character
 ## A world to load: the character's slot, joined as a guest.
 signal play(slot_id: String, as_guest: bool)
 
@@ -109,6 +111,7 @@ func _list_view() -> Control:
 	_character = OptionButton.new()
 	_character.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	who.add_child(_character)
+	who.add_child(UITheme.button("New character", func() -> void: create_character.emit()))
 	box.add_child(UITheme.rule())
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 330)
@@ -266,7 +269,7 @@ func _server_card(server: Dictionary) -> Control:
 ## Starts a server (and, with `join`, joins it once it is up).
 func _start(id: String, join: bool) -> void:
 	if join and _chosen().is_empty():
-		_status.text = "Make a character first (Play, then Create New World)."
+		_status.text = "Make a character first: press New character."
 		return
 	var problem := ServerStore.launch(id)
 	if problem != "":
@@ -305,7 +308,7 @@ func _delete(id: String) -> void:
 func rejoin(id: String) -> void:
 	var slot := _chosen()
 	if slot.is_empty():
-		_status.text = "Make a character first (Play, then Create New World)."
+		_status.text = "Make a character first: press New character."
 		return
 	var config := ServerStore.load_config(id)
 	var info := Net.describe_character(slot.get("meta", {}), "Wanderer")

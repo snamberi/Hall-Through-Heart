@@ -104,6 +104,8 @@ func _build() -> void:
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_left.add_child(spacer)
 	# The other classes, out of the way: a list in a pop-up.
+	_second_button = UITheme.button("Second class...", _show_second_class, 210.0)
+	_left.add_child(_second_button)
 	var others := UITheme.button("Other classes...", _show_other_classes, 210.0)
 	others.tooltip_text = "See what the other classes were. Your class is for life."
 	_left.add_child(others)
@@ -207,7 +209,9 @@ func refresh() -> void:
 	_xp_words.text = "Class experience comes from using abilities (class abilities most) and defeating enemies." if top else "%d / %d class experience. Use abilities (class ones most) and defeat enemies." % [player.class_xp, HeroClasses.xp_to_next(player.class_level)]
 	_portrait.show_look(player.appearance)
 	_portrait.play("attack")
-	_class_name.text = data["name"]
+	_class_name.text = data["name"] + ((" / " + str(HeroClasses.CLASSES[player.second_class]["name"])) if player.second_class != "" else "")
+	_second_button.text = "Second class..." if player.second_class == "" else "Second: %s" % HeroClasses.CLASSES[player.second_class]["name"]
+	_second_button.tooltip_text = "Opens at level %d." % HeroClasses.SECOND_CLASS_LEVEL if player.second_class == "" and level < HeroClasses.SECOND_CLASS_LEVEL else ""
 	_class_text.text = data["text"]
 	_points.text = "%d class point%s free" % [player.class_points_free(), "" if player.class_points_free() == 1 else "s"]
 	var tree: Dictionary = HeroClasses.TREES[player.class_id]
@@ -410,6 +414,55 @@ func _card(id: String) -> Control:
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	box.add_child(button)
 	return card
+
+
+var _second_button: Button
+
+
+## The second class: at level 75, one of the others, for half its
+## strengths, its weapons and its first abilities.
+func _show_second_class() -> void:
+	var popup := PopupPanel.new()
+	popup.add_theme_stylebox_override("panel", UITheme.get_theme().get_stylebox("panel", "PanelContainer"))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	popup.add_child(box)
+	var level := player.leveling.level
+	if player.second_class != "":
+		var data: Dictionary = HeroClasses.CLASSES[player.second_class]
+		box.add_child(UITheme.heading("Second class: %s" % data["name"], 20))
+		box.add_child(UITheme.paragraph(",  ".join(HeroClasses.describe_bonuses(player.second_class)) + "  (at half strength)", 460.0, 14, UITheme.GOOD))
+		var lent := HeroClasses.second_abilities(player.second_class).map(func(id: String) -> String: return str(AbilityDB.ABILITIES[id]["name"]))
+		box.add_child(UITheme.paragraph("On your Class set: " + ", ".join(lent), 460.0, 14, UITheme.INFO))
+	else:
+		box.add_child(UITheme.heading("Take up a second class", 20))
+		box.add_child(UITheme.paragraph("At level %d you may learn a second path: half its strengths, its weapons as your own, and its first %d abilities on your Class set. It is for life." % [HeroClasses.SECOND_CLASS_LEVEL, HeroClasses.SECOND_ABILITIES],
+			460.0, 14, UITheme.DIM if level >= HeroClasses.SECOND_CLASS_LEVEL else UITheme.BAD))
+		for id: String in HeroClasses.CHOICES:
+			if id == player.class_id:
+				continue
+			var data: Dictionary = HeroClasses.CLASSES[id]
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 10)
+			row.add_child(UITheme.icon(data["icon"], 26.0))
+			var words := VBoxContainer.new()
+			words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			words.add_child(UITheme.strong(data["name"], 16))
+			words.add_child(UITheme.paragraph(data["text"], 300.0, 13, UITheme.DIM))
+			row.add_child(words)
+			var take := UITheme.button("Take up", func() -> void:
+				_message.text = player.choose_second_class(id)
+				popup.hide()
+				refresh()
+			, 110.0)
+			take.disabled = level < HeroClasses.SECOND_CLASS_LEVEL
+			take.tooltip_text = "Reach level %d first." % HeroClasses.SECOND_CLASS_LEVEL if take.disabled else ""
+			row.add_child(take)
+			box.add_child(row)
+	box.add_child(UITheme.button("Close", popup.hide, 460.0))
+	add_child(popup)
+	popup.popup_centered()
+	popup.popup_hide.connect(popup.queue_free)
 
 
 ## The other classes, for reference: a pop-up list with what each was.

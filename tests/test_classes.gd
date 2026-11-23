@@ -136,3 +136,30 @@ func test_races_play_differently(t: TestContext) -> void:
 	player.appearance["race"] = "human"
 	traits.apply()
 	t.close_game()
+
+
+func test_a_second_class_at_level_75(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var before_class := player.class_id
+	var before_second := player.second_class
+	player.class_id = "warrior"
+	player.class_level = maxi(player.class_level, 1)
+	player.second_class = ""
+	var level := player.leveling.level
+	player.leveling.level = 74
+	t.check(player.choose_second_class("mage") != "", "not before level 75")
+	player.leveling.level = 75
+	t.check(player.choose_second_class("warrior") != "", "not your own class again")
+	var power := player.stats.get_stat("magic_power")
+	t.equal(player.choose_second_class("mage"), "", "at 75 a Warrior can take up the Mage's path")
+	t.check(player.stats.get_stat("magic_power") > power, "and gains part of its strengths")
+	var lent := HeroClasses.second_abilities("mage")
+	t.check(lent.size() == HeroClasses.SECOND_ABILITIES and player.abilities.rank(lent[0]) > 0, "its first abilities are usable")
+	t.check(lent[0] in player.abilities.known_class(), "and sit on the Class set")
+	t.check(player.choose_second_class("ranger") != "", "a second class is for life")
+	t.equal(str(player.save_data().get("second_class", "")), "mage", "and is saved")
+	player.leveling.level = level
+	player.second_class = before_second
+	player.class_id = before_class
+	player._apply_class()
