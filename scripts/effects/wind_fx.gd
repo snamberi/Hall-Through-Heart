@@ -47,6 +47,9 @@ var _streaks: Array = []
 var _flying: Array = []
 ## Leaves on the ground: [position, age, life, colours, shape]
 var _lying: Array = []
+var _drew_air := false
+var _drew_ground := false
+var _ground_left := 0.0
 var _ground: Node2D
 var _drop_left := 0.0
 var _gust_was := 0.0
@@ -87,8 +90,17 @@ func _process(delta: float) -> void:
 	_gust_was = gust
 	_fall(delta)
 	_age(delta)
-	queue_redraw()
-	_ground.queue_redraw()
+	# Redraw only what has something on it: streaks and flying leaves move
+	# every frame; leaves lying on the ground only fade, so ten times a
+	# second is plenty. (Empty layers cost nothing to leave alone.)
+	if not _streaks.is_empty() or not _flying.is_empty() or _drew_air:
+		queue_redraw()
+	_drew_air = not _streaks.is_empty() or not _flying.is_empty()
+	_ground_left -= delta
+	if _ground_left <= 0.0 and (not _lying.is_empty() or _drew_ground):
+		_ground_left = 0.1
+		_ground.queue_redraw()
+		_drew_ground = not _lying.is_empty()
 
 
 func _view_rect() -> Rect2:

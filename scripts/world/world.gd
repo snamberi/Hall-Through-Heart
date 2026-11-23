@@ -36,6 +36,12 @@ var _chunks: Dictionary[Vector2i, TileMapLayer] = {}
 ## ground, so cliffs do not cut through it. Set by the game before chunks load.
 var levelled: Callable
 var _queue: Array[Vector2i] = []
+## Chunks whose ground is down but whose trees, rocks and the rest are still
+## to be spawned: done on the next frame, so walking never pays for both at
+## once (each is several milliseconds).
+var _to_announce: Array[Vector2i] = []
+## While streaming in _process; teleports (load_around_now) fill at once.
+var _streaming := false
 var _center := Vector2i.MAX
 
 
@@ -110,10 +116,19 @@ func _process(_delta: float) -> void:
 	var center := cell_to_chunk(world_to_cell(target.global_position))
 	if center != _center:
 		_recenter(center)
+	# One step a frame: spawn what stands on the last chunk laid, or lay
+	# the next one's ground.
+	if not _to_announce.is_empty():
+		var ready: Vector2i = _to_announce.pop_front()
+		if _chunks.has(ready):
+			chunk_built.emit(ready)
+		return
+	_streaming = true
 	for i in chunks_per_frame:
 		if _queue.is_empty():
 			break
 		_build_chunk(_queue.pop_front())
+	_streaming = false
 
 
 func _recenter(center: Vector2i) -> void:
@@ -248,5 +263,7 @@ func _build_chunk(chunk: Vector2i, announce: bool = true) -> void:
 		layer.add_child(cliffs)
 	add_child(layer)
 	_chunks[chunk] = layer
-	if announce:
+	if announce and _streaming:
+		_to_announce.append(chunk)
+	elif announce:
 		chunk_built.emit(chunk)

@@ -31,6 +31,7 @@ const KINDS := {
 
 ## [kind, frame, position, flip_x, flip_y, age]
 var _marks: Array = []
+var _redraw_left := 0.0
 var _player: Node2D
 
 
@@ -115,7 +116,12 @@ func _process(delta: float) -> void:
 		var far := _player != null and is_instance_valid(_player) and (mark[2] as Vector2).distance_to(_player.global_position) > 1800.0
 		if mark[5] >= LIFE or far:
 			_marks.remove_at(index)
-	queue_redraw()
+	# Embers flicker every frame; old marks only fade, ten times a second.
+	_redraw_left -= delta
+	var glowing := _marks.any(func(m: Array) -> bool: return m[0] == "scorch" and m[5] < EMBERS)
+	if glowing or _redraw_left <= 0.0:
+		_redraw_left = 0.1
+		queue_redraw()
 
 
 func _draw() -> void:
