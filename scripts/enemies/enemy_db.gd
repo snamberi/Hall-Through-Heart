@@ -169,6 +169,137 @@ const ENEMIES := {
 		"radius": 16.0, "size": 1.3, "tiles": [T.DARK_GRASS, T.FROSTPINE, T.ROCK, T.THORN], "min_level": 4, "weight": 2.5,
 		"attack": {"kind": "swipe", "range": 74.0, "windup": 0.55, "arc": 130.0, "recover": 0.9, "knockback": 380.0, "color": Color(1.0, 0.9, 0.75)}, "traits": ["enrage"],
 	},
+	# --- the lands' own beasts and fantasy creatures (tools/generate_beasts.py)
+	"elk": {
+		"active": "day", "wild": "defend", "name": "Elk", "health": 60.0, "damage": 10.0, "speed": 140.0, "xp": 10,
+		"radius": 15.0, "size": 1.0, "tiles": [T.DARK_GRASS, T.FROSTPINE, T.DEAD_GRASS], "min_level": 3, "weight": 3.0,
+		"attack": {"kind": "charge", "range": 220.0, "windup": 0.65, "speed": 600.0, "time": 0.45, "recover": 1.0, "knockback": 520.0}, "traits": [],
+	},
+	"badger": {
+		"active": "night", "wild": "defend", "name": "Badger", "health": 20.0, "damage": 6.0, "speed": 120.0, "xp": 5,
+		"radius": 10.0, "size": 1.0, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.MUD], "min_level": 1, "weight": 4.0,
+		"attack": {"kind": "swipe", "range": 52.0, "windup": 0.4, "arc": 90.0, "recover": 0.7, "knockback": 180.0, "color": Color(0.95, 0.85, 0.8)}, "traits": [],
+	},
+	"hedgehog": {
+		"active": "night", "wild": "flee", "name": "Hedgehog", "health": 6.0, "damage": 0.0, "speed": 90.0, "xp": 2,
+		"radius": 7.0, "size": 1.0, "tiles": [T.DARK_GRASS, T.DEAD_GRASS], "min_level": 1, "weight": 4.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"moonstag": {
+		"active": "night", "wild": "flee", "name": "Moonstag", "health": 40.0, "damage": 0.0, "speed": 170.0, "xp": 14,
+		"radius": 13.0, "size": 1.0, "tiles": [T.DARK_GRASS, T.FROSTPINE], "min_level": 5, "weight": 0.8,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"snow_leopard": {
+		"active": "always", "name": "Snow Leopard", "health": 48.0, "damage": 13.0, "speed": 175.0, "xp": 14,
+		"radius": 13.0, "size": 1.0, "tiles": [T.SNOW, T.PEAK, T.ROCK], "min_level": 5, "weight": 3.0,
+		"attack": {"kind": "pounce", "range": 150.0, "windup": 0.38, "time": 0.34, "radius": 48.0, "recover": 0.6, "color": Color(0.85, 0.85, 0.9)}, "traits": [],
+	},
+	"musk_ox": {
+		"active": "day", "wild": "defend", "name": "Musk Ox", "health": 120.0, "damage": 14.0, "speed": 105.0, "xp": 16,
+		"radius": 18.0, "size": 1.0, "tiles": [T.SNOW, T.FROSTPINE, T.PEAK], "min_level": 5, "weight": 2.5,
+		"attack": {"kind": "charge", "range": 220.0, "windup": 0.65, "speed": 600.0, "time": 0.45, "recover": 1.0, "knockback": 520.0}, "traits": ["enrage"],
+	},
+	"ice_bear": {
+		"active": "always", "wild": "defend", "name": "Ice Bear", "health": 140.0, "damage": 20.0, "speed": 120.0, "xp": 24,
+		"radius": 18.0, "size": 1.0, "tiles": [T.SNOW, T.PEAK], "min_level": 7, "weight": 1.5,
+		"attack": {"kind": "swipe", "range": 74.0, "windup": 0.55, "arc": 130.0, "recover": 0.9, "knockback": 380.0, "color": Color(1.0, 0.9, 0.75)}, "traits": ["enrage"],
+	},
+	"frostmane": {
+		"active": "night", "name": "Frostmane", "health": 55.0, "damage": 14.0, "speed": 180.0, "xp": 18,
+		"radius": 13.0, "size": 1.0, "tiles": [T.SNOW, T.PEAK, T.FROSTPINE], "min_level": 7, "weight": 1.6,
+		"attack": {"kind": "pounce", "range": 150.0, "windup": 0.38, "time": 0.34, "radius": 48.0, "recover": 0.6, "color": Color(0.85, 0.85, 0.9)}, "traits": ["pack"],
+	},
+	"camel": {
+		"active": "day", "wild": "flee", "name": "Camel", "health": 70.0, "damage": 0.0, "speed": 120.0, "xp": 8,
+		"radius": 16.0, "size": 1.0, "tiles": [T.SAND, T.SALT], "min_level": 2, "weight": 3.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"sand_cat": {
+		"active": "night", "wild": "flee", "name": "Sand Cat", "health": 12.0, "damage": 0.0, "speed": 190.0, "xp": 4,
+		"radius": 9.0, "size": 1.0, "tiles": [T.SAND, T.SALT], "min_level": 1, "weight": 4.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"jackal": {
+		"active": "night", "name": "Jackal", "health": 22.0, "damage": 8.0, "speed": 175.0, "xp": 8,
+		"radius": 11.0, "size": 1.0, "tiles": [T.SAND, T.SALT, T.ASH], "min_level": 2, "weight": 5.0,
+		"attack": {"kind": "swipe", "range": 52.0, "windup": 0.4, "arc": 90.0, "recover": 0.7, "knockback": 180.0, "color": Color(0.95, 0.85, 0.8)}, "traits": ["pack"],
+	},
+	"sunscale_basilisk": {
+		"active": "day", "name": "Sunscale Basilisk", "health": 90.0, "damage": 18.0, "speed": 120.0, "xp": 22,
+		"radius": 15.0, "size": 1.0, "tiles": [T.SAND, T.CINDER], "min_level": 7, "weight": 1.2,
+		"attack": {"kind": "charge", "range": 220.0, "windup": 0.65, "speed": 600.0, "time": 0.45, "recover": 1.0, "knockback": 520.0}, "traits": ["enrage"],
+	},
+	"river_otter": {
+		"active": "day", "wild": "flee", "name": "River Otter", "health": 14.0, "damage": 0.0, "speed": 160.0, "xp": 4,
+		"radius": 10.0, "size": 1.0, "tiles": [T.MUD, T.BOG], "min_level": 1, "weight": 4.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"moss_tortoise": {
+		"active": "day", "wild": "flee", "name": "Moss Tortoise", "health": 80.0, "damage": 0.0, "speed": 40.0, "xp": 6,
+		"radius": 14.0, "size": 1.0, "tiles": [T.BOG, T.FUNGAL, T.MUD], "min_level": 2, "weight": 2.5,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"swamp_boar": {
+		"active": "always", "wild": "defend", "name": "Swamp Boar", "health": 55.0, "damage": 12.0, "speed": 135.0, "xp": 10,
+		"radius": 14.0, "size": 1.0, "tiles": [T.BOG, T.MUD, T.TAR], "min_level": 3, "weight": 3.5,
+		"attack": {"kind": "charge", "range": 220.0, "windup": 0.65, "speed": 600.0, "time": 0.45, "recover": 1.0, "knockback": 520.0}, "traits": [],
+	},
+	"sporeback_deer": {
+		"active": "always", "wild": "flee", "name": "Sporeback Deer", "health": 30.0, "damage": 0.0, "speed": 155.0, "xp": 9,
+		"radius": 12.0, "size": 1.0, "tiles": [T.FUNGAL], "min_level": 3, "weight": 3.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"cinder_hound": {
+		"active": "always", "name": "Cinder Hound", "health": 60.0, "damage": 16.0, "speed": 180.0, "xp": 20,
+		"radius": 13.0, "size": 1.0, "tiles": [T.ASH, T.CINDER], "min_level": 6, "weight": 3.0,
+		"attack": {"kind": "pounce", "range": 150.0, "windup": 0.38, "time": 0.34, "radius": 48.0, "recover": 0.6, "color": Color(0.85, 0.85, 0.9)}, "traits": ["pack"],
+	},
+	"ember_salamander": {
+		"active": "always", "name": "Ember Salamander", "health": 30.0, "damage": 10.0, "speed": 140.0, "xp": 10,
+		"radius": 10.0, "size": 1.0, "tiles": [T.CINDER, T.ASH], "min_level": 4, "weight": 4.0,
+		"attack": {"kind": "swipe", "range": 52.0, "windup": 0.4, "arc": 90.0, "recover": 0.7, "knockback": 180.0, "color": Color(0.95, 0.85, 0.8)}, "traits": [],
+	},
+	"thornback_boar": {
+		"active": "always", "name": "Thornback Boar", "health": 85.0, "damage": 17.0, "speed": 140.0, "xp": 18,
+		"radius": 15.0, "size": 1.0, "tiles": [T.THORN, T.CRIMSON], "min_level": 6, "weight": 2.5,
+		"attack": {"kind": "charge", "range": 220.0, "windup": 0.65, "speed": 600.0, "time": 0.45, "recover": 1.0, "knockback": 520.0}, "traits": ["enrage"],
+	},
+	"crimson_lynx": {
+		"active": "night", "name": "Crimson Lynx", "health": 42.0, "damage": 14.0, "speed": 185.0, "xp": 14,
+		"radius": 12.0, "size": 1.0, "tiles": [T.CRIMSON, T.THORN], "min_level": 5, "weight": 3.0,
+		"attack": {"kind": "pounce", "range": 150.0, "windup": 0.38, "time": 0.34, "radius": 48.0, "recover": 0.6, "color": Color(0.85, 0.85, 0.9)}, "traits": [],
+	},
+	"void_prowler": {
+		"active": "night", "name": "Void Prowler", "health": 70.0, "damage": 18.0, "speed": 190.0, "xp": 24,
+		"radius": 13.0, "size": 1.0, "tiles": [T.VOIDSCAR], "min_level": 7, "weight": 2.5,
+		"attack": {"kind": "pounce", "range": 150.0, "windup": 0.38, "time": 0.34, "radius": 48.0, "recover": 0.6, "color": Color(0.85, 0.85, 0.9)}, "traits": ["blink"],
+	},
+	"void_hare": {
+		"active": "always", "wild": "flee", "name": "Void Hare", "health": 16.0, "damage": 0.0, "speed": 200.0, "xp": 6,
+		"radius": 9.0, "size": 1.0, "tiles": [T.VOIDSCAR], "min_level": 4, "weight": 4.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": ["blink"],
+	},
+	"salt_antelope": {
+		"active": "day", "wild": "flee", "name": "Salt Antelope", "health": 26.0, "damage": 0.0, "speed": 190.0, "xp": 7,
+		"radius": 12.0, "size": 1.0, "tiles": [T.SALT, T.SAND], "min_level": 2, "weight": 4.0,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"mountain_ram": {
+		"active": "day", "wild": "defend", "name": "Mountain Ram", "health": 75.0, "damage": 14.0, "speed": 130.0, "xp": 12,
+		"radius": 15.0, "size": 1.0, "tiles": [T.PEAK, T.ROCK, T.SNOW], "min_level": 4, "weight": 3.0,
+		"attack": {"kind": "charge", "range": 220.0, "windup": 0.65, "speed": 600.0, "time": 0.45, "recover": 1.0, "knockback": 520.0}, "traits": [],
+	},
+	"dawn_unicorn": {
+		"active": "day", "wild": "flee", "name": "Dawn Unicorn", "health": 120.0, "damage": 0.0, "speed": 210.0, "xp": 60,
+		"radius": 15.0, "size": 1.0, "tiles": [T.DARK_GRASS], "min_level": 8, "weight": 0.25,
+		"attack": {"kind": "lunge", "range": 0.0, "windup": 0.5, "speed": 0.0, "time": 0.2, "recover": 0.5}, "traits": [],
+	},
+	"alpha_wolf": {
+		"active": "night", "name": "Alpha Wolf", "health": 70.0, "damage": 16.0, "speed": 185.0, "xp": 26,
+		"radius": 15.0, "size": 1.0, "tiles": [], "min_level": 2, "weight": 0.0,
+		"attack": {"kind": "pounce", "range": 150.0, "windup": 0.38, "time": 0.34, "radius": 48.0, "recover": 0.6, "color": Color(0.85, 0.85, 0.9)}, "traits": ["pack", "enrage"],
+	},
 	# --- biome families
 	"grey_wolf": {
 		"active": "night", "name": "Grey Wolf", "health": 26.0, "damage": 9.0, "speed": 170.0, "xp": 10,

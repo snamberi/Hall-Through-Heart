@@ -275,6 +275,93 @@ static func colours_of(sheet: Texture2D) -> Array[Color]:
 
 ## The end of a monster, by its family's style. `sprite` is its picture,
 ## `look` the material from dress(); calls `done` when it is gone.
+## Spots on the body in a sheet's last death frame where a wound can sit
+## (well inside the body, not at its edge), by sheet.
+static var _wound_spots: Dictionary = {}
+
+
+## A heart-shaped hole in one part of a fallen creature's body: dark inside,
+## a torn rim of blood, a drip below. Drawn in whole pixels on the sprite.
+static func heart_wound(sprite: CanvasItem, sheet: Texture2D, frame: int = 96) -> void:
+	if not is_instance_valid(sprite) or sheet == null:
+		return
+	if not _wound_spots.has(sheet):
+		var spots: Array[Vector2i] = []
+		var image := sheet.get_image()
+		if image and image.get_height() >= frame * 6:
+			var ox := frame * 7
+			var oy := frame * 5
+			for y in range(4, frame - 4, 2):
+				for x in range(4, frame - 4, 2):
+					var inside := true
+					for d: Vector2i in [Vector2i(-4, 0), Vector2i(4, 0), Vector2i(0, -3), Vector2i(0, 4), Vector2i.ZERO]:
+						if image.get_pixel(ox + x + d.x, oy + y + d.y).a < 0.5:
+							inside = false
+							break
+					if inside:
+						spots.append(Vector2i(x, y))
+		_wound_spots[sheet] = spots
+	var spots: Array = _wound_spots[sheet]
+	if spots.is_empty():
+		return
+	var spot: Vector2i = spots[randi() % spots.size()]
+	var wound := HeartWound.new()
+	var centered := (sprite as AnimatedSprite2D).centered if sprite is AnimatedSprite2D else true
+	var offset := (sprite as AnimatedSprite2D).offset if sprite is AnimatedSprite2D else Vector2.ZERO
+	wound.position = Vector2(spot) - (Vector2(frame, frame) / 2.0 if centered else Vector2.ZERO) + offset
+	if sprite is AnimatedSprite2D and (sprite as AnimatedSprite2D).flip_h:
+		wound.position.x = -wound.position.x
+	sprite.add_child(wound)
+
+
+## The wound itself (see heart_wound).
+class HeartWound extends Node2D:
+	const SHAPE: Array[String] = [
+		".rr.rr.",
+		"rddrddr",
+		"rdddddr",
+		".rdddr.",
+		"..rdr..",
+		"...r...",
+	]
+	var _age := 0.0
+
+	func _ready() -> void:
+		z_index = 1
+		z_as_relative = true
+
+	func _process(delta: float) -> void:
+		_age += delta
+		if _age < 0.5:
+			queue_redraw()
+		# It goes as the body goes, when the body dissolves.
+		var body := get_parent() as CanvasItem
+		if body and body.material is ShaderMaterial:
+			var gone: Variant = (body.material as ShaderMaterial).get_shader_parameter("gone")
+			modulate.a = 1.0 - clampf(float(gone) if gone != null else 0.0, 0.0, 1.0)
+
+	func _draw() -> void:
+		var grow := clampf(_age / 0.3, 0.0, 1.0)
+		var rim := Color("8a1222")
+		var deep := Color("1a0508")
+		var wet := Color("c0283a")
+		for y in SHAPE.size():
+			for x in SHAPE[y].length():
+				var c := SHAPE[y][x]
+				if c == ".":
+					continue
+				# Opens from the middle out in its first moments.
+				if grow < 1.0 and absf(x - 3) + absf(y - 2) > grow * 6.0:
+					continue
+				draw_rect(Rect2(Vector2(x - 3, y - 3), Vector2.ONE), rim if c == "r" else deep)
+		draw_rect(Rect2(Vector2(-1, -2), Vector2.ONE), wet)
+		if grow >= 1.0:
+			# A drip running down from the point.
+			var drip := mini(int((_age - 0.3) * 10.0), 3)
+			for k in drip:
+				draw_rect(Rect2(Vector2(0, 3 + k), Vector2.ONE), rim)
+
+
 static func fall(enemy: Enemy, sprite: CanvasItem, look: ShaderMaterial, death_frames: float, tint: Color, done: Callable) -> void:
 	var style := death_of(enemy.enemy_id)
 	var visual := sprite.get_parent() as Node2D
@@ -284,12 +371,20 @@ static func fall(enemy: Enemy, sprite: CanvasItem, look: ShaderMaterial, death_f
 	if look:
 		look.set_shader_parameter("pattern", -1)
 	if style == "fall" or look == null:
-		# Let the collapse play, lie still a moment, then fade away.
-		tween.tween_interval(death_frames + 3.5)
+		# Let the collapse play; as it comes to rest a heart-shaped wound
+		# opens on its body; it lies still a moment, then fades away.
+		tween.tween_interval(death_frames * 0.6)
+		tween.tween_callback(func() -> void: heart_wound(sprite, EnemyDB.sheet(enemy.enemy_id)))
+		tween.tween_interval(death_frames * 0.4 + 3.5)
 		tween.tween_property(enemy, "modulate:a", 0.0, 1.2)
 		tween.tween_callback(done)
 		return
 	var how: Array = STYLE[style]
+	# Flesh and bone take the heart-shaped wound too, before they come apart.
+	if style in ["crumble", "bones", "shatter"]:
+		var mark := enemy.create_tween()
+		mark.tween_interval(death_frames * 0.5)
+		mark.tween_callback(func() -> void: heart_wound(sprite, EnemyDB.sheet(enemy.enemy_id)))
 	var colours := colours_of(EnemyDB.sheet(enemy.enemy_id))
 	var parent := enemy.get_parent()
 	var at := enemy.global_position

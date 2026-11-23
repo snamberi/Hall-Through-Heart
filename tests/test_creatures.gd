@@ -125,3 +125,23 @@ func test_creatures_swim_and_keep_their_distance(t: TestContext) -> void:
 	# Chases end, flight is rare, shields are rarer.
 	t.check(Enemy.shield_chance() <= 0.075, "one monster in twenty comes shielded (%.3f)" % Enemy.shield_chance())
 	t.check(Enemy.CHASE_PATIENCE[Enemy.Rank.NORMAL] < 15.0, "a common monster soon tires of a chase")
+
+
+func test_new_beasts_and_wolf_packs(t: TestContext) -> void:
+	var beasts := ["elk", "badger", "hedgehog", "moonstag", "snow_leopard", "musk_ox", "ice_bear", "frostmane", "camel", "sand_cat",
+		"jackal", "sunscale_basilisk", "river_otter", "moss_tortoise", "swamp_boar", "sporeback_deer", "cinder_hound", "ember_salamander",
+		"thornback_boar", "crimson_lynx", "void_prowler", "void_hare", "salt_antelope", "mountain_ram", "dawn_unicorn"]
+	t.equal(beasts.size(), 25, "twenty-five new creatures")
+	for id: String in beasts:
+		t.check(EnemyDB.ENEMIES.has(id), "%s lives in the world" % id)
+		t.check(ResourceLoader.exists("res://assets/sprites/enemies/%s.png" % id), "%s has its own art" % id)
+		t.check(ItemDB.LOOT_TABLES.has(id), "%s leaves something behind" % id)
+	var main := await t.game()
+	var spawner = main.get_node("Enemies")
+	var before := main.get_tree().get_nodes_in_group("enemies").size()
+	spawner.spawn_at(Vector2(4000, 4000), 3, Enemy.Rank.NORMAL, "grey_wolf")
+	spawner._spawn_pack("grey_wolf", Vector2(4000, 4000), 3)
+	await main.get_tree().process_frame
+	var wolves := main.get_tree().get_nodes_in_group("enemies").filter(func(e: Node) -> bool: return (e as Enemy).enemy_id in ["grey_wolf", "alpha_wolf"])
+	t.check(wolves.size() >= 2 and wolves.size() <= 6, "wolves come as a pack of up to six (%d)" % wolves.size())
+	t.check(wolves.any(func(e: Node) -> bool: return (e as Enemy).enemy_id == "alpha_wolf"), "led by an alpha")

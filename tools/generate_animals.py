@@ -86,7 +86,11 @@ def main():
     table = sizes()
     out = os.path.join(GA.ROOT, "sprites", "enemies")
     drawn = []
+    import generate_beasts
     for name, (rig, order, animations) in GA.WILDLIFE.items():
+        # The four-legged ones are drawn pixel by pixel by generate_beasts.py.
+        if name in generate_beasts.SPECIES:
+            continue
         size = table.get(name, 1.0)
         big, scale = improved(name, rig, size)
         anims = [(n, [dict(p, shadow=(22, round(p.get("shadow", (22, 9))[1] * scale), 0)) for p in poses]) for n, poses in animations]

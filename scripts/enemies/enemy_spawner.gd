@@ -142,11 +142,32 @@ func _try_spawn() -> void:
 			_spawn_named(named, _world.cell_to_world(cell), level + 2)
 			return
 	var enemy := spawn_at(_world.cell_to_world(cell), level, rank, enemy_id)
+	if enemy:
+		_spawn_pack(enemy_id, _world.cell_to_world(cell), level)
 	# Where much magic was cast, the air still hums, and monsters born there
 	# hear the player from further off.
 	var memory: WorldMemory = get_parent().get_node_or_null("WorldMemory")
 	if memory and enemy:
 		enemy.senses = memory.harmonics(cell)
+
+
+## Wolves run in packs of three to six, led by a white or grey alpha;
+## jackals and frostmanes hunt in twos and threes more.
+const PACKS := {"grey_wolf": [3, 6, "alpha_wolf"], "jackal": [2, 4, ""], "frostmane": [2, 3, ""]}
+
+
+func _spawn_pack(enemy_id: String, at: Vector2, level: int) -> void:
+	if not PACKS.has(enemy_id):
+		return
+	var pack: Array = PACKS[enemy_id]
+	var more := randi_range(int(pack[0]), int(pack[1])) - 1
+	if str(pack[2]) != "":
+		spawn_at(at + Vector2(randf_range(-36.0, 36.0), randf_range(-30.0, 30.0)), level + 1, Enemy.Rank.NORMAL, str(pack[2]))
+		more -= 1
+	for k in maxi(more, 0):
+		var spot := at + Vector2.from_angle(randf() * TAU) * randf_range(34.0, 80.0)
+		if _world.generator.is_dry_land(_world.world_to_cell(spot)):
+			spawn_at(spot, level, Enemy.Rank.NORMAL, enemy_id)
 
 
 ## Monsters are drawn to places where much blood has been spilled.
