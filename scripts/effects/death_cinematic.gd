@@ -88,6 +88,121 @@ func play_rebirth(player: Player) -> void:
 	_rect.visible = false
 
 
+## A boss steps in: black bars slide over the top and bottom of the
+## screen, time slows, the camera glides to the boss and holds while its
+## name is set out on a card, then everything returns to the player.
+## Once per boss each time it is fought.
+var _bars: Array[ColorRect] = []
+var _card: Label
+var _sub: Label
+var _busy := false
+
+
+func play_boss_intro(player: Player, boss: Node2D, title: String, words: String) -> void:
+	if _busy or player == null or not is_instance_valid(boss):
+		return
+	_busy = true
+	_ensure_bars()
+	var camera := player.camera
+	var home := camera.offset
+	var toward := (boss.global_position - player.global_position).limit_length(320.0)
+	Engine.time_scale = 0.4
+	var show := _tween().set_parallel()
+	for k in 2:
+		var bar := _bars[k]
+		bar.visible = true
+		var shut := -bar.size.y if k == 0 else get_viewport().get_visible_rect().size.y
+		var open := 0.0 if k == 0 else get_viewport().get_visible_rect().size.y - bar.size.y
+		bar.position.y = shut
+		show.tween_property(bar, "position:y", open, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	show.tween_property(camera, "offset", home + toward, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await show.finished
+	_card.text = title.to_upper()
+	_sub.text = words
+	_card.visible = true
+	_sub.visible = true
+	_card.modulate.a = 0.0
+	_sub.modulate.a = 0.0
+	var words_in := _tween().set_parallel()
+	words_in.tween_property(_card, "modulate:a", 1.0, 0.35)
+	words_in.tween_property(_sub, "modulate:a", 1.0, 0.6)
+	Audio.play("level_up", -4.0, 0.0)
+	await _real_seconds(1.5)
+	var back := _tween().set_parallel()
+	back.tween_property(camera, "offset", home, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	back.tween_property(_card, "modulate:a", 0.0, 0.4)
+	back.tween_property(_sub, "modulate:a", 0.0, 0.4)
+	for k in 2:
+		var bar := _bars[k]
+		back.tween_property(bar, "position:y", -bar.size.y if k == 0 else get_viewport().get_visible_rect().size.y, 0.5)
+	Engine.time_scale = 1.0
+	await back.finished
+	for bar in _bars:
+		bar.visible = false
+	_card.visible = false
+	_sub.visible = false
+	_busy = false
+
+
+## A boss falls: a beat of slow time and its end set out on the card.
+func play_boss_fall(title: String) -> void:
+	if _busy:
+		return
+	_busy = true
+	_ensure_bars()
+	Engine.time_scale = 0.3
+	_card.text = "VANQUISHED"
+	_sub.text = title
+	_card.visible = true
+	_sub.visible = true
+	_card.modulate.a = 1.0
+	_sub.modulate.a = 1.0
+	await _real_seconds(0.9)
+	Engine.time_scale = 1.0
+	var out := _tween().set_parallel()
+	out.tween_property(_card, "modulate:a", 0.0, 0.8)
+	out.tween_property(_sub, "modulate:a", 0.0, 0.8)
+	await out.finished
+	_card.visible = false
+	_sub.visible = false
+	_busy = false
+
+
+func _ensure_bars() -> void:
+	if not _bars.is_empty():
+		return
+	var view := get_viewport().get_visible_rect().size
+	for k in 2:
+		var bar := ColorRect.new()
+		bar.color = Color(0.0, 0.0, 0.0, 0.92)
+		bar.size = Vector2(view.x, roundf(view.y * 0.11))
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.visible = false
+		add_child(bar)
+		_bars.append(bar)
+	_card = Label.new()
+	_card.add_theme_font_override("font", UITheme.bold())
+	_card.add_theme_font_size_override("font_size", 40)
+	_card.add_theme_color_override("font_color", Color(0.96, 0.82, 0.5))
+	_card.add_theme_color_override("font_outline_color", Color(0.1, 0.02, 0.03))
+	_card.add_theme_constant_override("outline_size", 10)
+	_card.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_card.size = Vector2(view.x, 56)
+	_card.position = Vector2(0, view.y * 0.62)
+	_card.visible = false
+	add_child(_card)
+	_sub = Label.new()
+	_sub.add_theme_font_size_override("font_size", 17)
+	_sub.add_theme_color_override("font_color", Color(0.85, 0.8, 0.86))
+	_sub.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	_sub.add_theme_constant_override("outline_size", 6)
+	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_sub.size = Vector2(view.x, 28)
+	_sub.position = Vector2(0, view.y * 0.62 + 54)
+	_sub.visible = false
+	add_child(_sub)
+
+
 func _set_effect(value: float, parameter: String) -> void:
 	_material.set_shader_parameter(parameter, value)
 

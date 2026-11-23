@@ -16,7 +16,7 @@ extends Node2D
 ## Loaded by path, so a game whose script cache predates these still runs.
 const SharedWorld := preload("res://scripts/net/net_world.gd")
 
-const SHEET: Texture2D = preload("res://assets/effects/projectiles.png")
+const BOLT_ART := preload("res://scripts/effects/bolt_art.gd")
 
 var _player: Player
 var _direction := Vector2.RIGHT
@@ -42,7 +42,6 @@ static func fire(player: Player, direction: Vector2, config: Dictionary, multipl
 	projectile._config = config
 	projectile._multiplier = multiplier
 	projectile.position = player.global_position + Vector2(0, -14) + direction * 18.0
-	projectile.rotation = direction.angle()
 	projectile.z_index = 30
 	player.get_parent().add_child(projectile)
 	if SharedWorld.current:
@@ -57,17 +56,16 @@ static func fire_copy(parent: Node, at: Vector2, direction: Vector2, config: Dic
 	projectile._direction = direction
 	projectile._config = config
 	projectile.position = at
-	projectile.rotation = direction.angle()
 	projectile.z_index = 30
 	parent.add_child(projectile)
 
 
 func _ready() -> void:
-	var sprite := Sprite2D.new()
-	sprite.texture = SHEET
-	sprite.hframes = 4
-	sprite.frame = _config["sprite"]
-	add_child(sprite)
+	# Drawn in whole pixels along its flight, never a turned picture.
+	var art: Node2D = BOLT_ART.new()
+	art.kind = int(_config.get("sprite", 0))
+	art.direction = _direction
+	add_child(art)
 
 
 func _physics_process(delta: float) -> void:

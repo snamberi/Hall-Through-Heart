@@ -300,6 +300,16 @@ func _ready() -> void:
 	_player.died.connect(_on_player_died)
 	# Before a boss fight, a save: dying in it never costs the walk there.
 	Events.boss_engaged.connect(func(_boss: Node) -> void: SaveGame.request_save())
+	# Bosses arrive and fall as moments: bars, slow time, a name on a card.
+	Events.boss_engaged.connect(func(boss: Node) -> void:
+		var enemy := boss as Enemy
+		if enemy == null:
+			return
+		var title := str(BossDB.BOSSES[enemy.boss_id]["name"]) if BossDB.BOSSES.has(enemy.boss_id) else str(EnemyDB.ENEMIES.get(enemy.enemy_id, {}).get("name", "A great foe"))
+		var words := str(Codex.LORE.get(enemy.enemy_id, "It has waited for you."))
+		_cinematic.play_boss_intro(_player, enemy, title, words))
+	Events.boss_defeated.connect(func(boss_id: String) -> void:
+		_cinematic.play_boss_fall(str(BossDB.BOSSES[boss_id]["name"]) if BossDB.BOSSES.has(boss_id) else boss_id.capitalize()))
 
 
 func save_data() -> Dictionary:

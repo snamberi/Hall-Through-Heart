@@ -6,7 +6,7 @@ extends Node2D
 ## Loaded by path, so a game whose script cache predates these still runs.
 const SharedWorld := preload("res://scripts/net/net_world.gd")
 
-const SHEET: Texture2D = preload("res://assets/effects/projectiles.png")
+const BOLT_ART := preload("res://scripts/effects/bolt_art.gd")
 const RANGE := 620.0
 
 var _target: Player
@@ -57,14 +57,13 @@ static func fire_copy(parent: Node, at: Vector2, direction: Vector2, target: Pla
 
 
 func _dress(frame: int, color: Color) -> void:
-	rotation = _direction.angle()
 	z_index = 30
-	var sprite := Sprite2D.new()
-	sprite.texture = SHEET
-	sprite.hframes = 4
-	sprite.frame = frame
-	sprite.modulate = color
-	add_child(sprite)
+	# Drawn in whole pixels along its flight, in the monster's own colour.
+	var art: Node2D = BOLT_ART.new()
+	art.kind = frame
+	art.direction = _direction
+	art.tint = color
+	add_child(art)
 
 
 func _physics_process(delta: float) -> void:

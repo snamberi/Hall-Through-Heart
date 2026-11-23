@@ -9,6 +9,11 @@ extends CharacterBody2D
 ## Loaded by path, so a game whose script cache predates these still runs.
 const SharedWorld := preload("res://scripts/net/net_world.gd")
 const Look := preload("res://scripts/enemies/monster_look.gd")
+const XP_MOTES := preload("res://scripts/effects/xp_motes.gd")
+## Each attack's own look as it lands (see AbilityFX).
+const FX := preload("res://scripts/effects/ability_fx.gd")
+## What each kind of area attack looks like where it lands.
+const BLAST_LOOKS := {"slam": "earth", "burrow": "earth", "explode": "flame", "cloud": "grave", "spin": "wind", "pounce": "roar"}
 
 signal died(enemy: Enemy)
 
@@ -983,6 +988,10 @@ func _in_attack_range(distance: float) -> bool:
 func _strike(has_target: bool) -> void:
 	match _attack["kind"]:
 		"lunge", "charge", "swoop":
+			# Off it goes: dust kicked up behind, the air torn in front.
+			var dust: Array[Color] = [Color(0.55, 0.48, 0.38), Color(0.42, 0.36, 0.28)]
+			Debris.spawn(get_parent(), global_position - _direction * 10.0, dust, 6 if _attack["kind"] == "charge" else 3)
+			FX.play(get_parent(), global_position + _direction * 14.0, "wind", "burst", _attack.get("color", Color(1.0, 0.95, 0.85)), 26.0)
 			_enter(State.LUNGE, _attack.get("time", lunge_time))
 		"swipe", "thrust":
 			_swipe(_attack.get("arc", 110.0))
@@ -1017,9 +1026,12 @@ func _strike(has_target: bool) -> void:
 			_enter(State.RECOVER, _attack["recover"])
 		"spin":
 			_blast()
+			# Whirling round: turned this way and that, a mirror at a time
+			# (never rotated, so its pixels stay square).
 			var spin := create_tween()
-			spin.tween_property(_visual, "rotation", TAU, 0.3)
-			spin.tween_callback(func() -> void: _visual.rotation = 0.0)
+			for k in 4:
+				spin.tween_callback(func() -> void: _visual.scale.x = -_visual.scale.x)
+				spin.tween_interval(0.075)
 			_enter(State.RECOVER, _attack["recover"])
 		"burrow":
 			_visual.modulate.a = 1.0
@@ -1070,6 +1082,7 @@ func _blast(radius: float = -1.0) -> void:
 		radius = _attack["radius"]
 	var color: Color = _attack.get("color", Color(1.0, 0.6, 0.3))
 	RingBurst.spawn(get_parent(), global_position, color, radius)
+	FX.play(get_parent(), global_position, BLAST_LOOKS.get(_attack["kind"], "earth"), "burst", color, radius)
 	HitSpark.spawn(get_parent(), global_position + Vector2(0, -10), color, true)
 	if SharedWorld.current:
 		SharedWorld.current.share_strike(self, {"k": "blast", "r": radius, "c": color})
@@ -1651,9 +1664,8 @@ func _on_died() -> void:
 	# whoever struck last, in their own game.
 	var ours := SharedWorld.current.enemy_fell(self, info) if SharedWorld.current and net_id != 0 else true
 	if ours:
-		DamageNumber.spawn_text(
-			get_parent(), global_position + Vector2(0, -24), "+%d XP" % xp, Color(0.45, 0.7, 1.0), 12
-		)
+		# The experience streams to the killer as sparks of gold.
+		XP_MOTES.burst(get_parent(), global_position, target if target else null, xp)
 	died.emit(self)
 	_witnessed()
 	if fleeing:

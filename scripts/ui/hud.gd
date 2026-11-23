@@ -42,6 +42,7 @@ func setup(player: Player) -> void:
 		return player.mana.current / player.mana.max_value, func() -> String:
 		return "%d / %d" % [roundi(player.mana.current), roundi(player.mana.max_value)], "MP")
 	# Experience: named, with the numbers beside the slim bar.
+	Events.xp_gained.connect(func(_amount: int, _source: String) -> void: _xp_flash = 0.45)
 	_xp_text = Control.new()
 	_xp_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_xp_text.position = Vector2(4.0, 112.0)
@@ -270,6 +271,7 @@ func _show_banner(title: String, detail: String) -> void:
 
 
 func _process(_delta: float) -> void:
+	_flash_xp(_delta)
 	_place_bars()
 	if Input.is_action_just_pressed("build_mode") and not get_tree().paused and not _player.is_dead():
 		_palette.toggle()
@@ -491,3 +493,15 @@ func _portrait(id: String) -> Texture2D:
 		face = atlas
 	_portraits[id] = face
 	return face
+
+
+## The experience bar flashes bright as experience comes in.
+var _xp_flash := 0.0
+
+
+func _flash_xp(delta: float) -> void:
+	if _xp_flash <= 0.0:
+		return
+	_xp_flash = maxf(_xp_flash - delta, 0.0)
+	var glow := 1.0 + _xp_flash * 1.6
+	_xp_bar.modulate = Color(glow, glow, glow * 0.9)
