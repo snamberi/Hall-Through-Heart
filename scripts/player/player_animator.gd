@@ -238,7 +238,9 @@ func _process(delta: float) -> void:
 	# the water line is drawn over the body.
 	_water.visible = _player.swimming
 	if _player.swimming:
-		var sink := 19.0 if _player.deep_water else 13.0
+		# Deep water takes a little more of the body, never the head: the
+		# face and chin always stay above the surface.
+		var sink := 7.0 if _player.deep_water else 4.0
 		var bob := sin(Time.get_ticks_msec() / 220.0) * 1.5
 		position.y = _rest_y + sink + bob
 		# The waterline sits a little below the shoulders whatever the depth;

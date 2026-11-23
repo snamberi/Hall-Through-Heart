@@ -76,9 +76,18 @@ func dismiss_all() -> void:
 	minions.clear()
 
 
-## One summoned creature.
+## Summons stand on their own physics layer (4): solid to walls, to
+## monsters and to one another, never to the player.
+const LAYER := 8
+const BODY_RADIUS := 9.0
+## How close two summons may stand before they step apart.
+const ELBOW_ROOM := 30.0
+
+
+## One summoned creature: a body of its own, so it is stopped by walls and
+## monsters and never stands where another stands.
 class Minion:
-	extends Node2D
+	extends CharacterBody2D
 
 	var kind := "zombie"
 	var life := Summons.LIFETIME
@@ -101,6 +110,14 @@ class Minion:
 
 	func _ready() -> void:
 		add_to_group("summons")
+		collision_layer = Summons.LAYER
+		collision_mask = TerrainTiles.WALL_COLLISION | Summons.LAYER | 4
+		motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
+		var shape := CollisionShape2D.new()
+		var circle := CircleShape2D.new()
+		circle.radius = Summons.BODY_RADIUS
+		shape.shape = circle
+		add_child(shape)
 		_sprite = AnimatedSprite2D.new()
 		_sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet(str(_data["species"])), 96, EnemyAnimator.ROWS)
 		_sprite.modulate = _data["tint"]
@@ -145,9 +162,13 @@ class Minion:
 			var keep := reach * 0.75 if _data["ranged"] else _target.body_radius + 16.0
 			goal = _target.global_position + (away.normalized() if away.length() > 1.0 else Vector2.RIGHT) * keep
 		var way := goal - global_position
+		var push := _elbow_room()
+		velocity = push * float(_data["speed"]) * 0.8
 		if way.length() > 6.0:
-			global_position += way.normalized() * minf(way.length(), float(_data["speed"]) * delta)
+			velocity += way.normalized() * minf(way.length() / maxf(delta, 0.001), float(_data["speed"]))
 			_sprite.flip_h = way.x < 0.0
+		move_and_slide()
+		if velocity.length() > 20.0:
 			if _sprite.animation != "walk" and _sprite.sprite_frames.has_animation("walk"):
 				_sprite.play("walk")
 		elif _sprite.animation != "idle":
@@ -166,6 +187,18 @@ class Minion:
 				_target.take_damage(_summons.damage_of(kind), (_target.global_position - global_position).normalized() * 120.0)
 				HitSpark.spawn(get_parent(), _target.global_position + Vector2(0, -16), _data["tint"], false)
 		queue_redraw()
+
+	## A step away from any other summon standing too close.
+	func _elbow_room() -> Vector2:
+		var push := Vector2.ZERO
+		for node in get_tree().get_nodes_in_group("summons"):
+			if node == self or not node is Node2D:
+				continue
+			var away := global_position - (node as Node2D).global_position
+			var gap := away.length()
+			if gap < Summons.ELBOW_ROOM:
+				push += (away / maxf(gap, 0.5) if gap > 0.5 else Vector2.from_angle(randf() * TAU)) * (1.0 - gap / Summons.ELBOW_ROOM)
+		return push.limit_length(1.0)
 
 	func _pick_target(player: Player) -> Enemy:
 		var best: Enemy = null

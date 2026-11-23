@@ -88,3 +88,40 @@ func test_riders_legs_are_drawn_on_their_mounts(t: TestContext) -> void:
 			if found:
 				break
 		t.check(found, "%s carries the rider's leg" % id)
+
+
+func test_creatures_swim_and_keep_their_distance(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	# Summons are bodies: raised on one spot, they step apart.
+	var summons: Summons = player.get_node("Summons")
+	summons.dismiss_all()
+	await t.frames(1)
+	summons.summon({"kind": "zombie", "count": 4, "limit": 4}, Color.WHITE)
+	var raised: Array = summons.minions.filter(func(m: Variant) -> bool: return is_instance_valid(m))
+	for minion: Summons.Minion in raised:
+		minion.global_position = player.global_position + Vector2(80, 0) + Vector2(randf(), randf())
+		minion._rise = 1.0
+	for step in 40:
+		await t.tree.physics_frame
+	var closest := INF
+	for a: Summons.Minion in raised:
+		for b: Summons.Minion in raised:
+			if a != b:
+				closest = minf(closest, a.global_position.distance_to(b.global_position))
+	t.check(closest > 12.0, "no two summons stand in one place (closest %.0f)" % closest)
+	t.check((raised[0] as Summons.Minion).collision_mask & TerrainTiles.WALL_COLLISION != 0, "and walls stop them")
+	summons.dismiss_all()
+	# Monsters swim: sunk to the middle, the body below the surface cut away.
+	var spawner: EnemySpawner = main.get_node("Enemies")
+	var husk := spawner.spawn_at(player.global_position + Vector2(300, 300), 3, Enemy.Rank.NORMAL, "husk")
+	await t.frames(2)
+	husk._swim(true, true)
+	var line: float = (husk._look as ShaderMaterial).get_shader_parameter("water_line")
+	t.check(line < 9000.0 and husk._visual.position.y > 0.0, "a monster in deep water is half under it")
+	husk._swim(false, false)
+	t.equal(husk._visual.position.y, 0.0, "and climbs out whole")
+	husk.queue_free()
+	# Chases end, flight is rare, shields are rarer.
+	t.check(Enemy.shield_chance() <= 0.075, "one monster in twenty comes shielded (%.3f)" % Enemy.shield_chance())
+	t.check(Enemy.CHASE_PATIENCE[Enemy.Rank.NORMAL] < 15.0, "a common monster soon tires of a chase")

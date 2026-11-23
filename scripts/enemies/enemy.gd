@@ -236,10 +236,14 @@ func _ready() -> void:
 		display_name = custom_name
 	var rolls: int = RANK_DATA[rank]["modifiers"]
 	if modifiers.is_empty() and rolls > 0 and not is_fragment:
-		var pool: Array = MODIFIERS.keys()
+		# A shield is its own, rarer roll (below), never one of these.
+		var pool: Array = MODIFIERS.keys().filter(func(id: String) -> bool: return id != "shielded")
 		pool.shuffle()
 		for index in rolls:
 			modifiers.append(pool[index])
+	if not is_fragment and boss_id == "" and not EnemyDB.ENEMIES.get(enemy_id, {}).has("wild") and not "shielded" in modifiers \
+			and randf() < shield_chance():
+		modifiers.append("shielded")
 	for extra in extra_modifiers:
 		if not extra in modifiers and not EnemyDB.ENEMIES.get(enemy_id, {}).has("wild"):
 			modifiers.append(extra)
@@ -368,8 +372,11 @@ func _physics_process(delta: float) -> void:
 	match state:
 		State.WANDER:
 			velocity = _direction * _speed * 0.4 * _ground_speed
-			if has_target and distance < AGGRO_RADIUS * senses and (not Difficulty.monsters_passive() or _since_hurt < 30.0) and not target.buffs.has("night_veil") and not _at_peace():
+			_gave_up_left = maxf(_gave_up_left - delta, 0.0)
+			if has_target and distance < AGGRO_RADIUS * senses and (not Difficulty.monsters_passive() or _since_hurt < 30.0) and not target.buffs.has("night_veil") and not _at_peace() \
+					and (_gave_up_left == 0.0 or _since_hurt < 0.5):
 				state = State.CHASE
+				_chase_time = 0.0
 				if not _analysed:
 					_analysed = true
 					Voices.analyse(self)
@@ -388,9 +395,17 @@ func _physics_process(delta: float) -> void:
 				_direction = global_position.direction_to(lair_home)
 				_state_time_left = 2.5
 			elif _in_attack_range(distance):
+				_chase_time = 0.0
 				_enter(State.WINDUP, windup_time)
 				velocity = Vector2.ZERO
 				_visual.modulate = Color(1.8, 0.5, 0.5)
+			elif _tired_of_chasing(delta):
+				# Run long enough and it gives up, unless struck again.
+				_pick_wander()
+				_direction = -to_target.normalized()
+				_state_time_left = 2.0
+				_gave_up_left = 8.0
+				DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -14), "Gives up", Color(0.8, 0.8, 0.72), 11)
 			else:
 				velocity = _chase_velocity(to_target, distance, delta) * _ground_speed
 				_avoid_getting_stuck(delta)
@@ -1195,12 +1210,31 @@ func _read_ground(delta: float) -> void:
 	# Rooms off the map are far above the world; their ground is never water.
 	if world == null or _data.get("flying", false) or Room.holds(global_position):
 		_ground_speed = 1.0
+		if in_water:
+			_swim(false, false)
 		in_water = false
 		return
 	var tile := world.tile_type_at_position(global_position)
 	in_water = TerrainTiles.is_water(tile)
 	_ground_speed = 0.55 if in_water else 1.0
-	_visual.position.y = 10.0 if in_water else 0.0
+	_swim(in_water, tile == TerrainTiles.Type.DEEP_WATER)
+
+
+## Swims rather than walks on water: sunk to its middle with the body below
+## the surface hidden, a wake round it.
+var _wake: Node2D
+
+
+func _swim(swimming: bool, deep: bool) -> void:
+	var sink := Look.wade(_look, _animator.sheet, swimming, deep)
+	_visual.position.y = roundf(sink * absf(_visual.scale.y))
+	if swimming and _wake == null:
+		_wake = Look.Wake.new()
+		_wake.width = clampf(body_radius * 2.2, 14.0, 90.0)
+		_wake.z_index = 1
+		add_child(_wake)
+	if _wake:
+		_wake.visible = swimming
 
 
 ## If chasing has not moved the enemy for a while, it heads off sideways
@@ -1324,12 +1358,37 @@ func _witnessed() -> void:
 
 
 ## A badly hurt monster of a faction may run for it, to carry word home.
+## Seconds a monster keeps running after you without landing or taking a
+## blow, by rank; bosses and their like never tire.
+const CHASE_PATIENCE := {Rank.NORMAL: 9.0, Rank.ELITE: 13.0, Rank.CHAMPION: 18.0}
+var _chase_time := 0.0
+## After giving up, a while before it takes up the chase again (a blow
+## brings it straight back).
+var _gave_up_left := 0.0
+
+
+func _tired_of_chasing(delta: float) -> bool:
+	if _since_hurt < 0.3:
+		_chase_time = 0.0
+	if not CHASE_PATIENCE.has(rank) or boss_id != "" or named_id != "" or lair_home != Vector2.INF or brain != null:
+		return false
+	_chase_time += delta
+	return _chase_time > float(CHASE_PATIENCE[rank])
+
+
+## How likely a monster is to come with a shield: one in twenty, a little
+## more on Insane.
+static func shield_chance() -> float:
+	return 0.075 if Difficulty.current == "insane" else 0.05
+
+
 func _maybe_flee() -> void:
 	if _flee_checked or fleeing or faction == "" or rank >= Rank.MINIBOSS or boss_id != "" or is_fragment \
 			or lair_home != Vector2.INF or health.current > health.max_health * 0.25:
 		return
 	_flee_checked = true
-	if randf() < 0.45:
+	# Only one in four turns tail when badly hurt.
+	if randf() < 0.25:
 		fleeing = true
 		state = State.CHASE
 		_visual.modulate = _tint

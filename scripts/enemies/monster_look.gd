@@ -50,9 +50,13 @@ uniform float frame_px = 96.0;
 // The sprite's own colour and fade (modulate), from the vertex: in the
 // fragment COLOR already holds the texture too.
 varying vec4 tint;
+// Swimming: everything below this line (sprite pixels) is under water.
+uniform float water_line = 9999.0;
+varying float local_y;
 
 void vertex() {
 	tint = COLOR;
+	local_y = VERTEX.y;
 }
 
 float hash(vec2 p) {
@@ -126,6 +130,9 @@ void fragment() {
 			}
 		}
 	}
+	if (local_y > water_line) {
+		COLOR.a = 0.0;
+	}
 }
 """
 
@@ -154,6 +161,72 @@ static func dress(enemy: Enemy, sprite: CanvasItem) -> ShaderMaterial:
 		look.set_shader_parameter("pattern", data[2])
 	sprite.material = look
 	return look
+
+
+## sheet -> Vector2(top, bottom) of the body in the first frame, in the
+## sprite's own (centred) pixels.
+static var _rows: Dictionary = {}
+
+
+static func body_rows(sheet: Texture2D, frame: int = 96) -> Vector2:
+	if sheet == null:
+		return Vector2(-24, 24)
+	if _rows.has(sheet):
+		return _rows[sheet]
+	var image := sheet.get_image()
+	if image.is_compressed():
+		image.decompress()
+	var top := frame
+	var bottom := 0
+	for y in mini(frame, image.get_height()):
+		for x in range(0, mini(frame, image.get_width()), 2):
+			if image.get_pixel(x, y).a > 0.5:
+				top = mini(top, y)
+				bottom = maxi(bottom, y)
+				break
+	var rows := Vector2(top - frame / 2.0, bottom - frame / 2.0) if bottom > top else Vector2(-24, 24)
+	_rows[sheet] = rows
+	return rows
+
+
+## In the water up to its middle (deeper water, a little more): the body
+## below the surface is cut away and the creature sinks so the surface lies
+## where its feet were. Returns how far the picture sinks, in its own pixels.
+static func wade(look: ShaderMaterial, sheet: Texture2D, in_water: bool, deep: bool) -> float:
+	if look == null:
+		return 0.0
+	if not in_water:
+		look.set_shader_parameter("water_line", 9999.0)
+		return 0.0
+	var rows := body_rows(sheet)
+	var line := rows.x + (rows.y - rows.x) * (0.5 if deep else 0.62)
+	look.set_shader_parameter("water_line", line)
+	return rows.y - line
+
+
+## The wake round a swimming creature: rings spreading on the water and a
+## glinting line of surface across its body.
+class Wake:
+	extends Node2D
+	var width := 20.0
+
+	func _process(_delta: float) -> void:
+		if visible:
+			queue_redraw()
+
+	func _draw() -> void:
+		var t := Time.get_ticks_msec() / 1000.0
+		var half := roundf(width * 0.5)
+		var surface := PackedVector2Array()
+		for i in 7:
+			var x := -half + i * width / 6.0
+			surface.append(Vector2(roundf(x), roundf(sin(t * 5.0 + i * 0.9))))
+		draw_polyline(surface, Color(0.8, 0.92, 1.0, 0.75), 1.5)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.32))
+		for k in 2:
+			var phase := fposmod(t * 0.9 + k * 0.5, 1.0)
+			draw_arc(Vector2.ZERO, half + 2.0 + phase * 8.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.45 * (1.0 - phase)), 1.5)
+		draw_set_transform(Vector2.ZERO)
 
 
 static func death_of(enemy_id: String) -> String:
