@@ -76,8 +76,12 @@ func add(activity: String, amount: float) -> void:
 		var data: Dictionary = DB.TRINKETS[item.id]
 		if data["activity"] != activity or item.trinket_level >= DB.MAX_LEVEL:
 			continue
+		var before := item.trinket_progress
 		item.trinket_progress += amount
 		var need := DB.goal(item.id, item.trinket_level)
+		# Halfway there: a quiet word, once per level.
+		if need > 0 and before < need * 0.5 and item.trinket_progress >= need * 0.5 and item.trinket_progress < need:
+			DamageNumber.spawn_text(_player.get_parent(), _player.global_position + Vector2(0, -56), "%s: halfway to level %d" % [DB.TRINKETS[item.id]["name"], item.trinket_level + 1], UITheme.GOLD, 13)
 		if need > 0 and item.trinket_progress >= need:
 			raise(item)
 

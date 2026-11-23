@@ -35,7 +35,14 @@ func _build() -> void:
 
 func refresh() -> void:
 	var meta := SaveGame.get_section("meta")
-	(content.get_node("World") as Label).text = "%s  ·  %s" % [meta.get("name", "World"), Difficulty.display_name()]
+	var played := SaveGame.play_seconds()
+	var clock := ""
+	var day_night := get_tree().root.find_child("DayNight", true, false)
+	if day_night:
+		var hours := fposmod(float(day_night.time) * 24.0, 24.0)
+		clock = "  ·  Day %d, %02d:%02d" % [int(day_night.day), int(hours), int(fmod(hours, 1.0) * 60.0)]
+	(content.get_node("World") as Label).text = "%s  ·  %s%s\nPlayed %d h %02d min  ·  Seed %s" % [meta.get("name", "World"), Difficulty.display_name(), clock,
+		played / 3600, (played / 60) % 60, str(SaveGame.get_section("world").get("seed", "?"))]
 	_show_saved()
 	(content.find_child("Resume", true, false) as Button).grab_focus.call_deferred()
 

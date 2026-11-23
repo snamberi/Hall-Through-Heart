@@ -90,10 +90,12 @@ const REBINDABLE: Array[Array] = [
 	["photo_mode", "Photo mode (hide the interface)"], ["mark_junk", "Mark hovered item as junk"], ["lock_item", "Lock hovered item"],
 	["release_aura", "Release your aura (scares weaker monsters)"], ["open_system", "Open the System window"], ["shadow_swap", "Swap places with a shadow"], ["raise_shadow", "Raise a fallen foe as a shadow"],
 	["open_chat", "Chat (in a shared game)"],
+	["auto_run", "Auto-run (walk on until you steer or stop)"], ["craft_again", "Craft the last recipe again"],
+	["hotbar_back", "Back to the hotbar slot used before"],
 ]
 ## Actions the game adds itself when it starts (not in the project file):
 ## action -> default physical key (KEY_NONE for pad-only actions).
-const EXTRA_ACTIONS := {"toggle_flight": KEY_T, "open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L, "photo_mode": KEY_F10, "mark_junk": KEY_DELETE, "lock_item": KEY_K, "release_aura": KEY_U, "open_system": KEY_P, "shadow_swap": KEY_Y, "raise_shadow": KEY_E, "open_chat": KEY_ENTER}
+const EXTRA_ACTIONS := {"toggle_flight": KEY_T, "open_inventory": KEY_I, "open_quests": KEY_J, "open_map": KEY_N, "hotbar_prev": KEY_NONE, "hotbar_next": KEY_NONE, "loadout_next": KEY_L, "photo_mode": KEY_F10, "mark_junk": KEY_DELETE, "lock_item": KEY_K, "release_aura": KEY_U, "open_system": KEY_P, "shadow_swap": KEY_Y, "raise_shadow": KEY_E, "open_chat": KEY_ENTER, "auto_run": KEY_O, "craft_again": KEY_PERIOD, "hotbar_back": KEY_COMMA}
 ## Gamepad layout, kept alongside whatever keys are bound: action ->
 ## [JOY_BUTTON_*] or ["axis", JOY_AXIS_*, direction].
 const PAD := {

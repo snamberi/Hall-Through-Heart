@@ -23,6 +23,8 @@ var _message: Label
 var _tip: ItemTooltip
 ## The selected line: {"item", "price", "selling": bool, "entry": stock entry or {}, "back": bool}.
 var _choice: Dictionary = {}
+## A fine item the player has been asked about once already.
+var _confirm_sell: Item = null
 var _quantity := 1
 ## Marking many things in the bag to sell together.
 var _picking := false
@@ -529,6 +531,12 @@ func _trade() -> void:
 		if item.locked:
 			_say("Locked. Unlock it in the inventory to sell it.", false)
 			return
+		# Epic and finer: the first press asks, the second sells.
+		if item.rarity >= 3 and _confirm_sell != item:
+			_confirm_sell = item
+			_say("Sell your %s? Press again to sell it." % item.display_name(), false)
+			return
+		_confirm_sell = null
 		var amount := clampi(_quantity, 1, item.count)
 		inventory.add_gold(int(_choice["price"]) * amount)
 		player.trade.note_earned(int(_choice["price"]) * amount)

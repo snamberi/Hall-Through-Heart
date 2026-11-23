@@ -32,6 +32,8 @@ var slots: Array[String] = ["", "", ""]
 var quick_id := ""
 
 var _player: Player
+## The belt slot held before the one in hand, for the hotbar-back key.
+var _previous := -1
 
 
 func _ready() -> void:
@@ -161,8 +163,11 @@ func activate(index: int) -> String:
 	if index == 1 and _player.magic_school == "":
 		return "Take up a school of magic at an Altar of Magic first."
 	if index < BELT_SIZE:
+		var was := _active_index()
 		if not _player.equipment.select(belt_slot(index)):
 			return "No %s on your belt." % LABELS[index].to_lower()
+		if was >= 0 and was != index:
+			_previous = was
 		Audio.play("swing", -12.0, 0.2)
 		return ""
 	var item := item_in(index)
@@ -180,6 +185,14 @@ func use_quick() -> String:
 	if item == null:
 		return "No %s left." % ItemDB.ITEMS[quick_id]["name"]
 	return _player.use_item(item)
+
+
+## The slot in hand now, or -1.
+func _active_index() -> int:
+	for index in BELT_SIZE:
+		if is_active(index):
+			return index
+	return -1
 
 
 func _stack(id: String) -> Item:
@@ -200,6 +213,33 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cycle(step[1])
 			get_viewport().set_input_as_handled()
 			return
+	# The last recipe once more, wherever you are (if it can be made here).
+	if InputMap.has_action("craft_again") and event.is_action_pressed("craft_again"):
+		var said := "Nothing crafted yet."
+		if Crafting.last_recipe != "":
+			var recipe := RecipeDB.find(Crafting.last_recipe)
+			# With Shift held: up to five at once.
+			var times := 5 if Input.is_key_pressed(KEY_SHIFT) else 1
+			var made := 0
+			if not recipe.is_empty():
+				for i in times:
+					said = Crafting.craft(_player, recipe)
+					if said != "":
+						break
+					made += 1
+			if made > 0:
+				said = "Made %d more %s" % [made, RecipeDB.display_name(recipe)] if made > 1 else "Made another %s" % RecipeDB.display_name(recipe)
+		DamageNumber.spawn_text(_player.get_parent(), _player.global_position + Vector2(0, -50), said, UITheme.DIM, 13)
+		get_viewport().set_input_as_handled()
+		return
+	# Back to what was in hand before (the hotbar-back key).
+	if InputMap.has_action("hotbar_back") and event.is_action_pressed("hotbar_back"):
+		if _previous >= 0:
+			var problem := activate(_previous)
+			if problem != "":
+				DamageNumber.spawn_text(_player.get_parent(), _player.global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
+		get_viewport().set_input_as_handled()
+		return
 	for index in SIZE:
 		if event.is_action_pressed("hotbar_%d" % (index + 1)):
 			var problem := activate(index)

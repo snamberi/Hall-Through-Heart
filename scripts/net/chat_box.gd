@@ -102,8 +102,18 @@ func _close() -> void:
 
 
 func _send(text: String) -> void:
+	if text.strip_edges() != "":
+		_sent.append(text)
+		if _sent.size() > 30:
+			_sent.pop_front()
+	_back = _sent.size()
 	Net.say(text)
 	_close()
+
+
+## Lines this player has sent, oldest first, and where Up has stepped to.
+var _sent: Array[String] = []
+var _back := 0
 
 
 func _show_all() -> void:
@@ -122,6 +132,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _input(event: InputEvent) -> void:
 	if typing and event.is_action_pressed("ui_cancel"):
 		_close()
+		get_viewport().set_input_as_handled()
+	# Up and down step back through what you have said.
+	var key := event as InputEventKey
+	if typing and key and key.pressed and key.keycode in [KEY_UP, KEY_DOWN] and not _sent.is_empty():
+		_back = clampi(_back + (-1 if key.keycode == KEY_UP else 1), 0, _sent.size())
+		_field.text = _sent[_back] if _back < _sent.size() else ""
+		_field.caret_column = _field.text.length()
 		get_viewport().set_input_as_handled()
 
 

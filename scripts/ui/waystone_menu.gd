@@ -34,7 +34,11 @@ func refresh() -> void:
 		child.queue_free()
 	var keys: Array = stones.known.keys()
 	var here := (player.get_parent().get_node("World") as World).world_to_cell(player.global_position)
-	keys.sort_custom(func(a: String, b: String) -> bool: return Vector2(stones.cell_of(a) - here).length() < Vector2(stones.cell_of(b) - here).length())
+	# Your own waygates first, then the rest, each group nearest first.
+	keys.sort_custom(func(a: String, b: String) -> bool:
+		if stones.is_waygate(a) != stones.is_waygate(b):
+			return stones.is_waygate(a)
+		return Vector2(stones.cell_of(a) - here).length() < Vector2(stones.cell_of(b) - here).length())
 	for key: String in keys:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
@@ -42,9 +46,10 @@ func refresh() -> void:
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		info.add_child(UITheme.heading(stones.known[key]["name"], 17))
 		var distance := roundi(Vector2(stones.cell_of(key) - here).length())
-		info.add_child(UITheme.label("You are here" if key == stones.current else "%d tiles away" % distance, 13, UITheme.DIM))
+		info.add_child(UITheme.label("You are here" if key == stones.current else "%d tiles away%s" % [distance, "  ·  your waygate" if stones.is_waygate(key) else ""], 13, UITheme.GOLD if stones.is_waygate(key) else UITheme.DIM))
 		row.add_child(info)
-		var button := UITheme.button("Travel  (%d gold)" % stones.fee(key), func() -> void:
+		var cost := stones.fee(key)
+		var button := UITheme.button("Travel  (free)" if cost == 0 else "Travel  (%d gold)" % cost, func() -> void:
 			var problem := stones.travel(key)
 			if problem == "":
 				player.get_parent().get_node("Menus").close()

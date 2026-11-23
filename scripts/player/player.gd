@@ -312,7 +312,12 @@ func _physics_process(delta: float) -> void:
 	_block_cooldown = maxf(_block_cooldown - delta, 0.0)
 	if blocking:
 		_hold_block()
+	var potion_was := potion_cooldown_left
 	potion_cooldown_left = maxf(potion_cooldown_left - delta, 0.0)
+	# A soft chime when the next potion can be drunk (only after one was).
+	if potion_was > 0.0 and potion_cooldown_left <= 0.0 and not is_dead():
+		Audio.play("pickup", -14.0, 0.0)
+		DamageNumber.spawn_text(get_parent(), global_position + Vector2(0, -52), "Potion ready", Color(0.85, 0.5, 0.55), 11)
 	_combo_left = maxf(_combo_left - delta, 0.0)
 	_read_ground()
 	since_hurt += delta
@@ -1021,6 +1026,8 @@ func learn_class_node(id: String) -> bool:
 func take_damage(amount: float, source_position: Vector2, attacker_level: int = 1, element: String = "") -> bool:
 	if is_dead():
 		return false
+	# Struck while auto-running: stop, so you are never carried into a fight.
+	auto_running = false
 	if parry_left > 0.0:
 		_parried(source_position)
 		return false
@@ -1463,12 +1470,25 @@ func load_data(data: Dictionary) -> void:
 		_apply_evolution()
 
 
+## Walking on by itself (the auto-run key).
+var auto_running := false
+
+
 func _process_move(delta: float) -> void:
 	if ChatBox.typing:
 		# Words, not steps: the keys are typing a message.
 		velocity = velocity.move_toward(Vector2.ZERO, acceleration * delta)
 		return
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	# Auto-run: on with its key, it keeps you walking the way you last
+	# faced; any steering, a menu, or the key again stops it.
+	if InputMap.has_action("auto_run") and Input.is_action_just_pressed("auto_run"):
+		auto_running = not auto_running and facing != Vector2.ZERO
+	if auto_running:
+		if input != Vector2.ZERO or is_dead() or get_tree().paused:
+			auto_running = false
+		else:
+			input = facing.normalized()
 	if falling:
 		# The Trial of Panic: the fall carries you down; you can only lean.
 		velocity = Vector2(input.x * 260.0, FALL_SPEED)

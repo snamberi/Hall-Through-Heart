@@ -193,7 +193,10 @@ func _plot_prompt(record: Dictionary) -> String:
 		return "Harvest the %s" % name.to_lower()
 	if not record.get("watered", false):
 		return "Water the %s  (%d%% grown)" % [name.to_lower(), roundi(growth * 100.0)]
-	return "%s growing  (%d%%)" % [name, roundi(growth * 100.0)]
+	# Watered: about how long until it can be picked, in days or hours.
+	var days := (1.0 - growth) * float(Crops.CROPS[crop]["days"]) / Crops.WATERED
+	var left := "%.1f days" % days if days >= 1.0 else "%d hours" % maxi(1, roundi(days * 24.0))
+	return "%s growing  (%d%%, ripe in about %s)" % [name, roundi(growth * 100.0), left]
 
 
 ## Sows, waters, or harvests a plot.
@@ -784,6 +787,9 @@ func _spawn(record: Dictionary) -> void:
 		prop.reach = 110.0 + 20.0 * (int(record.get("tier", 1)) - 1)
 	if record["kind"] == "table":
 		prop.add_to_group("crafting_tables")
+	if record["kind"] == "chest":
+		_props[record["id"]] = prop
+		label_chest(record)
 	if record.get("flip", false) and prop.sprite():
 		prop.sprite().flip_h = true
 	_props[record["id"]] = prop
@@ -810,6 +816,32 @@ func _spawn_waygate(prop: Prop, record: Dictionary) -> void:
 	prop.set_meta("waystone", key)
 	prop.add_light(0.5, 1.1, Waystones.GLOW)
 	prop.add_child(WaystoneGlow.new())
+
+
+## Shows a chest's name above it (or none, unnamed).
+func label_chest(record: Dictionary) -> void:
+	var prop: Variant = _props.get(record.get("id", -1))
+	if not is_instance_valid(prop):
+		return
+	var label: Label = (prop as Node).get_node_or_null("ChestName")
+	var text := str(record.get("name", ""))
+	if text == "":
+		if label:
+			label.queue_free()
+		return
+	if label == null:
+		label = Label.new()
+		label.name = "ChestName"
+		label.add_theme_font_override("font", UITheme.body_bold())
+		label.add_theme_font_size_override("font_size", 8)
+		label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		label.add_theme_constant_override("outline_size", 3)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.size = Vector2(120, 12)
+		label.position = Vector2(-60, -44)
+		label.z_index = 30
+		(prop as Node).add_child(label)
+	label.text = text
 
 
 ## A farmhouse: bigger than other furniture, its produce kept like a

@@ -91,7 +91,8 @@ var _world: World
 var _exploration: Exploration
 ## The map cell at the middle of the view.
 var _center := Vector2.ZERO
-var _zoom_index := 2
+## Kept between openings: the map opens at the zoom you left it.
+static var _zoom_index := 2
 var _dragging := false
 var _image: Image
 var _texture: ImageTexture
@@ -287,7 +288,7 @@ func refresh() -> void:
 	elif waypoint != null:
 		_picked = {"tile": _world.world_to_cell(waypoint), "name": "Your waypoint", "kind": ""}
 	var here := _player_tile()
-	_region.text = "%s  ·  area level %d" % [TerrainTiles.display_name(_world.generator.tile_type_at(here)), _world.generator.enemy_level_at(here)]
+	_region.text = "%s  ·  area level %d  ·  you are at %d, %d" % [TerrainTiles.display_name(_world.generator.tile_type_at(here)), _world.generator.enemy_level_at(here), here.x, here.y]
 	_show_picked()
 	_dirty = true
 	_view.queue_redraw()

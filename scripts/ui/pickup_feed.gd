@@ -32,14 +32,29 @@ func note(name: String, count: int, color: Color) -> void:
 	for line: Dictionary in _lines:
 		if line["key"] == name and float(line["age"]) < SHOW_FOR:
 			line["count"] = int(line["count"]) + count
+			line["total"] = _carried(name)
 			line["age"] = 0.0
 			line["bump"] = 0.25
 			queue_redraw()
 			return
-	_lines.append({"key": name, "name": name, "count": count, "color": color, "age": 0.0, "bump": 0.25})
+	_lines.append({"key": name, "name": name, "count": count, "color": color, "age": 0.0, "bump": 0.25, "total": _carried(name)})
 	while _lines.size() > LINES:
 		_lines.pop_front()
 	queue_redraw()
+
+
+## How many of a thing (by its shown name) the player carries in all.
+func _carried(name: String) -> int:
+	if not is_inside_tree():
+		return 0
+	var player := get_tree().get_first_node_in_group("player") as Player
+	if player == null or player.inventory == null:
+		return 0
+	var total := 0
+	for item in player.inventory.items:
+		if item and item.is_stackable() and item.display_name() == name:
+			total += item.count
+	return total
 
 
 func _process(delta: float) -> void:
@@ -59,6 +74,9 @@ func _draw() -> void:
 		var line: Dictionary = _lines[index]
 		var fade := clampf(1.0 - (float(line["age"]) - SHOW_FOR) / FADE, 0.0, 1.0)
 		var words := ("+%s  %s" % [InventoryMenu._thousands(int(line["count"])), line["name"]]) if int(line["count"]) > 0 else str(line["name"])
+		# How many you carry now, for stacks of more than the pickup.
+		if int(line.get("total", 0)) > int(line["count"]):
+			words += "  (%s)" % InventoryMenu._thousands(int(line["total"]))
 		var font_size := 15 + (2 if float(line["bump"]) > 0.0 else 0)
 		var width := font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 		var y := size.y - (count - index - 1) * LINE_HEIGHT - 6.0

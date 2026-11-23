@@ -84,3 +84,29 @@ func test_a_built_waygate_joins_the_waystones(t: TestContext) -> void:
 	t.equal(str(stones.known[key]["name"]), "Your Waygate", "named for you")
 	t.equal(buildings.take_down(record), "", "it can be taken down")
 	t.check(not stones.known.has(key), "and then it is no longer on the list")
+
+
+func test_quality_of_life_extras(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	# Craft again remembers the last recipe made.
+	var recipe := RecipeDB.find("bandage")
+	if not recipe.is_empty():
+		for item_id: String in recipe["inputs"]:
+			player.inventory.add(Item.create(item_id, int(recipe["inputs"][item_id]) * 2))
+		t.equal(Crafting.craft(player, recipe), "", "a bandage can be made")
+		t.equal(Crafting.last_recipe, "bandage", "and is remembered for craft-again")
+	# Travel between your own waygates costs nothing.
+	var stones: Waystones = main.get_node("Waystones")
+	stones.known["gate:900"] = {"name": "A", "cell": [5, 5]}
+	stones.known["gate:901"] = {"name": "B", "cell": [400, 400]}
+	stones.current = "gate:900"
+	t.equal(stones.fee("gate:901"), 0, "waygate to waygate is free")
+	stones.current = "sanctuary"
+	t.check(stones.fee("gate:901") > 0, "from a waystone it still costs")
+	# The tooltip says what a merchant pays.
+	t.check(ItemText.describe(Item.create("oak_wood", 5), player).contains("Sells for"), "tooltips show the sell price")
+	# Auto-run stops when struck.
+	player.auto_running = true
+	player.take_damage(1.0, player.global_position + Vector2(20, 0))
+	t.check(not player.auto_running, "a blow stops auto-run")

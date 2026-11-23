@@ -43,10 +43,15 @@ static func extra_serving_chance(cooking_level: int) -> float:
 	return clampf(cooking_level * 0.006, 0.0, 0.6)
 
 
+## The recipe made last, for the craft-again key.
+static var last_recipe := ""
+
+
 static func craft(player: Player, recipe: Dictionary) -> String:
 	var reason := blocked_reason(player, recipe)
 	if reason != "":
 		return reason
+	last_recipe = str(recipe.get("id", ""))
 	# Gear takes the finest materials in the bag; everything else the plainest.
 	var forging := recipe.has("equipment")
 	var rarity_sum := 0.0

@@ -59,7 +59,14 @@ func cell_of(key: String) -> Vector2i:
 	return Vector2i(int(known[key]["cell"][0]), int(known[key]["cell"][1]))
 
 
+## Between two of your own waygates the way is free.
+func is_waygate(key: String) -> bool:
+	return key.begins_with("gate:")
+
+
 func fee(key: String) -> int:
+	if is_waygate(key) and is_waygate(current):
+		return 0
 	var from := _world.world_to_cell(_player.global_position)
 	return 5 + roundi(Vector2(cell_of(key) - from).length() / 25.0)
 

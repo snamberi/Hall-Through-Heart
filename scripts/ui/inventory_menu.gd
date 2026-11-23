@@ -244,6 +244,8 @@ func _build() -> void:
 	# The Trinkets view, in the doll's place while it is open.
 	_trinket_view = _build_trinket_view()
 	_trinket_view.visible = false
+	if _trinkets_last:
+		_show_trinkets.call_deferred(true)
 	middle.add_child(_trinket_view)
 	var switch := UITheme.button("Trinkets", func() -> void: _show_trinkets(not _trinket_view.visible), DOLL_SIZE.x)
 	switch.tooltip_text = "Charms that grow as you use them, and your necklace, rings, artifact, backpack and belt."
@@ -1034,6 +1036,21 @@ func _build_trinket_view() -> Control:
 		var name := str(TRINKETS.SLOT_NAMES.get(slot, Equipment.BELT_NAMES.get(slot, ItemDB.SLOT_NAMES.get(slot, slot))))
 		_wire(button, func() -> Item: return player.equipment.get_item(slot), name)
 		cell.add_child(button)
+		# A thin bar along the slot's foot: how near the trinket is to its next level.
+		var bar := Control.new()
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bar.draw.connect(func() -> void:
+			var worn: Item = player.equipment.get_item(slot) if player else null
+			if worn == null or not TRINKETS.is_trinket(worn.id):
+				return
+			var need := TRINKETS.goal(worn.id, worn.trinket_level)
+			var share := 1.0 if need <= 0 else clampf(worn.trinket_progress / need, 0.0, 1.0)
+			var r := Rect2(Vector2(4, bar.size.y - 6), Vector2(bar.size.x - 8, 3))
+			bar.draw_rect(r, Color(0, 0, 0, 0.7))
+			bar.draw_rect(Rect2(r.position, Vector2(roundf(r.size.x * share), r.size.y)), UITheme.GOLD if need > 0 else UITheme.GOOD))
+		button.add_child(bar)
+		_trinket_bars.append(bar)
 		var label := UITheme.label(name.replace(" charm", ""), 12, Color("a89a80"))
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.custom_minimum_size.x = DOLL_SLOT + 6.0
@@ -1052,8 +1069,16 @@ func _build_trinket_view() -> Control:
 	return box
 
 
+## The bag opens on whichever side (gear or trinkets) was showing last.
+static var _trinkets_last := false
+var _trinket_bars: Array[Control] = []
+
+
 func _show_trinkets(on: bool) -> void:
+	_trinkets_last = on
 	_trinket_view.visible = on
+	for bar in _trinket_bars:
+		bar.queue_redraw()
 	_doll.visible = not on
 	_trinket_switch.text = "Back to the character" if on else "Trinkets"
 	refresh()
@@ -1139,6 +1164,15 @@ func _wire(button: Button, item_of: Callable, empty_text: String = "") -> void:
 	)
 	button.gui_input.connect(func(event: InputEvent) -> void:
 		var click := event as InputEventMouseButton
+		# Middle-click: lock or unlock it (locked things cannot be sold or thrown away).
+		if click and click.pressed and click.button_index == MOUSE_BUTTON_MIDDLE and item_of.call() and item_of.call() in player.inventory.items:
+			var piece: Item = item_of.call()
+			piece.locked = not piece.locked
+			_report("")
+			_message.add_theme_color_override("font_color", UITheme.GOOD)
+			_message.text = ("Locked " if piece.locked else "Unlocked ") + piece.display_name() + "."
+			refresh()
+			return
 		if click and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT and item_of.call():
 			# Ctrl and right-click: take one off the stack.
 			if Input.is_key_pressed(KEY_CTRL) and item_of.call() in player.inventory.items:

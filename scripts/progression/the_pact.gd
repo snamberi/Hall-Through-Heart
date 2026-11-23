@@ -162,6 +162,9 @@ func days_left() -> int:
 ## Pit; a fresh road begins.
 func _on_new_day(day: int) -> void:
 	if day < rite_day + ROAD_DAYS:
+		# One day left and the road unfinished: a warning in good time.
+		if day == rite_day + ROAD_DAYS - 1 and awakened and GameSettings.system_window and not rite_done:
+			Voices.pact(get_tree(), "LAST DAY OF THE ROAD", ["Finish the Tenday Road before tomorrow's dawn."] + _rite_lines())
 		changed.emit()
 		return
 	if awakened and GameSettings.system_window and not rite_done:

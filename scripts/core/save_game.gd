@@ -126,6 +126,14 @@ func has_save() -> bool:
 	return not _data.is_empty()
 
 
+## Seconds played in this world, saved and not yet saved.
+var _unsaved_play := 0.0
+
+
+func play_seconds() -> int:
+	return int(get_section("meta").get("play_seconds", 0)) + int(_unsaved_play)
+
+
 func get_section(section: String) -> Dictionary:
 	var value: Variant = _data.get(section, {})
 	return value if value is Dictionary else {}
@@ -167,6 +175,8 @@ func save_now() -> void:
 	if not guest:
 		meta["day"] = int(get_section("world").get("day", meta.get("day", 1)))
 	meta["class"] = str(get_section("character").get("class_id", "adventurer"))
+	meta["play_seconds"] = int(meta.get("play_seconds", 0)) + int(_unsaved_play)
+	_unsaved_play -= floorf(_unsaved_play)
 	_data["meta"] = meta
 	_write()
 	if _backup_left <= 0.0 and slot_id != "" and last_error == "":
@@ -231,6 +241,8 @@ func delete_save() -> void:
 func _process(delta: float) -> void:
 	if _targets.is_empty():
 		return
+	if not get_tree().paused:
+		_unsaved_play += delta
 	_backup_left -= delta
 	_autosave_left -= delta
 	if _dirty or _autosave_left <= 0.0:

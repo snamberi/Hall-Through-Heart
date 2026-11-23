@@ -21,6 +21,7 @@ var _search: LineEdit
 var _tip: ItemTooltip
 var _keys: HBoxContainer
 var _store_buttons: Array[Button] = []
+var _rename: LineEdit
 ## The saved dictionaries behind the chest grid, slot by slot.
 var _saved: Array = []
 
@@ -88,6 +89,13 @@ func _build() -> void:
 	bottom.add_child(matching)
 	var materials := UITheme.button("Store all materials", _store_materials, 190.0)
 	bottom.add_child(materials)
+	# Your own chests can be named; the name shows above the chest.
+	_rename = LineEdit.new()
+	_rename.placeholder_text = "Name this chest"
+	_rename.custom_minimum_size.x = 170.0
+	_rename.max_length = 24
+	_rename.text_submitted.connect(_name_chest)
+	bottom.add_child(_rename)
 	_store_buttons = [sort, matching, materials]
 	_message = UITheme.reason("")
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -98,6 +106,26 @@ func _build() -> void:
 			_tip.hide_tip()
 	)
 	player.inventory.changed.connect(refresh_if_open)
+
+
+func _name_chest(text: String) -> void:
+	chest["name"] = text.strip_edges()
+	_rename.release_focus()
+	var buildings := player.get_parent().get_node_or_null("Buildings") as Buildings
+	if buildings:
+		buildings.label_chest(chest)
+	SaveGame.request_save()
+	refresh()
+
+
+## Walk away from a chest and it closes behind you.
+func _process(_delta: float) -> void:
+	if not is_visible_in_tree() or chest.is_empty() or not chest.has("x") or str(chest.get("where", "world")) != "world":
+		return
+	if player and player.global_position.distance_to(Vector2(float(chest["x"]), float(chest["y"]))) > 170.0:
+		var menus := player.get_parent().get_node_or_null("Menus")
+		if menus:
+			menus.close()
 
 
 func _matches(item: Item) -> bool:
@@ -111,8 +139,11 @@ func refresh() -> void:
 	var stored: Array = chest["items"]
 	var take_only: bool = chest.get("take_only", false)
 	var searching := _search.text.strip_edges() != ""
-	_heading.text = str(chest.get("title", "Storage")).to_upper()
+	_heading.text = str(chest.get("name", chest.get("title", "Storage"))).to_upper()
 	_title.text = "This can only be taken from." if take_only else ""
+	_rename.visible = chest.get("kind", "") == "chest"
+	if not _rename.has_focus():
+		_rename.text = str(chest.get("name", ""))
 	_saved = []
 	var items: Array = []
 	var total := 0

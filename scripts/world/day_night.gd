@@ -89,6 +89,11 @@ func _process(delta: float) -> void:
 	_burn_torch(delta)
 	_read_biome(delta)
 	var night := is_night()
+	if night != was_night and not indoors and not blood_moon_tonight():
+		if night:
+			Events.announcement.emit("NIGHT FALLS", "Monsters grow bolder. Light a torch, or sleep in a bed till dawn")
+		else:
+			Events.announcement.emit("DAWN", "Day %d" % day)
 	if night and not was_night and not indoors:
 		blood_moon = blood_moon_tonight()
 		if blood_moon:

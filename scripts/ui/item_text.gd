@@ -157,6 +157,8 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 		if item.is_stackable():
 			lines.append("")
 			lines.append("[color=#%s]You have %d.[/color]" % [dim, player.inventory.count_of(item.id)])
+		if not bare:
+			lines.append(_sells_for(item, dim))
 		return "\n".join(lines)
 
 	var kind_name: String = type_name(item) + "  -  " + ("Two-handed" if def.get("two_handed", false) else ItemDB.SLOT_NAMES[item.slot()])
@@ -244,7 +246,21 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 	if comparison != "":
 		lines.append("")
 		lines.append(comparison)
+	if not bare:
+		lines.append("")
+		lines.append(_sells_for(item, dim))
 	return "\n".join(lines)
+
+
+## What a merchant pays for it: "Sells for 12 gold" (each, for a stack).
+static func _sells_for(item: Item, dim: String) -> String:
+	if item.definition().get("no_sell", false):
+		return ""
+	var each := maxi(roundi(item.value() * Npc.SELL_SHARE), 1)
+	var words := "Sells for %d gold" % each
+	if item.is_stackable() and item.count > 1:
+		words += " each (%d for the stack)" % (each * item.count)
+	return "[color=#%s]%s[/color]" % [dim, words]
 
 
 ## The line under an item's name: "Epic  ·  Sword  ·  Level 20".
