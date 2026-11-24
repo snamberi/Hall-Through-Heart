@@ -132,25 +132,36 @@ const LAYERS: Array[Dictionary] = [
 	{"name": "shield", "behind": false},
 	{"name": "weapon", "behind": false},
 ]
-## How each piece of armour looks when worn: "plate" (three styles, by
-## item level, tinted with its metal), or a look in its own colours.
+## How each piece of armour looks when worn: "plate" (mail for the first
+## metal, then three plate styles as the metal improves, all tinted with
+## it), or a look in its own colours.
 const ARMOUR_LOOKS := {"helmet": "plate", "leather_cap": "leather", "ember_crown": "crown",
 	"chestplate": "plate", "leather_vest": "leather", "fur_cloak": "fur",
 	"greaves": "plate", "leather_leggings": "leather", "boots": "plate", "leather_boots": "leather", "voidwalker": "plate",
 	"heartsworn_helm": "heart", "heartsworn_cuirass": "heart", "heartsworn_greaves": "heart", "heartsworn_sabatons": "heart"}
-const PLATE_STYLE_LEVELS: Array[int] = [20, 45]
+## Item levels where metal armour moves on: mail below the first (Copper),
+## plate from Iron, finer plate from Gilded, crested plate from Adamantite.
+const PLATE_STYLE_LEVELS: Array[int] = [10, 30, 65]
+## Armour of these rarities is trimmed whatever its upgrades: epic in
+## bronze, legendary and mythic in gold with runes glowing in its colour
+## (the same marks a blacksmith's +3 and +6 leave).
+const RARITY_TRIM := {3: 3, 4: 6, 5: 6}
 
 
 ## The layer sheet for a worn piece, e.g. "layers/helmet_plate_2".
 static func armour_sheet(part: String, item: Item) -> String:
 	var look: String = ARMOUR_LOOKS.get(item.id, "plate")
-	# Helmets and chest pieces have three plate styles; legs and boots one.
-	if look == "plate" and part in ["helmet", "chest"]:
-		var style := 1
+	# Helmets and chest pieces have mail and three plate styles; legs mail
+	# and plate; boots one.
+	if look == "plate" and part != "boots":
+		var style := 0
 		for level: int in PLATE_STYLE_LEVELS:
 			if item.level >= level:
 				style += 1
-		look = "plate_%d" % style
+		if style == 0:
+			look = "chain"
+		elif part in ["helmet", "chest"]:
+			look = "plate_%d" % style
 	return "layers/%s_%s" % [part, look]
 
 
@@ -451,7 +462,7 @@ func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 		var piece: Item = entry[1]
 		var sheet := armour_sheet(entry[0], piece) if piece else ""
 		# Plate takes its metal's colour; leather, fur and gold keep their own.
-		_set_layer(entry[0], piece, sheet, sheet.contains("_plate"))
+		_set_layer(entry[0], piece, sheet, sheet.contains("_plate") or sheet.contains("_chain"))
 	var plate_chest: bool = chest != null and ARMOUR_LOOKS.get(chest.id, "plate") == "plate"
 	_set_layer("shoulders", chest if plate_chest and chest.rarity >= SHOULDERS_FROM_RARITY else null, "layers/shoulders")
 	_set_layer("cape", chest if chest and chest.rarity >= CAPE_FROM_RARITY else null, "layers/cape")
@@ -762,8 +773,12 @@ func _set_layer(layer: String, item: Item, path: String, tier_tint: bool = true,
 	material.set_shader_parameter("glow", 0.0)
 	# Only the weapon in hand shows its rarity, and only as a passing gleam.
 	var look: Array = RARITY_LOOK[clampi(item.rarity, 0, RARITY_LOOK.size() - 1)] if layer == "weapon" and item.is_equipment() else [0.0, 5.0, 0.0]
-	material.set_shader_parameter("upgrade", float(item.upgrade))
-	sprite.set_meta("upgrade", item.upgrade)
+	# The finest armour is trimmed and runed even before the smith touches it.
+	var marks := item.upgrade
+	if layer in ["helmet", "chest", "legs", "boots", "shoulders"]:
+		marks = maxi(marks, int(RARITY_TRIM.get(item.rarity, 0)))
+	material.set_shader_parameter("upgrade", float(marks))
+	sprite.set_meta("upgrade", marks)
 	material.set_shader_parameter("glint", look[0])
 	material.set_shader_parameter("glint_period", look[1])
 	material.set_shader_parameter("sparkle", look[2])

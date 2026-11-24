@@ -93,3 +93,23 @@ func test_each_race_has_ten_designs(t: TestContext) -> void:
 	human["skin"] = 6
 	t.check(int(Appearance.resolved(human)["skin"]) in Appearance.REAL_SKIN, "but never goblin green")
 	t.equal(ItemDB.describe_modifier({"stat": "xp_gain", "kind": "flat", "value": 0.15}), "+15.0% Xp Gain", "experience gained reads as a share")
+
+
+func test_armour_and_villagers_dress_by_kind(t: TestContext) -> void:
+	# Copper is mail; better metals step up through the plate styles.
+	var copper := LootGenerator.make_equipment(1, 0, "chestplate")
+	t.equal(PlayerAnimator.armour_sheet("chest", copper), "layers/chest_chain", "copper armour is mail")
+	t.equal(PlayerAnimator.armour_sheet("legs", LootGenerator.make_equipment(1, 0, "greaves")), "layers/legs_chain", "with mail on the legs")
+	t.equal(PlayerAnimator.armour_sheet("chest", LootGenerator.make_equipment(70, 0, "chestplate")), "layers/chest_plate_3", "adamantite is crested plate")
+	for sheet: String in ["helmet_chain", "chest_chain", "legs_chain"]:
+		t.check(ResourceLoader.exists("res://assets/sprites/layers/%s.png" % sheet), "%s is drawn" % sheet)
+	# Each people dresses its own way.
+	var bearded := 0
+	for i in 40:
+		var elf := VillagerLife.make(Vector2i(3, 4), 10 + i, 7, "elf")
+		var dwarf := VillagerLife.make(Vector2i(3, 4), 10 + i, 7, "dwarf")
+		t.check(int(elf["look"]["clothes"]) in VillagerLife.PEOPLE_DRESS["elf"]["clothes"], "elves wear elven colours")
+		t.check(int(dwarf["look"]["clothes"]) in VillagerLife.PEOPLE_DRESS["dwarf"]["clothes"], "dwarves wear dwarven colours")
+		if dwarf["job"] != "child" and int(dwarf["look"].get("beard", 0)) > 0:
+			bearded += 1
+	t.check(bearded >= 20, "most dwarves are bearded (%d of 40)" % bearded)

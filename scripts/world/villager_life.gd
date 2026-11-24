@@ -43,8 +43,8 @@ const JOBS := {
 		"pays": [["bread", 4], ["sweet_roll", 3], ["custard_tart", 2], ["berry_tart", 2]],
 		"lines": ["Fresh bread at dawn, if the flour holds.", "A full belly fights better. Eat before you go.", "Eggs, milk, wheat. That's all a tart needs. And love."]},
 	"guard": {"title": "Guard", "carry": "spear",
-		"wears": [{"l": "helmet", "s": "layers/helmet_plate_1", "t": Color(0.78, 0.8, 0.86)}, {"l": "chest", "s": "layers/chest_plate_1", "t": Color(0.78, 0.8, 0.86)},
-			{"l": "boots", "s": "layers/boots_plate", "t": Color(0.62, 0.64, 0.7)}], "fetch": [["bandage", 3], ["iron_ingot", 2]], "cull": true, "night_watch": true,
+		"wears": [{"l": "helmet", "s": "layers/helmet_chain", "t": Color(0.74, 0.76, 0.8)}, {"l": "chest", "s": "layers/chest_chain", "t": Color(0.74, 0.76, 0.8)},
+			{"l": "legs", "s": "layers/legs_chain", "t": Color(0.66, 0.68, 0.72)}, {"l": "boots", "s": "layers/boots_leather", "t": Color.WHITE}], "fetch": [["bandage", 3], ["iron_ingot", 2]], "cull": true, "night_watch": true,
 		"pays": [["health_potion", 2], ["might_elixir", 1], ["@gear", 1], ["dungeon_key", 1]],
 		"lines": ["I keep the watch. Someone has to.", "Husks come thicker under a red moon.", "If you hear the bell, run for the fire."]},
 	"elder": {"title": "Elder", "carry": "", "fetch": [["bone", 8], ["candles", 2], ["heartwood", 1]], "cull": true, "slow": true,
@@ -118,6 +118,28 @@ const WEAR := {
 	"baker": {"hat": [2], "neck": [3]}, "guard": {"cape": [1, 2], "neck": [5]}, "elder": {"hat": [1, 4], "neck": [3, 4], "cape": [2]},
 	"child": {"hat": [5, 9]},
 }
+## How each people dresses, as indices into Appearance's lists: the
+## colours they weave and dye (humans in plain homespun, elves in greens,
+## whites and sky, dwarves in forge reds, ochre and leather), the garments
+## they cut, and what they add over them. "beard" is how often a grown
+## one is bearded, from "beards".
+const PEOPLE_DRESS := {
+	"human": {"clothes": [0, 0, 1, 3, 7, 10, 11, 15, 16], "trousers": [0, 1, 1, 4, 8, 11], "outfit": [0, 0, 0, 2, 4, 6],
+		"dye": [0, 1, 2, 9, 10, 11], "beard": 0.3, "beards": [1, 2, 3, 6, 7]},
+	"elf": {"clothes": [2, 6, 8, 11, 13, 17], "trousers": [4, 6, 7], "outfit": [1, 3, 5, 0],
+		"dye": [1, 2, 4, 7], "hat": [5, 6], "hat_chance": 0.3, "cape": [2], "cape_chance": 0.25, "beard": 0.0, "beards": [0]},
+	"dwarf": {"clothes": [1, 7, 10, 12, 16], "trousers": [1, 2, 5, 8, 10], "outfit": [0, 4, 2],
+		"dye": [0, 6, 9, 10], "neck": [2, 5], "neck_chance": 0.35, "beard": 0.85, "beards": [3, 4, 5, 8]},
+}
+## Garments that set a role apart, whatever the people: elders in robes
+## (dwarf elders in long coats), children in plain tunics.
+const ROLE_OUTFIT := {"elder": 1, "high_sage": 1, "thane": 3, "child": 0, "royal": 3, "king": 3}
+
+
+static func _pick(random: RandomNumberGenerator, list: Array) -> int:
+	return int(list[random.randi() % list.size()])
+
+
 ## Shared remarks, by the hour.
 const MORNING: Array[String] = ["Morning. Mind the mud.", "Up early? Good. Work's waiting.", "The night's done. We made it again."]
 const DUSK: Array[String] = ["Getting dark. Best be indoors soon.", "Lanterns are lit. Stay close.", "Hear that? Probably nothing."]
@@ -150,8 +172,21 @@ static func make(village: Vector2i, index: int, world_seed: int, people: String 
 	if random.randf() < 0.85:
 		var styles := Appearance.hair_styles_with_hair()
 		look["hair_style"] = styles[random.randi() % styles.size()]
-	if job != "child" and random.randf() < 0.3:
-		look["beard"] = random.randi() % Appearance.BEARDS.size()
+	# Dressed as their people dress.
+	var dress: Dictionary = PEOPLE_DRESS.get(people, PEOPLE_DRESS["human"])
+	look["clothes"] = _pick(random, dress["clothes"])
+	look["trousers"] = _pick(random, dress["trousers"])
+	look["outfit"] = _pick(random, dress["outfit"])
+	if ROLE_OUTFIT.has(job):
+		look["outfit"] = 3 if job == "elder" and people == "dwarf" else int(ROLE_OUTFIT[job])
+	if dress.has("hat") and random.randf() < float(dress["hat_chance"]):
+		look["hat"] = _pick(random, dress["hat"])
+	if dress.has("cape") and random.randf() < float(dress["cape_chance"]):
+		look["cape"] = _pick(random, dress["cape"])
+	if dress.has("neck") and random.randf() < float(dress["neck_chance"]):
+		look["neck"] = _pick(random, dress["neck"])
+	if job != "child" and random.randf() < float(dress["beard"]):
+		look["beard"] = _pick(random, dress["beards"])
 	if job == "elder":
 		look["hair"] = 4
 	# Dressed for the work: a hat, maybe something round the neck.
@@ -164,7 +199,7 @@ static func make(village: Vector2i, index: int, world_seed: int, people: String 
 		look["cape"] = (wear["cape"] as Array)[random.randi() % (wear["cape"] as Array).size()]
 	if random.randf() < 0.12:
 		look["accessory"] = [1, 3, 4, 5][random.randi() % 4]
-	look["dye"] = random.randi() % Appearance.DYES.size()
+	look["dye"] = _pick(random, dress["dye"])
 	look["height"] = clampi(int(look.get("height", 2)) + random.randi_range(-1, 1), 0, Appearance.HEIGHTS.size() - 1)
 	look["build"] = random.randi() % Appearance.BUILDS.size()
 	# Names step through the list from a village's own start, so no two

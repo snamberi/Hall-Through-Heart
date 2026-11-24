@@ -2002,6 +2002,42 @@ ARMOUR["chest_plate_3"] = chest_piece([
     "oyyyo........oyyjo",
     ".ooo..........ooo.",
 ], 13, 23))
+# Mail, the first metal anyone wears: a coif of rings over the head and
+# shoulders, open at the face, and a ring shirt belted at the waist. The
+# rings alternate light and mid so they read as links, shading darker on
+# the far side; the game tints it with its metal like plate.
+ARMOUR["helmet_chain"] = head_piece([
+    ".....oooooooo.....",
+    "...ooMmMmMmMmoo...",
+    "..oMmMmMmMmMmmdo..",
+    ".oMmMmMmMmMmMmdmo.",
+    ".omMmMmMmMmMmdmdo.",
+    "oMmMmMmMmMmMmmdmdo",
+    "oDdDdDdDdDdDdDdDdo",
+    "oMmMo........omdmo",
+    "omMmo........odmdo",
+    "oMmMo........omdmo",
+    "omMmMo......omdmdo",
+    ".oMmMmo....omdmdo.",
+    "..omMmMooooomdmo..",
+    "...oooooooooooo...",
+], 10)
+ARMOUR["chest_chain"] = chest_piece([
+    ".oooooooooo.",
+    "oMmMmMmMmmdo",
+    "omMmMmMmMdmo",
+    "oMmMmMmMmmdo",
+    "omMmMmMmMdmo",
+    "oNNNNyNNNNNo",
+    "oMmMmMmMmmdo",
+    "omMmMmMmMdmo",
+    "o.o.oo.o.o.o",
+], extra=layer_grid([
+    ".ooo..........ooo.",
+    "oMmMo........omdmo",
+    "omMmo........odmdo",
+    ".ooo..........ooo.",
+], 13, 23))
 ARMOUR["chest_leather"] = chest_piece([
     ".oooooooooo.",
     "olllsNslLLLo",
@@ -2073,6 +2109,7 @@ ARMOUR["shield"] = {"hand_l": layer_grid([
 # and the boot.
 LEG_LOOKS = {
     "legs_plate": {"leg": lambda i, n: "oDDo" if i == n // 2 else ("oMmo" if i < n // 2 else "omdo")},
+    "legs_chain": {"leg": lambda i, n: "oMmo" if i % 2 == 0 else "omdo"},
     "legs_leather": {"leg": lambda i, n: "oNNo" if i == n - 1 else "olso"},
     "legs_heart": {"leg": lambda i, n: "o5to"[0:0] + ("o44o" if i == n // 2 else ("o12o" if i < n // 2 else "o23o"))},
 }

@@ -146,8 +146,17 @@ func test_new_beasts_and_wolf_packs(t: TestContext) -> void:
 	var main := await t.game()
 	var spawner = main.get_node("Enemies")
 	var before := main.get_tree().get_nodes_in_group("enemies").size()
-	spawner.spawn_at(Vector2(4000, 4000), 3, Enemy.Rank.NORMAL, "grey_wolf")
-	spawner._spawn_pack("grey_wolf", Vector2(4000, 4000), 3)
+	# On dry ground near the player, whatever this world's rivers and seas.
+	var world = main.get_node("World")
+	var player: Player = main.get_node("Player")
+	var at := player.global_position + Vector2(160, 0)
+	for step in 64:
+		var spot := player.global_position + Vector2(160, 0).rotated(step * 0.7) * (1.0 + step / 16.0)
+		if world.generator.is_dry_land(world.world_to_cell(spot)):
+			at = spot
+			break
+	spawner.spawn_at(at, 3, Enemy.Rank.NORMAL, "grey_wolf")
+	spawner._spawn_pack("grey_wolf", at, 3)
 	await main.get_tree().process_frame
 	var wolves := main.get_tree().get_nodes_in_group("enemies").filter(func(e: Node) -> bool: return (e as Enemy).enemy_id in ["grey_wolf", "alpha_wolf"])
 	t.check(wolves.size() >= 2 and wolves.size() <= 6, "wolves come as a pack of up to six (%d)" % wolves.size())
