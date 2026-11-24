@@ -177,12 +177,21 @@ func _process(delta: float) -> void:
 		_refresh_banner()
 	queue_redraw()
 	# A page too big for a small window (or a large interface size) shrinks to fit.
-	var room := get_viewport().get_visible_rect().size - Vector2(24.0, 24.0)
+	# The pivot is chosen so the shrunk page sits in the middle of the
+	# screen (its container grows to the page's full size, so scaling about
+	# the page's own middle would leave it hanging off the bottom).
+	var view := get_viewport().get_visible_rect().size
+	var room := view - Vector2(24.0, 24.0)
 	for page: Control in _pages.values():
 		if page.visible:
-			var need := page.get_combined_minimum_size()
+			var need := page.get_combined_minimum_size().max(page.size)
 			var fit := minf(1.0, minf(room.x / maxf(need.x, 1.0), room.y / maxf(need.y, 1.0)))
-			page.pivot_offset = page.size / 2.0
+			if fit >= 0.999:
+				page.pivot_offset = page.size / 2.0
+			else:
+				var at := (page.get_parent() as Control).global_position + page.position
+				var want := (view - need * fit) / 2.0
+				page.pivot_offset = (want - at) / (1.0 - fit)
 			page.scale = Vector2(fit, fit)
 
 

@@ -337,13 +337,25 @@ func _go_back() -> void:
 ## Shrinks a screen that is too big for the window (a large interface size
 ## on a small window) so nothing runs off the edge.
 func _fit() -> void:
-	if _holder == null or not is_open() or _open_id == "wheel":
+	if _holder == null or not is_open():
+		return
+	if _open_id == "wheel":
+		_fit_wheel()
 		return
 	var menu: GameMenu = _menus[_open_id]
 	var room := _root.size - Vector2(24.0, 70.0)
 	var need := menu.get_combined_minimum_size().max(menu.size)
 	var scale_by := minf(1.0, minf(room.x / maxf(need.x, 1.0), room.y / maxf(need.y, 1.0)))
-	_holder.pivot_offset = _root.size / 2.0
+	if scale_by >= 0.999:
+		_holder.pivot_offset = _root.size / 2.0
+	else:
+		# The holder grows to the menu's full size when the menu is bigger
+		# than the screen, so its middle is no longer the screen's: pick the
+		# pivot that lands the shrunk menu's middle on the screen's middle
+		# (a little below it, clear of the top bar).
+		var middle := _holder.size / 2.0
+		var want := _root.size / 2.0 + Vector2(0.0, 12.0) - _holder.position
+		_holder.pivot_offset = (want - middle * scale_by) / (1.0 - scale_by)
 	_holder.scale = Vector2(scale_by, scale_by)
 
 
@@ -397,8 +409,21 @@ func _refresh_side() -> void:
 	for id: String in _side_badges:
 		var waiting := badge_for(id)
 		(_side_badges[id] as Label).text = str(waiting) if waiting > 0 else ""
+	_fit_wheel()
+
+
+## The wheel and its list beside it shrink together on a short screen (a
+## phone, or a large interface size), so neither runs off the bottom.
+func _fit_wheel() -> void:
 	var room := _root.size
-	_side.position = Vector2(maxf(16.0, room.x / 2.0 - MenuWheel.OUTER - _side.size.x - 40.0), (room.y - _side.size.y) / 2.0)
+	var wheel_need := (MenuWheel.OUTER + 44.0) * 2.0
+	var side_need := _side.get_combined_minimum_size().y
+	var fit := minf(1.0, minf((room.y - 70.0) / wheel_need, (room.y - 40.0) / maxf(side_need, 1.0)))
+	_wheel.pivot_offset = _wheel.size / 2.0
+	_wheel.scale = Vector2(fit, fit)
+	_side.scale = Vector2(fit, fit)
+	var side := _side.size * fit
+	_side.position = Vector2(maxf(16.0, room.x / 2.0 - (MenuWheel.OUTER + 40.0) * fit - side.x), (room.y - side.y) / 2.0).round()
 
 
 ## How many things wait for the player on a screen (points to spend...).

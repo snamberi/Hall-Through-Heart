@@ -322,6 +322,7 @@ func _style_choice(page: Control) -> void:
 	page.add_child(UITheme.label("Interface style", 17))
 	var grid := GridContainer.new()
 	grid.columns = 3
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	page.add_child(grid)
@@ -330,7 +331,12 @@ func _style_choice(page: Control) -> void:
 		button.toggle_mode = true
 		button.text = "  " + str(UITheme.STYLES[id]["name"])
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.custom_minimum_size = Vector2(250.0, 48.0)
+		# Three to a row, sharing the frame's width (fixed widths ran
+		# through the frame's edge).
+		button.custom_minimum_size = Vector2(160.0, 48.0)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		UITheme.font_size(button, 15)
 		var swatch := load("res://assets/ui/themes/%s/panel.png" % id) as Texture2D
 		if swatch:
@@ -376,8 +382,15 @@ func _controls_page(holder: Control) -> Control:
 	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	page.add_theme_constant_override("separation", 8)
 	holder.add_child(page)
-	_listen_banner = UITheme.strong("", 16, UITheme.GOLD)
-	page.add_child(_listen_banner)
+	# The hint and the reset-all button share the top line, so nothing
+	# hangs below the frame.
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	page.add_child(top)
+	_listen_banner = UITheme.strong("", 15, UITheme.GOLD)
+	_listen_banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_listen_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	top.add_child(_listen_banner)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -396,10 +409,10 @@ func _controls_page(holder: Control) -> Control:
 			row.add_theme_constant_override("separation", 8)
 			list.add_child(row)
 			var label := UITheme.label(GameSettings.action_name(action), 15)
-			label.custom_minimum_size.x = 240.0
+			label.custom_minimum_size.x = 210.0
 			row.add_child(label)
 			var button := Button.new()
-			button.custom_minimum_size = Vector2(200.0, 30.0)
+			button.custom_minimum_size = Vector2(190.0, 30.0)
 			UITheme.font_size(button, 15)
 			UITheme.sounds(button)
 			button.pressed.connect(func() -> void:
@@ -413,14 +426,14 @@ func _controls_page(holder: Control) -> Control:
 			reset.tooltip_text = "Put this action back to its default key."
 			row.add_child(reset)
 			var conflict := UITheme.label("", 14, Color("e8a070"))
-			conflict.custom_minimum_size.x = 190.0
+			conflict.custom_minimum_size.x = 150.0
 			conflict.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 			conflict.clip_text = true
 			row.add_child(conflict)
 			_conflict_labels[action] = conflict
-	var reset_all := UITheme.danger_button("Reset all to defaults", GameSettings.reset_bindings, 240.0)
-	reset_all.size_flags_horizontal = Control.SIZE_SHRINK_END
-	page.add_child(reset_all)
+	var reset_all := UITheme.danger_button("Reset all to defaults", GameSettings.reset_bindings, 200.0)
+	reset_all.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(reset_all)
 	return page
 
 
