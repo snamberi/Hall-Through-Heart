@@ -284,6 +284,9 @@ func _ready() -> void:
 	# Animals are drawn at their own size (tools/generate_animals.py): only a
 	# rank or a giant's growth is added on top, and plain ones stay crisp.
 	var shown := size / float(_data["size"]) if enemy_id in NATIVE_SIZE else size
+	if DRAWN_SIZES.DRAWN.has(enemy_id):
+		# Monsters too are drawn at their own size (tools/generate_animals.py).
+		shown = size / float(DRAWN_SIZES.DRAWN[enemy_id])
 	_visual.scale = Vector2(shown, shown)
 	_visual.modulate = _tint
 	_animator.sheet = EnemyDB.sheet(enemy_id)
@@ -600,6 +603,7 @@ static func telegraph_color() -> Color:
 static func safe_color() -> Color:
 	return Color(0.6, 1.0, 0.6) if GameSettings.colorblind == "off" else Color(0.75, 0.9, 1.0)
 ## Beasts whose sheets are drawn at the size they are shown.
+const DRAWN_SIZES := preload("res://scripts/enemies/drawn_sizes.gd")
 const NATIVE_SIZE: Array[String] = ["deer", "wild_hare", "wild_pig", "mountain_goat", "pheasant", "desert_lizard", "snow_fox",
 	"shore_crab", "marsh_toad", "sheep", "cow", "chicken", "lamb", "calf", "chick", "bear", "grey_wolf", "giant_spider", "web_spider",
 	"elk", "badger", "hedgehog", "moonstag", "snow_leopard", "musk_ox", "ice_bear", "frostmane", "camel", "sand_cat", "jackal", "sunscale_basilisk", "river_otter", "moss_tortoise", "swamp_boar", "sporeback_deer", "cinder_hound", "ember_salamander", "thornback_boar", "crimson_lynx", "void_prowler", "void_hare", "salt_antelope", "mountain_ram", "dawn_unicorn", "alpha_wolf"]

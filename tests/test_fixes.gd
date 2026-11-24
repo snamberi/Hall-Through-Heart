@@ -203,10 +203,12 @@ func test_bonds_connect_the_systems(t: TestContext) -> void:
 
 
 func test_back_views_and_pixel_numbers(t: TestContext) -> void:
+	# Monsters are seen from the front only now, drawn at their own size.
 	var husk: Texture2D = load("res://assets/sprites/husk_sheet.png")
-	t.check(husk.get_height() >= 11 * 96, "the husk's sheet has walking-away rows")
-	var frames := SheetAnimations.build(husk, 96, EnemyAnimator.ROWS + EnemyAnimator.BACK_ROWS)
-	t.check(frames.has_animation("walk_back"), "monsters can walk away from the viewer")
+	t.check(husk.get_height() >= 6 * 96, "the husk's sheet has its rows")
+	var frames := SheetAnimations.build(husk, 96, EnemyAnimator.ROWS)
+	t.check(frames.has_animation("walk"), "monsters walk")
+	t.check(Enemy.DRAWN_SIZES.DRAWN.has("husk"), "the husk is drawn at its own size")
 	var main := await t.game()
 	var before := main.get_child_count()
 	DamageNumber.spawn(main, Vector2(100, 100), 42.0, Color.WHITE, true)

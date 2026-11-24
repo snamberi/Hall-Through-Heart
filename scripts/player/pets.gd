@@ -505,7 +505,14 @@ func _refresh_look() -> void:
 			rows.append_array(PET_ROWS)
 		_sprite.sprite_frames = SheetAnimations.build(sheet, 96, rows)
 		# A tamed monster is smaller than its wild kin, and grows a little with level.
-		var size := (0.58 + 0.14 * int(pet["level"]) / float(MAX_LEVEL)) * float(EnemyDB.ENEMIES[pet["species"]].get("size", 1.0))
+		var species: String = pet["species"]
+		var drawn := 1.0
+		if species in Enemy.NATIVE_SIZE:
+			drawn = float(EnemyDB.ENEMIES[species].get("size", 1.0))
+		elif Enemy.DRAWN_SIZES.DRAWN.has(species):
+			drawn = float(Enemy.DRAWN_SIZES.DRAWN[species])
+		# Sheets already drawn at their size are not grown by it again.
+		var size := (0.58 + 0.14 * int(pet["level"]) / float(MAX_LEVEL)) * float(EnemyDB.ENEMIES[species].get("size", 1.0)) / drawn
 		_sprite.scale = Vector2(size, size)
 		_sprite.position = Vector2(0, -23.0 * size)
 		_sprite.modulate = STAGES[stage(pet)][2] if pet.get("named", false) else Color.WHITE

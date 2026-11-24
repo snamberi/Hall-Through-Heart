@@ -3435,12 +3435,11 @@ def main():
     os.makedirs(os.path.join(ROOT, "tiles"), exist_ok=True)
     # People (the player's body, looks, armour, held weapons and villagers)
     # are hand-placed pixel maps now: see tools/generate_people.py.
-    draw_sheet(HUSK, HUSK_ORDER, HUSK_ANIMATIONS, rich=True).save(os.path.join(ROOT, "sprites", "husk_sheet.png"))
     os.makedirs(os.path.join(ROOT, "sprites", "enemies"), exist_ok=True)
-    for name, (rig, order, animations) in MONSTERS.items():
-        draw_sheet(rig, order, animations, rich=True).save(os.path.join(ROOT, "sprites", "enemies", name + ".png"))
-    # Animals and mounts are drawn at their shown size by their own tools.
+    # Monsters, animals and mounts are drawn at their shown size by their own
+    # tools, so the game never stretches them.
     import generate_animals
+    generate_animals.monsters()
     generate_animals.main()
     import generate_birds
     generate_birds.main()
