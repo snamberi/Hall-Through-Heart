@@ -8,8 +8,9 @@ extends RefCounted
 ##
 ## Gusts: now and then a stronger breath sweeps across the land as a band,
 ## leaning everything it passes the same way at once, and moving on (WindFX
-## shows it as streaks and blown leaves). Trees sway by whole pixels, row
-## by row, so the pixel art never smears.
+## shows it as streaks and blown leaves). Trees sway by drawn frames
+## (tools/sway.py), the shader only choosing which one each tree shows;
+## banners lean by whole pixels, row by row.
 ##
 ## Broadleaf trees and bushes wear Seasons' materials: the same sway, and
 ## leaves that turn with the year.
@@ -56,6 +57,35 @@ float gust_at(vec2 p) {
 	float wave = sin((dot(p, gust_dir) - gust_time * GUST_SPEED) * GUST_SPACING);
 	return pow(max(wave, 0.0), 6.0);
 }
+
+// Trees sway by drawn frames stacked down their column of the sheet
+// (tools/sway.py): 0 at rest, 1 leaning right as drawn, 2 at rest with
+// its leaves fluttered, 3 leaning left. 0 frames: the old row lean.
+uniform int sway_frames = 0;
+
+// Which frame a tree at `at` shows now. `flipped`: drawn mirrored, so its
+// right is the world's left.
+int sway_frame(vec2 at, bool flipped) {
+	float tree = fract(sin(dot(floor(at / 4.0), vec2(12.9898, 78.233))) * 43758.5453);
+	// In a gust every tree it passes leans the gust's way and holds there.
+	if (gust_at(at) * gust_power > 1.2) {
+		bool right = gust_dir.x >= 0.0;
+		return (right != flipped) ? 1 : 3;
+	}
+	// Otherwise each tree rocks to and fro in its own time, quicker as the
+	// wind rises; in a near calm only the leaves stir.
+	float t = TIME * (0.9 + strength * 0.55) + tree * 4.0;
+	int step = int(mod(floor(t), 4.0));
+	if (strength < 1.2) {
+		return step % 2 == 0 ? 0 : 2;
+	}
+	return step;
+}
+
+// The picture's coordinates moved down to the frame shown now.
+vec2 swayed(vec2 uv, vec2 at, bool flipped) {
+	return uv + vec2(0.0, float(sway_frame(at, flipped)) / float(sway_frames));
+}
 """
 
 const SHADER := """
@@ -84,7 +114,7 @@ float lean_px() {
 }
 
 void fragment() {
-	vec2 uv = UV - vec2(lean_px() * TEXTURE_PIXEL_SIZE.x, 0.0);
+	vec2 uv = sway_frames > 0 ? swayed(UV, place, dFdx(UV.x) < 0.0) : UV - vec2(lean_px() * TEXTURE_PIXEL_SIZE.x, 0.0);
 	vec4 c = texture(TEXTURE, uv) * COLOR;
 	COLOR = dusted(c, texture(TEXTURE, uv).a, texture(TEXTURE, uv - vec2(0.0, TEXTURE_PIXEL_SIZE.y)).a, texture(TEXTURE, uv - vec2(0.0, TEXTURE_PIXEL_SIZE.y * 2.0)).a, texture(TEXTURE, uv - vec2(0.0, TEXTURE_PIXEL_SIZE.y * 3.0)).a);
 }
@@ -259,11 +289,12 @@ int mode_for(int season) {
 }
 
 void fragment() {
-	vec2 uv = UV - vec2(lean_px() * TEXTURE_PIXEL_SIZE.x, 0.0);
+	vec2 uv = sway_frames > 0 ? swayed(UV, place, dFdx(UV.x) < 0.0) : UV - vec2(lean_px() * TEXTURE_PIXEL_SIZE.x, 0.0);
 	vec4 picture = texture(TEXTURE, uv);
 	vec4 c = picture * COLOR;
-	vec2 texel = floor(uv / TEXTURE_PIXEL_SIZE);
-	float in_frame = fract(uv.y);
+	vec2 texel = floor(UV / TEXTURE_PIXEL_SIZE);
+	// How far down its own frame this pixel is (0 top, 1 foot).
+	float in_frame = fract(UV.y * float(max(sway_frames, 1)));
 	bool leafy = !green_only || (picture.g > picture.r * 1.05 && picture.g >= picture.b * 0.98);
 	// Fruit drawn among the leaves drops with them: none on a bare tree.
 	if (green_only && !leafy && picture.a > 0.5 && picture.r > picture.g * 2.0 && picture.r > picture.b * 1.6 && picture.r > 0.45) {
@@ -297,6 +328,9 @@ void fragment() {
 """
 
 static var material: ShaderMaterial = _make(SHADER)
+## Trees that keep their colours all year (pines, dead and strange trees):
+## the same wind, by drawn frames.
+static var trees: ShaderMaterial = _trees()
 static var still: ShaderMaterial = _make(STILL_SHADER)
 static var roof: ShaderMaterial = _roof()
 static var grass: ShaderMaterial = _make(GRASS_SHADER)
@@ -304,6 +338,12 @@ static var _strength := 2.0
 static var _dust := 0.0
 static var _dust_color := Color.WHITE
 static var _gust := [0.0, Vector2(0.98, 0.18), 3.0]
+
+
+static func _trees() -> ShaderMaterial:
+	var made := _make(SHADER)
+	made.set_shader_parameter("sway_frames", 4)
+	return made
 
 
 static func _roof() -> ShaderMaterial:
@@ -323,7 +363,7 @@ static func _make(code: String) -> ShaderMaterial:
 
 ## Every material that sways or settles snow.
 static func _swaying() -> Array:
-	var all: Array = [material]
+	var all: Array = [material, trees]
 	all.append_array(Seasons.all_materials())
 	return all
 

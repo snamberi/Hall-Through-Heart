@@ -483,11 +483,20 @@ TREES = [great_oak(), birch(), apple(), beech(), great_willow(), cypress(), fir(
          palm(), bloodwood(), thornwood(), spore_tree(), ash_husk(), fallen_log()]
 
 
+def grand_sway(i):
+    """How each grand tree sways (tools/sway.py): the fallen log lies still,
+    the spore tree's stiff stalk barely moves, the rest lean two pixels at
+    the top of the crown."""
+    if i == len(TREES) - 1:
+        return "still", 0
+    if i == 12:
+        return "tree", 1
+    return "tree", 2
+
+
 def main():
-    sheet = Image.new("RGBA", (W * len(TREES), H))
-    for i, img in enumerate(TREES):
-        sheet.paste(img, (i * W, 0))
-    sheet.save(os.path.join(ROOT, "flora_grand.png"))
+    import sway
+    sway.stacked(TREES, W, H, grand_sway).save(os.path.join(ROOT, "flora_grand.png"))
 
 
 if __name__ == "__main__":

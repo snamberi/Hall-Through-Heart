@@ -3569,12 +3569,30 @@ def sheet(images, w, h):
     return out
 
 
+## How each tall picture sways: crystals, bones, salt, cacti and the giant
+## mushroom stand still; bushes sway at the top; trees lean a pixel.
+TALL_STILL = (7, 8, 10, 11, 13)
+TALL_BUSHES = (14, 15, 16, 17, 18, 19)
+
+
+def tall_sway(i):
+    if i in TALL_STILL:
+        return "still", 0
+    if i in TALL_BUSHES:
+        return "bush", 1
+    return "tree", 1
+
+
 def write_flora_sheets():
     """The tall and small flora sheets, with the redrawn flowers, mushrooms
     and bushes (tools/generate_plants.py) in their places."""
     import generate_plants
+    import generate_trees_small
+    import sway
     generate_plants.redraw(SMALL, TALL)
-    sheet(TALL, 64, 96).save(os.path.join(ROOT, "flora_tall.png"))
+    generate_trees_small.redraw(TALL)
+    # Four sway frames down each column (tools/sway.py).
+    sway.stacked(TALL, 64, 96, tall_sway).save(os.path.join(ROOT, "flora_tall.png"))
     sheet(SMALL, 32, 32).save(os.path.join(ROOT, "flora_small.png"))
 
 

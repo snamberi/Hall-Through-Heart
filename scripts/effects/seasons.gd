@@ -44,13 +44,13 @@ const BARE := 7
 ## Tall sheet index -> [tone boundaries (luma), canopy line (share of the
 ## picture's height), modes for spring, summer, autumn, winter].
 const SPECIES := {
-	Flora.Tall.OAK: [Vector4(0.235, 0.337, 0.453, 0.6), 0.63, [SPRING, KEEP, AUTUMN, BARE]],
-	Flora.Tall.OAK_2: [Vector4(0.235, 0.337, 0.453, 0.6), 0.63, [SPRING, KEEP, AUTUMN, BARE]],
-	Flora.Tall.BROAD_OAK: [Vector4(0.235, 0.337, 0.453, 0.6), 0.66, [SPRING, KEEP, AUTUMN, BARE]],
-	Flora.Tall.TALL_OAK: [Vector4(0.235, 0.337, 0.453, 0.6), 0.6, [SPRING, KEEP, AUTUMN, BARE]],
-	Flora.Tall.AUTUMN_OAK: [Vector4(0.22, 0.3, 0.41, 0.57), 0.63, [SPRING, SUMMER, KEEP, BARE]],
-	Flora.Tall.RED_MAPLE: [Vector4(0.165, 0.27, 0.39, 0.59), 0.62, [SPRING, SUMMER, KEEP, BARE]],
-	Flora.Tall.CHERRY: [Vector4(0.27, 0.39, 0.55, 0.72), 0.64, [KEEP, SUMMER, ORANGE, BARE]],
+	Flora.Tall.OAK: [Vector4(0.237, 0.337, 0.453, 0.602), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.OAK_2: [Vector4(0.237, 0.337, 0.453, 0.602), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.BROAD_OAK: [Vector4(0.237, 0.337, 0.453, 0.602), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.TALL_OAK: [Vector4(0.237, 0.337, 0.453, 0.602), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.AUTUMN_OAK: [Vector4(0.255, 0.41, 0.568, 0.723), 0.54, [SPRING, SUMMER, KEEP, BARE]],
+	Flora.Tall.RED_MAPLE: [Vector4(0.165, 0.273, 0.394, 0.588), 0.5, [SPRING, SUMMER, KEEP, BARE]],
+	Flora.Tall.CHERRY: [Vector4(0.378, 0.544, 0.704, 0.849), 0.54, [KEEP, SUMMER, ORANGE, BARE]],
 	Flora.Tall.BUSH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, RUST, BARE], true],
 	Flora.Tall.BERRY_BUSH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, RUST, BARE], true],
 	# The grand broadleaves: painted in the summer greens; only green pixels
@@ -92,7 +92,7 @@ static func is_leafy(tall: int) -> bool:
 ## The material a broadleaf tree or bush wears (it sways like every tree).
 static func material_for(tall: int) -> ShaderMaterial:
 	if not SPECIES.has(tall):
-		return Wind.material
+		return Wind.trees
 	if not _materials.has(tall):
 		if _shader == null:
 			_shader = Shader.new()
@@ -113,6 +113,7 @@ static func material_for(tall: int) -> ShaderMaterial:
 				material.set_shader_parameter("%s_%d" % [key, k], ramp[k])
 		material.set_shader_parameter("blossom_0", BLOSSOM[0])
 		material.set_shader_parameter("blossom_1", BLOSSOM[1])
+		material.set_shader_parameter("sway_frames", 4)
 		Wind.copy_state(material)
 		_materials[tall] = material
 	return _materials[tall]
