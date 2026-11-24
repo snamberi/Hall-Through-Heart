@@ -9,7 +9,7 @@ const GAME := "res://scenes/main.tscn"
 ## the sky stands still; the layers in front drift past at their own pace,
 ## a screen pixel at a time (so they glide rather than hop a whole art
 ## pixel at once), wrapping round.
-const LOGO: Texture2D = preload("res://assets/ui/logo.png")
+const TITLE_LOGO := preload("res://scripts/ui/title_logo.gd")
 const SKY: Texture2D = preload("res://assets/ui/title_sky.png")
 const SKY_SIZE := Vector2(427, 240)
 const LAYER_WIDTH := 640.0
@@ -195,20 +195,11 @@ func _framed(inner: Control) -> PanelContainer:
 func _home_page() -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
-	# The logo, drawn pixel by pixel, at three screen pixels to each of its own.
-	var title := TextureRect.new()
-	title.texture = LOGO
-	title.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	title.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	title.stretch_mode = TextureRect.STRETCH_SCALE
-	title.custom_minimum_size = LOGO.get_size() * 3.0
+	# The logo, alive, at three screen pixels to each of its own (its heart
+	# beats, light glints over it, its gem sparkles).
+	var title: Control = TITLE_LOGO.new()
 	title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(title)
-	# Blood gathering under the letters and dripping away.
-	var drips := Drips.new()
-	drips.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	drips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title.add_child(drips)
 	var line := UITheme.label("The land is the corpse of a god. Its heart still beats.", 18, Color("c8c0b0"))
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# Dark-edged, so it reads over the sky and the mountains behind.
@@ -919,68 +910,3 @@ func _play(id: String) -> void:
 		Net.leave("")
 	SaveGame.use_slot(id)
 	LOADING.go(get_tree(), GAME)
-
-
-
-## Blood on the title: at a few columns, under the lowest pixel of the
-## letters, a bead gathers, stretches into a drip and lets a drop fall away,
-## all in whole logo pixels (three screen pixels each).
-class Drips:
-	extends Control
-	const SCALE := 3
-	const BLOOD := Color("9c1c28")
-	const BLOOD_LIT := Color("d8404c")
-	const BLOOD_DARK := Color("4e0c14")
-	## column -> lowest opaque row of the logo there.
-	var _feet: Dictionary = {}
-	## Each drip: [column, age, how long it stretches (logo px), speed].
-	var _drips: Array = []
-
-	func _ready() -> void:
-		var image: Image = (load("res://assets/ui/logo.png") as Texture2D).get_image()
-		if image.is_compressed():
-			image.decompress()
-		for x in image.get_width():
-			for y in range(image.get_height() - 1, -1, -1):
-				var colour := image.get_pixel(x, y)
-				if colour.a > 0.5:
-					# Only under the letters, not under their dark outline.
-					if colour.get_luminance() > 0.12 or (y > 0 and image.get_pixel(x, y - 1).get_luminance() > 0.12):
-						_feet[x] = y
-					break
-		for k in 5:
-			_spawn(randf() * 3.0)
-
-	func _spawn(age: float = 0.0) -> void:
-		if _feet.is_empty():
-			return
-		_drips.append([_feet.keys().pick_random(), age, randi_range(2, 6), randf_range(0.7, 1.3)])
-
-	func _process(delta: float) -> void:
-		for drip: Array in _drips:
-			drip[1] += delta * float(drip[3])
-		var before := _drips.size()
-		_drips = _drips.filter(func(d: Array) -> bool: return d[1] < 4.2)
-		for k in before - _drips.size():
-			_spawn()
-		queue_redraw()
-
-	func _draw() -> void:
-		for drip: Array in _drips:
-			var x: int = drip[0]
-			var foot: int = _feet[x] + 1
-			var age: float = drip[1]
-			var length: int = drip[2]
-			# Gathering and stretching (0..2.4 s), then the drop falls.
-			var hang := mini(int(age / 2.4 * length), length)
-			for k in hang:
-				var colour := BLOOD_DARK if k == 0 else BLOOD
-				draw_rect(Rect2(Vector2(x, foot + k) * SCALE, Vector2(SCALE, SCALE)), colour)
-			if hang > 0:
-				draw_rect(Rect2(Vector2(x, foot + hang) * SCALE, Vector2(SCALE, SCALE)), BLOOD_LIT if age < 2.4 else BLOOD)
-			if age >= 2.4:
-				var fall := (age - 2.4) / 1.8
-				var drop_y := foot + hang + 1 + int(fall * fall * 30.0)
-				var fade := clampf(1.0 - fall, 0.0, 1.0)
-				draw_rect(Rect2(Vector2(x, drop_y) * SCALE, Vector2(SCALE, SCALE * 2)), Color(BLOOD, fade))
-				draw_rect(Rect2(Vector2(x, drop_y) * SCALE, Vector2(SCALE, SCALE)), Color(BLOOD_LIT, fade))

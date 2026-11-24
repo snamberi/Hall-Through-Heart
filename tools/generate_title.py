@@ -444,7 +444,10 @@ def woods():
 
 def main():
     os.makedirs(ROOT, exist_ok=True)
-    logo()
+    # The logo is the cleaned source drawing now (tools/generate_logo.py);
+    # logo() here is the older bronze one, kept only for reference.
+    import generate_logo
+    generate_logo.main()
     sky()
     ridge_layer("title_far", 158, [(1, 20, 0.0), (3, 15, 1.1), (5, 9, 2.6), (11, 5, 0.7), (17, 3, 1.9), (29, 2, 0.4), (43, 1.2, 2.2)], C("1a2034"), C("33405e"), 21,
                 snow=(124, 2))
