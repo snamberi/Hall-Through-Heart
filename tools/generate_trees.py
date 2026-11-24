@@ -28,12 +28,12 @@ FOOT = 122
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "sprites")
 
 # The seasons' summer greens, darkest to lightest (the shader's ramp).
-SUMMER = [(31, 62, 30, 255), (47, 90, 42, 255), (74, 122, 58, 255), (106, 154, 74, 255), (154, 202, 106, 255)]
+SUMMER = [(46, 86, 40, 255), (70, 124, 54, 255), (104, 160, 70, 255), (144, 194, 88, 255), (196, 228, 128, 255)]
 OAK_BARK = [C("2a1e18"), C("443024"), C("5e4232"), C("7a5a42"), C("967458")]
 BIRCH_BARK = [C("3a3634"), C("8a8680"), C("c8c4b8"), C("e4e0d4"), C("f6f4ec")]
 DARK_BARK = [C("1c1618"), C("2e2426"), C("443438"), C("5a4648"), C("70585a")]
 PALM_BARK = [C("3e2e1e"), C("5e4628"), C("806238"), C("a2804a"), C("c0a066")]
-PINE = [C("16302c"), C("214440"), C("2e5a54"), C("3e7068"), C("5a8c82")]
+PINE = [C("1e4240"), C("2c5c56"), C("3e7a70"), C("54968a"), C("7ab4a6")]
 CRIMSON = [C("3a0e16"), C("5e1a24"), C("8a2a34"), C("b03e44"), C("d8706a")]
 THORN = [C("2a2a16"), C("3e3e20"), C("56542c"), C("6e6a3a"), C("8c8650")]
 SPORE = [C("2a1838"), C("442a5a"), C("64407e"), C("8a5ca4"), C("b488cc")]
@@ -106,46 +106,70 @@ def bough(c, x0, y0, x1, y1, w0, w1, bark):
 
 
 def cluster(c, cx, cy, rx, ry, tones, seed, depth=0, light=(-0.62, -0.78)):
-    """A clump of leaves: an irregular rounded mass shaded from the top-left,
-    covered in small leaf scales (lit arcs over a shaded underside). `depth`
+    """A bushy clump of leaves: a lumpy rounded mass shaded from the top-left,
+    its edge broken by leaf tufts poking out, its face built of small round
+    leaf clumps, each lit along its upper left and shaded along its lower
+    right, so it reads as foliage rather than a smooth ball. `depth`
     darkens clumps further back in the crown."""
     r = random.Random(seed)
-    pts = []
-    for y in range(int(cy - ry - 2), int(cy + ry + 3)):
-        for x in range(int(cx - rx - 2), int(cx + rx + 3)):
-            # A lumpy edge: the radius wobbles round the clump.
+    pts = {}
+    for y in range(int(cy - ry - 3), int(cy + ry + 4)):
+        for x in range(int(cx - rx - 3), int(cx + rx + 4)):
             a = math.atan2(y - cy, x - cx)
-            wob = 1.0 + 0.12 * math.sin(a * 5 + seed) + 0.08 * math.sin(a * 9 + seed * 2)
+            wob = 1.0 + 0.16 * math.sin(a * 6 + seed) + 0.1 * math.sin(a * 11 + seed * 2)
             u, v = (x - cx) / (rx * wob), (y - cy) / (ry * wob)
             if u * u + v * v <= 1.0:
-                pts.append((x, y, u, v))
-    for x, y, u, v in pts:
+                pts[(x, y)] = (u, v)
+
+    def tone_at(u, v, bias=0):
         lit = u * light[0] + v * light[1]
         tone = 3 if lit > 0.45 else 2 if lit > -0.15 else 1 if lit > -0.6 else 0
-        tone = max(0, tone - depth)
-        c.put(x, y, tones[tone])
-    # Leaf scales in a staggered grid.
-    have = {(x, y) for x, y, _, _ in pts}
-    for gy in range(int(cy - ry), int(cy + ry) + 1, 3):
-        for gx in range(int(cx - rx) + (gy // 3) % 2 * 2, int(cx + rx) + 1, 4):
-            if (gx, gy) not in have or (gx, gy + 2) not in have or r.random() < 0.22:
+        return max(0, min(4, tone + bias - depth))
+
+    for (x, y), (u, v) in pts.items():
+        c.put(x, y, tones[tone_at(u, v)])
+    # Leaf tufts: along the top and sides of the edge, little points of
+    # leaves stand out a pixel or two (never along the shaded bottom).
+    edge = [(x, y) for (x, y) in pts if any((x + dx, y + dy) not in pts for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
+    for x, y in edge:
+        u, v = pts[(x, y)]
+        if v > 0.55 or r.random() > 0.42:
+            continue
+        nx, ny = (x - cx), (y - cy)
+        n = math.hypot(nx, ny) or 1.0
+        step = (round(nx / n), round(ny / n))
+        for k in range(1, 1 + (2 if r.random() < 0.35 else 1)):
+            p = (x + step[0] * k, y + step[1] * k)
+            c.put(p[0], p[1], tones[tone_at(u, v, 1 if v < -0.3 else 0)])
+            pts.setdefault(p, (u, v))
+    # The face: small round leaf clumps in staggered rows.
+    for gy in range(int(cy - ry) + 1, int(cy + ry) + 1, 4):
+        for gx in range(int(cx - rx) + (gy // 4) % 2 * 3, int(cx + rx) + 1, 5):
+            if (gx, gy) not in pts or r.random() < 0.15:
                 continue
-            u, v = (gx - cx) / rx, (gy - cy) / ry
-            lit = u * light[0] + v * light[1]
-            top = 4 if lit > 0.55 else 3 if lit > -0.05 else 2 if lit > -0.5 else 1
-            top = max(1, top - depth)
-            under = max(0, top - 2)
-            c.put(gx - 1, gy + 1, tones[top])
-            c.put(gx, gy, tones[top])
-            c.put(gx + 1, gy + 1, tones[top])
-            c.put(gx, gy + 2, tones[under])
-    return have
+            u, v = pts[(gx, gy)]
+            base = tone_at(u, v)
+            hi = min(4, base + 1)
+            lo = max(0, base - 1)
+            for dy in range(-2, 3):
+                for dx in range(-2, 3):
+                    if dx * dx + dy * dy > 5 or (gx + dx, gy + dy) not in pts:
+                        continue
+                    if dx + dy <= -2:
+                        c.put(gx + dx, gy + dy, tones[hi])
+                    elif dx + dy >= 3 or (dy == 2 and dx >= 0):
+                        c.put(gx + dx, gy + dy, tones[lo])
+            # A bright leaf tip on the most lit clumps.
+            if base >= 2 and r.random() < 0.6:
+                c.put(gx - 1, gy - 1, tones[min(4, base + 2)])
+    return set(pts)
 
 
 def crown(c, clusters, tones, seed):
-    """A crown from (cx, cy, rx, ry, depth) clusters, back ones first."""
+    """A crown from (cx, cy, rx, ry, depth) clusters, back ones first, each
+    a little fuller than given so the crown reads thick and leafy."""
     for k, (cx, cy, rx, ry, depth) in enumerate(sorted(clusters, key=lambda q: -q[4])):
-        cluster(c, cx, cy, rx, ry, tones, seed * 31 + k, depth)
+        cluster(c, cx, cy, rx * 1.1 + 0.5, ry * 1.1 + 0.5, tones, seed * 31 + k, depth)
 
 
 def shadow(c, cx, cy, rx, ry, alpha=70):

@@ -19,8 +19,8 @@ const TURNING := 0.3
 
 ## Ramps, darkest to lightest (shadows cool, lights warm).
 const RAMPS := {
-	"spring": [Color8(34, 66, 28), Color8(54, 104, 38), Color8(88, 146, 52), Color8(132, 190, 70), Color8(196, 232, 120)],
-	"summer": [Color8(31, 62, 30), Color8(47, 90, 42), Color8(74, 122, 58), Color8(106, 154, 74), Color8(154, 202, 106)],
+	"spring": [Color8(50, 92, 38), Color8(78, 136, 52), Color8(116, 176, 66), Color8(160, 212, 90), Color8(214, 240, 140)],
+	"summer": [Color8(46, 86, 40), Color8(70, 124, 54), Color8(104, 160, 70), Color8(144, 194, 88), Color8(196, 228, 128)],
 	"gold": [Color8(92, 54, 22), Color8(150, 96, 26), Color8(208, 148, 36), Color8(240, 194, 64), Color8(254, 232, 138)],
 	"orange": [Color8(74, 36, 18), Color8(138, 68, 32), Color8(192, 106, 42), Color8(232, 152, 58), Color8(248, 200, 104)],
 	"red": [Color8(60, 14, 20), Color8(122, 26, 36), Color8(176, 42, 52), Color8(220, 74, 76), Color8(255, 154, 136)],
@@ -44,22 +44,22 @@ const BARE := 7
 ## Tall sheet index -> [tone boundaries (luma), canopy line (share of the
 ## picture's height), modes for spring, summer, autumn, winter].
 const SPECIES := {
-	Flora.Tall.OAK: [Vector4(0.237, 0.337, 0.453, 0.602), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
-	Flora.Tall.OAK_2: [Vector4(0.237, 0.337, 0.453, 0.602), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
-	Flora.Tall.BROAD_OAK: [Vector4(0.237, 0.337, 0.453, 0.602), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
-	Flora.Tall.TALL_OAK: [Vector4(0.237, 0.337, 0.453, 0.602), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.OAK: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.OAK_2: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.BROAD_OAK: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.TALL_OAK: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
 	Flora.Tall.AUTUMN_OAK: [Vector4(0.255, 0.41, 0.568, 0.723), 0.54, [SPRING, SUMMER, KEEP, BARE]],
 	Flora.Tall.RED_MAPLE: [Vector4(0.165, 0.273, 0.394, 0.588), 0.5, [SPRING, SUMMER, KEEP, BARE]],
 	Flora.Tall.CHERRY: [Vector4(0.378, 0.544, 0.704, 0.849), 0.54, [KEEP, SUMMER, ORANGE, BARE]],
-	Flora.Tall.BUSH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, RUST, BARE], true],
-	Flora.Tall.BERRY_BUSH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, RUST, BARE], true],
+	Flora.Tall.BUSH: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, RUST, BARE], true],
+	Flora.Tall.BERRY_BUSH: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, RUST, BARE], true],
 	# The grand broadleaves: painted in the summer greens; only green pixels
 	# turn (bark, fruit and blossom keep their colours).
-	Flora.Tall.GREAT_OAK: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
-	Flora.Tall.BIRCH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
-	Flora.Tall.APPLE: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
-	Flora.Tall.BEECH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
-	Flora.Tall.GREAT_WILLOW: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.GREAT_OAK: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.BIRCH: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.APPLE: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.BEECH: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.GREAT_WILLOW: [Vector4(0.331, 0.457, 0.588, 0.733), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
 }
 
 static var _materials: Dictionary = {}
