@@ -1,5 +1,6 @@
 class_name HazardZone
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## A patch of ground that hurts the player while they stand in it (a spore
 ## cloud, burning ground). It fades after a few seconds.
 
@@ -45,7 +46,7 @@ func _draw() -> void:
 	var fade := clampf(_time_left / _lifetime * 2.0, 0.0, 1.0)
 	var pulse := 0.9 + 0.1 * sin(_time_left * 6.0)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.7))
-	draw_circle(Vector2.ZERO, _radius * pulse, Color(_color, 0.16 * fade))
-	draw_circle(Vector2.ZERO, _radius * 0.6 * pulse, Color(_color, 0.14 * fade))
-	draw_arc(Vector2.ZERO, _radius * pulse, 0.0, TAU, 40, Color(_color, 0.5 * fade), 2.0)
+	PX.disc(self, Vector2.ZERO, _radius * pulse, Color(_color, 0.16 * fade))
+	PX.disc(self, Vector2.ZERO, _radius * 0.6 * pulse, Color(_color, 0.14 * fade))
+	PX.arc(self, Vector2.ZERO, _radius * pulse, 0.0, TAU, 40, Color(_color, 0.5 * fade), 2.0)
 	draw_set_transform(Vector2.ZERO)

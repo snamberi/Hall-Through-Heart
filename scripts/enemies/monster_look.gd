@@ -1,5 +1,6 @@
 class_name MonsterLook
 extends RefCounted
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## How a monster wears its rank and meets its end, on top of its frames.
 ##
 ## Rank: a one-pixel outline in the rank's colour, with a shimmer of its own:
@@ -238,11 +239,11 @@ class Wake:
 		for i in 7:
 			var x := -half + i * width / 6.0
 			surface.append(Vector2(roundf(x), roundf(sin(t * 5.0 + i * 0.9))))
-		draw_polyline(surface, Color(0.8, 0.92, 1.0, 0.75), 1.5)
+		PX.polyline(self, surface, Color(0.8, 0.92, 1.0, 0.75), 1.5)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.32))
 		for k in 2:
 			var phase := fposmod(t * 0.9 + k * 0.5, 1.0)
-			draw_arc(Vector2.ZERO, half + 2.0 + phase * 8.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.45 * (1.0 - phase)), 1.5)
+			PX.arc(self, Vector2.ZERO, half + 2.0 + phase * 8.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.45 * (1.0 - phase)), 1.5)
 		draw_set_transform(Vector2.ZERO)
 
 

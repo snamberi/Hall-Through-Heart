@@ -1,5 +1,6 @@
 class_name Enemy
 extends CharacterBody2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## Any monster. What kind it is, how it attacks, and its buffs all come from
 ## its entry in EnemyDB; this script plays that entry out.
 ##
@@ -507,10 +508,10 @@ func _draw() -> void:
 		# Open to a finisher: a golden mark over the head.
 		var bob := sin(Time.get_ticks_msec() / 90.0) * 2.0
 		var top := Vector2(0, -52.0 * _visual.scale.y - 18.0 + bob)
-		draw_colored_polygon(PackedVector2Array([top + Vector2(-6, -12), top + Vector2(6, -12), top + Vector2(2, 2), top + Vector2(-2, 2)]), Color(1.0, 0.8, 0.3))
-		draw_circle(top + Vector2(0, 6), 2.5, Color(1.0, 0.8, 0.3))
+		PX.poly(self, PackedVector2Array([top + Vector2(-6, -12), top + Vector2(6, -12), top + Vector2(2, 2), top + Vector2(-2, 2)]), Color(1.0, 0.8, 0.3))
+		PX.disc(self, top + Vector2(0, 6), 2.5, Color(1.0, 0.8, 0.3))
 		draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
-		draw_arc(Vector2.ZERO, body_radius + 14.0, 0.0, TAU, 32, Color(1.0, 0.8, 0.3, 0.9), 2.5)
+		PX.arc(self, Vector2.ZERO, body_radius + 14.0, 0.0, TAU, 32, Color(1.0, 0.8, 0.3, 0.9), 2.5)
 		draw_set_transform(Vector2.ZERO)
 	if has_trait("masked") and state != State.DEAD:
 		_draw_gaze()
@@ -519,12 +520,12 @@ func _draw() -> void:
 		for index in modifiers.size():
 			var ring: Color = MODIFIERS[modifiers[index]]["color"]
 			draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
-			draw_arc(Vector2.ZERO, body_radius + 9.0 + index * 5.0, 0.0, TAU, 28, Color(ring, 0.9), 2.0)
+			PX.arc(self, Vector2.ZERO, body_radius + 9.0 + index * 5.0, 0.0, TAU, 28, Color(ring, 0.9), 2.0)
 			if modifiers[index] == "shielded" and shield > 0.0:
 				draw_set_transform(Vector2.ZERO)
 				_draw_ward(ring)
 			if modifiers[index] == "frozen_aura":
-				draw_arc(Vector2.ZERO, FROZEN_AURA_RADIUS, 0.0, TAU, 48, Color(ring, 0.25), 1.5)
+				PX.arc(self, Vector2.ZERO, FROZEN_AURA_RADIUS, 0.0, TAU, 48, Color(ring, 0.25), 1.5)
 			draw_set_transform(Vector2.ZERO)
 	if brain and state != State.DEAD:
 		brain.draw()
@@ -651,16 +652,16 @@ func _draw_telegraph() -> void:
 ## and short dashes turning slowly round it.
 func _tele_area(center: Vector2, radius: float, progress: float, hot: Color, flash: float, now: float) -> void:
 	draw_set_transform(center, 0.0, Vector2(1.0, 0.72))
-	draw_circle(Vector2.ZERO, radius, Color(0.08, 0.0, 0.02, 0.22))
-	draw_circle(Vector2.ZERO, radius * progress, Color(hot, 0.16 + 0.14 * progress + 0.2 * flash))
-	draw_arc(Vector2.ZERO, radius * progress, 0.0, TAU, 40, Color(hot.lightened(0.3), 0.55), 1.0)
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(0.12, 0.02, 0.04, 0.7), 5.0)
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(hot, 0.75 + 0.25 * flash), 3.0)
-	draw_arc(Vector2.ZERO, radius - 5.0, 0.0, TAU, 40, Color(hot, 0.3), 1.0)
+	PX.disc(self, Vector2.ZERO, radius, Color(0.08, 0.0, 0.02, 0.22))
+	PX.disc(self, Vector2.ZERO, radius * progress, Color(hot, 0.16 + 0.14 * progress + 0.2 * flash))
+	PX.arc(self, Vector2.ZERO, radius * progress, 0.0, TAU, 40, Color(hot.lightened(0.3), 0.55), 1.0)
+	PX.arc(self, Vector2.ZERO, radius, 0.0, TAU, 48, Color(0.12, 0.02, 0.04, 0.7), 5.0)
+	PX.arc(self, Vector2.ZERO, radius, 0.0, TAU, 48, Color(hot, 0.75 + 0.25 * flash), 3.0)
+	PX.arc(self, Vector2.ZERO, radius - 5.0, 0.0, TAU, 40, Color(hot, 0.3), 1.0)
 	var spin := now * 0.8
 	for k in 12:
 		var a := spin + TAU * k / 12.0
-		draw_arc(Vector2.ZERO, radius + 4.0, a, a + 0.22, 4, Color(hot, 0.6), 2.0)
+		PX.arc(self, Vector2.ZERO, radius + 4.0, a, a + 0.22, 4, Color(hot, 0.6), 2.0)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -674,13 +675,13 @@ func _tele_cone(facing: Vector2, reach: float, arc: float, progress: float, hot:
 		var dir := Vector2.from_angle(facing.angle() - arc / 2.0 + arc * i / 16.0)
 		outer.append(dir * reach * slant)
 		inner.append(dir * reach * progress * slant)
-	draw_colored_polygon(outer, Color(0.08, 0.0, 0.02, 0.22))
-	draw_colored_polygon(inner, Color(hot, 0.18 + 0.14 * progress + 0.2 * flash))
+	PX.poly(self, outer, Color(0.08, 0.0, 0.02, 0.22))
+	PX.poly(self, inner, Color(hot, 0.18 + 0.14 * progress + 0.2 * flash))
 	var rim := outer.slice(1)
-	draw_polyline(rim, Color(0.12, 0.02, 0.04, 0.7), 5.0)
-	draw_polyline(rim, Color(hot, 0.8 + 0.2 * flash), 3.0)
-	draw_line(Vector2.ZERO, outer[1], Color(hot, 0.55), 2.0)
-	draw_line(Vector2.ZERO, outer[outer.size() - 1], Color(hot, 0.55), 2.0)
+	PX.polyline(self, rim, Color(0.12, 0.02, 0.04, 0.7), 5.0)
+	PX.polyline(self, rim, Color(hot, 0.8 + 0.2 * flash), 3.0)
+	PX.line(self, Vector2.ZERO, outer[1], Color(hot, 0.55), 2.0)
+	PX.line(self, Vector2.ZERO, outer[outer.size() - 1], Color(hot, 0.55), 2.0)
 	_chevrons(facing, reach * 0.85, hot, now)
 
 
@@ -690,15 +691,15 @@ func _tele_lane(facing: Vector2, length: float, half: float, progress: float, ho
 	var slant := Vector2(1.0, 0.72)
 	var side := facing.orthogonal() * half
 	var tip := facing * length * slant
-	draw_colored_polygon(PackedVector2Array([side, side + tip, -side + tip, -side]), Color(0.08, 0.0, 0.02, 0.22))
-	draw_colored_polygon(PackedVector2Array([side, side + tip * progress, -side + tip * progress, -side]), Color(hot, 0.18 + 0.14 * progress + 0.2 * flash))
+	PX.poly(self, PackedVector2Array([side, side + tip, -side + tip, -side]), Color(0.08, 0.0, 0.02, 0.22))
+	PX.poly(self, PackedVector2Array([side, side + tip * progress, -side + tip * progress, -side]), Color(hot, 0.18 + 0.14 * progress + 0.2 * flash))
 	for edge: Vector2 in [side, -side]:
 		var dashes := int(length / 12.0)
 		for k in dashes:
 			var a := edge + tip * (float(k) / dashes)
 			var b := edge + tip * (float(k) + 0.6) / dashes
-			draw_line(a, b, Color(hot, 0.85), 2.0)
-	draw_line(side + tip, -side + tip, Color(hot, 0.9), 3.0)
+			PX.line(self, a, b, Color(hot, 0.85), 2.0)
+	PX.line(self, side + tip, -side + tip, Color(hot, 0.9), 3.0)
 	_chevrons(facing, length * 0.92, hot, now)
 
 
@@ -712,8 +713,8 @@ func _chevrons(facing: Vector2, length: float, hot: Color, now: float) -> void:
 		var at := facing * length * t * slant
 		var back := -facing * 5.0
 		var alpha := 0.7 * sin(t * PI)
-		draw_line(at + back + across * 5.0, at, Color(hot.lightened(0.25), alpha), 2.0)
-		draw_line(at + back - across * 5.0, at, Color(hot.lightened(0.25), alpha), 2.0)
+		PX.line(self, at + back + across * 5.0, at, Color(hot.lightened(0.25), alpha), 2.0)
+		PX.line(self, at + back - across * 5.0, at, Color(hot.lightened(0.25), alpha), 2.0)
 
 
 ## A shot's line: dots marching to a reticle at its end.
@@ -727,10 +728,10 @@ func _tele_shot(direction: Vector2, length: float, progress: float, hot: Color, 
 		draw_rect(Rect2(at.round() - Vector2(1, 1), Vector2(3, 3)), Color(hot, 0.35 + 0.5 * t))
 	var end := direction * length
 	var size := 7.0 - 3.0 * progress
-	draw_arc(end, size + 3.0, 0.0, TAU, 16, Color(0.12, 0.02, 0.04, 0.6), 4.0)
-	draw_arc(end, size + 3.0, 0.0, TAU, 16, Color(hot, 0.7 + 0.3 * flash), 2.0)
+	PX.arc(self, end, size + 3.0, 0.0, TAU, 16, Color(0.12, 0.02, 0.04, 0.6), 4.0)
+	PX.arc(self, end, size + 3.0, 0.0, TAU, 16, Color(hot, 0.7 + 0.3 * flash), 2.0)
 	for dir: Vector2 in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
-		draw_line(end + dir * (size + 5.0), end + dir * (size + 10.0), Color(hot, 0.8), 2.0)
+		PX.line(self, end + dir * (size + 5.0), end + dir * (size + 10.0), Color(hot, 0.8), 2.0)
 
 
 ## Whether this monster's faction is at peace with the player (and it has
@@ -1627,7 +1628,7 @@ func _draw_gaze() -> void:
 	var points := PackedVector2Array([Vector2.ZERO])
 	for k in 9:
 		points.append(Vector2.from_angle(base - spread + spread * 2.0 * k / 8.0) * reach)
-	draw_colored_polygon(points, Color(0.96, 0.95, 0.9, 0.12 if mask_left > 0 else 0.05))
+	PX.poly(self, points, Color(0.96, 0.95, 0.9, 0.12 if mask_left > 0 else 0.05))
 	for k in 9:
 		var a := Vector2.from_angle(base - spread + spread * 2.0 * k / 8.0) * reach
 		draw_rect(Rect2(a.round(), Vector2(2, 2)), Color(0.96, 0.95, 0.9, 0.35))

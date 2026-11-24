@@ -1,5 +1,6 @@
 class_name ClawSwipe
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## A monster's swipe: three curved claw marks (or one blade arc) sweeping
 ## across in front of it, fading out fast.
 
@@ -48,5 +49,5 @@ func _draw() -> void:
 			var a := lerpf(start, finish, float(i) / steps)
 			points.append(Vector2.from_angle(a) * radius)
 		var width := 3.0 if _claws > 1 else 5.0
-		draw_polyline(points, Color(_color, 0.85 * fade), width)
-		draw_polyline(points, Color(1, 1, 1, 0.6 * fade), 1.0)
+		PX.polyline(self, points, Color(_color, 0.85 * fade), width)
+		PX.polyline(self, points, Color(1, 1, 1, 0.6 * fade), 1.0)

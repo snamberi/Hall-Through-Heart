@@ -1,5 +1,6 @@
 class_name BossBrain
 extends RefCounted
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## How a world boss fights: it walks at the player and picks a move from its
 ## list, each with a clear warning drawn on the ground first. At two thirds
 ## and one third of its health it gains new moves and grows faster.
@@ -229,39 +230,39 @@ func draw() -> void:
 	# A smouldering aura under the boss, brighter as it grows desperate.
 	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0)
 	e.draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.42))
-	e.draw_circle(Vector2.ZERO, e.body_radius + 26.0, Color(color, 0.08 + 0.05 * phase + 0.05 * pulse))
-	e.draw_arc(Vector2.ZERO, e.body_radius + 26.0 + 4.0 * pulse, 0.0, TAU, 40, Color(color, 0.55), 2.0)
+	PX.disc(e, Vector2.ZERO, e.body_radius + 26.0, Color(color, 0.08 + 0.05 * phase + 0.05 * pulse))
+	PX.arc(e, Vector2.ZERO, e.body_radius + 26.0 + 4.0 * pulse, 0.0, TAU, 40, Color(color, 0.55), 2.0)
 	for k in 6:
 		var angle := Time.get_ticks_msec() / 900.0 + TAU * k / 6.0
-		e.draw_circle(Vector2.from_angle(angle) * (e.body_radius + 26.0), 3.0, Color(color, 0.8))
+		PX.disc(e, Vector2.from_angle(angle) * (e.body_radius + 26.0), 3.0, Color(color, 0.8))
 	e.draw_set_transform(Vector2.ZERO)
 	for meteor: Dictionary in _meteors:
 		var at: Vector2 = e.to_local(meteor["at"])
 		var fill: float = 1.0 - meteor["time"] / 1.1
 		e.draw_set_transform(at, 0.0, Vector2(1.0, 0.7))
-		e.draw_circle(Vector2.ZERO, 64.0 * fill, Color(color, 0.25))
-		e.draw_arc(Vector2.ZERO, 64.0, 0.0, TAU, 32, Color(color, 0.9), 2.0)
+		PX.disc(e, Vector2.ZERO, 64.0 * fill, Color(color, 0.25))
+		PX.arc(e, Vector2.ZERO, 64.0, 0.0, TAU, 32, Color(color, 0.9), 2.0)
 		e.draw_set_transform(Vector2.ZERO)
 	if _stage != "telegraph":
 		return
 	match _move:
 		"slam":
 			e.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.7))
-			e.draw_circle(Vector2.ZERO, 140.0, Color(color, 0.18))
-			e.draw_arc(Vector2.ZERO, 140.0, 0.0, TAU, 40, Color(color, 0.9), 2.5)
+			PX.disc(e, Vector2.ZERO, 140.0, Color(color, 0.18))
+			PX.arc(e, Vector2.ZERO, 140.0, 0.0, TAU, 40, Color(color, 0.9), 2.5)
 			e.draw_set_transform(Vector2.ZERO)
 		"charge":
 			var end := _aim * 420.0
 			var side := _aim.orthogonal() * 22.0
-			e.draw_colored_polygon(PackedVector2Array([side, end + side, end - side, -side]), Color(color, 0.22))
-			e.draw_line(Vector2.ZERO, end, Color(color, 0.9), 2.0)
+			PX.poly(e, PackedVector2Array([side, end + side, end - side, -side]), Color(color, 0.22))
+			PX.line(e, Vector2.ZERO, end, Color(color, 0.9), 2.0)
 		"nova":
 			e.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.7))
-			e.draw_arc(Vector2.ZERO, 300.0, 0.0, TAU, 64, Color(color, 0.9), 3.0)
-			e.draw_arc(Vector2.ZERO, 90.0, 0.0, TAU, 32, Color(Enemy.safe_color(), 0.9), 2.5)
-			e.draw_circle(Vector2.ZERO, 90.0, Color(Enemy.safe_color(), 0.12))
+			PX.arc(e, Vector2.ZERO, 300.0, 0.0, TAU, 64, Color(color, 0.9), 3.0)
+			PX.arc(e, Vector2.ZERO, 90.0, 0.0, TAU, 32, Color(Enemy.safe_color(), 0.9), 2.5)
+			PX.disc(e, Vector2.ZERO, 90.0, Color(Enemy.safe_color(), 0.12))
 			e.draw_set_transform(Vector2.ZERO)
 		_:
 			e.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.7))
-			e.draw_arc(Vector2.ZERO, e.body_radius + 20.0, 0.0, TAU * (1.0 - _time), 32, Color(color, 0.9), 3.0)
+			PX.arc(e, Vector2.ZERO, e.body_radius + 20.0, 0.0, TAU * (1.0 - _time), 32, Color(color, 0.9), 3.0)
 			e.draw_set_transform(Vector2.ZERO)

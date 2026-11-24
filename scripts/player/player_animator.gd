@@ -1,5 +1,6 @@
 class_name PlayerAnimator
 extends AnimatedSprite2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## Plays the player's animation and draws their visible equipment.
 ##
 ## The body sheet is the bare character. Each visible piece of equipment is
@@ -340,12 +341,12 @@ func _draw() -> void:
 	# bright spark runs once round it, rather than a constant pulse.
 	var t := Time.get_ticks_msec() / 1000.0
 	draw_set_transform(Vector2(0, 23), 0.0, Vector2(1.0, 0.4))
-	draw_circle(Vector2.ZERO, 24.0, Color(_aura_color, 0.07))
-	draw_arc(Vector2.ZERO, 24.0, 0.0, TAU, 32, Color(_aura_color, 0.32), 1.0)
+	PX.disc(self, Vector2.ZERO, 24.0, Color(_aura_color, 0.07))
+	PX.arc(self, Vector2.ZERO, 24.0, 0.0, TAU, 32, Color(_aura_color, 0.32), 1.0)
 	var cycle := fmod(t, 4.0) / 4.0
 	if cycle < 0.22:
 		var head := PI * 0.5 + cycle / 0.22 * TAU
-		draw_arc(Vector2.ZERO, 24.0, head - 0.9, head, 10, Color(_aura_color.lightened(0.4), 0.85 * (1.0 - cycle / 0.22 * 0.5)), 2.0)
+		PX.arc(self, Vector2.ZERO, 24.0, head - 0.9, head, 10, Color(_aura_color.lightened(0.4), 0.85 * (1.0 - cycle / 0.22 * 0.5)), 2.0)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -372,18 +373,18 @@ func _draw_water() -> void:
 	for i in 7:
 		var x := -13.0 + i * 4.33
 		surface.append(Vector2(x, line + sin(t * 5.0 + i * 0.9) * 1.0))
-	_water.draw_polyline(surface, Color(0.8, 0.92, 1.0, 0.8), 1.5)
+	PX.polyline(_water, surface, Color(0.8, 0.92, 1.0, 0.8), 1.5)
 	# Rings spreading from the swimmer.
 	_water.draw_set_transform(Vector2(0.0, line), 0.0, Vector2(1.0, 0.32))
 	for k in 2:
 		var phase := fposmod(t * 0.9 + k * 0.5, 1.0)
-		_water.draw_arc(Vector2.ZERO, 11.0 + phase * 8.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.5 * (1.0 - phase)), 1.5)
+		PX.arc(_water, Vector2.ZERO, 11.0 + phase * 8.0, 0.0, TAU, 28, Color(0.7, 0.85, 0.95, 0.5 * (1.0 - phase)), 1.5)
 	_water.draw_set_transform(Vector2.ZERO)
 	# A few bubbles in deep water.
 	if deep:
 		for k in 3:
 			var rise := fposmod(t * 0.7 + k * 0.33, 1.0)
-			_water.draw_circle(Vector2(-8.0 + k * 8.0, line + 16.0 - rise * 14.0), 1.2, Color(0.8, 0.92, 1.0, 0.7 * (1.0 - rise)))
+			PX.disc(_water, Vector2(-8.0 + k * 8.0, line + 16.0 - rise * 14.0), 1.2, Color(0.8, 0.92, 1.0, 0.7 * (1.0 - rise)))
 
 
 ## A ring left behind on the water as the player swims.
@@ -394,7 +395,7 @@ func _spawn_ripple() -> void:
 	var radius := [6.0]
 	ring.draw.connect(func() -> void:
 		ring.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.4))
-		ring.draw_arc(Vector2.ZERO, radius[0], 0.0, TAU, 24, Color(0.75, 0.88, 0.95, 0.7), 1.5)
+		PX.arc(ring, Vector2.ZERO, radius[0], 0.0, TAU, 24, Color(0.75, 0.88, 0.95, 0.7), 1.5)
 	)
 	_player.get_parent().add_child(ring)
 	var tween := ring.create_tween().set_parallel()

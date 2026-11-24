@@ -1,5 +1,6 @@
 class_name RootTendril
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## A living root creeping across the ground from a root-tech machine to
 ## what it works: it grows out along a wandering curve, its tip glowing,
 ## writhes while it works, and draws back, carrying the harvest home.
@@ -48,23 +49,23 @@ func _draw() -> void:
 	# Thick at the base, thin at the tip.
 	for index in steps:
 		var width := lerpf(7.0, 2.0, index / float(steps))
-		draw_line(points[index], points[index + 1], bark, width + 2.0)
+		PX.line(self, points[index], points[index + 1], bark, width + 2.0)
 	for index in steps:
 		var width := lerpf(5.0, 1.0, index / float(steps))
-		draw_line(points[index], points[index + 1], light, width)
+		PX.line(self, points[index], points[index + 1], light, width)
 	# A thread of sap-light running along it, and a glowing tip.
 	var pulse := fmod(_time * 1.5, 1.0)
 	for index in steps:
 		if absf(index / float(steps) - pulse) < 0.12:
-			draw_line(points[index], points[index + 1], color, 2.0)
+			PX.line(self, points[index], points[index + 1], color, 2.0)
 	# Little side rootlets.
 	for index in range(4, steps, 5):
 		var at := points[index]
 		var out := (points[index + 1] - points[index]).orthogonal().normalized() * (5.0 if index % 2 else -5.0)
-		draw_line(at, at + out + (points[index + 1] - at) * 0.6, bark, 2.0)
+		PX.line(self, at, at + out + (points[index + 1] - at) * 0.6, bark, 2.0)
 	var tip := points[points.size() - 1]
-	draw_circle(tip, 4.0 + sin(_time * 8.0), Color(color, 0.35))
-	draw_circle(tip, 2.0, color.lightened(0.4))
+	PX.disc(self, tip, 4.0 + sin(_time * 8.0), Color(color, 0.35))
+	PX.disc(self, tip, 2.0, color.lightened(0.4))
 	if _carried:
 		var size := Vector2(16, 16)
 		draw_texture_rect(_carried, Rect2(tip - size / 2.0 - Vector2(0, 6), size), false, _carried_tint)

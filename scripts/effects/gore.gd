@@ -1,5 +1,6 @@
 class_name Gore
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## What flies off a creature when it is struck: blood, bone dust, sap,
 ## sparks or shadow, by what it is made of. Heavier blows and deaths leave
 ## a splat on the ground that fades after a while.
@@ -76,17 +77,17 @@ func _draw() -> void:
 		var fade := clampf(_splat_life / 2.0, 0.0, 1.0) * 0.55
 		draw_set_transform(Vector2(0, 4), 0.0, Vector2(1.0, 0.45))
 		for point in _splat:
-			draw_circle(point, 4.0, Color(_color.darkened(0.25), fade))
+			PX.disc(self, point, 4.0, Color(_color.darkened(0.25), fade))
 		draw_set_transform(Vector2.ZERO)
 	var alpha := clampf(_life / 0.6, 0.0, 1.0)
 	for drop: Dictionary in _drops:
 		var a := alpha if not drop["landed"] else alpha * 0.8
 		match _kind:
 			"smoke":
-				draw_circle(drop["pos"], drop["size"] * (2.5 - alpha), Color(_color, a * 0.5))
+				PX.disc(self, drop["pos"], drop["size"] * (2.5 - alpha), Color(_color, a * 0.5))
 			"ember":
-				draw_circle(drop["pos"], drop["size"] * alpha, Color(1.0, 0.85, 0.4, a))
+				PX.disc(self, drop["pos"], drop["size"] * alpha, Color(1.0, 0.85, 0.4, a))
 			"stone", "dust":
 				draw_rect(Rect2(drop["pos"], Vector2(drop["size"], drop["size"])), Color(_color, a))
 			_:
-				draw_circle(drop["pos"], drop["size"], Color(_color, a))
+				PX.disc(self, drop["pos"], drop["size"], Color(_color, a))

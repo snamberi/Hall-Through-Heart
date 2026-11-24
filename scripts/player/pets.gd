@@ -1,5 +1,6 @@
 class_name Pets
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## Tamed companions. Critters (rabbits, birds, butterflies, frogs) bring a
 ## gift that grows as they do; monsters tamed when nearly beaten fight at
 ## your side. A pet trots at its own pace beside you, noses about when you
@@ -537,8 +538,8 @@ func _draw() -> void:
 	if pet.is_empty():
 		return
 	draw_set_transform(Vector2(0, 1), 0.0, Vector2(1.0, 0.45))
-	draw_circle(Vector2.ZERO, 13.0, Color(0, 0, 0, 0.22))
-	draw_arc(Vector2.ZERO, 15.0, 0.0, TAU, 28, Color(0.55, 1.0, 0.6, 0.55 + 0.15 * sin(_bob * 3.0)), 1.5)
+	PX.disc(self, Vector2.ZERO, 13.0, Color(0, 0, 0, 0.22))
+	PX.arc(self, Vector2.ZERO, 15.0, 0.0, TAU, 28, Color(0.55, 1.0, 0.6, 0.55 + 0.15 * sin(_bob * 3.0)), 1.5)
 	draw_set_transform(Vector2.ZERO)
 	if pet.get("named", false):
 		_draw_name_mark(pet)
@@ -562,9 +563,9 @@ func _draw() -> void:
 		var share: float = heart[1] / 1.1
 		var at: Vector2 = heart[0] + Vector2(sin(share * 6.0) * 3.0, -share * 22.0)
 		var color := Color(1.0, 0.45, 0.55, 1.0 - share)
-		draw_circle(at + Vector2(-2, 0), 2.6, color)
-		draw_circle(at + Vector2(2, 0), 2.6, color)
-		draw_colored_polygon(PackedVector2Array([at + Vector2(-4.4, 1), at + Vector2(4.4, 1), at + Vector2(0, 6)]), color)
+		PX.disc(self, at + Vector2(-2, 0), 2.6, color)
+		PX.disc(self, at + Vector2(2, 0), 2.6, color)
+		PX.poly(self, PackedVector2Array([at + Vector2(-4.4, 1), at + Vector2(4.4, 1), at + Vector2(0, 6)]), color)
 
 
 ## Asleep: little z's drifting up from its head, drawn pixel by pixel.
@@ -590,7 +591,7 @@ func _draw_name_mark(pet: Dictionary) -> void:
 	var head := Vector2(0, roundf(-52.0 * _sprite.scale.y - 22.0))
 	var bob := roundf(sin(_bob * 2.0) * 1.5)
 	var gem := head + Vector2(0, bob)
-	draw_colored_polygon(PackedVector2Array([gem + Vector2(0, -4), gem + Vector2(3, 0), gem + Vector2(0, 4), gem + Vector2(-3, 0)]), Color(1.0, 0.82, 0.4))
+	PX.poly(self, PackedVector2Array([gem + Vector2(0, -4), gem + Vector2(3, 0), gem + Vector2(0, 4), gem + Vector2(-3, 0)]), Color(1.0, 0.82, 0.4))
 	draw_rect(Rect2(gem + Vector2(-1, -2), Vector2(1, 1)), Color(1.0, 0.96, 0.8))
 	var t := Time.get_ticks_msec() / 1000.0
 	if at_stage >= 1:
@@ -600,7 +601,7 @@ func _draw_name_mark(pet: Dictionary) -> void:
 			draw_rect(Rect2(spot, Vector2(1, 2)), Color(glow, 0.7 * (1.0 - phase)))
 	if at_stage >= 2:
 		draw_set_transform(Vector2(0, 1), 0.0, Vector2(1.0, 0.45))
-		draw_arc(Vector2.ZERO, 20.0, 0.0, TAU, 32, Color(glow, 0.5 + 0.2 * sin(t * 3.0)), 1.0)
+		PX.arc(self, Vector2.ZERO, 20.0, 0.0, TAU, 32, Color(glow, 0.5 + 0.2 * sin(t * 3.0)), 1.0)
 		draw_set_transform(Vector2.ZERO)
 	if at_stage >= 3:
 		for k in 5:

@@ -1,5 +1,6 @@
 class_name Uniques
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## The special powers of unique items. The player calls the hooks below;
 ## each checks whether something worn has that power.
 
@@ -178,5 +179,5 @@ func _draw() -> void:
 	if _player == null or _player.is_dead() or not has(_player, "wisp"):
 		return
 	var at := Vector2(cos(_angle), sin(_angle) * 0.5) * 30.0 + Vector2(0, -30)
-	draw_circle(at, 7.0, Color(0.55, 1.0, 0.95, 0.25))
-	draw_circle(at, 3.5, Color(0.8, 1.0, 1.0))
+	PX.disc(self, at, 7.0, Color(0.55, 1.0, 0.95, 0.25))
+	PX.disc(self, at, 3.5, Color(0.8, 1.0, 1.0))

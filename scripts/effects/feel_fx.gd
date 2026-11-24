@@ -1,5 +1,6 @@
 class_name FeelFX
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## Small effects that make moments feel like something happened:
 ##  - soul motes stream out of a defeated foe and home in on the player,
 ##    more of them, and richer in colour, the stronger the foe;
@@ -120,14 +121,14 @@ func _draw() -> void:
 		draw_rect(Rect2(feet + Vector2(-width / 5.0, -160.0), Vector2(width / 2.5, 160.0)), Color(1.0, 0.95, 0.75, 0.35 * fade))
 		for k in 3:
 			var r := 20.0 + (t + k * 0.25) * 70.0
-			draw_arc(feet, r, 0.0, TAU, 40, Color(1.0, 0.85, 0.4, fade * 0.6), 2.0)
+			PX.arc(self, feet, r, 0.0, TAU, 40, Color(1.0, 0.85, 0.4, fade * 0.6), 2.0)
 	for mote in _motes:
 		var color: Color = mote["color"]
 		var trail: PackedVector2Array = mote["trail"]
 		for i in range(1, trail.size()):
-			draw_line(trail[i - 1], trail[i], Color(color, 0.12 + 0.5 * i / trail.size()), mote["size"] * (0.5 + 0.5 * i / trail.size()))
-		draw_circle(mote["pos"], mote["size"] + 2.0, Color(color, 0.25))
-		draw_circle(mote["pos"], mote["size"], color.lightened(0.4))
+			PX.line(self, trail[i - 1], trail[i], Color(color, 0.12 + 0.5 * i / trail.size()), mote["size"] * (0.5 + 0.5 * i / trail.size()))
+		PX.disc(self, mote["pos"], mote["size"] + 2.0, Color(color, 0.25))
+		PX.disc(self, mote["pos"], mote["size"], color.lightened(0.4))
 	for bloom in _blooms:
 		if bloom["age"] < 0.0:
 			continue
@@ -144,5 +145,5 @@ func _draw() -> void:
 		for k in 4:
 			var dir := Vector2.from_angle(star["angle"] + k * PI / 2.0)
 			var side := dir.orthogonal() * size * 0.16
-			draw_colored_polygon(PackedVector2Array([center + side, center + dir * size, center - side]), color)
-		draw_circle(center, size * 0.25, Color(1.0, 0.95, 0.7, 1.0 - t))
+			PX.poly(self, PackedVector2Array([center + side, center + dir * size, center - side]), color)
+		PX.disc(self, center, size * 0.25, Color(1.0, 0.95, 0.7, 1.0 - t))

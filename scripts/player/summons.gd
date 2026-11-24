@@ -1,5 +1,6 @@
 class_name Summons
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## What the player has called up to fight: a Necromancer's dead (weak
 ## zombies clawing out of the ground, skeleton archers) and a
 ## Spellcaster's familiars (small wisps of arcana). Each kind has a limit
@@ -222,15 +223,15 @@ class Minion:
 				var at := Vector2(roundf(spread * 14.0), roundf(-sin(_rise * PI) * (6.0 + absf(spread) * 8.0)))
 				draw_rect(Rect2(at, Vector2(2, 2)), Color(0.36, 0.27, 0.18))
 			draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
-			draw_circle(Vector2.ZERO, 14.0, Color(0.16, 0.11, 0.07, 0.8))
+			PX.disc(self, Vector2.ZERO, 14.0, Color(0.16, 0.11, 0.07, 0.8))
 			draw_set_transform(Vector2.ZERO)
 			return
 		# Its shadow, and a ring showing how long it has left.
 		draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
-		draw_circle(Vector2.ZERO, 12.0, Color(0, 0, 0, 0.22))
+		PX.disc(self, Vector2.ZERO, 12.0, Color(0, 0, 0, 0.22))
 		var share := clampf(life / Summons.LIFETIME, 0.0, 1.0)
 		var fading := life < 10.0 and fmod(t * 4.0, 1.0) < 0.5
-		draw_arc(Vector2.ZERO, 15.0, -PI / 2.0, -PI / 2.0 + TAU * share, 24, Color(_colour, 0.35 if fading else 0.7), 1.5)
+		PX.arc(self, Vector2.ZERO, 15.0, -PI / 2.0, -PI / 2.0 + TAU * share, 24, Color(_colour, 0.35 if fading else 0.7), 1.5)
 		draw_set_transform(Vector2.ZERO)
 		if life < 10.0:
 			_sprite.modulate.a = 0.45 if fading else 1.0

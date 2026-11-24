@@ -1,5 +1,6 @@
 class_name Boat
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## The rowboat under the player while sailing: a wooden hull with planks,
 ## oars that dip as it moves, and a wake behind it.
 
@@ -29,13 +30,13 @@ func _draw() -> void:
 	if _player.velocity.length() > 20.0:
 		for k in 3:
 			var back := -_player.velocity.normalized() * (36.0 + k * 14.0) * Vector2(scale.x, 1.0)
-			draw_arc(back + Vector2(0, 4), 8.0 + k * 5.0, 0.0, TAU, 16, Color(0.85, 0.92, 1.0, 0.35 - k * 0.1), 1.5)
-	draw_colored_polygon(PackedVector2Array([Vector2(-32, -2 + bob), Vector2(32, -4 + bob), Vector2(26, 10 + bob), Vector2(-26, 12 + bob)]), Color(0.05, 0.04, 0.04))
-	draw_colored_polygon(hull, Color(0.55, 0.38, 0.24))
-	draw_line(Vector2(-28, -1 + bob), Vector2(28, -3 + bob), Color(0.7, 0.5, 0.32), 2.0)
-	draw_line(Vector2(-25, 3 + bob), Vector2(25, 1 + bob), Color(0.42, 0.28, 0.18), 1.0)
-	draw_line(Vector2(-23, 6 + bob), Vector2(23, 5 + bob), Color(0.42, 0.28, 0.18), 1.0)
+			PX.arc(self, back + Vector2(0, 4), 8.0 + k * 5.0, 0.0, TAU, 16, Color(0.85, 0.92, 1.0, 0.35 - k * 0.1), 1.5)
+	PX.poly(self, PackedVector2Array([Vector2(-32, -2 + bob), Vector2(32, -4 + bob), Vector2(26, 10 + bob), Vector2(-26, 12 + bob)]), Color(0.05, 0.04, 0.04))
+	PX.poly(self, hull, Color(0.55, 0.38, 0.24))
+	PX.line(self, Vector2(-28, -1 + bob), Vector2(28, -3 + bob), Color(0.7, 0.5, 0.32), 2.0)
+	PX.line(self, Vector2(-25, 3 + bob), Vector2(25, 1 + bob), Color(0.42, 0.28, 0.18), 1.0)
+	PX.line(self, Vector2(-23, 6 + bob), Vector2(23, 5 + bob), Color(0.42, 0.28, 0.18), 1.0)
 	# Oars, dipping in turn.
 	var dip := sin(_time * 4.0) * 6.0
-	draw_line(Vector2(-6, -2 + bob), Vector2(-20 + dip, 14 + bob), Color(0.75, 0.6, 0.4), 2.0)
-	draw_line(Vector2(6, -3 + bob), Vector2(20 - dip, 13 + bob), Color(0.75, 0.6, 0.4), 2.0)
+	PX.line(self, Vector2(-6, -2 + bob), Vector2(-20 + dip, 14 + bob), Color(0.75, 0.6, 0.4), 2.0)
+	PX.line(self, Vector2(6, -3 + bob), Vector2(20 - dip, 13 + bob), Color(0.75, 0.6, 0.4), 2.0)

@@ -1,5 +1,6 @@
 class_name DreadAura
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## Your presence, let loose (the release_aura key, once the gift has woken
 ## at level WAKE_LEVEL): weaker monsters near you cower and back away, and
 ## will not strike while it lasts; wild animals bolt. Elites only cower if
@@ -122,9 +123,9 @@ func _draw() -> void:
 		var phase := fmod(_t * 0.7 + k / 3.0, 1.0)
 		var radius := roundf(24.0 + phase * (RADIUS - 24.0))
 		var alpha := 0.32 * (1.0 - phase)
-		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(0.45, 0.12, 0.32, alpha), 2.0)
-		draw_arc(Vector2.ZERO, radius - 3.0, 0.0, TAU, 64, Color(0.08, 0.02, 0.06, alpha * 0.8), 1.0)
-	draw_circle(Vector2.ZERO, 26.0, Color(0.1, 0.02, 0.08, 0.25))
+		PX.arc(self, Vector2.ZERO, radius, 0.0, TAU, 64, Color(0.45, 0.12, 0.32, alpha), 2.0)
+		PX.arc(self, Vector2.ZERO, radius - 3.0, 0.0, TAU, 64, Color(0.08, 0.02, 0.06, alpha * 0.8), 1.0)
+	PX.disc(self, Vector2.ZERO, 26.0, Color(0.1, 0.02, 0.08, 0.25))
 	draw_set_transform(Vector2.ZERO)
 	# Motes of shadow rising off you.
 	for k in 14:

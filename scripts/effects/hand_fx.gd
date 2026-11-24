@@ -1,5 +1,6 @@
 class_name HandFX
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## What the hands show. With magic in hand the casting hand takes on the
 ## school: fire licks up from it, lightning crackles round it, frost mists
 ## and sparkles, light glows and throws rays, and dark magic wraps the
@@ -111,30 +112,30 @@ func _draw() -> void:
 		var color: Color = look["color"]
 		var pulse := 0.5 + 0.5 * sin(_time * 7.0)
 		if look.get("aura", false):
-			draw_circle(Vector2(0, -18), 20.0 + pulse * 2.0, Color(color.darkened(0.5), 0.16))
-			draw_circle(Vector2(0, -18), 14.0, Color(color.darkened(0.6), 0.12))
+			PX.disc(self, Vector2(0, -18), 20.0 + pulse * 2.0, Color(color.darkened(0.5), 0.16))
+			PX.disc(self, Vector2(0, -18), 14.0, Color(color.darkened(0.6), 0.12))
 		for hand in _hands(look["hands"]):
-			draw_circle(hand, 6.0 + pulse * 1.5, Color(color, 0.18))
-			draw_circle(hand, 3.0, Color(color.lightened(0.3), 0.45))
+			PX.disc(self, hand, 6.0 + pulse * 1.5, Color(color, 0.18))
+			PX.disc(self, hand, 3.0, Color(color.lightened(0.3), 0.45))
 			if look["kind"] == "fire":
 				for k in 3:
 					var x := (k - 1) * 2.2
 					var tall := 5.0 + 3.0 * sin(_time * 14.0 + k * 2.0)
-					draw_colored_polygon(PackedVector2Array([hand + Vector2(x - 1.6, 1), hand + Vector2(x, -tall), hand + Vector2(x + 1.6, 1)]), Color(1.0, 0.75, 0.3, 0.85))
+					PX.poly(self, PackedVector2Array([hand + Vector2(x - 1.6, 1), hand + Vector2(x, -tall), hand + Vector2(x + 1.6, 1)]), Color(1.0, 0.75, 0.3, 0.85))
 			elif look["kind"] == "light":
 				for k in 6:
 					var dir := Vector2.from_angle(k * TAU / 6.0 + _time)
-					draw_line(hand + dir * 4.0, hand + dir * (8.0 + pulse * 3.0), Color(1.0, 0.95, 0.7, 0.6), 1.0)
+					PX.line(self, hand + dir * 4.0, hand + dir * (8.0 + pulse * 3.0), Color(1.0, 0.95, 0.7, 0.6), 1.0)
 	for mote in _motes:
 		var fade: float = 1.0 - mote["age"] / mote["life"]
 		var color: Color = mote["color"]
 		match str(mote["kind"]):
 			"spark":
 				var line := PackedVector2Array([mote["pos"], (mote["pos"] + mote["to"]) / 2.0 + Vector2(randf_range(-2, 2), randf_range(-2, 2)), mote["to"]])
-				draw_polyline(line, Color(color, fade), 1.0)
+				PX.polyline(self, line, Color(color, fade), 1.0)
 			"streak":
-				draw_line(mote["pos"], mote["pos"] - (mote["vel"] as Vector2).normalized() * 4.0, Color(color, color.a * fade), 1.0)
+				PX.line(self, mote["pos"], mote["pos"] - (mote["vel"] as Vector2).normalized() * 4.0, Color(color, color.a * fade), 1.0)
 			"wisp", "mist":
-				draw_circle(mote["pos"], mote["size"] * (1.0 + (1.0 - fade)), Color(color, color.a * fade * 0.7))
+				PX.disc(self, mote["pos"], mote["size"] * (1.0 + (1.0 - fade)), Color(color, color.a * fade * 0.7))
 			_:
-				draw_circle(mote["pos"], mote["size"], Color(color, fade))
+				PX.disc(self, mote["pos"], mote["size"], Color(color, fade))

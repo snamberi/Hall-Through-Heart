@@ -1,5 +1,6 @@
 class_name Lightning
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## A lightning strike: a warning ring on the ground, then the bolt, a flash,
 ## and harm to anyone standing in it.
 
@@ -59,10 +60,10 @@ func _draw() -> void:
 	if not _struck:
 		var share := _time / WARNING
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.6))
-		draw_circle(Vector2.ZERO, RADIUS * share, Color(0.75, 0.88, 1.0, 0.2))
-		draw_arc(Vector2.ZERO, RADIUS, 0.0, TAU, 32, Color(0.8, 0.9, 1.0, 0.8), 2.0)
+		PX.disc(self, Vector2.ZERO, RADIUS * share, Color(0.75, 0.88, 1.0, 0.2))
+		PX.arc(self, Vector2.ZERO, RADIUS, 0.0, TAU, 32, Color(0.8, 0.9, 1.0, 0.8), 2.0)
 		draw_set_transform(Vector2.ZERO)
 		return
 	var fade := 1.0 - (_time - WARNING) / 0.35
-	draw_polyline(_bolt, Color(0.6, 0.8, 1.0, 0.5 * fade), 7.0)
-	draw_polyline(_bolt, Color(1, 1, 1, fade), 2.5)
+	PX.polyline(self, _bolt, Color(0.6, 0.8, 1.0, 0.5 * fade), 7.0)
+	PX.polyline(self, _bolt, Color(1, 1, 1, fade), 2.5)

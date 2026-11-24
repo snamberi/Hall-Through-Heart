@@ -1,5 +1,6 @@
 class_name StatusFX
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## Little particles around a creature for each status it suffers: flames for
 ## burn, bubbles for poison, drips for bleed, frost for chill, and a row of
 ## small badges above its head.
@@ -59,11 +60,11 @@ func _draw() -> void:
 	# Chill also rims the feet with frost.
 	if "chill" in _ids:
 		draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.4))
-		draw_arc(Vector2.ZERO, width + 6.0, 0.0, TAU, 24, Color(0.7, 0.9, 1.0, 0.7), 2.0)
+		PX.arc(self, Vector2.ZERO, width + 6.0, 0.0, TAU, 24, Color(0.7, 0.9, 1.0, 0.7), 2.0)
 		draw_set_transform(Vector2.ZERO)
 	if "poison" in _ids:
 		draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.4))
-		draw_circle(Vector2.ZERO, width + 4.0, Color(0.4, 0.8, 0.25, 0.18))
+		PX.disc(self, Vector2.ZERO, width + 4.0, Color(0.4, 0.8, 0.25, 0.18))
 		draw_set_transform(Vector2.ZERO)
 	for particle in _particles:
 		var share: float = particle["life"] / particle["max"]
@@ -71,20 +72,20 @@ func _draw() -> void:
 		match particle["id"]:
 			"burn":
 				var color := Color(1.0, 0.85, 0.3).lerp(Color(0.9, 0.2, 0.05), 1.0 - share)
-				draw_circle(pos, 1.0 + 2.6 * share, Color(color, 0.9))
+				PX.disc(self, pos, 1.0 + 2.6 * share, Color(color, 0.9))
 			"poison":
-				draw_arc(pos, 1.5 + 2.0 * (1.0 - share), 0.0, TAU, 8, Color(0.55, 0.95, 0.4, share), 1.0)
+				PX.arc(self, pos, 1.5 + 2.0 * (1.0 - share), 0.0, TAU, 8, Color(0.55, 0.95, 0.4, share), 1.0)
 			"bleed":
 				draw_rect(Rect2(pos, Vector2(2, 3)), Color(0.75, 0.05, 0.08, share))
 			_:
 				var c := Color(0.85, 0.95, 1.0, share)
-				draw_line(pos + Vector2(-2, 0), pos + Vector2(2, 0), c, 1.0)
-				draw_line(pos + Vector2(0, -2), pos + Vector2(0, 2), c, 1.0)
+				PX.line(self, pos + Vector2(-2, 0), pos + Vector2(2, 0), c, 1.0)
+				PX.line(self, pos + Vector2(0, -2), pos + Vector2(0, 2), c, 1.0)
 	# Badges: one coloured diamond per status above the head.
 	var start := -(_ids.size() - 1) * 6.0
 	for index in _ids.size():
 		var center := Vector2(start + index * 12.0, -height - 10.0)
 		var color: Color = ItemDB.STATUSES[_ids[index]]["color"]
 		var points := PackedVector2Array([center + Vector2(0, -5), center + Vector2(5, 0), center + Vector2(0, 5), center + Vector2(-5, 0)])
-		draw_colored_polygon(points, Color(0.05, 0.05, 0.08))
-		draw_colored_polygon(PackedVector2Array([center + Vector2(0, -3.5), center + Vector2(3.5, 0), center + Vector2(0, 3.5), center + Vector2(-3.5, 0)]), color)
+		PX.poly(self, points, Color(0.05, 0.05, 0.08))
+		PX.poly(self, PackedVector2Array([center + Vector2(0, -3.5), center + Vector2(3.5, 0), center + Vector2(0, 3.5), center + Vector2(-3.5, 0)]), color)

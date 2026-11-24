@@ -1,5 +1,6 @@
 class_name FishShoal
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## Dark fish circling under the surface at a fishing spot, now and then one
 ## breaking the water.
 
@@ -43,13 +44,13 @@ func _draw() -> void:
 			var a := k * TAU / 12.0
 			body.append(Vector2(cos(a) * 6.0, sin(a) * 2.2))
 		var shade := Color(0.02, 0.05, 0.09, 0.6)
-		draw_colored_polygon(body, shade)
-		draw_colored_polygon(PackedVector2Array([Vector2(-5, 0), Vector2(-10, -3 + wag), Vector2(-10, 3 + wag)]), shade)
+		PX.poly(self, body, shade)
+		PX.poly(self, PackedVector2Array([Vector2(-5, 0), Vector2(-10, -3 + wag), Vector2(-10, 3 + wag)]), shade)
 	draw_set_transform(Vector2.ZERO)
 	if _ring_age < 0.9:
 		var share := _ring_age / 0.9
 		draw_set_transform(_ring_at, 0.0, Vector2(1.0, 0.5))
-		draw_arc(Vector2.ZERO, 3.0 + share * 16.0, 0.0, TAU, 24, Color(0.85, 0.95, 1.0, 0.7 * (1.0 - share)), 1.5)
+		PX.arc(self, Vector2.ZERO, 3.0 + share * 16.0, 0.0, TAU, 24, Color(0.85, 0.95, 1.0, 0.7 * (1.0 - share)), 1.5)
 		if share < 0.3:
-			draw_circle(Vector2(0, -6.0 - share * 20.0), 1.5, Color(0.9, 0.97, 1.0, 0.8))
+			PX.disc(self, Vector2(0, -6.0 - share * 20.0), 1.5, Color(0.9, 0.97, 1.0, 0.8))
 		draw_set_transform(Vector2.ZERO)

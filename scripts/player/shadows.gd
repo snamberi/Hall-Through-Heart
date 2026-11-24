@@ -1,5 +1,6 @@
 class_name Shadows
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## A Shade Sovereign's shadows (see ThePact). Where a monster has just
 ## fallen, the raise key (E) calls it back up as a shadow soldier: its own
 ## shape, black as a hole in the light, with violet eyes and dark smoke
@@ -298,7 +299,7 @@ class ShadowSoldier:
 			return
 		var t := Time.get_ticks_msec() / 1000.0
 		draw_set_transform(Vector2(0, 2), 0.0, Vector2(1.0, 0.45))
-		draw_circle(Vector2.ZERO, 14.0, Color(0.1, 0.02, 0.18, 0.45))
+		PX.disc(self, Vector2.ZERO, 14.0, Color(0.1, 0.02, 0.18, 0.45))
 		draw_set_transform(Vector2.ZERO)
 		# Smoke rising off it.
 		for k in 8:

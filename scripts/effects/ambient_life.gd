@@ -1,5 +1,6 @@
 class_name AmbientLife
 extends Node2D
+const PX := preload("res://scripts/effects/pixel_draw.gd")
 ## Small life that fills the world and asks nothing of the player: bees
 ## and butterflies over the grass by day, flies above mire and rot,
 ## fireflies glowing in the dark, birds pecking at the ground that take
@@ -276,7 +277,7 @@ func _draw() -> void:
 
 func _shadow(ground: Vector2, radius: float, alpha: float) -> void:
 	draw_set_transform(ground, 0.0, Vector2(1.0, 0.45))
-	draw_circle(Vector2.ZERO, radius, Color(0, 0, 0, alpha))
+	PX.disc(self, Vector2.ZERO, radius, Color(0, 0, 0, alpha))
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -292,8 +293,8 @@ func _draw_bird(at: Vector2, colour: Color, flying: bool, t: float, facing: floa
 		return
 	var beat := sin(t * 14.0)
 	var wing := Vector2(5.0 * size, -3.0 * size * beat)
-	draw_line(at, at + Vector2(-wing.x, wing.y), colour, 1.2 * size)
-	draw_line(at, at + Vector2(wing.x, wing.y), colour, 1.2 * size)
+	PX.line(self, at, at + Vector2(-wing.x, wing.y), colour, 1.2 * size)
+	PX.line(self, at, at + Vector2(wing.x, wing.y), colour, 1.2 * size)
 	draw_rect(Rect2(at + Vector2(-1, -1) * size, Vector2(2, 2) * size), colour)
 
 
@@ -306,6 +307,6 @@ func _draw_glow() -> void:
 		if pulse < 0.15:
 			continue
 		var glow := Color(0.75, 1.0, 0.35, 0.10 * pulse)
-		_glow.draw_circle(at, 7.0, glow)
-		_glow.draw_circle(at, 3.5, Color(glow, 0.22 * pulse))
+		PX.disc(_glow, at, 7.0, glow)
+		PX.disc(_glow, at, 3.5, Color(glow, 0.22 * pulse))
 		_glow.draw_rect(Rect2(at - Vector2(0.75, 0.75), Vector2(1.5, 1.5)), Color(0.95, 1.0, 0.6, 0.9 * pulse))
