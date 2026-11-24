@@ -52,8 +52,19 @@ func _draw() -> void:
 		if below:
 			var top := origin.y + size * (1.0 - FACE)
 			var face := Rect2(origin.x, top, size, size * FACE)
-			draw_rect(face, colors["face"])
-			_face_detail(face, colors, seed)
+			var strip: String = {"stone": "masonry", "rock": "cave"}.get(style, "")
+			if strip != "":
+				# Cut stone and cave rock drawn a pixel at a time, from the
+				# same strips as the cliffs (tools/generate_cliffs.py),
+				# placed by position so a wall runs on without a seam.
+				var row := CliffFaces.FACE_LOOKS.find(strip) * CliffFaces.FACE_HEIGHT
+				var face_top := roundf(top)
+				var tall := roundf(face.end.y) - face_top
+				var sx := posmod(int(origin.x), CliffFaces.FACE_WIDTH - int(size) + 1)
+				draw_texture_rect_region(CliffFaces.FACES, Rect2(origin.x, face_top, size, tall), Rect2(sx, row + CliffFaces.FACE_TOP, size, tall))
+			else:
+				draw_rect(face, colors["face"])
+				_face_detail(face, colors, seed)
 			draw_line(Vector2(face.position.x, top), Vector2(face.end.x, top), colors["rim"], 2.0)
 			draw_line(Vector2(face.position.x, face.end.y - 1), Vector2(face.end.x, face.end.y - 1), colors["dark"], 2.0)
 			# The shadow the wall casts onto the floor in front of it.

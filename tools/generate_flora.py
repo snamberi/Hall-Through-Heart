@@ -3557,7 +3557,9 @@ DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate",
          "waygate",
          # Furnishings of the peoples: elves, dwarves and goblins at home.
          "elf_lamp", "elf_hanging", "elf_basin", "dwarf_keg", "dwarf_table", "dwarf_trophy",
-         "goblin_totem", "goblin_scrap", "goblin_bed"]
+         "goblin_totem", "goblin_scrap", "goblin_bed",
+         # Dressing for crypts, caves and ruins.
+         "wall_torch", "cobweb", "wall_carving", "chains", "ivy_wall"]
 
 
 def sheet(images, w, h):

@@ -32,7 +32,7 @@ const SOIL := {
 ## one strip per look, four tiles wide, repeating along a ridge. The face
 ## proper starts FACE_TOP pixels down each strip (the lip can rise above it).
 const FACES: Texture2D = preload("res://assets/tiles/cliffs.png")
-const FACE_LOOKS: Array[String] = ["rock", "peak", "earth", "frozen", "sandstone", "ash"]
+const FACE_LOOKS: Array[String] = ["rock", "peak", "earth", "frozen", "sandstone", "ash", "masonry", "cave"]
 const FACE_WIDTH := 176
 const FACE_HEIGHT := 56
 const FACE_TOP := 8.0

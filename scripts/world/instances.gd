@@ -411,6 +411,7 @@ func enter_dungeon(dungeon_seed: int, level: int, boss_id: String, on_cleared: C
 			crypt.add_prop(decor)
 		if not last and index > 0 and random.randf() < 0.5:
 			_add_chest(crypt, rect.position + Vector2i(rect.size.x - 2, 1), level, 1.5, func() -> void: pass)
+		_dress_crypt_room(crypt, rect, random)
 		dungeon.rooms.append(info)
 
 
@@ -605,6 +606,31 @@ func _spawn_wave_boss() -> void:
 			if item:
 				_loot.drop_item(item, _enemy.global_position + Vector2(randf_range(-40, 40), randf_range(-30, 30)))
 	)
+
+
+## The walls of a crypt room: torches in iron sconces along the far wall,
+## webs sagging in its corners, and a carved relief or hanging chains.
+func _dress_crypt_room(crypt: Room, rect: Rect2i, random: RandomNumberGenerator) -> void:
+	var on_wall := func(decor: Prop.Decor, x: int) -> Prop:
+		var piece := Prop.create_decor(decor, crypt.cell_position(Vector2i(x, rect.position.y)) + Vector2(0, -24), 0.0)
+		piece.hits_left = 0
+		piece.remove_from_group("breakables")
+		crypt.add_prop(piece)
+		return piece
+	for x in range(rect.position.x + 2, rect.end.x - 1, 4):
+		if x == rect.get_center().x:
+			continue
+		on_wall.call(Prop.Decor.WALL_TORCH, x).add_light(0.8, 1.7)
+	on_wall.call(Prop.Decor.COBWEB, rect.position.x)
+	if random.randf() < 0.6:
+		on_wall.call(Prop.Decor.COBWEB, rect.end.x - 1)
+	var roll := random.randf()
+	if roll < 0.45:
+		on_wall.call(Prop.Decor.WALL_CARVING, rect.get_center().x)
+	elif roll < 0.75:
+		on_wall.call(Prop.Decor.CHAINS, rect.get_center().x)
+	else:
+		on_wall.call(Prop.Decor.IVY_WALL, rect.get_center().x)
 
 
 # --- dwellings

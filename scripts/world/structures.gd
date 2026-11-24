@@ -413,6 +413,10 @@ func _build_ruin(cell: Vector2i, key: String, level: int, random: RandomNumberGe
 				fallen.append(cell + Vector2i(dx, dy))
 	for piece in StoneWall.build(wall_cells, func(c: Vector2i) -> Vector2: return _at(c)):
 		placed.append(piece)
+	# Ivy has climbed the old walls and spills down their faces.
+	for wall: Vector2i in wall_cells:
+		if (wall.y == cell.y - 4 or absi(wall.x - cell.x) == 4) and absi(hash(wall)) % 5 < 2:
+			_decor(placed, Prop.Decor.IVY_WALL, wall, 0.0, false, Vector2(0, 6))
 	# Where the wall came down, its blocks still lie in a heap.
 	for gap: Vector2i in fallen:
 		if random.randf() < 0.7:

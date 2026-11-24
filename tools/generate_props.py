@@ -499,3 +499,83 @@ PROPS.update({
     "dwarf_keg": prop_dwarf_keg, "dwarf_table": prop_dwarf_table, "dwarf_trophy": prop_dwarf_trophy,
     "goblin_totem": prop_goblin_totem, "goblin_scrap": prop_goblin_scrap, "goblin_bed": prop_goblin_bed,
 })
+
+
+# --- dungeon and ruin dressing (phase 5) -------------------------------------
+# These hang on a wall: drawn high in the cell, so set a little above the
+# floor's first row they sit on the wall's face.
+
+def prop_wall_torch(c):
+    glow(c, 32, 18, 16, (255, 190, 100), 70)
+    c.shade("rect", (29, 30, 35, 44), IRON)
+    c.fill("line", (30, 31, 34, 31), C("c4c8d4"), 1)
+    c.shade("poly", [(28, 22), (36, 22), (34, 30), (30, 30)], IRON)
+    c.shade("rect", (31, 16, 33, 24), DARKWOOD)
+    c.shade("rect", (30, 14, 34, 18), ramp("a89070", "7a6448", "4a3a28"))
+    flame(c, 32, 13, 10, 31)
+
+
+def prop_cobweb(c):
+    # A web hung across the top of the wall, sagging, with a spider.
+    web = C("d8d8e0", 180)
+    for k in range(-3, 4):
+        x1 = 32 + k * 9
+        c.fill("line", (32, 4, x1, 30 - abs(k) * 3), web, 1)
+    for ring in (8, 14, 20):
+        pts = []
+        for k in range(-3, 4):
+            t = ring / 26
+            pts.append((32 + k * 9 * t, 4 + (26 - abs(k) * 3) * t + (2 if k % 2 else 0)))
+        for a, b in zip(pts, pts[1:]):
+            c.fill("line", (a[0], a[1], b[0], b[1]), web, 1)
+    c.fill("rect", (40, 16, 42, 18), C("1a1418"))
+    c.put(39, 15, C("1a1418")); c.put(43, 15, C("1a1418")); c.put(39, 19, C("1a1418")); c.put(43, 19, C("1a1418"))
+    c.fill("line", (41, 4, 41, 15), web, 1)
+
+
+def prop_wall_carving(c):
+    # A carved relief in the wall: a round panel with a weeping face and runes.
+    c.shade("ellipse", (18, 6, 46, 34), GREY)
+    c.shade("ellipse", (21, 9, 43, 31), ramp("8e8a96", "6a6672", "4a4652"))
+    c.shade("ellipse", (26, 12, 38, 26), GREYTOP)
+    c.fill("rect", (28, 17, 30, 18), GREY[2]); c.fill("rect", (34, 17, 36, 18), GREY[2])
+    c.fill("line", (29, 19, 29, 25), C("a03a3a"), 1)
+    c.fill("line", (30, 22, 34, 22), GREY[2], 1)
+    for k in range(8):
+        a = k / 8 * math.tau
+        x, y = 32 + math.cos(a) * 12, 20 + math.sin(a) * 12
+        c.put(x, y, GREY[2]); c.put(x + 1, y, GREYTOP[0])
+
+
+def prop_chains(c):
+    for x0, length in ((24, 22), (38, 30)):
+        for k in range(length // 3):
+            y = 4 + k * 3
+            if k % 2:
+                c.fill("rect", (x0 - 1, y, x0 + 1, y + 2), IRON[1])
+                c.put(x0, y + 1, C("1a1418"))
+            else:
+                c.fill("rect", (x0, y, x0, y + 2), IRON[0])
+        c.shade("ellipse", (x0 - 3, 4 + length, x0 + 3, 9 + length), IRON)
+        c.put(x0, 6 + length, C("1a1418"))
+
+
+def prop_ivy_wall(c):
+    # Ivy spilling down from the top of a wall or ruin.
+    r = random.Random(9)
+    for k in range(6):
+        x = 12 + k * 8 + r.randint(-2, 2)
+        length = r.randint(14, 34)
+        for y in range(2, 2 + length):
+            xx = x + int(math.sin(y * 0.35 + k) * 1.5)
+            c.put(xx, y, C("3a5a2a"))
+            if y % 3 == 0:
+                side = 1 if (y // 3) % 2 else -1
+                c.put(xx + side, y, LEAFG[1]); c.put(xx + side * 2, y - 1, LEAFG[0]); c.put(xx + side, y + 1, LEAFG[2])
+    for x in range(8, 58):
+        c.put(x, 2, LEAFG[1] if x % 2 else LEAFG[0])
+        c.put(x, 3, LEAFG[2])
+
+
+PROPS.update({"wall_torch": prop_wall_torch, "cobweb": prop_cobweb, "wall_carving": prop_wall_carving,
+              "chains": prop_chains, "ivy_wall": prop_ivy_wall})

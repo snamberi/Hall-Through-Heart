@@ -53,6 +53,7 @@ STONES = {
     "ash": [C("5a5458"), C("7a7278"), C("3e3a3e"), C("1a1618")],
     "rock": [C("7a7682"), C("a8a4b2"), C("55525e"), C("24222a")],
     "peak": [C("9aa4b8"), C("d0d8e8"), C("6a7488"), C("2e3442")],
+    "cave": [C("4a4652"), C("6a6672"), C("34303a"), C("16141a")],
 }
 SOIL = {
     "earth": [C("7a5a3c"), C("5e432c"), C("47321f"), C("2a1c12")],
@@ -60,7 +61,60 @@ SOIL = {
     "sandstone": [C("c8a070"), C("a8804e"), C("86623a"), C("4a3420")],
     "ash": [C("5a5054"), C("463e42"), C("342e32"), C("1c181a")],
 }
-ORDER = ["rock", "peak", "earth", "frozen", "sandstone", "ash"]
+ORDER = ["rock", "peak", "earth", "frozen", "sandstone", "ash", "masonry", "cave"]
+
+
+def masonry_strip(seed):
+    """A crypt's dressed stone: courses of cut blocks with mortar joints,
+    each block lit along its top and left edge, chisel marks, cracks, a
+    worn block here and there, and moss in the low joints."""
+    r = random.Random(seed)
+    top, lit, low, seam = C("6a6874"), C("8e8c98"), C("4a4854"), C("1a1820")
+    img = Image.new("RGBA", (W, H), seam)
+    px = img.load()
+    y = 0
+    course = 0
+    while y < H:
+        h = 9 if course % 3 else 8
+        x = -(course % 2) * 11
+        while x < W:
+            w = r.choice((14, 18, 22))
+            tone = r.random()
+            body = mix(low, top, 0.4 + tone * 0.6)
+            for yy in range(y + 1, min(y + h, H)):
+                for xx in range(x + 1, x + w):
+                    if not 0 <= xx < W:
+                        continue
+                    c = body
+                    if yy == y + 1:
+                        c = mix(body, lit, 0.7)
+                    elif xx == x + 1:
+                        c = mix(body, lit, 0.4)
+                    elif yy == y + h - 1 or xx == x + w - 1:
+                        c = mix(body, low, 0.6)
+                    g = hash2(xx, yy, seed)
+                    if g < 0.07:
+                        c = shade(c, 0.88)
+                    elif g > 0.96:
+                        c = shade(c, 1.08)
+                    # Chisel marks: short slanting strokes.
+                    if (xx + yy * 2) % 11 == 0 and g < 0.5:
+                        c = shade(c, 0.9)
+                    px[xx % W, yy] = c
+            if r.random() < 0.15:
+                cx, cy = x + r.randint(3, w - 3), y + 2
+                for k in range(h - 3):
+                    if 0 <= cx < W and cy + k < H:
+                        px[cx % W, cy + k] = seam
+                    cx += r.choice((-1, 0, 1))
+            if y > H - 20 and r.random() < 0.4:
+                for xx in range(x, x + w, 2):
+                    if 0 <= xx < W and y < H:
+                        px[xx % W, y] = C("3e5a32")
+            x += w
+        y += h
+        course += 1
+    return img
 
 
 def wave(x, k, phase, amp):
@@ -225,7 +279,12 @@ def earth_strip(look, seed):
 def main():
     sheet = Image.new("RGBA", (W, H * len(ORDER)))
     for i, look in enumerate(ORDER):
-        strip = rock_strip(look, 11 + i) if look in ("rock", "peak") else earth_strip(look, 31 + i)
+        if look == "masonry":
+            strip = masonry_strip(71)
+        elif look in ("rock", "peak", "cave"):
+            strip = rock_strip(look, 11 + i)
+        else:
+            strip = earth_strip(look, 31 + i)
         sheet.paste(strip, (0, i * H))
     sheet.save(os.path.join(ROOT, "cliffs.png"))
 
