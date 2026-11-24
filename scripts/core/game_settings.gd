@@ -66,6 +66,8 @@ const PRESETS := {
 	"high": {"world_detail": 2, "particles": 1.0, "shaders": "full", "lighting": 2, "weather_fx": 2, "grass_density": 1.0, "view_distance": 2},
 	"ultra": {"world_detail": 3, "particles": 1.5, "shaders": "full", "lighting": 3, "weather_fx": 2, "grass_density": 1.5, "view_distance": 3},
 }
+## What a phone starts on, before its player has chosen.
+const PHONE_PRESET := "normal"
 const PRESET_KEYS: Array[String] = ["world_detail", "particles", "shaders", "lighting", "weather_fx", "grass_density", "view_distance"]
 ## Chunks loaded round the player, by view distance (Short .. Maximum).
 const LOAD_RADIUS: Array[int] = [1, 2, 3, 4]
@@ -237,6 +239,12 @@ func _ready() -> void:
 	for entry in REBINDABLE:
 		if InputMap.has_action(entry[0]):
 			_defaults[entry[0]] = _events_to_data(InputMap.action_get_events(entry[0]))
+	if not FileAccess.file_exists(PATH) and OS.has_feature("mobile"):
+		# A phone's first run starts on the preset made for phones; players
+		# can raise it in the settings.
+		for key: String in PRESETS[PHONE_PRESET]:
+			set(key, PRESETS[PHONE_PRESET][key])
+		graphics_preset = PHONE_PRESET
 	if FileAccess.file_exists(PATH):
 		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(PATH))
 		if data is Dictionary:
