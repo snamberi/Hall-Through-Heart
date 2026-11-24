@@ -721,7 +721,8 @@ def EFFECTS():
 # --- menu icons: no badge, just the thing, outlined --------------------------
 # Order matters: scripts/ui/menu_icons.gd lists the same ids.
 MENU_IDS = ["inventory", "abilities", "class", "magic", "build", "professions", "journal", "map",
-            "attributes", "talents", "mastery", "evolution", "codex", "pets", "wardrobe", "pause", "relics"]
+            "attributes", "talents", "mastery", "evolution", "codex", "pets", "wardrobe", "pause", "relics",
+            "echoes", "pact", "town", "log"]
 PARCHMENT = C("e8d8b0")
 INK = C("5a4630")
 
@@ -861,10 +862,57 @@ def relic_locket(L):
     L.rect((9, 9, 10, 10), C("ffe0e8"))
 
 
+def echo_wisp(L):
+    """Echoes: a devoured soul, a violet wisp, two fading echoes behind it."""
+    for dx, col in ((-7, C("4a3a6a")), (-4, C("6a4a9a"))):
+        L.poly([(12 + dx, 3), (16 + dx, 9), (17 + dx, 14), (14 + dx, 19), (10 + dx, 19), (7 + dx, 14), (8 + dx, 9)], col)
+    L.poly([(13, 2), (18, 8), (19, 14), (16, 20), (10, 20), (7, 15), (8, 9), (11, 7)], C("a070e8"))
+    L.poly([(13, 7), (16, 11), (16, 16), (13, 18), (11, 15), (11, 11)], C("d8c0ff"))
+    L.rect((11, 12, 12, 13), C("2a1a40"))
+    L.rect((14, 12, 15, 13), C("2a1a40"))
+    L.put(13, 16, C("2a1a40"))
+
+
+def pact_tablet(L):
+    """The Pact: a dark slate of the System, a gold eye watching from it."""
+    L.rect((4, 3, 20, 21), C("1e2a48"))
+    L.rect((5, 4, 19, 5), C("3a5a9a"))
+    L.rect((5, 19, 19, 20), C("16203a"))
+    L.poly([(5, 12), (8, 8), (12, 7), (16, 8), (19, 12), (16, 16), (12, 17), (8, 16)], GOLD)
+    L.ellipse((9, 9, 15, 15), C("b02a3a"))
+    L.rect((11, 10, 13, 14), C("1a0a10"))
+    L.put(13, 10, C("ffe8e8"))
+    for x in (7, 17):
+        L.put(x, 6, C("8ab0ff"))
+
+
+def town_houses(L):
+    """Town: two little houses, a banner over the taller one."""
+    L.rect((2, 13, 10, 21), C("d8c098"))
+    L.poly([(1, 13), (6, 8), (11, 13)], C("b04a3a"))
+    L.rect((5, 17, 7, 21), C("6a4428"))
+    L.rect((11, 10, 21, 21), C("e8d4a8"))
+    L.poly([(10, 10), (16, 4), (22, 10)], C("4a6aa8"))
+    L.rect((14, 15, 17, 21), C("6a4428"))
+    L.rect((18, 12, 19, 13), C("f0d070"))
+    L.line([(16, 4), (16, 0)], C("5a4630"))
+    L.poly([(17, 0), (21, 1), (17, 2)], C("d03a3a"))
+
+
+def log_bubble(L):
+    """Log: a speech bubble with lines written in it."""
+    L.poly([(2, 4), (22, 4), (22, 16), (11, 16), (6, 21), (7, 16), (2, 16)], PARCHMENT)
+    for y, x1 in ((7, 18), (10, 19), (13, 14)):
+        L.line([(5, y), (x1, y)], INK)
+    L.put(20, 13, C("c03a3a"))
+    L.put(20, 12, C("c03a3a"))
+
+
 MENU_ICONS = {
     "inventory": backpack, "abilities": crossed_swords, "class": crest, "magic": spellbook, "build": hammer_brick,
     "professions": anvil, "journal": scroll_quill, "map": folded_map, "attributes": bust, "talents": talent_tree,
     "mastery": mastery_sword, "evolution": evolution_crystal, "codex": tome, "pets": paw, "wardrobe": tunic_hanger, "pause": cog, "relics": relic_locket,
+    "echoes": echo_wisp, "pact": pact_tablet, "town": town_houses, "log": log_bubble,
 }
 
 
