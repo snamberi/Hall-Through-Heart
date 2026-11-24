@@ -258,6 +258,17 @@ func is_unique() -> bool:
 	return definition().has("unique")
 
 
+## The picture at the world's own pixel size (16 for the drawn items), for
+## an item lying on the ground or carried.
+func icon_small() -> Texture2D:
+	return ItemIcons.small(id) if ItemIcons.has(id) else icon()
+
+
+## The picture for a square `side` pixels across, never dropping pixels.
+func icon_sized(side: float) -> Texture2D:
+	return ItemIcons.sized(id, side) if ItemIcons.has(id) else icon()
+
+
 func icon() -> Texture2D:
 	if ItemIcons.has(id):
 		return ItemIcons.texture(id)

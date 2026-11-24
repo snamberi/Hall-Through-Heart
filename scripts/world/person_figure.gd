@@ -143,7 +143,8 @@ func wear(gear: Array) -> void:
 func hold(texture: Texture2D, tint: Color = Color.WHITE) -> void:
 	_tool = false
 	_held.centered = true
-	_held.scale = Vector2(0.5, 0.5)
+	# Held at the world's pixel size: a 16-pixel picture as it is.
+	_held.scale = Vector2.ONE if texture == null or texture.get_width() <= 16 else Vector2(0.5, 0.5)
 	_held.texture = texture
 	_held.modulate = tint
 	_held.visible = texture != null

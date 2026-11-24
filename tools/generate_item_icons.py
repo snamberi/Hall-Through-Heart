@@ -3151,9 +3151,14 @@ extends RefCounted
 const SIZE := 32
 const COLUMNS := 16
 const SHEET := "res://assets/icons/items32.png"
+## The same pictures at 16 (tools/icon_small.py), for an item shown at the
+## world's own pixel size: lying on the ground, held, in a small slot.
+const SMALL_SHEET := "res://assets/icons/items16.png"
 
 static var _sheet: Texture2D
+static var _small_sheet: Texture2D
 static var _cache := {}
+static var _small_cache := {}
 
 '''
 
@@ -3175,6 +3180,28 @@ static func snap(rect: Rect2) -> Rect2:
 ## A side for a picture shown in a box about `wanted` pixels across.
 static func crisp_side(wanted: float) -> float:
 	return 96.0 if wanted >= 90.0 else 64.0 if wanted >= 56.0 else 32.0 if wanted >= 28.0 else 16.0
+
+
+## The picture at 16 pixels, or null for an item without one.
+static func small(id: String) -> Texture2D:
+	if not INDEX.has(id):
+		return null
+	if _small_cache.has(id):
+		return _small_cache[id]
+	if _small_sheet == null:
+		_small_sheet = load(SMALL_SHEET)
+	var index: int = INDEX[id]
+	var atlas := AtlasTexture.new()
+	atlas.atlas = _small_sheet
+	atlas.region = Rect2((index % COLUMNS) * SIZE / 2, (index / COLUMNS) * SIZE / 2, SIZE / 2, SIZE / 2)
+	_small_cache[id] = atlas
+	return atlas
+
+
+## The picture to draw in a square `side` pixels across: the 16-pixel one
+## when it is shown at 16 or less, so no pixel is ever dropped.
+static func sized(id: String, side: float) -> Texture2D:
+	return small(id) if side <= 16.0 else texture(id)
 
 
 static func texture(id: String) -> Texture2D:
@@ -3204,7 +3231,11 @@ def main():
         f.write("\n".join(ids) + "\n")
     out = os.path.join(ROOT, "assets", "icons", "items32.png")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    build_sheet(ids).save(out)
+    big = build_sheet(ids)
+    big.save(out)
+    # The same pictures at 16, for the world's own pixel size.
+    import icon_small
+    icon_small.sheet(big, SIZE).save(os.path.join(ROOT, "assets", "icons", "items16.png"))
     lines = ["const INDEX := {"]
     for i, item_id in enumerate(ids):
         lines.append('\t"%s": %d,' % (item_id, i))

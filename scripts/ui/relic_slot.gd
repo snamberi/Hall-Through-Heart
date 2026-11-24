@@ -54,7 +54,8 @@ func _draw() -> void:
 	draw_rect(rect, Color(item.color(), 0.9), false, 2.0)
 	var icon := item.icon()
 	if icon:
-		draw_texture_rect(icon, ItemIcons.snap(rect.grow(-6.0)), false, item.icon_tint())
+		var box := ItemIcons.snap(rect.grow(-6.0))
+		draw_texture_rect(item.icon_sized(box.size.x), box, false, item.icon_tint())
 	var left := _player.relics.cooldown_left(item)
 	var ability := _player.relics.ability_of(item)
 	if left > 0.0:

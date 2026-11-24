@@ -45,16 +45,12 @@ const BEAM_HEIGHT: Array[float] = [0.0, 34.0, 58.0, 92.0, 132.0, 170.0]
 func _ready() -> void:
 	add_to_group("pickups")
 	_sprite = Sprite2D.new()
-	_sprite.texture = item.icon() if item else ItemDB.icon(ItemDB.GOLD_ICON)
+	# Everything lies at the world's own pixel size: the drawn items as
+	# their 16-pixel pictures, never a big one shrunk.
+	_sprite.texture = item.icon_small() if item else ItemDB.icon(ItemDB.GOLD_ICON)
+	_sprite.scale = Vector2.ONE
 	if item:
 		_sprite.modulate = item.icon_tint()
-		# The 32-pixel item pictures lie at half size: at the usual zoom one
-		# of their pixels is one on the screen.
-		if ItemIcons.has(item.id):
-			_sprite.scale = Vector2(0.5, 0.5)
-	else:
-		# Gold lies at its own size (no stretched pixels).
-		_sprite.scale = Vector2.ONE
 	add_child(_sprite)
 	if SharedWorld.current and not net_replica:
 		SharedWorld.current.share_pickup.call_deferred(self)
@@ -69,7 +65,7 @@ func scatter() -> void:
 func _physics_process(delta: float) -> void:
 	_age += delta
 	_blocked_left = maxf(_blocked_left - delta, 0.0)
-	_sprite.position.y = -8.0 + sin(_age * 4.0) * 2.0
+	_sprite.position.y = roundf(-8.0 + sin(_age * 4.0) * 2.0)
 	queue_redraw()
 	if _age > LIFETIME:
 		queue_free()
@@ -100,6 +96,11 @@ func filtered() -> bool:
 ## pixel steps to match the art.
 func _draw() -> void:
 	var pulse := 0.8 + 0.2 * sin(_age * 3.0)
+	# A small shadow on the ground under it, narrower as it bobs up.
+	var lift := -8.0 - _sprite.position.y
+	var half := roundf(5.0 - lift * 0.5)
+	draw_rect(Rect2(-half, 1, half * 2.0, 1), Color(0, 0, 0, 0.32))
+	draw_rect(Rect2(-half + 2.0, 2, half * 2.0 - 4.0, 1), Color(0, 0, 0, 0.22))
 	# Filtered gear: a dim mark, and a hint when the player is beside it.
 	if filtered() and _player and _player.global_position.distance_to(global_position) < 44.0:
 		var font := UITheme.body_bold()

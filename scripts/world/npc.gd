@@ -85,7 +85,7 @@ func _ready() -> void:
 		var carry: String = VillagerLife.JOBS.get(job, {}).get("carry", "")
 		if carry != "" and ItemDB.ITEMS.has(carry) and not _figure.hold_tool(carry):
 			var item := Item.create(carry)
-			_figure.hold(item.icon(), item.icon_tint())
+			_figure.hold(item.icon_small(), item.icon_tint())
 		var gear: Array = VillagerLife.JOBS.get(job, {}).get("wears", [])
 		if not gear.is_empty():
 			_figure.wear(gear)
