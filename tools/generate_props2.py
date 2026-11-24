@@ -452,7 +452,7 @@ def p_herb_rack(c):
 
 def p_jar_shelf(c):
     c.shadow(32, 61, 18, 2, 90)
-    box(c, 12, 10, 52, 60, 3, DARKWOOD, WOODTOP)
+    box(c, 12, 10, 52, 60, 6, DARKWOOD, WOODTOP)
     c.fill("rect", (15, 12, 49, 58), C("2a1c12"))
     r = random.Random(8)
     for shelf_y in (26, 42, 58):
@@ -560,6 +560,13 @@ def p_stool(c):
 
 def p_firewood(c):
     c.shadow(32, 60, 24, 2, 90)
+    # The logs run back from their cut ends: bark along the tops and down
+    # the right-hand side of the stack.
+    bark = ramp("6a4a30", "4e3422", "342216")
+    c.shade("poly", [(14, 26), (52, 26), (58, 20), (20, 20)], bark)
+    c.shade("poly", [(52, 26), (58, 20), (58, 54), (52, 60)], [tuple(int(v * 0.75) for v in t[:3]) + (255,) for t in bark])
+    for k in range(4):
+        c.fill("line", (16 + k * 10, 25, 22 + k * 10, 20), C("2a1c12"), 1)
     for row in range(4):
         for k in range(5 - (row % 2)):
             x = 10 + k * 10 + (row % 2) * 5
@@ -571,7 +578,7 @@ def p_firewood(c):
 
 def p_dresser(c):
     c.shadow(32, 61, 20, 2, 90)
-    box(c, 12, 30, 52, 60, 4, PLANK, PLANK_TOP)
+    box(c, 12, 30, 52, 60, 6, PLANK, PLANK_TOP)
     for y in (34, 43, 52):
         c.shade("rect", (15, y, 49, y + 7), PLANK_SIDE)
         c.fill("line", (15, y, 49, y), C("d8b080"), 1)

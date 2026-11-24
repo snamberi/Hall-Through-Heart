@@ -42,11 +42,18 @@ def glow(c, x, y, radius, colour=(255, 200, 110), alpha=60):
 
 
 def box(c, x0, y0, x1, y1, depth, front, top, side=None):
-    """A box in three-quarter view: its top face above, front face below."""
+    """A box in three-quarter view: its top face above, its front face
+    below and its right side going back into the shade (darker than the
+    front when no colour is given), so it never reads as a flat cutout."""
+    if side is None:
+        side = [_darker(t) for t in front]
+    c.shade("poly", [(x1, y0), (x1 + depth, y0 - depth), (x1 + depth, y1 - depth), (x1, y1)], side)
     c.shade("poly", [(x0, y0), (x1, y0), (x1 + depth, y0 - depth), (x0 + depth, y0 - depth)], top)
     c.shade("rect", (x0, y0, x1, y1), front)
-    if side:
-        c.shade("poly", [(x1, y0), (x1 + depth, y0 - depth), (x1 + depth, y1 - depth), (x1, y1)], side)
+
+
+def _darker(colour, k=0.7):
+    return tuple(int(v * k) for v in colour[:3]) + tuple(colour[3:4] or (255,))
 
 
 def prop_lantern(c):
@@ -132,7 +139,7 @@ def prop_shelf(c):
     # A bookcase: dark frame, three shelves of books leaning every way, a
     # skull and a candle on top.
     c.shadow(32, 61, 18, 2, 90)
-    box(c, 14, 10, 50, 60, 4, DARKWOOD, WOODTOP)
+    box(c, 14, 10, 50, 60, 6, DARKWOOD, WOODTOP)
     c.fill("rect", (17, 13, 47, 58), C("2a1c12"))
     r = random.Random(5)
     for shelf_y in (26, 42, 58):
@@ -156,7 +163,7 @@ def prop_shelf(c):
 
 def prop_cupboard(c):
     c.shadow(32, 61, 18, 2, 90)
-    box(c, 14, 12, 50, 60, 4, ramp("5a7aa0", "3e5a80", "2a3e5a"), ramp("7a9ac0", "5a7aa0", "3e5a80"))
+    box(c, 14, 12, 50, 60, 6, ramp("5a7aa0", "3e5a80", "2a3e5a"), ramp("7a9ac0", "5a7aa0", "3e5a80"))
     c.fill("line", (32, 14, 32, 58), C("1e2c40"), 1)
     for x0 in (16, 34):
         c.shade("rect", (x0 + 2, 16, x0 + 13, 34), ramp("6a8ab0", "4a6a90", "324a6a"))

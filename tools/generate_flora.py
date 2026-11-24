@@ -1673,6 +1673,9 @@ def prop_flower_bed(c):
     # A raised bed of boards full of dark soil, rows of flowers of five kinds
     # on their stems, leaves at their feet.
     c.shadow(32, 61, 28, 2, 80)
+    # The boards' right end going back into the shade, and the far board's top.
+    c.shade("poly", [(60, 44), (63, 40), (63, 56), (60, 60)], ramp("8a6a48", "6a4e34", "4a3422"))
+    c.shade("poly", [(4, 44), (60, 44), (63, 40), (7, 40)], ramp("e0bc8c", "c49a6a", "9a744c"))
     c.shade("rect", (4, 44, 60, 60), PLANK)
     c.fill("line", (4, 44, 60, 44), C("d4aa7a"), 1)
     c.fill("line", (4, 52, 60, 52), C("4a3220"), 1)
@@ -1694,6 +1697,9 @@ def prop_stone_planter(c):
     # A carved stone planter: a squared trough with a lit lip, a carved band
     # of diamonds, and a clipped round shrub with berries.
     c.shadow(32, 61, 18, 3, 90)
+    # The trough's right side and its lip's end, going back into the shade.
+    c.shade("poly", [(50, 40), (54, 37), (54, 58), (50, 61)], ramp("7a7684", "5e5a68", "44404c"))
+    c.shade("poly", [(52, 36), (55, 33), (55, 38), (52, 41)], ramp("a8a4b0", "86828f", "605c6a"))
     c.shade("rect", (14, 40, 50, 61), ramp("b4b0bc", "86828f", "57535f"))
     c.shade("rect", (12, 36, 52, 41), ramp("d0ccd8", "a8a4b0", "7a7684"))
     c.fill("line", (12, 36, 52, 36), C("e8e4ee"), 1)
