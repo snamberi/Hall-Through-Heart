@@ -486,14 +486,23 @@ func river_at(cell: Vector2i) -> int:
 	var mask := _river_mask.get_noise_2d(cell.x, cell.y)
 	if mask < -0.08:
 		return 0
-	var x := cell.x + _warp.get_noise_2d(cell.x + 300.0, cell.y) * 2.0
-	var y := cell.y + _warp.get_noise_2d(cell.x, cell.y + 300.0) * 2.0
-	var n := absf(_river.get_noise_2d(x, y))
-	# Wider where the mask is strong; thinning to a stream at its edge.
-	var width := 0.012 + 0.012 * clampf((mask + 0.08) / 0.3, 0.0, 1.0)
-	if n < width * 0.38:
+	var x := cell.x + _warp.get_noise_2d(cell.x + 300.0, cell.y) * 1.0
+	var y := cell.y + _warp.get_noise_2d(cell.x, cell.y + 300.0) * 1.0
+	var signed := _river.get_noise_2d(x, y)
+	var n := absf(signed)
+	if n > 0.06:
+		return 0
+	# How far the tile is from the river's middle line, in tiles: the noise
+	# divided by how fast it changes there. Measured this way a river keeps
+	# its width wherever the noise runs steep or shallow, so it is never
+	# narrower than two tiles: a stream at the edge of its country, wider
+	# where the mask is strong.
+	var slope := Vector2(_river.get_noise_2d(x + 1.0, y) - _river.get_noise_2d(x - 1.0, y), _river.get_noise_2d(x, y + 1.0) - _river.get_noise_2d(x, y - 1.0)) * 0.5
+	var off := n / maxf(slope.length(), 0.0005)
+	var half := 1.1 + 1.4 * clampf((mask + 0.08) / 0.3, 0.0, 1.0)
+	if half > 1.6 and off < half * 0.45:
 		return 2
-	return 1 if n < width else 0
+	return 1 if off < half else 0
 
 
 ## Whether a tile is part of a river (not the sea or a lake a river runs
