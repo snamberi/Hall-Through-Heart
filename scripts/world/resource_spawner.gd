@@ -184,6 +184,10 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 					_place_node(placed, "thornberry_bush", cell, bush, jitter)
 				else:
 					placed.append(_scenery(bush, _world.cell_to_world(cell) + jitter, 0.0))
+			elif biome.get("logs", false) and roll < tree_chance + 0.043 and forest_at(cell) > 0.35:
+				# A fallen trunk, mossy and old, in the deeper woods.
+				used[cell] = true
+				placed.append(_scenery(Flora.Tall.FALLEN_LOG, _world.cell_to_world(cell) + jitter, 0.0))
 			# Ground detail uses its own hash, so it never moves anything else.
 			var detail := absi(hash(Vector3i(cell.x, cell.y, 77)))
 			if detail % 100 < 7 and biome.has("decals"):

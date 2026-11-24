@@ -696,6 +696,107 @@ def tufts(colours, tall=False, seed=0):
     return c.img
 
 
+# ----------------------------------------------------------------- phase 4 plants
+def fern(colours, seed=0, frost=False):
+    """A fern: arching fronds from one crown, each with paired leaflets,
+    lit on the upper side."""
+    c = Canvas(32, 32)
+    r = random.Random(seed)
+    base = (16, 29)
+    for k, ang in enumerate((-2.95, -2.35, -1.62, -0.85, -0.2)):
+        length = r.randint(13, 17)
+        pts = []
+        for s_ in range(length):
+            t = s_ / length
+            # Up and out from the crown, then arching over at the tip.
+            a = ang + (-0.9 if ang < -1.57 else 0.9) * t * t
+            x = base[0] + math.cos(a) * s_
+            y = base[1] + math.sin(a) * s_ * 1.15
+            pts.append((x, y))
+            c.put(x, y, colours[1])
+        # Paired leaflets along the stem, shorter toward the tip.
+        for j, (x, y) in enumerate(pts[2:], 2):
+            if j % 3 == 0:
+                size = 1 if j > length * 0.6 else 2
+                dx, dy = pts[j][0] - pts[j - 1][0], pts[j][1] - pts[j - 1][1]
+                for d in range(1, size + 1):
+                    c.put(x - dy * d, y + dx * d, colours[0])
+                    c.put(x + dy * d, y - dx * d, colours[2])
+        if frost:
+            tx, ty = pts[-1]
+            c.put(tx, ty, C("f4f8ff"))
+    _outline_tinted(c, (16, 24, 14))
+    return c.img
+
+
+def bulrushes(seed=0):
+    """Reeds with brown bulrush heads, a little water at their feet."""
+    c = Canvas(32, 32)
+    r = random.Random(seed)
+    c.fill("ellipse", (6, 27, 26, 31), C("2a3a40", 150))
+    for k in range(7):
+        x = 7 + k * 3 + r.randint(-1, 1)
+        h = r.randint(13, 22)
+        lean = r.choice((-1, 0, 1))
+        for y in range(30 - h, 30):
+            t = (30 - y) / h
+            c.put(x + (lean if t > 0.6 else 0), y, C("8aaa5a") if t > 0.7 else C("5a8a44") if t > 0.3 else C("3a5a2a"))
+        if k % 2 == 0:
+            hx, hy = x + lean, 30 - h
+            for d in range(4):
+                c.put(hx, hy + d, C("8a5a30") if d else C("b07a48"))
+                c.put(hx + 1, hy + d, C("5e3a1e"))
+    _outline_tinted(c, (18, 22, 14))
+    return c.img
+
+
+def ivy(seed=0):
+    """Ivy creeping over the ground: a wandering vine with heart-shaped leaves."""
+    c = Canvas(32, 32)
+    r = random.Random(seed)
+    x, y = 3.0, 24.0
+    for s_ in range(30):
+        x += 0.9
+        y += r.choice((-1, 0, 0, 1)) * 0.6
+        c.put(x, y, C("4a6a2a"))
+        if s_ % 4 == 0:
+            lx, ly = x + r.choice((-1, 1)), y - 2 if s_ % 8 == 0 else y + 2
+            for dx, dy, col in ((0, 0, "6a9a44"), (1, 0, "8aba5a"), (-1, 0, "4a7a34"), (0, 1, "3a5a2a"), (0, -1, "8aba5a")):
+                c.put(lx + dx, ly + dy, C(col))
+    _outline_tinted(c, (16, 24, 14))
+    return c.img
+
+
+def leaf_litter(colours, seed=0):
+    """Fallen leaves lying on the forest floor, each a tiny lit oval."""
+    c = Canvas(32, 32)
+    r = random.Random(seed)
+    for _ in range(16):
+        x, y = r.randint(3, 28), r.randint(14, 29)
+        col = colours[r.randrange(3)]
+        c.put(x, y, col)
+        c.put(x + 1, y, col)
+        c.put(x, y - 1, colours[0])
+        c.put(x + 1, y + 1, colours[2])
+    return c.img
+
+
+def nettles(seed=0):
+    c = Canvas(32, 32)
+    r = random.Random(seed)
+    for k in range(5):
+        x = 8 + k * 4 + r.randint(-1, 1)
+        h = r.randint(9, 15)
+        for y in range(30 - h, 30):
+            c.put(x, y, C("4a7a34"))
+            if (y - (30 - h)) % 3 == 0:
+                c.put(x - 1, y, C("6a9a44"))
+                c.put(x + 1, y + 1, C("3a5a2a"))
+                c.put(x - 2, y + 1, C("8aba5a"))
+    _outline_tinted(c, (16, 24, 14))
+    return c.img
+
+
 STEM = ramp("f2efe2", "d8d0bc", "a89e88")
 
 
@@ -949,6 +1050,13 @@ SMALL = [
     flower("aster", ramp("ff9a5a", "e05a2a", "a03a18"), C("3a1a10")),          # 41 ember aster
     decal("cracks"), decal("puddle"), decal("roots"), decal("leaves"), decal("stones"),   # 42-46
     decal("ripples"), decal("drift"), decal("ash"), decal("moss"), decal("prints"),       # 47-51
+    fern(ramp("8aba5a", "5a8a3a", "34582a"), seed=21),                         # 52 fern
+    fern(ramp("a8c8c0", "6a8a84", "3e5a56"), seed=22, frost=True),             # 53 frost fern
+    bulrushes(seed=23),                                                        # 54 bulrushes
+    ivy(seed=24),                                                              # 55 ivy
+    leaf_litter(ramp("d89a4a", "b06a2a", "7a4420"), seed=25),                  # 56 fallen leaves
+    leaf_litter(ramp("8a7a4a", "6a5a34", "4a3e24"), seed=26),                  # 57 dry leaf litter
+    nettles(seed=27),                                                          # 58 nettles
 ]
 
 
