@@ -13,6 +13,7 @@ extends Node2D
 signal harvested(node: ResourceNode)
 
 const SHEET: Texture2D = preload("res://assets/sprites/nodes.png")
+const FELL_DATA := preload("res://scripts/world/fell_data.gd")
 const FRAMES := 5
 const REACH := 62.0
 const RICH_ONE_IN := 6
@@ -30,6 +31,12 @@ var cell := Vector2i.ZERO
 
 var _data: Dictionary
 var _kind: Dictionary
+## How much of the work is done, 0 to 1: shown as a notch cut into a tree
+## or cracks through a rock, and kept if the work stops and starts again.
+var worked := 0.0
+## Which side the last blow came from (-1 left, 1 right).
+var _struck_from := 1.0
+var _marks: Node2D
 
 
 static func create(id: String, at_cell: Vector2i, world_position: Vector2) -> ResourceNode:
@@ -90,6 +97,11 @@ func _ready() -> void:
 				tween.tween_property(sprite, "scale", Vector2(1.15, 1.15), 0.9)
 				tween.tween_property(sprite, "scale", Vector2(0.9, 0.9), 0.9)
 				add_child(FishShoal.new())
+	if _data["kind"] in ["tree", "ore"]:
+		# Drawn over the picture: the work done on it.
+		_marks = Marks.new()
+		_marks.node = self
+		add_child(_marks)
 	if solid > 0.0:
 		var body := StaticBody2D.new()
 		var shape := CollisionShape2D.new()
@@ -155,8 +167,14 @@ func set_lit(lit: bool) -> void:
 
 
 ## A tool has struck: shudder, and throw off chips of what it is made of.
-func take_blow(from: Vector2) -> void:
+## `share` is how much of the work is done now (0 to 1), or -1 to leave it.
+func take_blow(from: Vector2, share := -1.0) -> void:
 	var away := from.direction_to(global_position)
+	if share >= 0.0:
+		worked = maxf(worked, clampf(share, 0.0, 1.0))
+		_struck_from = -1.0 if from.x < global_position.x else 1.0
+		if _marks:
+			_marks.queue_redraw()
 	var chips := "_wood" if kind() == "tree" else "_stone" if kind() == "ore" else "_leaf"
 	Gore.spray(get_parent(), global_position + Vector2(0, -14 if is_tall() else -6), chips, -away + Vector2(0, -0.6), 5, false)
 	var rest := position
@@ -291,6 +309,112 @@ func _give_treasure(player: Player) -> void:
 	var gold := randi_range(15, 40) * player.leveling.level
 	player.inventory.add_gold(gold)
 	DamageNumber.spawn_text(get_parent(), player.global_position + Vector2(0, -30), "Sunken treasure: +%d gold" % gold, UITheme.GOLD, 13)
+
+
+## How far gone it looks: 0 untouched, up to 3 nearly through.
+func damage_stage() -> int:
+	return clampi(int(worked * 4.0), 0, 3)
+
+
+## The marks of the work, drawn a pixel at a time over the picture: a
+## notch cut into a tree's trunk on the side the axe bites, deeper with
+## each stage, its upper face lit and lower in shade, chips round its foot;
+## cracks spreading down a rock from its crown, fresh pale edges beside
+## them, a chunk knocked out and grit at its foot at the last.
+class Marks:
+	extends Node2D
+	var node: ResourceNode
+	const WOOD := [Color("d6b07e"), Color("b08a5c"), Color("8a6642"), Color("4a3424")]
+	const CRACK := Color(0.1, 0.09, 0.11)
+	const FRESH := Color(0.82, 0.8, 0.78, 0.85)
+	static var _masks: Dictionary = {}
+
+	func _draw() -> void:
+		var stage := node.damage_stage()
+		if stage == 0:
+			return
+		if node.kind() == "tree":
+			_notch(stage)
+		else:
+			_cracks(stage)
+
+	func _notch(stage: int) -> void:
+		var look: int = node.tall_look if node.tall_look >= 0 else int(node._data.get("tall", -1))
+		var trunk: Array = FELL_DATA.TRUNKS.get(look, [-4, 4])
+		var left := int(trunk[0])
+		var right := int(trunk[1])
+		if hash(node.cell) % 2 == 0:
+			# The tree is drawn mirrored.
+			var was := left
+			left = -right
+			right = -was
+		var width := right - left + 1
+		var depth := mini(stage * 2 + 1, width - 2)
+		var side := node._struck_from
+		for dy in range(-3, 4):
+			var reach := depth - absi(dy)
+			if reach <= 0:
+				continue
+			var y := -9 + dy
+			for d in reach:
+				var x := (left + d) if side < 0.0 else (right - d)
+				var colour: Color = WOOD[0] if dy < 0 else WOOD[1] if dy == 0 else WOOD[2]
+				if d == reach - 1:
+					colour = WOOD[3]
+				draw_rect(Rect2(x, y, 1, 1), colour)
+		# Chips round the foot on the cut side.
+		var seed := absi(hash(node.cell))
+		for k in stage * 3:
+			var cx := (left - 2 - (seed >> k) % 7) if side < 0.0 else (right + 2 + (seed >> k) % 7)
+			draw_rect(Rect2(cx, (seed >> (k + 3)) % 4 - 1, 1, 1), WOOD[k % 2])
+
+	func _mask(frame: int) -> Image:
+		if not _masks.has(frame):
+			var sheet := SHEET.get_image()
+			var size := sheet.get_width() / FRAMES
+			_masks[frame] = sheet.get_region(Rect2i(frame * size, 0, size, sheet.get_height()))
+		return _masks[frame]
+
+	func _cracks(stage: int) -> void:
+		var mask := _mask(int(node._kind["frame"]))
+		var w := mask.get_width()
+		var h := mask.get_height()
+		# The picture's top-left, as _sprite() places it.
+		var origin := Vector2i(-w / 2, -22 - h / 2)
+		var solid := func(x: int, y: int) -> bool:
+			if x < 0 or y < 0 or x >= w or y >= h:
+				return false
+			var p := mask.get_pixel(x, y)
+			return p.a > 0.5 and p.r + p.g + p.b > 0.35
+		var random := RandomNumberGenerator.new()
+		random.seed = hash(node.cell)
+		for crack in stage:
+			# Start on the rock's crown, somewhere along its top.
+			var x := w / 2 + random.randi_range(-10, 10)
+			var y := 0
+			while y < h and not solid.call(x, y):
+				y += 1
+			y += 2
+			for step in 6 + stage * 4:
+				if not solid.call(x, y):
+					break
+				draw_rect(Rect2(Vector2(origin + Vector2i(x, y)), Vector2.ONE), CRACK)
+				if solid.call(x - 1, y):
+					draw_rect(Rect2(Vector2(origin + Vector2i(x - 1, y)), Vector2.ONE), FRESH)
+				y += 1
+				x += random.randi_range(-1, 1)
+		if stage >= 3:
+			# A chunk knocked out of its shoulder, and grit at its foot.
+			var cx := w / 2 + 6
+			var cy := 0
+			while cy < h and not solid.call(cx, cy):
+				cy += 1
+			for dy in 3:
+				for dx in 4 - dy:
+					if solid.call(cx + dx, cy + dy):
+						draw_rect(Rect2(Vector2(origin + Vector2i(cx + dx, cy + dy)), Vector2.ONE), Color(0.16, 0.15, 0.17))
+			for k in 8:
+				draw_rect(Rect2(random.randi_range(-12, 12), random.randi_range(-2, 2), 1, 1), Color(0.5, 0.48, 0.5))
 
 
 func _sprite(frame: int, tint: Color) -> Sprite2D:

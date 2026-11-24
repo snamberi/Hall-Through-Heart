@@ -164,7 +164,9 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 			if roll < tree_chance and not biome["trees"].is_empty() and cut_down:
 				if felled < WorldMemory.CLEARING or absi(hash(cell)) % 4 == 0:
 					used[cell] = true
-					placed.append(_stump(_world.cell_to_world(cell) + jitter))
+					var kinds: Array = biome["trees"]
+					var was: int = kinds[absi(hash(Vector3i(cell.x, cell.y, 31))) % kinds.size()]
+					placed.append(_stump(_world.cell_to_world(cell) + jitter, was, hash(cell) % 2 == 0))
 			elif roll < tree_chance and not biome["trees"].is_empty():
 				used[cell] = true
 				trees_at[cell] = true
@@ -231,18 +233,23 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 
 func _place_node(placed: Array, id: String, cell: Vector2i, look: int, offset: Vector2 = Vector2.ZERO) -> void:
 	var tree := look in Flora.WOODEN
+	var ore: bool = GatherDB.RESOURCES.has(id) and GatherDB.RESOURCES[id]["kind"] == "ore"
 	if _gathered.has(cell) and _now() - _gathered[cell] < REGROW_SECONDS:
-		# A felled tree's stump stands until it grows back.
+		# A felled tree's stump stands until it grows back; a mined rock's rubble.
 		if tree:
-			placed.append(_stump(_world.cell_to_world(cell) + offset))
+			placed.append(_stump(_world.cell_to_world(cell) + offset, look, hash(cell) % 2 == 0))
+		elif ore:
+			placed.append(_rubble(_world.cell_to_world(cell) + offset, GatherDB.color(id)))
 		return
 	var node := ResourceNode.create(id, cell, _world.cell_to_world(cell) + offset)
 	node.tall_look = look
 	node.harvested.connect(func(gone: ResourceNode) -> void:
 		_gathered[gone.cell] = _now()
 		if tree:
-			placed.append(_stump(gone.position))
+			placed.append(_stump(gone.position, look, hash(gone.cell) % 2 == 0))
 			_fell_animation(gone.position, look, hash(gone.cell) % 2 == 0)
+		elif ore:
+			placed.append(_rubble(gone.position, GatherDB.color(id)))
 			var memory: WorldMemory = get_parent().get_node_or_null("WorldMemory")
 			if memory:
 				memory.note(gone.cell, "chops"))
@@ -272,14 +279,18 @@ func fell(cell: Vector2i, ago: float) -> void:
 		if node is ResourceNode and is_instance_valid(node) and (node as ResourceNode).cell == cell:
 			var gone := node as ResourceNode
 			if gone.tall_look in Flora.WOODEN:
-				placed.append(_stump(gone.position))
+				placed.append(_stump(gone.position, gone.tall_look, hash(gone.cell) % 2 == 0))
+			elif gone.kind() == "ore":
+				placed.append(_rubble(gone.position, GatherDB.color(gone.resource_id)))
 			placed.erase(gone)
 			gone.queue_free()
 
 
-## A tree coming down (never rotated, so its pixels stay whole): it shudders,
-## then sinks away into a burst of leaves and dust, and its trunk lies on
-## the ground beside the stump for a while before it is carried off.
+## A tree coming down, drawn frame by frame (tools/generate_felling.py, so
+## nothing is turned in the game and its pixels stay whole): it shudders,
+## leans, topples faster and faster and hits the ground in a burst of dust
+## and leaves; its crown is shaken off and its own trunk lies beside the
+## stump a while before it is carried off. It falls the way it faces.
 func _fell_animation(at: Vector2, look: int, flipped: bool) -> void:
 	var holder := Node2D.new()
 	holder.position = at.round()
@@ -292,28 +303,59 @@ func _fell_animation(at: Vector2, look: int, flipped: bool) -> void:
 	tree.flip_h = flipped
 	tree.material = Seasons.material_for(look)
 	holder.add_child(tree)
-	var log := Sprite2D.new()
-	log.texture = Flora.GRAND
-	log.region_enabled = true
-	log.region_rect = Flora.tall_region(Flora.Tall.FALLEN_LOG)
-	log.position = Vector2(-30.0 if flipped else 30.0, Flora.tall_offset(Flora.Tall.FALLEN_LOG))
-	log.flip_h = not flipped
-	log.modulate.a = 0.0
-	holder.add_child(log)
+	var falling := Flora.fell_sprite(look, Flora.FELL_TILT, flipped)
+	# In the colours of the season, but still: the frames are not a sway sheet.
+	if tree.material is ShaderMaterial:
+		var still := (tree.material as ShaderMaterial).duplicate() as ShaderMaterial
+		still.set_shader_parameter("sway_frames", 0)
+		still.set_shader_parameter("strength", 0.0)
+		still.set_shader_parameter("gust_power", 0.0)
+		still.set_shader_parameter("canopy_line", 1.0)
+		falling.material = still
+	falling.visible = false
+	holder.add_child(falling)
+	var way := -1.0 if flipped else 1.0
+	var crown := Vector2(way * 62.0, -14.0)
 	var burst := LeafBurst.new()
-	burst.colour = Color("4a7a3a") if Seasons.is_leafy(look) else Color("6a5a40")
-	burst.position = Vector2(0, -40)
+	burst.colour = Color("4a7a3a") if Seasons.is_leafy(look) else Color("3e6058") if look in [Flora.Tall.PINE, Flora.Tall.SNOW_PINE, Flora.Tall.SLENDER_PINE, Flora.Tall.SLENDER_SNOW_PINE, Flora.Tall.SQUAT_PINE, Flora.Tall.GREAT_FIR, Flora.Tall.GREAT_SNOW_FIR, Flora.Tall.MOUNTAIN_PINE] else Color("6a5a40")
+	burst.position = crown
 	holder.add_child(burst)
+	var dust := LeafBurst.new()
+	dust.colour = Color(0.62, 0.55, 0.44)
+	dust.position = Vector2(way * 36.0, -2.0)
+	holder.add_child(dust)
 	var tween := holder.create_tween()
+	# The last blows: a shudder.
 	for k in 5:
 		tween.tween_property(tree, "position:x", 2.0 if k % 2 == 0 else -2.0, 0.05)
 	tween.tween_property(tree, "position:x", 0.0, 0.04)
-	tween.tween_callback(burst.start)
-	tween.tween_property(tree, "position:y", tree.position.y + 14.0, 0.35).set_ease(Tween.EASE_IN)
-	tween.parallel().tween_property(tree, "modulate:a", 0.0, 0.35)
-	tween.parallel().tween_property(log, "modulate:a", 1.0, 0.3)
+	# Over it goes, a frame at a time, quicker as it falls.
+	tween.tween_callback(func() -> void:
+		tree.visible = false
+		falling.visible = true)
+	for step: Array in [[Flora.FELL_TILT, 0.16], [Flora.FELL_TILT + 1, 0.1], [Flora.FELL_TILT + 2, 0.06], [Flora.FELL_LYING, 0.0]]:
+		tween.tween_callback(func() -> void: falling.region_rect = Flora.fell_region(look, step[0]))
+		if step[1] > 0.0:
+			tween.tween_interval(step[1])
+	# It lands: dust and leaves fly, the ground shakes underfoot.
+	tween.tween_callback(func() -> void:
+		dust.start()
+		burst.start()
+		Audio.play("chop", -4.0, 0.1)
+		var player := get_tree().get_first_node_in_group("player")
+		if player and player.has_method("shake_camera") and (player as Node2D).global_position.distance_to(holder.global_position) < 240.0:
+			player.shake_camera(2.5))
+	tween.tween_interval(0.45)
+	# The crown is shaken off; the trunk stays as a log.
+	tween.tween_callback(func() -> void:
+		falling.region_rect = Flora.fell_region(look, Flora.FELL_LOG)
+		var shed := LeafBurst.new()
+		shed.colour = burst.colour
+		shed.position = crown
+		holder.add_child(shed)
+		shed.start())
 	tween.tween_interval(2.6)
-	tween.tween_property(log, "modulate:a", 0.0, 0.8)
+	tween.tween_property(falling, "modulate:a", 0.0, 0.8)
 	tween.tween_callback(holder.queue_free)
 
 
@@ -355,12 +397,68 @@ class LeafBurst:
 			draw_rect(Rect2(Vector2(b.x, b.y).round(), Vector2(2 if i % 4 == 0 else 1, 1)), Color(c, fade))
 
 
-## What is left of a felled tree.
-func _stump(at: Vector2) -> Node2D:
+## What is left of a felled tree: its own stump, mirrored as it stood
+## (an older drawn stump if the kind of tree is not known).
+func _stump(at: Vector2, look: int = -1, flipped: bool = false) -> Node2D:
+	if look in Flora.WOODEN:
+		var holder := Node2D.new()
+		holder.position = at.round()
+		holder.add_child(Flora.fell_sprite(look, Flora.FELL_STUMP, flipped))
+		add_child(holder)
+		return holder
 	var stump := Stump.new()
 	stump.position = at.round()
 	add_child(stump)
 	return stump
+
+
+## What is left of a mined rock: broken stone and grit, flecked with the
+## ore, until the vein comes back.
+func _rubble(at: Vector2, tint: Color) -> Node2D:
+	var rubble := Rubble.new()
+	rubble.tint = tint
+	rubble.position = at.round()
+	add_child(rubble)
+	return rubble
+
+
+## Broken rock drawn pixel by pixel: a few chunks lit from the top-left,
+## their fresh-broken faces paler, grit between them, ore flecks.
+class Rubble:
+	extends Node2D
+	var tint := Color.WHITE
+	const STONE := [Color("2e2c30"), Color("4a464c"), Color("67626a"), Color("858088"), Color("a29ea4")]
+
+	func _draw() -> void:
+		var seed := absi(hash(position))
+		for y in range(-2, 3):
+			var half := floorf(14.0 * sqrt(1.0 - y * y / 9.0))
+			draw_rect(Rect2(-half + 1, y, half * 2.0, 1.0), Color(0.02, 0.02, 0.05, 0.25))
+		var chunks: Array = [[-8, -4, 6, 5], [3, -5, 7, 6], [-2, -8, 5, 4], [-12, -1, 4, 3], [9, -1, 4, 3]]
+		for k in chunks.size():
+			var c: Array = chunks[k]
+			var jitter := (seed >> (k * 3)) % 3 - 1
+			var x: int = c[0] + jitter
+			var y: int = c[1]
+			var w: int = c[2]
+			var h: int = c[3]
+			draw_rect(Rect2(x - 1, y, w + 2, h), STONE[0])
+			draw_rect(Rect2(x, y - 1, w, h + 2), STONE[0])
+			draw_rect(Rect2(x, y, w, h), STONE[2])
+			draw_rect(Rect2(x, y, w - 1, 1), STONE[4])
+			draw_rect(Rect2(x, y + 1, 1, h - 2), STONE[3])
+			draw_rect(Rect2(x + w - 1, y + 1, 1, h - 1), STONE[1])
+			draw_rect(Rect2(x + 1, y + h - 1, w - 1, 1), STONE[1])
+			# A fresh-broken face, and a fleck of the ore.
+			if k % 2 == 0:
+				draw_rect(Rect2(x + 1, y + 1, 2, 1), STONE[4])
+			draw_rect(Rect2(x + w / 2, y + h / 2, 1, 1), tint)
+			if w > 5:
+				draw_rect(Rect2(x + w / 2 + 1, y + h / 2 - 1, 1, 1), tint.lightened(0.3))
+		for k in 9:
+			var gx := (seed >> k) % 26 - 13
+			var gy := (seed >> (k + 4)) % 5 - 2
+			draw_rect(Rect2(gx, gy, 1, 1), STONE[1] if k % 3 else STONE[3])
 
 
 ## A tree stump drawn pixel by pixel: cut rings on top, bark down the

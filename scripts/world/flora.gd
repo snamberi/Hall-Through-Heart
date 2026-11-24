@@ -67,6 +67,36 @@ const PEBBLE_DECAL := 46
 const DUST_DECAL := 42
 
 
+## How each wooden tree comes down (tools/generate_felling.py): a row per
+## tree in WOODEN order, cells of FELL_SIZE with the foot at FELL_FOOT.
+## Frames: FELL_TILT (three, leaning further), FELL_LYING, FELL_LOG and
+## FELL_STUMP.
+const FELL: Texture2D = preload("res://assets/sprites/flora_fell.png")
+const FELL_SIZE := Vector2(192, 176)
+const FELL_FOOT := Vector2(40, 122)
+const FELL_TILT := 0
+const FELL_LYING := 3
+const FELL_LOG := 4
+const FELL_STUMP := 5
+
+
+static func fell_region(look: int, frame: int) -> Rect2:
+	return Rect2(Vector2(frame, WOODEN.find(look)) * FELL_SIZE, FELL_SIZE)
+
+
+## A sprite showing one felling frame of a tree, its foot at the origin
+## (mirrored when the tree falls to the left).
+static func fell_sprite(look: int, frame: int, mirrored: bool) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.texture = FELL
+	sprite.region_enabled = true
+	sprite.region_rect = fell_region(look, frame)
+	sprite.centered = false
+	sprite.flip_h = mirrored
+	sprite.offset = Vector2(-(FELL_SIZE.x - FELL_FOOT.x) if mirrored else -FELL_FOOT.x, -FELL_FOOT.y)
+	return sprite
+
+
 static func tall_region(index: int) -> Rect2:
 	if index >= FIRST_GRAND:
 		return Rect2(Vector2((index - FIRST_GRAND) * GRAND_SIZE.x, 0), GRAND_SIZE)

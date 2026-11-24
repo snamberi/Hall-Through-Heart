@@ -2034,7 +2034,8 @@ func _start_gathering(node: ResourceNode) -> void:
 	break_record = {}
 	gather_target = node
 	gather_seconds = node.gather_seconds(self)
-	gather_progress = 0.0
+	# Work already done on it (the notch cut, the cracks) carries on.
+	gather_progress = node.worked * gather_seconds
 	if node.rich:
 		_gather_meter = GatherMeter.new()
 		_gather_meter.position = Vector2(0, -96.0 if node.is_tall() else -50.0)
@@ -2109,7 +2110,7 @@ func _work_blow() -> void:
 			return
 		_:
 			Audio.play("pickup", -14.0, 0.2)
-	gather_target.take_blow(global_position)
+	gather_target.take_blow(global_position, gather_progress / maxf(gather_seconds, 0.01))
 
 
 func _stop_gathering() -> void:
