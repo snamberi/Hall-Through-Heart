@@ -40,7 +40,8 @@ const BED := Color("8a7a5a")
 const SHADER := """
 shader_type canvas_item;
 // TEXTURE is the chunk's own mask (one texel a tile, two tiles of border):
-// red is land, green is ground that holds puddles, blue is shallow water.
+// red is land, green is ground that holds puddles, blue is shallow water,
+// alpha is a river's flow (its angle; zero where no river runs).
 uniform sampler2D noise : repeat_enable, filter_linear;
 uniform float wave_time = 0.0;
 uniform float daylight = 1.0;
@@ -136,8 +137,10 @@ void fragment() {
 	vec3 mask3 = texture(TEXTURE, here).rgb;
 	vec2 mask = mask3.rg;
 	// The tile's own texel, exactly: land is land, water is water.
-	vec3 own3 = texture(TEXTURE, (floor(here / TEXTURE_PIXEL_SIZE) + 0.5) * TEXTURE_PIXEL_SIZE).rgb;
+	vec4 own4 = texture(TEXTURE, (floor(here / TEXTURE_PIXEL_SIZE) + 0.5) * TEXTURE_PIXEL_SIZE);
+	vec3 own3 = own4.rgb;
 	vec2 own = own3.rg;
+	bool river = own4.a > 0.02;
 	// How far out from the bank (in world units; below zero is land). The
 	// mask grades across one tile; past that, the land a tile further on
 	// grades the next.
@@ -182,6 +185,26 @@ void fragment() {
 				float edge = smoothstep(0.52, 0.66, patch);
 				if (net < 0.05 && dither < edge) {
 					col = over(col, vec4(caustic.rgb, (0.16 * clear_sky + 0.04) * daylight));
+				}
+			}
+		}
+		// --- a river's current: short streaks of lighter water running
+		// downstream in lanes, each lane at its own pace, with a fleck of
+		// foam at the head of some.
+		if (river) {
+			float ang = (own4.a - 0.04) / 0.96 * 6.2831853;
+			vec2 dir = vec2(cos(ang), sin(ang));
+			vec2 perp = vec2(-dir.y, dir.x);
+			float u = dot(px, dir);
+			float v = dot(px, perp);
+			float lane = floor(v / 6.0);
+			float h = hash12(vec2(lane, 7.0));
+			float dash = fract((u - wave_time * (18.0 + 12.0 * h)) / (28.0 + 16.0 * h) + h);
+			if (mod(v, 6.0) < 2.0) {
+				if (dash < 0.14) {
+					col = over(col, vec4(swell.rgb, 0.4));
+				} else if (dash < 0.18 && h > 0.5) {
+					col = over(col, vec4(foam_mid.rgb, 0.45));
 				}
 			}
 		}
@@ -256,7 +279,9 @@ void fragment() {
 		float back_t = clamp((phase - 0.55) / 0.45, 0.0, 1.0);
 		float left = 1.0 - back_t;
 		float rising = smoothstep(0.0, 0.16, phase);
-		if (phase < 0.6) {
+		if (river) {
+			// A river's banks take no swell, only the line of foam below.
+		} else if (phase < 0.6) {
 			// The swell: a lighter body with a crest at its leading edge,
 			// broken where the lace is thin.
 			if (d >= front + 2.0 && d < front + 8.0 && (d < front + 6.0 || dither < 0.5)) {
@@ -367,9 +392,9 @@ static func shared_material() -> ShaderMaterial:
 ## The surface for one chunk: a node drawing the chunk's mask through the
 ## shared material. Goes first among the chunk's children, so the fringes
 ## of the land are drawn over it. `type_at` gives the terrain of a tile.
-static func chunk_surface(origin: Vector2i, size: int, type_at: Callable) -> Node2D:
+static func chunk_surface(origin: Vector2i, size: int, type_at: Callable, flow_at: Callable = Callable()) -> Node2D:
 	var span := size + BORDER * 2
-	var image := Image.create(span, span, false, Image.FORMAT_RGB8)
+	var image := Image.create(span, span, false, Image.FORMAT_RGBA8)
 	var any_water := false
 	var any_hollow := false
 	for y in span:
@@ -379,7 +404,12 @@ static func chunk_surface(origin: Vector2i, size: int, type_at: Callable) -> Nod
 			any_water = any_water or not land
 			var hollow := type in PUDDLE_GROUND
 			any_hollow = any_hollow or hollow
-			image.set_pixel(x, y, Color(1.0 if land else 0.0, 1.0 if hollow else 0.0, 1.0 if type == TerrainTiles.Type.SHALLOW_WATER else 0.0))
+			var flow := 0.0
+			if not land and flow_at.is_valid():
+				var along: Vector2 = flow_at.call(origin + Vector2i(x - BORDER, y - BORDER))
+				if along != Vector2.ZERO:
+					flow = 0.04 + fposmod(along.angle(), TAU) / TAU * 0.96
+			image.set_pixel(x, y, Color(1.0 if land else 0.0, 1.0 if hollow else 0.0, 1.0 if type == TerrainTiles.Type.SHALLOW_WATER else 0.0, flow))
 	var node := ChunkSurface.new()
 	node.name = "Surface"
 	node.mask = ImageTexture.create_from_image(image)

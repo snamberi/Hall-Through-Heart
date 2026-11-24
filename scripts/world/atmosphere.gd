@@ -125,11 +125,13 @@ const RAIN_FX := preload("res://scripts/effects/rain_fx.gd")
 ## The light's mood through the day (scripts/effects/color_grade.gd).
 const COLOR_GRADE := preload("res://scripts/effects/color_grade.gd")
 var _grade: ColorRect
-## Storms that sweep across the screen in driving bands: [flow, density].
+## Storms that sweep across the screen in driving bands: [flow, density,
+## colour]. Each band's colour stands out from its own land (a blizzard's is
+## a cold blue-grey, so it shows over the snow).
 const SWEEPS := {
-	"Sandstorm": [Vector2(0.11, 0.014), 0.75], "Blizzard": [Vector2(0.085, 0.022), 0.6],
-	"Ash storm": [Vector2(0.05, -0.012), 0.5], "Dust": [Vector2(0.04, 0.006), 0.22],
-	"Ashfall": [Vector2(0.012, 0.01), 0.16],
+	"Sandstorm": [Vector2(0.11, 0.014), 0.75, Color(0.72, 0.56, 0.34)], "Blizzard": [Vector2(0.085, 0.022), 0.7, Color(0.62, 0.69, 0.82)],
+	"Ash storm": [Vector2(0.05, -0.012), 0.5, Color(0.34, 0.28, 0.26)], "Dust": [Vector2(0.04, 0.006), 0.22, Color(0.78, 0.66, 0.46)],
+	"Ashfall": [Vector2(0.012, 0.01), 0.16, Color(0.5, 0.47, 0.47)],
 }
 var _rain: Node2D
 var _kind := ""
@@ -253,7 +255,7 @@ func _process(delta: float) -> void:
 	var shown := _mist_density if (GameSettings.fog and GameSettings.shader_level() >= 2) else (float(sweep[1]) * minf(_mist_density / maxf(float(sweep[1]), 0.01), 1.0) if GameSettings.shader_level() >= 1 else 0.0)
 	_mist_material.set_shader_parameter("density", shown)
 	_mist_material.set_shader_parameter("flow", sweep[0])
-	_mist_material.set_shader_parameter("tint", _tint.lightened(0.1))
+	_mist_material.set_shader_parameter("tint", sweep[2] if sweep.size() > 2 else _tint.lightened(0.1))
 	_grade.apply(_day_night.time, 0.0 if _player.indoors or GameSettings.shader_level() < 1 else 1.0, Atmosphere.weather, DayNight.blood_moon)
 	if camera:
 		var view := get_viewport().get_visible_rect().size / camera.zoom

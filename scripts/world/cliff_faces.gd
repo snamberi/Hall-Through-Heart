@@ -101,6 +101,80 @@ func _ready() -> void:
 				run_start = -1
 	if body.get_child_count() > 0:
 		add_child(body)
+	# Waterfalls: where a river runs off higher ground, the water pours
+	# down the drop in an animated fall.
+	for y in size:
+		for x in size:
+			if _is_waterfall(x, y):
+				var fall := ColorRect.new()
+				fall.position = Vector2(x, y) * TILE
+				fall.size = Vector2(TILE, TILE)
+				# Narrowed at the sides where the fall has no neighbour.
+				fall.material = _waterfall_material(not _is_waterfall(x - 1, y), not _is_waterfall(x + 1, y))
+				fall.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				add_child(fall)
+
+
+## Water with higher water just north: a river falling off higher ground.
+func _is_waterfall(x: int, y: int) -> bool:
+	if x < -1 or y < 0 or x > span - 2 or y > span - 2:
+		return false
+	return TerrainTiles.is_water(_type(x, y)) and TerrainTiles.is_water(_type(x, y - 1)) and _height(x, y - 1) > _height(x, y)
+
+
+const WATERFALL_SHADER := """
+shader_type canvas_item;
+// Water pouring down a drop, a whole pixel at a time: falling streaks in
+// two-pixel columns at their own pace, a bright lip where it tips over,
+// and white water churning at the foot.
+uniform vec2 edges = vec2(0.0);
+uniform vec4 deep : source_color = vec4(0.13, 0.22, 0.34, 1.0);
+uniform vec4 mid : source_color = vec4(0.27, 0.44, 0.6, 1.0);
+uniform vec4 light : source_color = vec4(0.58, 0.76, 0.88, 1.0);
+uniform vec4 foam : source_color = vec4(0.88, 0.95, 1.0, 1.0);
+
+float hash(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.x + p3.y) * p3.z);
+}
+
+void fragment() {
+	vec2 p = floor(UV * 44.0);
+	float column = floor(p.x / 2.0);
+	float h = hash(vec2(column, 3.0));
+	float speed = 70.0 + 40.0 * h;
+	float t = fract((p.y - TIME * speed) / (14.0 + 10.0 * h) + h);
+	vec3 c = t < 0.35 ? deep.rgb : t < 0.8 ? mid.rgb : light.rgb;
+	// The lip where it tips over, and the dark rock showing at the sides.
+	if (p.y < 2.0) {
+		c = light.rgb;
+	}
+	if ((edges.x > 0.5 && p.x < 3.0) || (edges.y > 0.5 && p.x > 40.0)) {
+		c = mix(c, deep.rgb * 0.6, 0.6);
+	}
+	// White water at the foot, churning.
+	float churn = hash(vec2(column, floor(TIME * 10.0) + floor(p.y / 2.0) * 3.7));
+	if (p.y > 32.0 && churn > 0.62 - (p.y - 32.0) * 0.03) {
+		c = foam.rgb;
+	}
+	COLOR = vec4(c, 1.0);
+}
+"""
+static var _fall_materials: Dictionary = {}
+
+
+static func _waterfall_material(left: bool, right: bool) -> ShaderMaterial:
+	var key := int(left) + 2 * int(right)
+	if not _fall_materials.has(key):
+		var shader: Shader = (_fall_materials.values()[0] as ShaderMaterial).shader if not _fall_materials.is_empty() else Shader.new()
+		if shader.code == "":
+			shader.code = WATERFALL_SHADER
+		var material := ShaderMaterial.new()
+		material.shader = shader
+		material.set_shader_parameter("edges", Vector2(1.0 if left else 0.0, 1.0 if right else 0.0))
+		_fall_materials[key] = material
+	return _fall_materials[key]
 
 
 func _draw() -> void:

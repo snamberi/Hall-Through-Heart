@@ -48,6 +48,10 @@ var _danger := FastNoiseLite.new()
 var _warp := FastNoiseLite.new()
 var _islands := FastNoiseLite.new()
 var _highland := FastNoiseLite.new()
+## Rivers: they follow where this noise crosses zero (a long winding line),
+## in the parts of the world the mask allows.
+var _river := FastNoiseLite.new()
+var _river_mask := FastNoiseLite.new()
 var _cache: Dictionary = {}
 ## Ground the player has laid or dug (paths, decking, turf, ponds...):
 ## cell -> terrain type, over whatever the world would have there.
@@ -68,6 +72,8 @@ func _init(p_seed: int) -> void:
 	_setup(_warp, p_seed + 9001, 0.08, 1)
 	_setup(_islands, p_seed + 7717, 0.03, 2)
 	_setup(_highland, p_seed + 3301, 0.012, 2)
+	_setup(_river, p_seed + 5501, 0.0042, 2)
+	_setup(_river_mask, p_seed + 5507, 0.0011, 1)
 
 
 ## Enemy level for an area. Rises with distance from the start, with pockets
@@ -130,7 +136,7 @@ const RAISABLE: Array[int] = [T.DEAD_GRASS, T.DARK_GRASS, T.SNOW, T.FROSTPINE, T
 ## and peaks (2); out in the open country, plateaus of grass, snow or sand
 ## one step up. Never near the Sanctuary, in villages, on islands or water.
 func height_at(cell: Vector2i) -> int:
-	var type := tile_type_at(cell)
+	var type := _bed_type(cell)
 	var base := CliffFaces.level(type)
 	if base > 0 or not type in RAISABLE:
 		return base
@@ -155,7 +161,7 @@ func _broad_highland(cell: Vector2i) -> bool:
 	var around := 0
 	for offset: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
 		var near := cell + offset
-		if _highland.get_noise_2d(near.x, near.y) > 0.3 and tile_type_at(near) in RAISABLE:
+		if _highland.get_noise_2d(near.x, near.y) > 0.3 and _bed_type(near) in RAISABLE:
 			around += 1
 	_broad[cell] = around >= 5
 	return _broad[cell]
@@ -444,7 +450,13 @@ func _compute(cell: Vector2i) -> int:
 	if grounds >= 0:
 		return grounds
 	var natural := _natural(cell)
+	var river := river_at(cell) if natural in RIVER_LANDS else 0
+	if river > 0:
+		natural = T.DEEP_WATER if river == 2 else T.SHALLOW_WATER
 	if on_road(cell):
+		# A road crosses a river on a bridge of planks.
+		if river > 0:
+			return T.PLANK
 		# Roads cut through hills and cross shallows on planks; deep water
 		# stops them.
 		if natural == T.DEEP_WATER:
@@ -453,6 +465,59 @@ func _compute(cell: Vector2i) -> int:
 		# are kept for the villages' own streets.
 		return T.PLANK if natural == T.SHALLOW_WATER else T.TRACK
 	return natural
+
+
+# --- rivers
+
+## Rivers keep away from the start, so the Sanctuary and the first homes
+## built round it stay dry.
+const RIVER_CLEAR := 90.0
+## Land a river may run through (not the sea, tar pits or the void).
+const RIVER_LANDS: Array[int] = [T.MUD, T.ASH, T.DEAD_GRASS, T.DARK_GRASS, T.BOG, T.ROCK, T.SNOW, T.FROSTPINE, T.SALT,
+	T.THORN, T.CRIMSON, T.FUNGAL, T.SAND, T.CINDER, T.PEAK]
+
+
+## How much river runs over a tile: 0 none, 1 its shallow banks, 2 its deep
+## channel. Rivers wind for hundreds of tiles; where the mask is low there
+## are none.
+func river_at(cell: Vector2i) -> int:
+	if Vector2(cell).length() < RIVER_CLEAR:
+		return 0
+	var mask := _river_mask.get_noise_2d(cell.x, cell.y)
+	if mask < -0.08:
+		return 0
+	var x := cell.x + _warp.get_noise_2d(cell.x + 300.0, cell.y) * 2.0
+	var y := cell.y + _warp.get_noise_2d(cell.x, cell.y + 300.0) * 2.0
+	var n := absf(_river.get_noise_2d(x, y))
+	# Wider where the mask is strong; thinning to a stream at its edge.
+	var width := 0.012 + 0.012 * clampf((mask + 0.08) / 0.3, 0.0, 1.0)
+	if n < width * 0.38:
+		return 2
+	return 1 if n < width else 0
+
+
+## The way a river flows over a tile (a unit vector; zero off rivers):
+## along its course, downhill.
+func river_flow(cell: Vector2i) -> Vector2:
+	if not TerrainTiles.is_water(tile_type_at(cell)) or river_at(cell) == 0:
+		return Vector2.ZERO
+	var x := float(cell.x)
+	var y := float(cell.y)
+	var across := Vector2(_river.get_noise_2d(x + 1.0, y) - _river.get_noise_2d(x - 1.0, y), _river.get_noise_2d(x, y + 1.0) - _river.get_noise_2d(x, y - 1.0))
+	if across.length_squared() < 1e-12:
+		return Vector2.DOWN
+	var along := Vector2(-across.y, across.x).normalized()
+	var downhill := Vector2(_elevation.get_noise_2d(x - 4.0, y) - _elevation.get_noise_2d(x + 4.0, y), _elevation.get_noise_2d(x, y - 4.0) - _elevation.get_noise_2d(x, y + 4.0))
+	return -along if along.dot(downhill) < 0.0 else along
+
+
+## What a tile's ground would be without its river: a river keeps the
+## height of the land it runs through, and falls where that land drops.
+func _bed_type(cell: Vector2i) -> int:
+	var type := tile_type_at(cell)
+	if TerrainTiles.is_water(type) and not overrides.has(cell) and river_at(cell) > 0:
+		return _natural(cell)
+	return type
 
 
 # --- roads

@@ -185,7 +185,7 @@ func _build_chunk(chunk: Vector2i, announce: bool = true) -> void:
 	# under the fringes so the banks' ragged edges lie over them.
 	if GameSettings.shader_level() > 0:
 		var origin_cell := chunk * CHUNK_SIZE
-		layer.add_child(WaterSurface.chunk_surface(origin_cell, CHUNK_SIZE, generator.tile_type_at))
+		layer.add_child(WaterSurface.chunk_surface(origin_cell, CHUNK_SIZE, generator.tile_type_at, generator.river_flow))
 	# Four more layers hold the ragged strips that blend each terrain over
 	# its neighbours, one layer per side.
 	var fringes: Array[TileMapLayer] = []
