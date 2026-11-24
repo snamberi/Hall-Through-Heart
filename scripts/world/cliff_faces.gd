@@ -158,8 +158,9 @@ func _north_rim(at: Vector2, x: int, y: int) -> void:
 		# The low ground just beyond the edge lies darker.
 		for k in 3:
 			draw_rect(Rect2(px, at.y - (k + 1) * 2.0 + dip, 2.0, 2.0), Color(0.04, 0.03, 0.07, 0.3 * (1.0 - k / 3.0)))
-		draw_rect(Rect2(px, at.y + dip, 2.0, 2.0), lit)
-		draw_rect(Rect2(px, at.y + dip + 2.0, 2.0, 2.0), Color(lit, 0.4))
+		draw_rect(Rect2(px, at.y + dip, 2.0, 1.0), lit.lightened(0.12))
+		draw_rect(Rect2(px, at.y + dip + 1.0, 2.0, 1.0), lit)
+		draw_rect(Rect2(px, at.y + dip + 2.0, 2.0, 1.0), Color(lit, 0.45))
 
 
 ## The side of raised ground where it drops away to the west (lit) or east
@@ -168,36 +169,41 @@ func _north_rim(at: Vector2, x: int, y: int) -> void:
 func _side_wall(at: Vector2, x: int, y: int, west: bool) -> void:
 	var ground := _type(x, y)
 	var rocky := level(ground) > 0
+	var look := ("peak" if ground == T.PEAK else "rock") if rocky else _soil_name(ground)
 	var stones := _stone_look(ground)
 	var soil: Array = stones if rocky else _soil(ground)
 	var base: Color = TerrainTiles.COLORS[ground]
 	var grass := Color.from_hsv(base.h, minf(base.s * 1.2, 1.0), clampf(base.v + 0.22, 0.0, 0.92))
-	var face: Color = (soil[0] as Color) if west else (soil[2] as Color)
-	var band_dark: Color = face.darkened(0.12)
 	var dark: Color = soil[3]
+	var world_x := int(float(origin.x) * TILE + at.x)
 	var world_y := float(origin.y + y) * TILE
+	# The west side catches the light; the east lies in shade.
+	var light := Color(1.14, 1.1, 1.04) if west else Color(0.7, 0.68, 0.78)
+	var row := maxi(FACE_LOOKS.find(look), 0) * FACE_HEIGHT
 	# Where the wall starts: below the north rim if there is one.
-	var start := 4.0 if _height(x, y - 1) < _height(x, y) else 0.0
+	var start := 4 if _height(x, y - 1) < _height(x, y) else 0
 	var random := RandomNumberGenerator.new()
 	random.seed = hash(Vector3i(origin.x + x, origin.y + y, 919 if west else 929))
-	for r in range(int(start / 2.0), 22):
-		var py := at.y + r * 2.0
-		var width := 10.0 + _wave(world_y + r * 2.0, 5.1 if west else 6.7, 4.0)
+	for r in range(start, int(TILE)):
+		var py := at.y + r
+		var width := 10.0 + _wave(world_y + float(r - r % 2), 5.1 if west else 6.7, 4.0)
 		var outer := at.x if west else at.x + TILE - width
 		var inner := at.x + width if west else at.x + TILE - width
-		# Bands of soil (or rock) that wander a little, like the faces.
-		var banded := int(floorf((world_y + r * 2.0 + _wave(world_y + r * 2.0, 1.3, 4.0)) / 8.0)) % 2 == 1
-		draw_rect(Rect2(outer, py, width, 2.0), band_dark if banded else face)
-		# A dark line on its outer edge, and the grass lip on its inner.
-		draw_rect(Rect2(at.x if west else at.x + TILE - 2.0, py, 2.0, 2.0), dark)
-		draw_rect(Rect2(inner - (2.0 if west else 0.0), py, 2.0, 2.0), grass.lightened(0.18) if west else grass.darkened(0.12))
-		# Stones in the wall, and grass hanging over it.
-		var roll := random.randf()
-		if roll < 0.18:
-			draw_rect(Rect2(outer + 2.0, py, 2.0, 2.0), (stones[1] as Color) if west else (stones[0] as Color))
-		elif roll < 0.4 and not rocky:
-			var hang_x := inner - 4.0 if west else inner
-			draw_rect(Rect2(hang_x, py, 4.0, 2.0), grass.darkened(0.08))
+		# The wall is the same stone or soil as the faces, a pixel row at a
+		# time, taken from the strip by height so its beds run level.
+		var sy := FACE_TOP + float(posmod(int(world_y) + r, int(TILE) - 4))
+		var sx := posmod(world_x + int(outer - at.x), FACE_WIDTH - int(width))
+		draw_texture_rect_region(FACES, Rect2(outer, py, width, 1.0), Rect2(sx, row + sy, width, 1.0), light)
+		# A dark line on its outer edge, and the ground's lip on its inner.
+		draw_rect(Rect2(at.x if west else at.x + TILE - 1.0, py, 1.0, 1.0), dark)
+		draw_rect(Rect2(inner - (1.0 if west else 0.0), py, 1.0, 1.0), grass.lightened(0.2) if west else grass.darkened(0.15))
+		draw_rect(Rect2(inner - (2.0 if west else -1.0), py, 1.0, 1.0), Color(0, 0, 0, 0.18))
+		# Grass hanging over the wall here and there, a pixel-wide fringe.
+		if not rocky and r % 2 == 0 and random.randf() < 0.3:
+			var hang := float(random.randi_range(1, 3))
+			var hang_x := inner - hang if west else inner
+			draw_rect(Rect2(hang_x, py, hang, 1.0), grass.darkened(0.05))
+			draw_rect(Rect2(hang_x, py + 1.0, hang, 1.0), grass.darkened(0.25))
 
 
 ## One tile of cliff face, `drop` steps tall, hanging from the high ground above.
@@ -429,10 +435,11 @@ func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 			draw_rect(Rect2(at.x + c * 2.0, bottoms[c] + k * 2.0, 2.0, 2.0), Color(0, 0, 0, 0.32 * (1.0 - k / 6.0)))
 	_face_strip(at, tops, bottoms, ("peak" if above == T.PEAK else "rock") if rocky else _soil_name(above))
 	var wall: Array = stones if rocky else _soil(above)
+	var look := ("peak" if above == T.PEAK else "rock") if rocky else _soil_name(above)
 	if outer_left:
-		_corner(at, tops, bottoms, true, wall)
+		_corner(at, tops, bottoms, true, wall, look)
 	if outer_right:
-		_corner(at, tops, bottoms, false, wall)
+		_corner(at, tops, bottoms, false, wall, look)
 	_cliff_trim(at, tops, bottoms, stones, grass, rocky, random)
 	match _variant(above, x, y):
 		"mossy":
@@ -446,22 +453,30 @@ func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 ## The end of a face at an outer corner: the plateau's side wall coming
 ## down to the foot, lit on the west, shaded on the east, in bands like the
 ## face, with a hard edge where it turns.
-func _corner(at: Vector2, tops: Array[float], bottoms: Array[float], west: bool, wall: Array) -> void:
+func _corner(at: Vector2, tops: Array[float], bottoms: Array[float], west: bool, wall: Array, look: String = "rock") -> void:
 	var columns := range(0, 5) if west else range(17, 22)
+	var row := maxi(FACE_LOOKS.find(look), 0) * FACE_HEIGHT
+	var world_x := int(float(origin.x) * TILE + at.x)
+	# The side turning toward the light is brighter, the other in shade.
+	var light := Color(1.16, 1.12, 1.05) if west else Color(0.68, 0.66, 0.76)
 	for c: int in columns:
-		var px := at.x + c * 2.0
 		var y0: float = tops[c]
-		while y0 < bottoms[c]:
-			var band := int((y0 - at.y) / 8.0) % 2
-			var color: Color = (wall[0] as Color) if west else (wall[2] as Color)
-			draw_rect(Rect2(px, y0, 2.0, 2.0), color.darkened(0.08 * band))
-			y0 += 2.0
-	# The outer edge, dark, and the turn of the corner, bright or dim.
+		var tall: float = bottoms[c] - y0
+		if tall <= 0.0:
+			continue
+		var sy := maxf(FACE_TOP + (y0 - at.y), 0.0)
+		tall = minf(tall, FACE_HEIGHT - sy)
+		var sx := posmod(world_x + c * 2, FACE_WIDTH)
+		draw_texture_rect_region(FACES, Rect2(at.x + c * 2.0, y0, 2.0, tall), Rect2(sx, row + sy, 2.0, tall), light)
+	# The outer edge, a dark pixel line, and the turn of the corner: a lit
+	# (or dim) pixel line where the two sides meet.
 	var edge_c := 0 if west else 21
 	var turn_c := 5 if west else 16
-	draw_rect(Rect2(at.x + edge_c * 2.0, tops[edge_c], 2.0, bottoms[edge_c] - tops[edge_c]), wall[3])
-	var turn: Color = (wall[0] as Color).lightened(0.2) if west else (wall[2] as Color).darkened(0.25)
-	draw_rect(Rect2(at.x + turn_c * 2.0, tops[turn_c] + 6.0, 2.0, maxf(bottoms[turn_c] - tops[turn_c] - 8.0, 0.0)), Color(turn, 0.8))
+	var edge_x := at.x + (0.0 if west else TILE - 1.0)
+	draw_rect(Rect2(edge_x, tops[edge_c], 1.0, bottoms[edge_c] - tops[edge_c]), wall[3])
+	var turn: Color = (wall[1] as Color).lightened(0.15) if west else (wall[2] as Color).darkened(0.3)
+	var turn_x := at.x + turn_c * 2.0 + (0.0 if west else 1.0)
+	draw_rect(Rect2(turn_x, tops[turn_c] + 3.0, 1.0, maxf(bottoms[turn_c] - tops[turn_c] - 5.0, 0.0)), Color(turn, 0.85))
 
 
 ## The face, laid down a two-pixel column at a time from its look's strip,
