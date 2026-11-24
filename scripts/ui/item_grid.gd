@@ -156,6 +156,34 @@ static func style_slot(button: Button, item: Item, chosen: bool = false, skin: S
 	button.add_theme_stylebox_override("hover_pressed", pressed)
 	button.add_theme_stylebox_override("disabled", disabled)
 	button.icon = item.icon() if item else null
+	_grade_pips(button, item)
 	var tint := item.icon_tint() if item else Color.WHITE
 	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color", "icon_disabled_color"]:
 		button.add_theme_color_override(state, tint)
+
+
+## A weapon's grade (honed, gilded, runed: see PlayerAnimator.weapon_grade)
+## as little gold pips along the top of its slot.
+static func _grade_pips(button: Button, item: Item) -> void:
+	var pips: Control = button.get_node_or_null("GradePips")
+	var grade := PlayerAnimator.weapon_grade(item) if item and item.is_equipment() and item.definition().has("weapon") else 0
+	if grade == 0:
+		if pips:
+			pips.visible = false
+		return
+	if pips == null:
+		pips = Control.new()
+		pips.name = "GradePips"
+		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pips.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		pips.draw.connect(func() -> void:
+			var shown: int = pips.get_meta("grade", 0)
+			for k in shown:
+				var at := Vector2(pips.size.x - 6.0 - k * 5.0, 3.0)
+				pips.draw_rect(Rect2(at - Vector2(1, 1), Vector2(5, 5)), Color(0.12, 0.08, 0.04))
+				pips.draw_rect(Rect2(at, Vector2(3, 3)), Color(0.98, 0.8, 0.36) if shown < 3 else Color(0.6, 0.95, 1.0))
+				pips.draw_rect(Rect2(at, Vector2.ONE), Color(1, 1, 0.92)))
+		button.add_child(pips)
+	pips.set_meta("grade", grade)
+	pips.visible = true
+	pips.queue_redraw()

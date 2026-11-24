@@ -2367,8 +2367,77 @@ def main():
         write_layer({"trouser": look["leg"]}, "layers", name)
     for name, look in BOOT_LOOKS.items():
         write_layer({"boot": look["boot"]}, "layers", name)
+    write_weapons()
+    write_npcs()
+    write_frames_table()
+
+
+# --------------------------------------------------------------- weapon grades
+# A weapon looks better as it grows: each grade is drawn from its own art,
+# shape by shape (no recolouring in the game):
+#   1 honed   a bright edge down the blade or shaft, bindings on the grip
+#   2 gilded  the guard in gold and wider, a gem set at its heart
+#   3 runed   runes glowing down the weapon, its tip catching the light
+TOOLS = ("pickaxe", "hatchet", "rod")
+GRADES = 3
+
+
+def _bounds(polygon):
+    xs = [p[0] for p in polygon]
+    ys = [p[1] for p in polygon]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def graded(parts, grade):
+    """A weapon's art at a grade (see GRADES)."""
+    out = list(parts)
+    if grade <= 0:
+        return out
+    blades = [poly for m, poly in parts if m in ("blade", "edge", "dark_edge", "obsidian", "crystal", "bone")]
+    shafts = [poly for m, poly in parts if m in ("wood", "bark", "belt", "wrap")]
+    longest = max(blades or shafts or [poly for _m, poly in parts], key=lambda poly: (_bounds(poly)[3] - _bounds(poly)[1]) + (_bounds(poly)[2] - _bounds(poly)[0]))
+    x0, y0, x1, y1 = _bounds(longest)
+    tall = (y1 - y0) >= (x1 - x0)
+    # 1: a bright edge along the long side of the blade or shaft, and
+    # bindings round the grip.
+    if tall:
+        out.append(("holy" if grade >= 3 else "edge", [(x0, y0 + 1), (x0 + 0.6, y0 + 1), (x0 + 0.6, y1 - 0.5), (x0, y1 - 0.5)]))
+    else:
+        out.append(("holy" if grade >= 3 else "edge", [(x0 + 1, y0), (x1 - 0.5, y0), (x1 - 0.5, y0 + 0.6), (x0 + 1, y0 + 0.6)]))
+    for k in range(2):
+        out.append(("gold_m" if grade >= 2 else "wrap", [(34.6, 32.4 + k * 1.2), (36.4, 32.4 + k * 1.2), (36.4, 33.0 + k * 1.2), (34.6, 33.0 + k * 1.2)]))
+    if grade >= 2:
+        # The guard in gold, a third wider, with a gem at its heart.
+        guards = [poly for m, poly in parts if m == "guard"]
+        out = [(("gold_m" if m == "guard" else m), poly) for m, poly in out]
+        for poly in guards:
+            gx0, gy0, gx1, gy1 = _bounds(poly)
+            cx, cy = (gx0 + gx1) / 2, (gy0 + gy1) / 2
+            out.append(("gold_m", [(cx + (x - cx) * 1.3, cy + (y - cy) * 1.1) for x, y in poly]))
+            out.append(("sapphire", [(cx - 0.7, cy - 0.7), (cx + 0.7, cy - 0.7), (cx + 0.7, cy + 0.7), (cx - 0.7, cy + 0.7)]))
+        if not guards:
+            out.append(("sapphire", [(34.8, 30.4), (36.2, 30.4), (36.2, 31.6), (34.8, 31.6)]))
+    if grade >= 3:
+        # Runes glowing down the length, and a bright tip.
+        steps = 4
+        for k in range(steps):
+            t = (k + 1) / (steps + 1)
+            if tall:
+                rx, ry = (x0 + x1) / 2, y0 + (y1 - y0) * t
+            else:
+                rx, ry = x0 + (x1 - x0) * t, (y0 + y1) / 2
+            out.append(("glow_cyan", [(rx - 0.5, ry - 0.5), (rx + 0.5, ry - 0.5), (rx + 0.5, ry + 0.5), (rx - 0.5, ry + 0.5)]))
+        tip = (x0 + x1) / 2 if tall else x1
+        tip_y = y0 if tall else (y0 + y1) / 2
+        out.append(("holy", [(tip - 0.6, tip_y), (tip + 0.6, tip_y), (tip, tip_y + 1.5)]))
+    return out
+
+
+def write_weapons(only=None):
     row_of = {id(frame): row for row, frames in ANIMATIONS for frame in frames}
     for name, parts in GA.WEAPONS.items():
+        if only and name not in only:
+            continue
         angle = grip_angle(name)
 
         def carried(frame, angle=angle):
@@ -2376,10 +2445,15 @@ def main():
             if angle is not None and row_of.get(id(frame)) in GRIP_ROWS:
                 return dict(frame, weapon=angle)
             return frame
-        save(sheet(lambda frame, parts=parts, carried=carried: weapon_frame(parts, carried(frame), AVERAGE_HEIGHT, AVERAGE_BUILD)), "weapons", name + ".png")
-    write_npcs()
-    write_frames_table()
+        for grade in range(0 if name in TOOLS else 0, 1 if name in TOOLS else GRADES + 1):
+            art = graded(parts, grade)
+            suffix = "" if grade == 0 else "_g%d" % grade
+            save(sheet(lambda frame, art=art, carried=carried: weapon_frame(art, carried(frame), AVERAGE_HEIGHT, AVERAGE_BUILD)), "weapons", name + suffix + ".png")
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "weapons":
+        write_weapons(sys.argv[2:] or None)
+    else:
+        main()

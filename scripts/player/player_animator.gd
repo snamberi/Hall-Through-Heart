@@ -439,7 +439,7 @@ func update_equipment(equipment: Equipment, show_helmet: bool) -> void:
 		var tool_kind: String = held.definition()["tool"]["kind"]
 		_set_layer("weapon", held, "weapons/" + tool_kind, false, held.definition().get("tint", Color.WHITE))
 	else:
-		_set_layer("weapon", held, "weapons/" + str(held.definition().get("visual", "")) if held else "", false)
+		_set_layer("weapon", held, weapon_sheet(held) if held else "", false)
 	# A shield stays on the back while both hands are busy.
 	var both_hands: bool = held != null and (held.is_tool() or held.definition().get("two_handed", false))
 	_set_layer("shield", null if both_hands else equipment.get_item("off_hand"), "layers/shield")
@@ -699,6 +699,33 @@ func _on_animation_finished() -> void:
 		rebirth_finished.emit()
 	if animation == _busy and animation != "death":
 		_busy = ""
+
+
+## A weapon grows finer to look at as it grows stronger: grade 1 honed, 2
+## gilded, 3 runed (tools/generate_people.py GRADES), by its level or its
+## upgrades, whichever is further along.
+const GRADE_LEVELS: Array[int] = [20, 45, 80]
+const GRADE_UPGRADES: Array[int] = [2, 5, 8]
+
+
+static func weapon_grade(item: Item) -> int:
+	var grade := 0
+	for k in 3:
+		if item.level >= GRADE_LEVELS[k] or item.upgrade >= GRADE_UPGRADES[k]:
+			grade = k + 1
+	return grade
+
+
+## The sheet for a weapon in hand at its grade (falling back to plain art).
+static func weapon_sheet(item: Item) -> String:
+	var base := "weapons/" + str(item.definition().get("visual", ""))
+	var grade := weapon_grade(item)
+	while grade > 0:
+		var graded := "%s_g%d" % [base, grade]
+		if ResourceLoader.exists("res://assets/sprites/%s.png" % graded):
+			return graded
+		grade -= 1
+	return base
 
 
 ## Shows `item` on a layer using the sheet at assets/sprites/<path>.png, or

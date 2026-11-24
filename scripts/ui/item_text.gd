@@ -246,6 +246,12 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 	if comparison != "":
 		lines.append("")
 		lines.append(comparison)
+	# How fine the weapon has grown to look (its grade).
+	if item.definition().has("weapon"):
+		var grade := PlayerAnimator.weapon_grade(item)
+		var next := "" if grade >= 3 else "  ·  next at level %d or +%d" % [PlayerAnimator.GRADE_LEVELS[grade], PlayerAnimator.GRADE_UPGRADES[grade]]
+		lines.append("")
+		lines.append("[color=#%s]%s[/color]" % ["e8c060" if grade > 0 else dim, ["Plain", "Honed", "Gilded", "Runed"][grade] + next])
 	if not bare:
 		lines.append("")
 		lines.append(_sells_for(item, dim))
