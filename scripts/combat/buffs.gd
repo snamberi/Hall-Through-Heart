@@ -67,6 +67,21 @@ func has(id: String) -> bool:
 	return active.has(id)
 
 
+## A bond (see Bonds): lasts as long as what wakes it holds, says why.
+func bind(id: String, display_name: String, modifiers: Dictionary, why: String, icon: Texture2D = null) -> void:
+	if active.has(id) and active[id].get("mods", {}) == modifiers:
+		return
+	add(id, display_name, 1.0, modifiers, icon, "bond")
+	active[id]["lasting"] = true
+	active[id]["why"] = why
+
+
+func remove(id: String) -> void:
+	if active.erase(id):
+		_stats.clear_modifiers("buff:" + id)
+		changed.emit()
+
+
 func clear_all() -> void:
 	for id: String in active.keys():
 		_stats.clear_modifiers("buff:" + id)
@@ -76,6 +91,8 @@ func clear_all() -> void:
 
 func _physics_process(delta: float) -> void:
 	for id: String in active.keys():
+		if active[id].get("lasting", false):
+			continue
 		active[id]["time"] -= delta
 		if active[id]["time"] <= 0.0:
 			active.erase(id)

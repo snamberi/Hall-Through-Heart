@@ -137,10 +137,30 @@ func _build() -> void:
 			var after := UITheme.label("", 15, UITheme.GOOD)
 			after.custom_minimum_size.x = 70.0
 			row.add_child(after)
+			row.mouse_filter = Control.MOUSE_FILTER_STOP
 			_stat_rows[id] = {"row": row, "value": value, "after": after, "entry": entry}
 	player.stats.changed.connect(refresh_if_open)
 	player.attributes.changed.connect(refresh_if_open)
 	player.leveling.xp_changed.connect(func(_x: int, _r: int) -> void: refresh_if_open())
+
+
+## Where a statistic's bonuses come from: gear, talents, race, bonds, food
+## and every other system, each with its share.
+func _ledger(id: String, title: String) -> String:
+	var names := {}
+	for buff: String in player.buffs.active:
+		names[buff] = player.buffs.active[buff]["name"]
+	var lines: PackedStringArray = [title + ": where it comes from"]
+	for source: Array in player.stats.sources_of(id, names):
+		var parts: PackedStringArray = []
+		if absf(source[1]) >= 0.0001:
+			parts.append(("%+.0f" if absf(source[1]) >= 1.0 else "%+.1f%%") % (source[1] if absf(source[1]) >= 1.0 else source[1] * 100.0))
+		if absf(source[2]) >= 0.0001:
+			parts.append("%+.0f%%" % (source[2] * 100.0))
+		lines.append("  %s  %s" % [source[0], ", ".join(parts)])
+	if lines.size() == 1:
+		lines.append("  Nothing adds to it yet.")
+	return "\n".join(lines)
 
 
 func _entry(id: String) -> Dictionary:
@@ -260,6 +280,7 @@ func refresh() -> void:
 		var change: Array = preview[id]
 		(row["value"] as Label).text = change[0]
 		(row["after"] as Label).text = "→ %s" % change[1] if change[2] else ""
+		(row["row"] as Control).tooltip_text = _ledger(id, entry["name"])
 	_apply.disabled = _plan.is_empty()
 	_apply.text = "Apply %d point%s" % [_planned_total(), "" if _planned_total() == 1 else "s"] if not _plan.is_empty() else "Apply"
 	_reset.disabled = _plan.is_empty()

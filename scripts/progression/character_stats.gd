@@ -80,6 +80,36 @@ func set_modifiers_quietly(source_id: String, modifiers: Dictionary) -> void:
 	_modifiers[source_id] = modifiers
 
 
+## Names for where bonuses come from, by source id or its prefix.
+const SOURCE_NAMES := {"equipment": "Gear", "talents": "Talents", "class": "Class", "class_tree": "Class path", "class_weapon": "Class weapon",
+	"second_class": "Second class", "race": "Race", "race_hour": "Race (time of day)", "evolution": "Evolution", "relics": "Relics",
+	"trinkets": "Trinkets", "pet": "Pet", "ego": "Ego", "echoes": "Echoes", "pact_job": "The Pact", "trophies": "Trophies",
+	"monster_town": "Monster town", "rift": "Rift", "saint_lull": "Saint Lull's house", "barding": "Mount's barding", "ability_crit": "Ability"}
+
+
+## Everything that adds to one statistic: [[where it comes from, flat,
+## percent], ...], biggest first. `names` gives buff ids their names.
+func sources_of(id: String, names: Dictionary = {}) -> Array:
+	var found: Array = []
+	for source: String in _modifiers:
+		var mods: Dictionary = _modifiers[source]
+		if not mods.has(id):
+			continue
+		var flat := float(mods[id].get("flat", 0.0))
+		var percent := float(mods[id].get("percent", 0.0))
+		if absf(flat) < 0.0001 and absf(percent) < 0.0001:
+			continue
+		var name: String = SOURCE_NAMES.get(source, "")
+		if source.begins_with("buff:"):
+			var buff := source.substr(5)
+			name = ("Bond: " if buff.begins_with("bond_") else "") + str(names.get(buff, buff.capitalize()))
+		elif name == "":
+			name = source.capitalize()
+		found.append([name, flat, percent])
+	found.sort_custom(func(a: Array, b: Array) -> bool: return absf(a[1]) + absf(a[2]) > absf(b[1]) + absf(b[2]))
+	return found
+
+
 func clear_modifiers(source_id: String) -> void:
 	if _modifiers.erase(source_id):
 		changed.emit()

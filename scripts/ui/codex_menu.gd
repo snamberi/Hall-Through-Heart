@@ -170,6 +170,21 @@ func _lore(codex: Codex) -> void:
 			_lore_row(title, "s:" + kind, true)
 	if places.size() < LORE_BOOK.PLACES.size():
 		_left.add_child(UITheme.label("%d more places to find" % (LORE_BOOK.PLACES.size() - places.size()), 13, UITheme.DIM))
+	# Bonds: where the game's systems meet (see Bonds).
+	var bonds: Node = player.get_parent().get_node_or_null("Bonds")
+	if bonds:
+		_left.add_child(UITheme.label("THE BONDS", 14, UITheme.GOLD))
+		for id: String in bonds.BONDS:
+			var bond: Dictionary = bonds.BONDS[id]
+			var open: bool = bonds.known.has(id)
+			var gives: PackedStringArray = []
+			var mods: Dictionary = bond.get("mods", bond.get("per", {}))
+			for stat: String in mods:
+				for kind: String in mods[stat]:
+					gives.append(ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": float(mods[stat][kind])}))
+			var body := "%s\n\n%s%s" % [bond["why"], ", ".join(gives), " (for each)" if bond.has("per") else ""]
+			pages["b:" + id] = [bond["name"], body] if open else []
+			_lore_row(str(bond["name"]) if open else "???  (not yet woken)", "b:" + id, open)
 	var page: Array = pages.get(_picked, [])
 	if page.is_empty():
 		page = [chapters[0]["title"], chapters[0]["text"]]

@@ -178,3 +178,26 @@ func test_the_telling(t: TestContext) -> void:
 		t.check(lore.PLACES.has(kind), "%s has a story" % kind)
 	t.equal(lore.open_chapters({}).size(), 1, "the first chapter is open from the start")
 	t.equal(lore.open_chapters({"villages": 1, "talks": 10, "kills": 50}).size(), 4, "chapters open with deeds")
+
+
+func test_bonds_connect_the_systems(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var bonds: Node = main.get_node("Bonds")
+	player.buffs.add("well_rested", "Well Rested", 600.0, {"xp_gain": {"flat": 0.1}})
+	player.buffs.add("food_meal", "Stew", 600.0, {"max_health": {"flat": 10.0}}, null, "meal")
+	var before := player.stats.get_stat("health_regen")
+	bonds._check()
+	t.check(player.buffs.has("bond_hearth"), "a meal and a night's rest wake Hearth and Home")
+	t.check(player.stats.get_stat("health_regen") > before, "the bond adds to the stats")
+	var names := {"bond_hearth": "Hearth and Home"}
+	var sources: Array = player.stats.sources_of("health_regen", names)
+	t.check(sources.any(func(s: Array) -> bool: return str(s[0]).contains("Hearth")), "the ledger names the bond as a source")
+	player.buffs.remove("well_rested")
+	bonds._check()
+	t.check(not player.buffs.has("bond_hearth"), "the bond goes when its reason does")
+	for k in 3:
+		bonds.note_kill()
+	bonds._check()
+	t.check(player.buffs.has("bond_momentum"), "three quick kills give Momentum")
+	t.check(player.buffs.has("bond_telling"), "the opened chapters of the Telling give a bond")

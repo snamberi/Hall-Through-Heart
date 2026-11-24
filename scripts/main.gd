@@ -1,5 +1,6 @@
 extends Node2D
 const GOBLIN_CAMPS := preload("res://scripts/world/goblin_camps.gd")
+const BONDS := preload("res://scripts/progression/bonds.gd")
 
 ## Loaded by path, so a game whose script cache predates these still runs.
 const SharedWorld := preload("res://scripts/net/net_world.gd")
@@ -112,6 +113,11 @@ func _ready() -> void:
 	errands.name = "Errands"
 	add_child(errands)
 	errands.setup(_player)
+	var bonds: Node = BONDS.new()
+	bonds.name = "Bonds"
+	add_child(bonds)
+	bonds.setup(_player)
+	SaveGame.register("bonds", bonds)
 	var settlers := Settlers.new()
 	settlers.name = "Settlers"
 	add_child(settlers)

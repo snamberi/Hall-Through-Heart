@@ -7,7 +7,7 @@ extends Control
 
 const CHIP := 30.0
 const GAP := 6.0
-const KIND_COLORS := {"meal": Color("e0b050"), "drink": Color("7aa8ff"), "treat": Color("e07aa8"), "potion": Color("7ae08a")}
+const KIND_COLORS := {"bond": Color("f2c14e"), "meal": Color("e0b050"), "drink": Color("7aa8ff"), "treat": Color("e07aa8"), "potion": Color("7ae08a")}
 
 var _player: Player
 var _font: Font
@@ -58,6 +58,9 @@ func _draw() -> void:
 		var seconds := ceili(float(buff["time"]))
 		var words := "%d:%02d" % [seconds / 60, seconds % 60] if seconds >= 60 else "%ds" % seconds
 		var low := seconds <= 15
+		if buff.get("lasting", false):
+			words = "bond"
+			low = false
 		draw_string_outline(_font, Vector2(rect.position.x - 4.0, rect.end.y + 13.0), words, HORIZONTAL_ALIGNMENT_CENTER, CHIP + 8.0, 13, 3, Color(0, 0, 0, 0.8))
 		draw_string(_font, Vector2(rect.position.x - 4.0, rect.end.y + 13.0), words, HORIZONTAL_ALIGNMENT_CENTER, CHIP + 8.0, 13, UITheme.BAD if low else UITheme.TEXT)
 		index += 1
@@ -86,6 +89,8 @@ func _draw_detail(buff: Dictionary) -> void:
 	for stat: String in mods:
 		for kind: String in mods[stat]:
 			lines.append(ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": float(mods[stat][kind])}))
+	if buff.has("why"):
+		lines.append(str(buff["why"]))
 	var course: String = ItemDB.COURSE_NAMES.get(buff.get("kind", ""), "")
 	if course != "":
 		lines.append("%s - one at a time" % course)
