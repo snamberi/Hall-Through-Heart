@@ -81,7 +81,7 @@ func _ready() -> void:
 		_choice(page, "grass_density", "Grass density", [[0.25, "25%"], [0.5, "50%"], [1.0, "100%"], [1.5, "150%"]], 112.0)
 		_choice(page, "view_distance", "View distance", [[0, "Short"], [1, "Medium"], [2, "Long"], [3, "Maximum"]], 112.0)
 		_choice(page, "fps_limit", "FPS limit", [[30, "30"], [60, "60"], [120, "120"], [144, "144"], [0, "None"]], 86.0)
-		_check(page, "bloom", "Bloom (a soft glow round fire and magic)")
+		_check(page, "bloom", "Bloom (a soft glow round fire and magic; with Full shaders)")
 		_check(page, "fog", "Fog and haze")
 		_check(page, "screen_shake", "Screen shake")
 		_check(page, "damage_numbers", "Damage numbers")

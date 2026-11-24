@@ -1,7 +1,9 @@
 class_name Bloom
 extends WorldEnvironment
 ## A soft glow round bright things (fire, magic, lit windows), when bloom
-## is turned on in the graphics settings and shaders are not off.
+## is turned on in the graphics settings and shaders are Full (High and
+## Ultra): the glow blurs the whole screen several times over, the dearest
+## effect there is on a phone, so Normal goes without it.
 
 
 func _ready() -> void:
@@ -18,4 +20,4 @@ func _ready() -> void:
 
 
 func _apply() -> void:
-	environment.glow_enabled = GameSettings.bloom and GameSettings.shader_level() >= 1
+	environment.glow_enabled = GameSettings.bloom and GameSettings.shader_level() >= 2
