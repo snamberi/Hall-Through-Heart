@@ -891,9 +891,10 @@ static func _art_top(sheet: Texture2D) -> float:
 		var top := -52.0
 		var image := sheet.get_image() if sheet else null
 		if image:
-			var used := image.get_region(Rect2i(0, 0, 96, 96)).get_used_rect()
+			var cell := EnemyDB.frame_size(sheet)
+			var used := image.get_region(Rect2i(0, 0, cell, cell)).get_used_rect()
 			# The sprite's centre sits 23px above the feet.
-			top = -23.0 + (used.position.y - 48.0)
+			top = -23.0 + (used.position.y - cell / 2.0)
 		_tops[sheet] = top
 	return _tops[sheet]
 

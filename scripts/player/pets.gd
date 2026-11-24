@@ -503,7 +503,7 @@ func _refresh_look() -> void:
 		var rows: Array[Dictionary] = EnemyAnimator.ROWS.duplicate()
 		if _has_rest_rows:
 			rows.append_array(PET_ROWS)
-		_sprite.sprite_frames = SheetAnimations.build(sheet, 96, rows)
+		_sprite.sprite_frames = SheetAnimations.build(sheet, EnemyDB.frame_size(sheet), rows)
 		# A tamed monster is smaller than its wild kin, and grows a little with level.
 		var species: String = pet["species"]
 		var drawn := 1.0

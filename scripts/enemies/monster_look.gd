@@ -173,6 +173,7 @@ static func dress(enemy: Enemy, sprite: CanvasItem) -> ShaderMaterial:
 		look.set_shader_parameter("edge", colour)
 		look.set_shader_parameter("glint", data[1])
 		look.set_shader_parameter("pattern", data[2])
+	look.set_shader_parameter("frame_px", float(EnemyDB.frame_size(EnemyDB.sheet(enemy.enemy_id))))
 	sprite.material = look
 	return look
 
@@ -182,9 +183,11 @@ static func dress(enemy: Enemy, sprite: CanvasItem) -> ShaderMaterial:
 static var _rows: Dictionary = {}
 
 
-static func body_rows(sheet: Texture2D, frame: int = 96) -> Vector2:
+static func body_rows(sheet: Texture2D, frame: int = -1) -> Vector2:
 	if sheet == null:
 		return Vector2(-24, 24)
+	if frame < 0:
+		frame = EnemyDB.frame_size(sheet)
 	if _rows.has(sheet):
 		return _rows[sheet]
 	var image := sheet.get_image()
@@ -282,9 +285,11 @@ static var _wound_spots: Dictionary = {}
 
 ## A heart-shaped hole in one part of a fallen creature's body: dark inside,
 ## a torn rim of blood, a drip below. Drawn in whole pixels on the sprite.
-static func heart_wound(sprite: CanvasItem, sheet: Texture2D, frame: int = 96) -> void:
+static func heart_wound(sprite: CanvasItem, sheet: Texture2D, frame: int = -1) -> void:
 	if not is_instance_valid(sprite) or sheet == null:
 		return
+	if frame < 0:
+		frame = EnemyDB.frame_size(sheet)
 	if not _wound_spots.has(sheet):
 		var spots: Array[Vector2i] = []
 		var image := sheet.get_image()

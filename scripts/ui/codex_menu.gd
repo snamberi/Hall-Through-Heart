@@ -277,7 +277,7 @@ func _creature_tile(codex: Codex, id: String) -> Button:
 	var picture := TextureRect.new()
 	var atlas := AtlasTexture.new()
 	atlas.atlas = EnemyDB.sheet(id)
-	atlas.region = Rect2(16, 14, 64, 64)
+	atlas.region = EnemyDB.cell_region(atlas.atlas, Rect2(16, 14, 64, 64))
 	picture.texture = atlas
 	picture.position = Vector2(7, 4)
 	picture.size = Vector2(84, 84)
@@ -327,7 +327,7 @@ func _creature_page(codex: Codex, id: String) -> void:
 		var shadow := TextureRect.new()
 		var atlas := AtlasTexture.new()
 		atlas.atlas = EnemyDB.sheet(id)
-		atlas.region = Rect2(16, 14, 64, 64)
+		atlas.region = EnemyDB.cell_region(atlas.atlas, Rect2(16, 14, 64, 64))
 		shadow.texture = atlas
 		shadow.custom_minimum_size = Vector2(384, 140)
 		shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -352,7 +352,7 @@ func _creature_page(codex: Codex, id: String) -> void:
 	)
 	var sprite := AnimatedSprite2D.new()
 	sprite.process_mode = Node.PROCESS_MODE_ALWAYS
-	sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet(id), 96, EnemyAnimator.ROWS)
+	sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet(id), EnemyDB.frame_size(EnemyDB.sheet(id)), EnemyAnimator.ROWS)
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.scale = Vector2(2.4, 2.4)
 	sprite.position = Vector2(192, 150 - 28 - 23.0 * 2.4)

@@ -369,7 +369,7 @@ class Citizen:
 
 	func _ready() -> void:
 		_sprite_node = AnimatedSprite2D.new()
-		_sprite_node.sprite_frames = SheetAnimations.build(EnemyDB.sheet(str(data["species"])), 96, EnemyAnimator.ROWS)
+		_sprite_node.sprite_frames = SheetAnimations.build(EnemyDB.sheet(str(data["species"])), EnemyDB.frame_size(EnemyDB.sheet(str(data["species"]))), EnemyAnimator.ROWS)
 		_sprite_node.position = Vector2(0, -23)
 		_sprite_node.play("idle")
 		add_child(_sprite_node)

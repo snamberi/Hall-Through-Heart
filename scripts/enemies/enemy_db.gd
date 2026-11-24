@@ -466,6 +466,18 @@ const ENEMIES := {
 	},
 }
 
+## The cell of a creature's sheet, eight frames across: 96 pixels, or 128
+## for the biggest (drawn with room round them, centred the same way).
+static func frame_size(sheet_texture: Texture2D) -> int:
+	return 96 if sheet_texture == null else maxi(sheet_texture.get_width() / 8, 1)
+
+
+## A region given for a 96-pixel cell, at the same place in this sheet's cell.
+static func cell_region(sheet_texture: Texture2D, region: Rect2) -> Rect2:
+	var pad := (frame_size(sheet_texture) - 96) / 2.0
+	return Rect2(region.position + Vector2(pad, pad), region.size)
+
+
 static func sheet(id: String) -> Texture2D:
 	# Young farm animals have sheets of their own but are not monsters.
 	return load(ENEMIES[id].get("sheet", SHEETS % id) if ENEMIES.has(id) else SHEETS % id)

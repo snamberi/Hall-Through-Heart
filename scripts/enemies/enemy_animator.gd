@@ -39,6 +39,7 @@ func _ready() -> void:
 func rebuild() -> void:
 	if not _cache.has(sheet):
 		var rows: Array[Dictionary] = ROWS.duplicate()
+		frame_size = EnemyDB.frame_size(sheet)
 		if sheet.get_height() >= (BACK_ROWS[1]["row"] + 1) * frame_size:
 			rows.append_array(BACK_ROWS)
 		_cache[sheet] = SheetAnimations.build(sheet, frame_size, rows)

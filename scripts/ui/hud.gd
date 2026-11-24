@@ -478,7 +478,7 @@ func _portrait(id: String) -> Texture2D:
 	var face: Texture2D = null
 	if sheet:
 		# Find the creature inside the first frame and frame its upper part.
-		var frame := Rect2i(0, 0, 96, 96)
+		var frame := Rect2i(0, 0, EnemyDB.frame_size(sheet), EnemyDB.frame_size(sheet))
 		var image := sheet.get_image()
 		if image:
 			var used := image.get_region(frame).get_used_rect()

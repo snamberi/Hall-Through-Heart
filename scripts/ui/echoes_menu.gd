@@ -64,7 +64,7 @@ static func portrait(echo_id: String) -> Texture2D:
 			if fusion[2] == echo_id:
 				monster = str(Echoes.LIST[fusion[0]]["from"][0])
 	atlas.atlas = EnemyDB.sheet(monster)
-	atlas.region = Rect2(20, 22, 56, 56)
+	atlas.region = EnemyDB.cell_region(atlas.atlas, Rect2(20, 22, 56, 56))
 	return atlas
 
 

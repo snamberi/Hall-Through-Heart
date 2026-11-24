@@ -1202,7 +1202,7 @@ class MatronHunter:
 
 	func _ready() -> void:
 		_sprite = AnimatedSprite2D.new()
-		_sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet("matron"), 96, [{"name": "idle", "frames": 4, "fps": 4.0, "loop": true}, {"name": "walk", "frames": 6, "fps": 8.0, "loop": true}])
+		_sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet("matron"), EnemyDB.frame_size(EnemyDB.sheet("matron")), [{"name": "idle", "frames": 4, "fps": 4.0, "loop": true}, {"name": "walk", "frames": 6, "fps": 8.0, "loop": true}])
 		_sprite.position = Vector2(0, -23)
 		_sprite.play("walk")
 		add_child(_sprite)
@@ -1304,7 +1304,7 @@ class NobleFigure:
 
 	func _ready() -> void:
 		var sprite := AnimatedSprite2D.new()
-		sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet("masked_noble"), 96, [{"name": "idle", "frames": 4, "fps": 3.0, "loop": true}])
+		sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet("masked_noble"), EnemyDB.frame_size(EnemyDB.sheet("masked_noble")), [{"name": "idle", "frames": 4, "fps": 3.0, "loop": true}])
 		sprite.position = Vector2(0, -23)
 		sprite.flip_h = true
 		sprite.play("idle")

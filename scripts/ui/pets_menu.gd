@@ -75,7 +75,7 @@ func _portrait(pet: Dictionary) -> Texture2D:
 		atlas.region = Rect2(Critter.KINDS.find(pet["species"]) * Critter.FRAMES * Critter.SIZE, 0, Critter.SIZE, Critter.SIZE)
 	else:
 		atlas.atlas = EnemyDB.sheet(pet["species"])
-		atlas.region = Rect2(20, 22, 56, 56)
+		atlas.region = EnemyDB.cell_region(atlas.atlas, Rect2(20, 22, 56, 56))
 	return atlas
 
 

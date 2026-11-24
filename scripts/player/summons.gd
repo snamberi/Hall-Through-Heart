@@ -119,7 +119,7 @@ class Minion:
 		shape.shape = circle
 		add_child(shape)
 		_sprite = AnimatedSprite2D.new()
-		_sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet(str(_data["species"])), 96, EnemyAnimator.ROWS)
+		_sprite.sprite_frames = SheetAnimations.build(EnemyDB.sheet(str(_data["species"])), EnemyDB.frame_size(EnemyDB.sheet(str(_data["species"]))), EnemyAnimator.ROWS)
 		_sprite.modulate = _data["tint"]
 		_sprite.play("idle")
 		add_child(_sprite)

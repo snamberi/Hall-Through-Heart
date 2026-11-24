@@ -64,7 +64,7 @@ EXTRAS = {
 }
 
 
-def improved(name, rig, size):
+def improved(name, rig, size, cap=None):
     out = {}
     for group, data in rig.items():
         parts = []
@@ -74,7 +74,7 @@ def improved(name, rig, size):
             parts.append((material, polygon))
         parts += EXTRAS.get(name, {}).get(group, [])
         out[group] = dict(data, parts=parts)
-    scale = min(size * GROWTH, LIMIT)
+    scale = min(size * GROWTH, LIMIT if cap is None else cap)
 
     def pt(p):
         return (22.0 + (p[0] - 22.0) * scale, 41.0 + (p[1] - 41.0) * scale)
@@ -106,10 +106,83 @@ def monsters():
 
 
 def _native_sheet(name, rig, order, animations, table):
+    """Drawn as big as asked in a 96-pixel cell; if some frame would run off
+    its edge (a raised arm, a wide crown, a body lying flat) in a 128-pixel
+    cell instead, centred the same way (the game reads the cell from the
+    sheet's width); only if it still runs off, a step smaller each time.
+    Nothing is ever cut off, and nothing is stretched in the game."""
     size = table.get(name, 1.0)
-    big, scale = improved(name, rig, size)
-    anims = [(n, [dict(p, shadow=(22, round(p.get("shadow", (22, 9))[1] * scale), 0)) for p in poses]) for n, poses in animations]
-    return GA.draw_sheet(big, order, anims, rich=True), scale / GROWTH
+    cap = None
+    big_cell = False
+    slide = 0
+    try:
+        while True:
+            big, scale = improved(name, rig, size, cap)
+            anims = [(n, [_slid(dict(p, shadow=(22, round(p.get("shadow", (22, 9))[1] * scale), 0)), slide * i / max(len(poses) - 1, 1))
+                          if n == "death" else dict(p, shadow=(22, round(p.get("shadow", (22, 9))[1] * scale), 0))
+                          for i, p in enumerate(poses)]) for n, poses in animations]
+            sheet = GA.draw_sheet(big, order, anims, rich=True)
+            clipped = _clipped_rows(sheet)
+            if not clipped or scale <= 0.8:
+                return sheet, scale / GROWTH
+            if not big_cell:
+                big_cell = True
+                _cell(128)
+                continue
+            # A tall body falling flat runs off a side: it slides the other
+            # way as it falls, a little more each try, rather than shrinking.
+            death = [k for k, (n, _poses) in enumerate(animations) if n == "death"]
+            sides = {side for _row, side in clipped}
+            if death and all(row == death[0] for row, _side in clipped) and len(sides) == 1 and abs(slide) < 24:
+                slide += 8 if "left" in sides else -8
+                continue
+            cap = scale - 0.06
+    finally:
+        _cell(96)
+
+
+def _slid(pose, dx):
+    """A pose moved dx pixels sideways (its root)."""
+    x, y, a = pose.get("root", (0, 0, 0))
+    return dict(pose, root=(x + round(dx), y, a))
+
+
+def _clipped_rows(sheet):
+    """[(row, side)] for frames touching the top ("top"), left or right edge."""
+    px = sheet.load()
+    w, h = sheet.size
+    out = []
+    for row, top in enumerate(range(0, h, GA.FRAME)):
+        for left in range(0, w, GA.FRAME):
+            for k in range(GA.FRAME):
+                if px[left + k, top][3]:
+                    out.append((row, "top"))
+                if px[left, top + k][3]:
+                    out.append((row, "left"))
+                if px[left + GA.FRAME - 1, top + k][3]:
+                    out.append((row, "right"))
+    return sorted(set(out))
+
+
+def _cell(size):
+    """Sets generate_art's frame to `size` pixels, the 44-pixel rig box kept
+    centred and its ground line the same distance below the middle."""
+    pad = (size - 96) // 2
+    GA.FRAME = size
+    GA.FRAME_OFFSET = (26 + pad, 30 + pad)
+    GA.GROUND_Y = 41 + GA.FRAME_OFFSET[1]
+
+
+def _clipped(sheet):
+    """Whether any frame touches the top or sides of its cell."""
+    px = sheet.load()
+    w, h = sheet.size
+    for top in range(0, h, GA.FRAME):
+        for left in range(0, w, GA.FRAME):
+            for k in range(GA.FRAME):
+                if px[left + k, top][3] or px[left, top + k][3] or px[left + GA.FRAME - 1, top + k][3]:
+                    return True
+    return False
 
 
 def main():

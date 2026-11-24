@@ -185,7 +185,7 @@ func _shadows() -> void:
 		var picture := TextureRect.new()
 		var atlas := AtlasTexture.new()
 		atlas.atlas = EnemyDB.sheet(str(soldier["species"]))
-		atlas.region = Rect2(20, 22, 56, 56)
+		atlas.region = EnemyDB.cell_region(atlas.atlas, Rect2(20, 22, 56, 56))
 		picture.texture = atlas
 		picture.custom_minimum_size = Vector2(52, 52)
 		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

@@ -621,6 +621,20 @@ def _transform(rig, name, point, pose):
     return point
 
 
+## Small marks left out of a smear (eyes, mouths, glints): only the mass streaks.
+SMEAR_SKIP = {"eye", "void", "mouth", "tooth", "glow_red", "glow_cyan", "glow_orange", "catchlight", "shine", "spark", "eye_white", "blood"}
+
+
+def _descends(rig, name, ancestor):
+    """Whether rig group `name` hangs from `ancestor`."""
+    parent = rig[name]["parent"]
+    while parent is not None:
+        if parent == ancestor:
+            return True
+        parent = rig[parent]["parent"]
+    return False
+
+
 def _shift(colour, amount):
     """Lighter (amount > 0) or darker, nudging hue warm in light, cool in shadow."""
     r, g, b = (int(colour[i:i + 2], 16) for i in (0, 2, 4))
@@ -754,6 +768,29 @@ def draw_frame(rig, order, pose, shadow=True, rich=False, outline=True):
     pixels = {}
     materials = {}
     plain = set()
+    # Smears: a fast limb (or the whole body) drawn again where it just was,
+    # in its lightest tone, under the real one: the solid streak pixel
+    # artists draw instead of motion blur. [(group, pose changes), ...]
+    for group, changes in pose.get("smears", []):
+        ghost = dict(pose)
+        ghost.update(changes)
+        for name in ([group] if group in rig else []) + [n for n in order if n != group and _descends(rig, n, group)]:
+            for material, polygon in rig[name]["parts"]:
+                if material in SMEAR_SKIP:
+                    continue
+                moved = [_transform(rig, name, pt, ghost) for pt in polygon]
+                mask = Image.new("L", (FRAME, FRAME), 0)
+                ImageDraw.Draw(mask).polygon([(x + ox, y + oy) for x, y in moved], fill=255, outline=255)
+                box = mask.getbbox()
+                if not box:
+                    continue
+                tone = PALETTE[material][0]
+                for y in range(box[1], box[3]):
+                    for x in range(box[0], box[2]):
+                        if mask.getpixel((x, y)):
+                            pixels[(x, y)] = tone
+                            materials[(x, y)] = material
+                            plain.add((x, y))
     for name in order:
         for material, polygon in rig[name]["parts"]:
             moved = [_transform(rig, name, pt, pose) for pt in polygon]
@@ -886,15 +923,33 @@ HUSK_IDLE = [{"torso": (0, bob, 0), "front_arm": (0, 0, 4 * bob), "back_arm": (0
 HUSK_WALK = cycle(8, lambda s: {
     "root": (0, -round(abs(s)), 0), "head": (0, 0, 4 * s),
     "leg_l": (0, 0, 28 * s), "leg_r": (0, 0, -28 * s), "back_arm": (0, 0, -22 * s), "front_arm": (0, 0, 22 * s)})
-# Crouch, rear back, and shake before striking.
+# Wind-up: easing back into a crouch, the striking arm raised high over the
+# head, then held trembling and squashed for the last beat before it goes.
 HUSK_WINDUP = [{
-    "root": (-round(2 * t) + (i % 2 if i > 2 else 0), round(3 * t), 0), "torso": (0, 0, -12 * t), "head": (0, 0, -22 * t),
-    "front_arm": (0, 0, -120 * t), "back_arm": (0, 0, -100 * t),
-} for i, t in enumerate(k / 5 for k in range(6))]
-HUSK_LUNGE = [{
-    "root": (round(5 * k), round(k), 0), "torso": (0, 0, 28 * k), "head": (0, 0, 12 * k),
-    "front_arm": (0, 0, -95 * k), "back_arm": (0, 0, -80 * k), "leg_l": (0, 0, 30 * k), "leg_r": (0, 0, -25 * k),
-} for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+    "root": (-round(3 * e) + (i % 2 if i > 3 else 0), round(3 * e), 0), "torso": (0, 0, -16 * e), "head": (0, 0, -20 * e),
+    "front_arm": (0, 0, -165 * e), "back_arm": (0, 0, -60 * e), "leg_l": (0, 0, -8 * e), "leg_r": (0, 0, 10 * e),
+    "root_scale": (1.0 + 0.05 * e, 1.0 - 0.05 * e) if i > 3 else (1, 1),
+} for i, e in enumerate(1 - (1 - k / 5) ** 2 for k in range(6))]
+# The strike: a stretched burst forward, the arm sweeping down through a
+# smear to the blow, overshooting, then settling back.
+def _husk_strike(dx, torso, head, arm, back, legs, stretch=(1, 1), smear=()):
+    pose = {"root": (dx, 1 if dx > 3 else 0, 0), "torso": (0, 0, torso), "head": (0, 0, head),
+            "front_arm": (0, 0, arm), "back_arm": (0, 0, back), "leg_l": (0, 0, legs), "leg_r": (0, 0, -legs * 0.85)}
+    if stretch != (1, 1):
+        pose["root_scale"] = stretch
+    if smear:
+        pose["smears"] = [("front_arm", {"front_arm": (0, 0, a)}) for a in smear]
+    return pose
+
+
+HUSK_LUNGE = [
+    _husk_strike(4, 6, 3, -130, -70, 12, stretch=(1.1, 0.93), smear=(-165, -150)),
+    _husk_strike(7, 16, 10, -55, -40, 30, smear=(-115, -85)),
+    _husk_strike(8, 19, 12, -28, -25, 32),
+    _husk_strike(7, 16, 10, -38, -30, 30),
+    _husk_strike(4, 9, 5, -60, -20, 16),
+    _husk_strike(1, 3, 2, -20, -6, 4),
+]
 
 HUSK_STAND = {"root_pivot": (30, 41), "shadow": (22, 11, 0)}
 HUSK_REEL = {"root_pivot": (30, 41), "shadow": (22, 11, 0), "torso": (0, 0, -15), "head": (0, 0, -30),
@@ -919,6 +974,19 @@ HUSK_ANIMATIONS = [
     ("idle", HUSK_IDLE), ("walk", HUSK_WALK), ("windup", HUSK_WINDUP), ("lunge", HUSK_LUNGE),
     ("hurt", HUSK_HURT), ("death", HUSK_DEATH),
 ]
+# Those that shoot or cast take aim instead of swinging: the arm comes up
+# level, the other draws back, leaning into it and trembling at full draw;
+# then the release kicks them back a step and they lower the arm.
+HUSK_AIM = [{
+    "root": (-round(e) + (i % 2 if i > 3 else 0), 0, 0), "torso": (0, 0, -7 * e), "head": (0, 0, -6 * e),
+    "front_arm": (0, 0, -92 * e), "back_arm": (0, 0, -70 * e - 10 * e * (i > 3)),
+    "root_scale": (1.0 + 0.03 * e, 1.0 - 0.03 * e) if i > 3 else (1, 1),
+} for i, e in enumerate(1 - (1 - k / 5) ** 2 for k in range(6))]
+HUSK_RELEASE = [{
+    "root": (-dx, 0, 0), "torso": (0, 0, -torso), "head": (0, 0, -torso), "front_arm": (0, 0, -arm), "back_arm": (0, 0, -back),
+} for dx, torso, arm, back in ((2, 12, 104, 20), (3, 10, 98, 10), (2, 6, 92, 6), (1, 3, 78, 4), (0, 1, 50, 2), (0, 0, 20, 0))]
+HUSK_RANGED_ANIMATIONS = [(name, HUSK_AIM if name == "windup" else HUSK_RELEASE if name == "lunge" else poses)
+                          for name, poses in HUSK_ANIMATIONS]
 
 
 # --- more monsters. Two-legged ones share the husk's group names, so they
@@ -1139,14 +1207,34 @@ QUAD_IDLE = [{"body": (0, bob, 0), "tail": (0, 0, 8 * bob)} for bob in (0, 1, 1,
 QUAD_WALK = cycle(8, lambda s: {
     "root": (0, -round(abs(s)), 0), "head": (0, 0, 5 * s), "tail": (0, 0, -15 * s),
     "leg_bl": (0, 0, 30 * s), "leg_fr": (0, 0, 30 * s), "leg_br": (0, 0, -30 * s), "leg_fl": (0, 0, -30 * s)})
+# Wind-up: haunches dropping back, head up and teeth bared, held quivering.
 QUAD_WINDUP = [{
-    "root": (-round(3 * t) + (i % 2 if i > 2 else 0), round(3 * t), 0), "body": (0, 0, -8 * t), "head": (0, 0, 14 * t),
-    "leg_bl": (0, 0, -20 * t), "leg_br": (0, 0, -20 * t), "leg_fl": (0, 0, 20 * t), "leg_fr": (0, 0, 20 * t),
-} for i, t in enumerate(k / 5 for k in range(6))]
-QUAD_LUNGE = [{
-    "root": (round(7 * k), -round(5 * k), 0), "body": (0, 0, -10 * k), "head": (0, 0, -8 * k), "tail": (0, 0, 25 * k),
-    "leg_bl": (0, 0, 50 * k), "leg_br": (0, 0, 45 * k), "leg_fl": (0, 0, -55 * k), "leg_fr": (0, 0, -50 * k),
-} for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+    "root": (-round(3 * e) + (i % 2 if i > 3 else 0), round(3 * e), 0), "body": (0, 0, -9 * e), "head": (0, 0, 18 * e),
+    "tail": (0, 0, 20 * e), "leg_bl": (0, 0, -22 * e), "leg_br": (0, 0, -22 * e), "leg_fl": (0, 0, 20 * e), "leg_fr": (0, 0, 20 * e),
+    "root_scale": (1.0 + 0.05 * e, 1.0 - 0.05 * e) if i > 3 else (1, 1),
+} for i, e in enumerate(1 - (1 - k / 5) ** 2 for k in range(6))]
+
+
+# The pounce: stretched long off the back legs, the head snapping down
+# through a smear onto the bite, landing, then gathering itself.
+def _quad_pounce(dx, dy, body, head, tail, reach, stretch=(1, 1), smear=()):
+    pose = {"root": (dx, -dy, 0), "body": (0, 0, body), "head": (0, 0, head), "tail": (0, 0, tail),
+            "leg_bl": (0, 0, 50 * reach), "leg_br": (0, 0, 45 * reach), "leg_fl": (0, 0, -55 * reach), "leg_fr": (0, 0, -50 * reach)}
+    if stretch != (1, 1):
+        pose["root_scale"] = stretch
+    if smear:
+        pose["smears"] = [("head", {"head": (0, 0, a)}) for a in smear]
+    return pose
+
+
+QUAD_LUNGE = [
+    _quad_pounce(4, 3, -6, 16, 22, 0.6, stretch=(1.12, 0.92)),
+    _quad_pounce(8, 5, -10, -14, 28, 1.0, smear=(14, 0)),
+    _quad_pounce(9, 3, -6, -22, 20, 0.9),
+    _quad_pounce(8, 1, -2, -16, 12, 0.6),
+    _quad_pounce(5, 0, 0, -6, 4, 0.3),
+    _quad_pounce(1, 0, 0, 0, 0, 0.0),
+]
 QUAD_STAND = {"root_pivot": (22, 41), "shadow": (22, 13, 0)}
 QUAD_REEL = {"root_pivot": (22, 41), "shadow": (22, 13, 0), "root": (-2, 0, 0), "body": (0, 0, -10), "head": (0, 0, -25)}
 QUAD_FALLEN = {"root_pivot": (22, 41), "shadow": (22, 15, 0), "root": (0, -9, 178), "root_pivot": (22, 34), "head": (0, 0, 20),
@@ -1165,13 +1253,45 @@ def _hover(dy=0, dx=0, turn=0, flap=0, sway=0, shadow=9):
 
 FLOAT_IDLE = [_hover(dy, flap=f) for dy, f in ((0, 0), (-1, -18), (-2, -8), (-1, 14))]
 FLOAT_WALK = cycle(8, lambda s: _hover(round(-2 * abs(s)), flap=28 * s, sway=-12 * s, turn=6))
-FLOAT_WINDUP = [_hover(-round(6 * t), dx=-round(2 * t) + (i % 2 if i > 2 else 0), turn=-10 * t, flap=-45 * t, sway=15 * t)
-                for i, t in enumerate(k / 5 for k in range(6))]
-FLOAT_LUNGE = [_hover(round(4 * k) - 4, dx=round(8 * k), turn=22 * k, flap=40 * k, sway=-25 * k) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+# Wind-up: rising and drawing back, wings beating up, held trembling.
+FLOAT_WINDUP = [dict(_hover(-round(7 * e), dx=-round(3 * e) + (i % 2 if i > 3 else 0), turn=-12 * e, flap=-50 * e, sway=18 * e),
+                     root_scale=(1.0 - 0.04 * e, 1.0 + 0.05 * e) if i > 3 else (1, 1))
+                for i, e in enumerate(1 - (1 - k / 5) ** 2 for k in range(6))]
+
+
+# The dive: stretched along its swoop, the body smeared behind it, then
+# pulling up and settling back to its hover.
+def _dive(dy, dx, turn, flap, sway, stretch=(1, 1), trail=()):
+    pose = _hover(dy, dx=dx, turn=turn, flap=flap, sway=sway)
+    if stretch != (1, 1):
+        pose["root_scale"] = stretch
+    if trail:
+        pose["smears"] = [("body", {"root": (tx, HOVER + ty, turn)}) for tx, ty in trail]
+    return pose
+
+
+FLOAT_LUNGE = [
+    _dive(-3, 4, 12, 30, -15, stretch=(1.12, 0.9), trail=((-1, -6),)),
+    _dive(1, 9, 24, 45, -25, stretch=(1.06, 0.95), trail=((4, -3), (6, -1))),
+    _dive(2, 10, 26, 40, -28),
+    _dive(0, 8, 18, 20, -18),
+    _dive(-2, 5, 8, -10, -8),
+    _dive(-1, 1, 2, 0, 0),
+]
 FLOAT_HURT = [dict(_hover(dx=-round(3 * t), turn=-14 * t, flap=-25 * t), root_scale=sq) for t, sq in zip((0.7, 1.0, 0.4), HIT_SQUASH)]
 FLOAT_DEATH = keyframes([(0, _hover()), (1, _hover(dx=-2, turn=-14, flap=-30)), (5, _hover(dy=17, turn=80, flap=55, shadow=7)),
                          (7, _hover(dy=18, turn=86, flap=60, shadow=7))])
 FLOAT_ANIMATIONS = [("idle", FLOAT_IDLE), ("walk", FLOAT_WALK), ("windup", FLOAT_WINDUP), ("lunge", FLOAT_LUNGE), ("hurt", FLOAT_HURT), ("death", FLOAT_DEATH)]
+# Floaters that shoot gather themselves (swelling, wings drawn in, held
+# quivering), then the shot jolts them back and they drift forward again.
+FLOAT_GATHER = [dict(_hover(-round(3 * e), dx=-round(e) + (i % 2 if i > 3 else 0), flap=-30 * e, sway=10 * e),
+                     root_scale=(1.0 + 0.07 * e, 1.0 + 0.07 * e) if i > 2 else (1, 1))
+                for i, e in enumerate(1 - (1 - k / 5) ** 2 for k in range(6))]
+FLOAT_LOOSE = [dict(_hover(dy, dx=dx, turn=turn, flap=flap), root_scale=sc) for dy, dx, turn, flap, sc in (
+    (-2, -3, -8, 35, (0.92, 1.06)), (-2, -4, -10, 30, (1, 1)), (-1, -3, -6, 15, (1, 1)), (-1, -2, -3, 0, (1, 1)),
+    (0, -1, -1, -10, (1, 1)), (0, 0, 0, 0, (1, 1)))]
+FLOAT_RANGED_ANIMATIONS = [(name, FLOAT_GATHER if name == "windup" else FLOAT_LOOSE if name == "lunge" else poses)
+                           for name, poses in FLOAT_ANIMATIONS]
 
 
 # Slime poses are all squash and stretch.
@@ -1182,8 +1302,21 @@ def _squash(sx, sy, dx=0, dy=0, shadow=12):
 SLIME_IDLE = [_squash(1.0, 1.0), _squash(1.05, 0.94), _squash(1.08, 0.9), _squash(1.04, 0.96)]
 SLIME_WALK = [_squash(1.15, 0.8), _squash(0.9, 1.15, 1, -2), _squash(0.85, 1.2, 2, -6), _squash(0.9, 1.1, 3, -7),
               _squash(0.95, 1.05, 3, -5), _squash(1.0, 1.0, 2, -2), _squash(1.2, 0.78, 1), _squash(1.08, 0.92)]
-SLIME_WINDUP = [_squash(1.0 + 0.35 * t, 1.0 - 0.35 * t, (i % 2 if i > 2 else 0)) for i, t in enumerate(k / 5 for k in range(6))]
-SLIME_LUNGE = [_squash(1.0 + 0.3 * k, 1.0 - 0.2 * k, round(7 * k), -round(6 * k)) for k in (0.5, 1.0, 1.0, 1.0, 0.6, 0.2)]
+# Wind-up: squashing flat and wide, quivering at the bottom of it.
+SLIME_WINDUP = [_squash(1.0 + 0.38 * e, 1.0 - 0.38 * e, (i % 2 if i > 3 else 0)) for i, e in enumerate(1 - (1 - k / 5) ** 2 for k in range(6))]
+
+
+# The leap: shot up tall and thin, a trail of itself behind, slapping down
+# flat and wide on the target, wobbling back to its shape.
+def _leap(sx, sy, dx, dy, trail=()):
+    pose = _squash(sx, sy, dx, dy)
+    if trail:
+        pose["smears"] = [("body", {"root": (tx, ty, 0)}) for tx, ty in trail]
+    return pose
+
+
+SLIME_LUNGE = [_leap(0.78, 1.3, 3, -5, trail=((0, -1),)), _leap(0.85, 1.2, 7, -9, trail=((3, -5), (5, -7))), _leap(1.35, 0.7, 9, 0),
+               _leap(1.2, 0.82, 9, 0), _leap(0.92, 1.08, 6, 0), _leap(1.04, 0.96, 2, 0)]
 SLIME_HURT = [_squash(1.15, 0.8, -1), _squash(1.25, 0.7, -2), _squash(1.1, 0.9, -1)]
 SLIME_DEATH = [_squash(1.0 + 0.1 * i, max(1.0 - 0.13 * i, 0.12)) for i in range(8)]
 SLIME_ANIMATIONS = [("idle", SLIME_IDLE), ("walk", SLIME_WALK), ("windup", SLIME_WINDUP), ("lunge", SLIME_LUNGE), ("hurt", SLIME_HURT), ("death", SLIME_DEATH)]
@@ -1736,13 +1869,13 @@ GHOST = _floater(
 
 # id -> (rig, draw order, animations). Ids match scripts/enemies/enemy_db.gd.
 MONSTERS = {
-    "bone_archer": (BONE_ARCHER, HUSK_ORDER, HUSK_ANIMATIONS),
+    "bone_archer": (BONE_ARCHER, HUSK_ORDER, HUSK_RANGED_ANIMATIONS),
     "crag_golem": (CRAG_GOLEM, HUSK_ORDER, HUSK_ANIMATIONS),
-    "rot_cultist": (ROT_CULTIST, HUSK_ORDER, HUSK_ANIMATIONS),
-    "spore_shambler": (SPORE_SHAMBLER, HUSK_ORDER, HUSK_ANIMATIONS),
+    "rot_cultist": (ROT_CULTIST, HUSK_ORDER, HUSK_RANGED_ANIMATIONS),
+    "spore_shambler": (SPORE_SHAMBLER, HUSK_ORDER, HUSK_RANGED_ANIMATIONS),
     "rot_hound": (ROT_HOUND, QUAD_ORDER, QUAD_ANIMATIONS),
     "thorn_stalker": (THORN_STALKER, QUAD_ORDER, QUAD_ANIMATIONS),
-    "ash_wraith": (ASH_WRAITH, FLOAT_ORDER, FLOAT_ANIMATIONS),
+    "ash_wraith": (ASH_WRAITH, FLOAT_ORDER, FLOAT_RANGED_ANIMATIONS),
     "carrion_bat": (CARRION_BAT, FLOAT_ORDER, FLOAT_ANIMATIONS),
     "ember_wisp": (EMBER_WISP, FLOAT_ORDER, FLOAT_ANIMATIONS),
     "bog_slime": (BOG_SLIME, ["body"], SLIME_ANIMATIONS),
@@ -1755,8 +1888,8 @@ MONSTERS = {
     "dune_mummy": (DUNE_MUMMY, HUSK_ORDER, HUSK_ANIMATIONS),
     "crimson_fiend": (CRIMSON_FIEND, HUSK_ORDER, HUSK_ANIMATIONS),
     "treant": (TREANT, HUSK_ORDER, HUSK_ANIMATIONS),
-    "void_eye": (VOID_EYE, FLOAT_ORDER, FLOAT_ANIMATIONS),
-    "cinder_imp": (CINDER_IMP, FLOAT_ORDER, FLOAT_ANIMATIONS),
+    "void_eye": (VOID_EYE, FLOAT_ORDER, FLOAT_RANGED_ANIMATIONS),
+    "cinder_imp": (CINDER_IMP, FLOAT_ORDER, FLOAT_RANGED_ANIMATIONS),
     "storm_harpy": (STORM_HARPY, FLOAT_ORDER, FLOAT_ANIMATIONS),
     "magma_slime": (MAGMA_SLIME, ["body"], SLIME_ANIMATIONS),
     "veinheart": (VEINHEART, FLOAT_ORDER, FLOAT_ANIMATIONS),
@@ -1764,7 +1897,7 @@ MONSTERS = {
     "masked_noble": (MASKED_NOBLE, HUSK_ORDER, HUSK_ANIMATIONS),
     "matron": (MATRON, HUSK_ORDER, HUSK_ANIMATIONS),
     "rotten_corpse": (ROTTEN_CORPSE, HUSK_ORDER, HUSK_ANIMATIONS),
-    "ghost": (GHOST, FLOAT_ORDER, FLOAT_ANIMATIONS),
+    "ghost": (GHOST, FLOAT_ORDER, FLOAT_RANGED_ANIMATIONS),
 }
 
 
