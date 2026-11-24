@@ -1868,6 +1868,12 @@ C_NAIL = (54, 46, 44, 255)
 
 def draw_tile(row, variant, frame=0):
     name, style, base, light, dark, accent = TILES[row]
+    # Land is hand-drawn per biome now (tools/generate_ground.py); water,
+    # floorboards and walls are still drawn here.
+    import generate_ground
+    painted = generate_ground.draw(row, name, base, light, dark, variant)
+    if painted is not None:
+        return painted
     base, light, dark, accent = rgba(base), rgba(light), rgba(dark), rgba(accent)
     r = random.Random(row * 31 + variant)
     img = Image.new("RGBA", (N, N), base)
@@ -3398,6 +3404,14 @@ def enrich_tile(img, row, variant):
     return img
 
 
+def _painted_names():
+    import generate_ground
+    return set(generate_ground.PAINTERS)
+
+
+GROUND_PAINTED = _painted_names()
+
+
 def draw_terrain():
     atlas = Image.new("RGBA", (VARIANTS * N, len(TILES) * N))
     for row in range(len(TILES)):
@@ -3406,6 +3420,8 @@ def draw_terrain():
                 if column >= 2 * WATER_FRAMES:
                     continue
                 tile = draw_tile(row, column // WATER_FRAMES, column % WATER_FRAMES)
+            elif TILES[row][0] in GROUND_PAINTED:
+                tile = draw_tile(row, column)
             else:
                 tile = enrich_tile(draw_tile(row, column), row, column)
             atlas.paste(tile, (column * N, row * N))
