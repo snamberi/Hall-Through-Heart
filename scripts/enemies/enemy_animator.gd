@@ -43,7 +43,8 @@ func rebuild() -> void:
 			rows.append_array(BACK_ROWS)
 		_cache[sheet] = SheetAnimations.build(sheet, frame_size, rows)
 	sprite_frames = _cache[sheet]
-	_has_back = sprite_frames.has_animation("walk_back")
+	# Seen from the front only, mirrored to face its way, like everyone.
+	_has_back = false
 	play("idle")
 
 

@@ -77,22 +77,10 @@ const ROWS: Array[Dictionary] = [
 ]
 ## The blows that have a row for each view.
 const BLOWS: Array[String] = ["attack", "heavy", "thrust", "smash", "shoot", "cast"]
-## Which way the figure is seen, of eight, by its heading: "front" (coming
-## toward us), "fq" (three-quarter front, toward us and to a side), "side"
-## (in profile), "bq" (three-quarter back) or "back" (going away). The
-## sideways views are drawn facing right and mirrored for the left.
-static func view_of(heading: Vector2) -> String:
-	if heading.length() < 0.01:
-		return "front"
-	var angle := rad_to_deg(atan2(heading.y, absf(heading.x)))
-	if angle < -67.5:
-		return "back"
-	if angle < -22.5:
-		return "bq"
-	if angle <= 22.5:
-		return "side"
-	if angle <= 67.5:
-		return "fq"
+## Which way the figure is seen. Every character is drawn from the front,
+## mirrored to face left or right, whichever way it goes, swims, shoots or
+## swings; the other views stay in the sheets but are not shown.
+static func view_of(_heading: Vector2) -> String:
 	return "front"
 
 
@@ -582,7 +570,7 @@ func play_attack(duration: float, heavy: bool = false) -> void:
 	_busy = rows[1] if heavy else rows[0]
 	if not sprite_frames or not sprite_frames.has_animation(_busy):
 		_busy = "heavy" if heavy else "attack"
-	# The blow faces where it is aimed, in eight directions.
+	# The blow faces where it is aimed (mirrored left or right).
 	if _player and not _player.swimming:
 		_view = view_of(_player.facing)
 		_busy = _viewed(_busy)

@@ -16,8 +16,8 @@ func test_people_are_drawn_from_every_side(t: TestContext) -> void:
 	for path: String in ["res://assets/sprites/player_sheet.png", "res://assets/sprites/looks/hair_0.png", "res://assets/sprites/layers/chest_plate_1.png"]:
 		var sheet: Texture2D = load(path)
 		t.check(sheet.get_height() >= (deepest + 1) * PlayerAnimator.FRAME_SIZE, "%s holds every row" % path.get_file())
-	t.equal(PlayerAnimator.view_of(Vector2(0, -100)), "back", "going up, seen from behind")
-	t.equal(PlayerAnimator.view_of(Vector2(100, 10)), "side", "going sideways, in profile")
+	t.equal(PlayerAnimator.view_of(Vector2(0, -100)), "front", "going up, still seen from the front")
+	t.equal(PlayerAnimator.view_of(Vector2(100, 10)), "front", "going sideways, seen from the front")
 	t.equal(PlayerAnimator.view_of(Vector2(0, 100)), "front", "coming down, from the front")
 	var frames := BodyFit.frames("people/body_h2_b1")
 	t.check(frames.has_animation("walk_side") and frames.get_frame_count("walk_side") == 12, "the profile walk has its twelve frames")

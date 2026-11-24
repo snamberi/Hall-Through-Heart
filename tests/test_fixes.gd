@@ -113,10 +113,9 @@ func test_quality_of_life_extras(t: TestContext) -> void:
 
 
 func test_eight_directions_and_walls(t: TestContext) -> void:
-	var views := {Vector2(0, 1): "front", Vector2(1, 1): "fq", Vector2(1, 0): "side", Vector2(1, -1): "bq", Vector2(0, -1): "back",
-		Vector2(-1, -1): "bq", Vector2(-1, 0): "side", Vector2(-1, 1): "fq"}
-	for heading: Vector2 in views:
-		t.equal(PlayerAnimator.view_of(heading * 100.0), views[heading], "heading %s is seen %s" % [heading, views[heading]])
+	# Every way it goes, a character is seen from the front, mirrored.
+	for heading: Vector2 in [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(1, -1), Vector2(0, -1), Vector2(-1, -1), Vector2(-1, 0), Vector2(-1, 1)]:
+		t.equal(PlayerAnimator.view_of(heading * 100.0), "front", "heading %s is seen from the front" % heading)
 	var frames := SheetAnimations.build(PlayerAnimator.SHEET, PlayerAnimator.FRAME_SIZE, PlayerAnimator.ROWS)
 	for name in ["walk_fq", "walk_bq", "attack_side", "shoot_back", "cast_bq", "thrust_fq"]:
 		t.check(frames.has_animation(name), "the sheet has %s" % name)
