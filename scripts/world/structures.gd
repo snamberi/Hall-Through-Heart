@@ -987,7 +987,7 @@ func _build_arches(cell: Vector2i, key: String, level: int, random: RandomNumber
 ## An abandoned farmstead: a cottage, plots gone to weeds, a scarecrow, a
 ## well and a tipped cart, with seed and food left in the store.
 func _build_farmstead(cell: Vector2i, key: String, level: int, random: RandomNumberGenerator, placed: Array) -> void:
-	var house := Prop.create(Prop.Art.HOUSE, _at(cell + Vector2i(-2, -2)), 30.0, "Enter the farmhouse", func(_p: Player) -> void:
+	var house := Prop.create_building(Prop.People.HUMAN, 7, _at(cell + Vector2i(-2, -2)), 30.0, "Enter the farmhouse", func(_p: Player) -> void:
 		_instances.enter_dwelling("cottage", "Farmhouse", level, hash(key), used.has(key + ":inside"), func() -> void: used[key + ":inside"] = true, "farmer")
 	)
 	HouseStyles.dress(house, _world.generator.tile_type_at(cell))

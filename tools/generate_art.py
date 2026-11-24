@@ -3302,6 +3302,102 @@ def _draw_icon(parts):
     return img
 
 
+def _mix(a, b, t):
+    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3)) + (255,)
+
+
+def enrich_tile(img, row, variant):
+    """A second pass of finer detail over a finished ground tile: soft
+    patches of light and shade kept off the edges (so neighbours still
+    meet cleanly), and each kind of ground's own small texture: blade
+    clumps on grass, ripples on sand, drifts on snow, shaded pebbles on
+    paths and earth, a wet sheen on mud, soot on ash."""
+    name, style, base, light, dark, accent = TILES[row]
+    if style in ("water", "plank", "rock"):
+        return img
+    base, light, dark, accent = rgba(base), rgba(light), rgba(dark), rgba(accent)
+    r = random.Random(row * 977 + variant * 13 + 5)
+    px = img.load()
+
+    def put(x, y, c):
+        if 0 <= x < N and 0 <= y < N:
+            px[x, y] = c
+
+    def is_ground(x, y):
+        return 0 <= x < N and 0 <= y < N and px[x, y][:3] in (base[:3], _mix(base, light, 0.3)[:3], _mix(base, dark, 0.3)[:3])
+
+    # Soft patches: small irregular blobs, a third of the way to light or dark.
+    for _ in range(10):
+        cx, cy = r.randrange(6, N - 6), r.randrange(6, N - 6)
+        toward = light if r.random() < 0.5 else dark
+        for _ in range(r.randrange(14, 26)):
+            x, y = cx + r.randrange(-4, 5), cy + r.randrange(-3, 4)
+            if 0 <= x < N and 0 <= y < N:
+                put(x, y, _mix(px[x, y], toward, 0.35))
+    if style == "grass":
+        # Clumps of three to five blades, dark at the root, lit at the tip,
+        # with a pixel of shadow beneath.
+        for _ in range(12):
+            x, y = r.randrange(3, N - 5), r.randrange(6, N - 2)
+            put(x, y + 1, _mix(dark, (0, 0, 0, 255), 0.35))
+            for b in range(r.randrange(3, 6)):
+                bx = x + b - 1
+                h = r.randrange(2, 5)
+                lean = r.choice((-1, 0, 0, 1))
+                for k in range(h):
+                    t = k / max(h - 1, 1)
+                    put(bx + (lean if k == h - 1 else 0), y - k, _mix(dark, _mix(light, (255, 255, 230, 255), 0.12), 0.1 + 0.9 * t))
+        if variant % 4 == 1:
+            # A tiny flower, low-key.
+            x, y = r.randrange(5, N - 5), r.randrange(5, N - 5)
+            put(x, y, _mix(accent, light, 0.5))
+            put(x, y + 1, dark)
+    elif style == "sand":
+        for _ in range(4):
+            x, y, w = r.randrange(2, N - 14), r.randrange(4, N - 4), r.randrange(6, 12)
+            for k in range(w):
+                yy = y + (1 if (k // 3) % 2 else 0)
+                put(x + k, yy, _mix(base, light, 0.6))
+                put(x + k, yy + 1, _mix(base, dark, 0.45))
+        for _ in range(10):
+            put(r.randrange(2, N - 2), r.randrange(2, N - 2), _mix(base, dark if r.random() < 0.5 else light, 0.7))
+    elif style in ("snow", "peak"):
+        for _ in range(3):
+            x, y, w = r.randrange(3, N - 16), r.randrange(5, N - 5), r.randrange(8, 14)
+            for k in range(w):
+                arc = int(2 * (1 - abs(k / w - 0.5) * 2))
+                put(x + k, y - arc, _mix(base, (255, 255, 255, 255), 0.6))
+                put(x + k, y - arc + 1, _mix(base, dark, 0.35))
+        for _ in range(6):
+            put(r.randrange(2, N - 2), r.randrange(2, N - 2), (255, 255, 255, 255))
+    elif style in ("path", "mud", "mountain", "cracked", "cinder"):
+        # Shaded pebbles: lit top-left, shaded bottom-right, a dark rim.
+        for _ in range(4 if style != "mountain" else 6):
+            x, y = r.randrange(3, N - 6), r.randrange(3, N - 5)
+            w, h = r.randrange(2, 4), r.randrange(2, 3)
+            for yy in range(h):
+                for xx in range(w):
+                    put(x + xx, y + yy, _mix(light, base, 0.2) if xx + yy == 0 else _mix(base, dark, 0.3 + 0.3 * (xx + yy) / (w + h)))
+            for xx in range(w):
+                put(x + xx, y + h, _mix(dark, (0, 0, 0, 255), 0.3))
+        if style == "mud":
+            for _ in range(3):
+                x, y = r.randrange(4, N - 6), r.randrange(4, N - 4)
+                put(x, y, _mix(light, (200, 210, 220, 255), 0.4))
+                put(x + 1, y, _mix(light, base, 0.4))
+    elif style == "ash":
+        for _ in range(3):
+            x, y = r.randrange(3, N - 10), r.randrange(3, N - 4)
+            for k in range(r.randrange(4, 8)):
+                put(x + k, y + (k // 3), _mix(dark, (0, 0, 0, 255), 0.25))
+    elif style == "bog":
+        for _ in range(4):
+            x, y = r.randrange(3, N - 4), r.randrange(4, N - 3)
+            put(x, y, _mix(accent, light, 0.3))
+            put(x + 1, y - 1, _mix(dark, light, 0.4))
+    return img
+
+
 def draw_terrain():
     atlas = Image.new("RGBA", (VARIANTS * N, len(TILES) * N))
     for row in range(len(TILES)):
@@ -3311,7 +3407,7 @@ def draw_terrain():
                     continue
                 tile = draw_tile(row, column // WATER_FRAMES, column % WATER_FRAMES)
             else:
-                tile = draw_tile(row, column)
+                tile = enrich_tile(draw_tile(row, column), row, column)
             atlas.paste(tile, (column * N, row * N))
     atlas.save(os.path.join(ROOT, "tiles", "terrain.png"))
     draw_fringes().save(os.path.join(ROOT, "tiles", "fringes.png"))

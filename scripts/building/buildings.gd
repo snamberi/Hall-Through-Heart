@@ -74,7 +74,8 @@ const UPGRADE_COSTS := {
 }
 ## How big the house looks from outside at each tier.
 ## Whole-number sizes only, so the pixels stay square.
-const HOUSE_SCALE := {1: 2.0, 2: 2.0, 3: 3.0}
+## Which human house (row frame) each tier of the player's house is.
+const HOUSE_ART := {1: 0, 2: 2, 3: 14}
 const CHEST_SLOTS := 24
 ## Seconds between uses of the recall home.
 const RECALL_COOLDOWN := 300.0
@@ -779,8 +780,16 @@ func _spawn(record: Dictionary) -> void:
 		prop = Prop.create(kind["art"], at, kind["solid"], kind["prompt"], _use.bind(record))
 	if record["kind"] == "house":
 		var tier: int = clampi(int(record.get("tier", 1)), 1, MAX_TIER)
-		prop.sprite().scale = Vector2.ONE * HOUSE_SCALE[tier]
-		prop.sprite().position.y = -25.0 * HOUSE_SCALE[tier]
+		# Drawn full size (tools/generate_houses.py): a cottage, a house of
+		# two storeys, and a towered manor.
+		var art := prop.sprite()
+		art.texture = Prop.HOUSES
+		art.hframes = Prop.HOUSE_VARIANTS
+		art.vframes = 4
+		art.frame = Prop.People.HUMAN * Prop.HOUSE_VARIANTS + int(HOUSE_ART[tier])
+		art.scale = Vector2.ONE
+		art.position.y = -46.0
+		prop.set_meta("building", Prop.People.HUMAN)
 		if not in_room:
 			var world: World = get_parent().get_node("World")
 			HouseStyles.dress(prop, world.tile_type_at_position(at), str(record.get("style", "")))

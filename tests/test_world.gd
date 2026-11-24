@@ -531,6 +531,9 @@ func test_factions_learn_how_you_fight(t: TestContext) -> void:
 	t.check(spread >= 3, "most come spread out (%d of 8)" % spread)
 	t.equal(fresh[0].expected, "ranged", "and expect a bow")
 	# False Reputation: a sword catches them off guard.
+	# (Leave aside a dodge or a shield it may have rolled.)
+	fresh[0].modifiers.erase("evasive")
+	fresh[0].shield = 0.0
 	var before := fresh[0].health.current
 	fresh[0].take_damage(10.0, Vector2.ZERO, false, "swords")
 	t.check(is_equal_approx(before - fresh[0].health.current, 10.0 * Factions.SURPRISE), "the first sword blow lands harder (%.1f)" % (before - fresh[0].health.current))
