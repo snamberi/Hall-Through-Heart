@@ -28,6 +28,15 @@ const SOIL := {
 	"ash": [Color("5a5054"), Color("463e42"), Color("342e32"), Color("1c181a")],
 }
 
+## The faces themselves, drawn a pixel at a time (tools/generate_cliffs.py):
+## one strip per look, four tiles wide, repeating along a ridge. The face
+## proper starts FACE_TOP pixels down each strip (the lip can rise above it).
+const FACES: Texture2D = preload("res://assets/tiles/cliffs.png")
+const FACE_LOOKS: Array[String] = ["rock", "peak", "earth", "frozen", "sandstone", "ash"]
+const FACE_WIDTH := 176
+const FACE_HEIGHT := 56
+const FACE_TOP := 8.0
+
 ## Tile types for the chunk plus a one-tile border, row by row.
 var types: PackedInt32Array
 ## How many steps up each of those tiles stands (WorldGenerator.height_at).
@@ -391,7 +400,8 @@ func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 	var grass := Color.from_hsv(base_grass.h, minf(base_grass.s * 1.25, 1.0), clampf(base_grass.v + 0.22, 0.0, 0.92))
 	var random := RandomNumberGenerator.new()
 	random.seed = hash(Vector3i(origin.x + x, origin.y + y, 733))
-	var height := TILE - 4.0 if not rocky else minf(STEP * drop, TILE - 4.0)
+	# Every face stands a full tile tall, rock and earth alike.
+	var height := TILE - 4.0
 	var world_x := float(origin.x + x) * TILE
 	# Outer corners: where the high ground above ends beside this face, the
 	# face turns the corner into the plateau's side wall.
@@ -417,10 +427,7 @@ func _cliff(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 	for c in 22:
 		for k in 6:
 			draw_rect(Rect2(at.x + c * 2.0, bottoms[c] + k * 2.0, 2.0, 2.0), Color(0, 0, 0, 0.32 * (1.0 - k / 6.0)))
-	if not rocky:
-		_earth_face(at, tops, bottoms, above, random)
-	else:
-		_rock_face(at, tops, bottoms, stones, random)
+	_face_strip(at, tops, bottoms, ("peak" if above == T.PEAK else "rock") if rocky else _soil_name(above))
 	var wall: Array = stones if rocky else _soil(above)
 	if outer_left:
 		_corner(at, tops, bottoms, true, wall)
@@ -457,95 +464,34 @@ func _corner(at: Vector2, tops: Array[float], bottoms: Array[float], west: bool,
 	draw_rect(Rect2(at.x + turn_c * 2.0, tops[turn_c] + 6.0, 2.0, maxf(bottoms[turn_c] - tops[turn_c] - 8.0, 0.0)), Color(turn, 0.8))
 
 
-## A rock face: the soil-dark gaps behind, then blocks of stone in rough
-## courses, each lit along its top and left edge and shaded along its foot.
-func _rock_face(at: Vector2, tops: Array[float], bottoms: Array[float], stones: Array, random: RandomNumberGenerator) -> void:
-	var height := 0.0
+## The face, laid down a two-pixel column at a time from its look's strip,
+## between the wavy lip and foot; the strip is placed by world position so
+## neighbouring faces run on without a seam.
+func _face_strip(at: Vector2, tops: Array[float], bottoms: Array[float], look: String) -> void:
+	var row := maxi(FACE_LOOKS.find(look), 0) * FACE_HEIGHT
+	var world_x := int(float(origin.x) * TILE + at.x)
 	for c in 22:
-		height = maxf(height, bottoms[c] - at.y)
-	for c in 22:
-		if bottoms[c] > tops[c]:
-			draw_rect(Rect2(at.x + c * 2.0, tops[c], 2.0, bottoms[c] - tops[c]), stones[3])
-	# Stones in staggered courses, each lit along its top and left edge,
-	# shaded along its bottom, some with moss on top.
-	var row_top := at.y - 4.0
-	var course := 0
-	while row_top < at.y + height + 6.0:
-		var row_h := float(random.randi_range(3, 6)) * 2.0
-		var sx := -float(random.randi_range(0, 5)) * 2.0 - (6.0 if course % 2 else 0.0)
-		while sx < TILE:
-			var width := float(random.randi_range(4, 9)) * 2.0
-			var tint: Color = (stones[0] as Color).lerp(stones[1], random.randf() * 0.35).darkened(random.randf() * 0.12)
-			for c in range(maxi(0, int(sx / 2.0) + 1), mini(22, int((sx + width) / 2.0))):
-				var y0 := maxf(row_top + 2.0, tops[c] + 4.0)
-				var y1 := minf(row_top + row_h, bottoms[c] - 2.0)
-				if y1 - y0 < 2.0:
-					continue
-				var px := at.x + c * 2.0
-				var first := c == int(sx / 2.0) + 1
-				var last := c == int((sx + width) / 2.0) - 1
-				# Rounded: the corner pixels stay soil.
-				if first or last:
-					y0 += 2.0
-					y1 -= 2.0
-					if y1 - y0 < 2.0:
-						continue
-				draw_rect(Rect2(px, y0, 2.0, y1 - y0), stones[2] if last else (tint.lightened(0.12) if first else tint))
-				draw_rect(Rect2(px, y0, 2.0, 2.0), stones[1])
-				draw_rect(Rect2(px, y1 - 2.0, 2.0, 2.0), (stones[2] as Color).darkened(0.15))
-			sx += width + 2.0
-		row_top += row_h
-		course += 1
-
-
-
-## A bank of earth: soil in wavy layers, paler under the lip and darker
-## toward the foot, with stones of all sizes set in it, crevices running
-## down, and a few roots.
-func _earth_face(at: Vector2, tops: Array[float], bottoms: Array[float], above: int, random: RandomNumberGenerator) -> void:
-	var soil := _soil(above)
-	var world_x := at.x + float(origin.x) * TILE
-	for c in 22:
-		var top: float = tops[c]
-		var bottom: float = bottoms[c]
-		if bottom <= top:
+		var y0: float = tops[c]
+		var y1: float = bottoms[c]
+		if y1 <= y0:
 			continue
-		var px := at.x + c * 2.0
-		var y0 := top
-		while y0 < bottom:
-			var depth := (y0 - top) / maxf(bottom - top, 1.0)
-			# The layers wander, so the bands are not ruled straight.
-			var band := int(floorf((y0 - at.y + _wave(world_x + c * 2.0, 2.9, 4.0)) / 8.0))
-			var color: Color = (soil[0] as Color).lerp(soil[1], clampf(depth * 1.6, 0.0, 1.0)).lerp(soil[2], clampf(depth * 2.0 - 1.0, 0.0, 1.0))
-			if band % 2 == 1:
-				color = color.darkened(0.08)
-			draw_rect(Rect2(px, y0, 2.0, 2.0), color)
-			y0 += 2.0
-	# Stones set in the earth: odd sizes, rounded, lit top-left.
-	var look := _stone_look(above)
-	for k in random.randi_range(3, 6):
-		var c := random.randi_range(1, 18)
-		var w := random.randi_range(2, 5) * 2
-		var h := random.randi_range(2, 3) * 2
-		var sy := tops[c] + 8.0 + float(random.randi_range(0, 6)) * 2.0
-		if sy + h > bottoms[c] - 4.0:
+		var sy := maxf(FACE_TOP + (y0 - at.y), 0.0)
+		var tall := minf(y1 - y0, FACE_HEIGHT - sy)
+		if tall <= 0.0:
 			continue
-		var sx := at.x + c * 2.0
-		var tint: Color = (look[0] as Color).lerp(look[1], random.randf() * 0.4)
-		draw_rect(Rect2(sx + 2.0, sy, w - 4.0, h), tint)
-		draw_rect(Rect2(sx, sy + 2.0, w, h - 4.0) if h > 4 else Rect2(sx, sy, w, h), tint)
-		draw_rect(Rect2(sx + 2.0, sy, w - 4.0, 2.0), look[1])
-		draw_rect(Rect2(sx + 2.0, sy + h - 2.0, w - 4.0, 2.0), look[2])
-		draw_rect(Rect2(sx + 2.0, sy + h, w - 4.0, 2.0), Color(0, 0, 0, 0.25))
-	# Crevices: thin dark lines running down from under the lip.
-	for k in random.randi_range(1, 2):
-		var c := random.randi_range(2, 19)
-		var cy := tops[c] + 10.0
-		while cy < bottoms[c] - 4.0:
-			draw_rect(Rect2(at.x + c * 2.0, cy, 2.0, 2.0), Color(soil[3], 0.8))
-			cy += 2.0
-			if random.randf() < 0.3:
-				c = clampi(c + (1 if random.randf() < 0.5 else -1), 0, 21)
+		var sx := posmod(world_x + c * 2, FACE_WIDTH)
+		draw_texture_rect_region(FACES, Rect2(at.x + c * 2.0, y0, 2.0, tall), Rect2(sx, row + sy, 2.0, tall))
+
+
+## Which earthen look a bank under this ground has.
+static func _soil_name(top: int) -> String:
+	if top in [T.SNOW, T.FROSTPINE, T.SALT]:
+		return "frozen"
+	if top in [T.SAND]:
+		return "sandstone"
+	if top in [T.ASH, T.CINDER]:
+		return "ash"
+	return "earth"
 
 
 ## What every face shares: roots from the lip, the lip itself hanging over,
