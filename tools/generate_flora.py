@@ -3564,9 +3564,17 @@ def sheet(images, w, h):
     return out
 
 
-if __name__ == "__main__":
+def write_flora_sheets():
+    """The tall and small flora sheets, with the redrawn flowers, mushrooms
+    and bushes (tools/generate_plants.py) in their places."""
+    import generate_plants
+    generate_plants.redraw(SMALL, TALL)
     sheet(TALL, 64, 96).save(os.path.join(ROOT, "flora_tall.png"))
     sheet(SMALL, 32, 32).save(os.path.join(ROOT, "flora_small.png"))
+
+
+if __name__ == "__main__":
+    write_flora_sheets()
     # The critters are drawn at 32x32 by tools/generate_critters.py.
     import generate_critters
     generate_critters.main()

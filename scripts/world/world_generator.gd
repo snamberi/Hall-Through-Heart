@@ -496,6 +496,12 @@ func river_at(cell: Vector2i) -> int:
 	return 1 if n < width else 0
 
 
+## Whether a tile is part of a river (not the sea or a lake a river runs
+## into): only rivers fall as waterfalls.
+func is_river(cell: Vector2i) -> bool:
+	return TerrainTiles.is_water(tile_type_at(cell)) and not overrides.has(cell) and river_at(cell) > 0 and _natural(cell) in RIVER_LANDS
+
+
 ## The way a river flows over a tile (a unit vector; zero off rivers):
 ## along its course, downhill.
 func river_flow(cell: Vector2i) -> Vector2:

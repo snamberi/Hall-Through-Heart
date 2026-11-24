@@ -265,6 +265,13 @@ void fragment() {
 	vec2 texel = floor(uv / TEXTURE_PIXEL_SIZE);
 	float in_frame = fract(uv.y);
 	bool leafy = !green_only || (picture.g > picture.r * 1.05 && picture.g >= picture.b * 0.98);
+	// Fruit drawn among the leaves drops with them: none on a bare tree.
+	if (green_only && !leafy && picture.a > 0.5 && picture.r > picture.g * 2.0 && picture.r > picture.b * 1.6 && picture.r > 0.45) {
+		float tree0 = hash12(floor(place / 4.0));
+		if (mode_for(hash12(floor(texel / 2.0) + tree0 * 19.0) < season_blend ? season_b : season_a) == 7) {
+			c = vec4(0.0);
+		}
+	}
 	if (picture.a > 0.5 && in_frame < canopy_line && leafy) {
 		vec3 rgb = picture.rgb;
 		float l = dot(rgb, vec3(0.299, 0.587, 0.114));

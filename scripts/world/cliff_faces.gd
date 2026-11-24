@@ -47,6 +47,8 @@ var origin := Vector2i.ZERO
 ## Called with a tile; true where something is built (a ruin, a village)
 ## and the ground has been levelled: no face is drawn there.
 var levelled: Callable
+## Called with a tile; true where a river runs (only rivers make waterfalls).
+var river: Callable
 ## Called with a tile; true where steps are cut into the face.
 var stairs: Callable
 
@@ -119,7 +121,9 @@ func _ready() -> void:
 func _is_waterfall(x: int, y: int) -> bool:
 	if x < -1 or y < 0 or x > span - 2 or y > span - 2:
 		return false
-	return TerrainTiles.is_water(_type(x, y)) and TerrainTiles.is_water(_type(x, y - 1)) and _height(x, y - 1) > _height(x, y)
+	if not (TerrainTiles.is_water(_type(x, y)) and TerrainTiles.is_water(_type(x, y - 1)) and _height(x, y - 1) > _height(x, y)):
+		return false
+	return river.is_valid() and river.call(origin + Vector2i(x, y)) and river.call(origin + Vector2i(x, y - 1))
 
 
 const WATERFALL_SHADER := """

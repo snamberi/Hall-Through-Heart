@@ -51,8 +51,8 @@ const SPECIES := {
 	Flora.Tall.AUTUMN_OAK: [Vector4(0.22, 0.3, 0.41, 0.57), 0.63, [SPRING, SUMMER, KEEP, BARE]],
 	Flora.Tall.RED_MAPLE: [Vector4(0.165, 0.27, 0.39, 0.59), 0.62, [SPRING, SUMMER, KEEP, BARE]],
 	Flora.Tall.CHERRY: [Vector4(0.27, 0.39, 0.55, 0.72), 0.64, [KEEP, SUMMER, ORANGE, BARE]],
-	Flora.Tall.BUSH: [Vector4(0.235, 0.337, 0.453, 0.6), 1.0, [SPRING, KEEP, RUST, BARE]],
-	Flora.Tall.BERRY_BUSH: [Vector4(0.235, 0.337, 0.453, 0.6), 1.0, [SPRING, KEEP, RUST, BARE]],
+	Flora.Tall.BUSH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, RUST, BARE], true],
+	Flora.Tall.BERRY_BUSH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, RUST, BARE], true],
 	# The grand broadleaves: painted in the summer greens; only green pixels
 	# turn (bark, fruit and blossom keep their colours).
 	Flora.Tall.GREAT_OAK: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],

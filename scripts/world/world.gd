@@ -257,6 +257,7 @@ func _build_chunk(chunk: Vector2i, announce: bool = true) -> void:
 		cliffs.types = types
 		cliffs.heights = heights
 		cliffs.stairs = generator.is_stairs
+		cliffs.river = generator.is_river
 		cliffs.span = span
 		cliffs.origin = origin
 		cliffs.levelled = levelled
