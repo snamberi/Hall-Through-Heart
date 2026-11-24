@@ -7,7 +7,10 @@ const PX := preload("res://scripts/effects/pixel_draw.gd")
 ##  - a level up raises a pillar of gold light with rings and sparks
 ##    spiralling up round the player;
 ##  - a real heal (not regeneration ticking) blooms green motes;
-##  - a critical hit flashes a white four-point star where it lands.
+##  - a critical hit flashes a white four-point star where it lands;
+##  - every other blow that lands sparks there: a bright core and cross,
+##    an X of spikes, a broken ring, then flecks thrown away from the
+##    striker, four whole-pixel frames in a seventh of a second.
 ## Everything is drawn here in world space, from plain lists.
 
 static var instance: FeelFX
@@ -19,6 +22,8 @@ const RANK_COLOR := {"normal": Color(0.75, 0.9, 1.0), "elite": Color(1.0, 0.85, 
 var _player: Player
 var _motes: Array[Dictionary] = []
 var _stars: Array[Dictionary] = []
+var _impacts: Array[Dictionary] = []
+const IMPACT_SECONDS := 0.14
 var _blooms: Array[Dictionary] = []
 var _pillars: Array[Dictionary] = []
 var _last_health := -1.0
@@ -64,9 +69,19 @@ static func crit(at: Vector2) -> void:
 		instance._stars.append({"pos": at + Vector2(0, -18), "age": 0.0, "angle": randf() * 0.6})
 
 
+## Sparks where a blow lands: `away` is the way it was struck (from the
+## striker toward the struck), `tint` the colour of its rim.
+static func impact(at: Vector2, away: Vector2, tint: Color = Color(1.0, 0.82, 0.45)) -> void:
+	if instance:
+		instance._impacts.append({"pos": at.floor(), "away": away.normalized() if away != Vector2.ZERO else Vector2.RIGHT, "age": 0.0, "tint": tint})
+
+
 func _process(delta: float) -> void:
 	if _player == null:
 		return
+	for spark in _impacts:
+		spark["age"] += delta
+	_impacts = _impacts.filter(func(spark: Dictionary) -> bool: return spark["age"] < IMPACT_SECONDS)
 	var home := _player.global_position + Vector2(0, -20)
 	for mote in _motes:
 		mote["age"] += delta
@@ -137,6 +152,8 @@ func _draw() -> void:
 		var color := Color(0.55, 1.0, 0.6, 1.0 - t)
 		draw_rect(Rect2(at + Vector2(-3, -1), Vector2(6, 2)), color)
 		draw_rect(Rect2(at + Vector2(-1, -3), Vector2(2, 6)), color)
+	for spark in _impacts:
+		_draw_impact(spark)
 	for star in _stars:
 		var t: float = star["age"] / 0.28
 		var size := 10.0 + 22.0 * t
@@ -147,3 +164,38 @@ func _draw() -> void:
 			var side := dir.orthogonal() * size * 0.16
 			PX.poly(self, PackedVector2Array([center + side, center + dir * size, center - side]), color)
 		PX.disc(self, center, size * 0.25, Color(1.0, 0.95, 0.7, 1.0 - t))
+
+
+## One impact spark, by its frame (0 to 3).
+func _draw_impact(spark: Dictionary) -> void:
+	var frame := mini(int(float(spark["age"]) / IMPACT_SECONDS * 4.0), 3)
+	var c: Vector2 = spark["pos"]
+	var away: Vector2 = spark["away"]
+	var tint: Color = spark["tint"]
+	var core := Color(1.0, 0.98, 0.88)
+	match frame:
+		0:
+			draw_rect(Rect2(c - Vector2(1, 1), Vector2(3, 3)), core)
+			for way: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+				draw_rect(Rect2(c + way * 2, Vector2.ONE), core)
+				draw_rect(Rect2(c + way * 3, Vector2.ONE), tint)
+		1:
+			draw_rect(Rect2(c, Vector2.ONE), core)
+			for k in range(2, 5):
+				for way: Vector2 in [Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
+					draw_rect(Rect2(c + way * k, Vector2.ONE), core if k < 4 else tint)
+			for way: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+				draw_rect(Rect2(c + way * 3, Vector2.ONE), tint)
+		2:
+			for k in 8:
+				if k % 3 == 1:
+					continue
+				var p := (c + Vector2.from_angle(k * TAU / 8.0) * 5.0).floor()
+				draw_rect(Rect2(p, Vector2.ONE), Color(tint, 0.9))
+		3:
+			# Flecks thrown on past the blow.
+			for k in 4:
+				var spread := away.rotated((k - 1.5) * 0.45)
+				var p := (c + spread * (6.0 + (k % 2) * 2.0)).floor()
+				draw_rect(Rect2(p, Vector2.ONE), Color(tint, 0.7))
+

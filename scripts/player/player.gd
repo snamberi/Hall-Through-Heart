@@ -644,6 +644,10 @@ func hit_enemy(enemy: Enemy, multiplier: float, knockback: Vector2) -> void:
 	# Hit-stop: a blink of stillness on solid blows gives them weight.
 	if critical:
 		FeelFX.crit(enemy.global_position)
+	else:
+		# Sparks on the side it was struck from, at chest height.
+		var from := enemy.global_position.direction_to(global_position)
+		FeelFX.impact(enemy.global_position + from * 6.0 + Vector2(0, -16), -from)
 	if critical or multiplier >= 1.5:
 		hit_stop(0.06)
 	elif state == State.ATTACK:
