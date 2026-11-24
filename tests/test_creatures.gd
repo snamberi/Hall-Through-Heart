@@ -55,6 +55,9 @@ func test_monsters_show_their_rank_and_die_their_own_way(t: TestContext) -> void
 	await t.frames(2)
 	var look := elite._animator.material as ShaderMaterial
 	t.check(look != null and int(look.get_shader_parameter("pattern")) == 0, "an Elite wears its gold outline")
+	# (An Elite may have rolled a dodge or a shield, which would eat the blow.)
+	elite.modifiers.erase("evasive")
+	elite.shield = 0.0
 	elite.take_damage(1.0, Vector2(60, 0))
 	t.check(elite._animator._flinch_left > 0.0, "a blow shows the drawn hurt frames")
 	t.equal(elite._animator.scale, Vector2.ONE, "and nothing is stretched")
