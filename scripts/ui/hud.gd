@@ -66,7 +66,7 @@ func setup(player: Player) -> void:
 	player.class_changed.connect(_refresh)
 	Events.level_up.connect(_on_level_up)
 	Events.profession_level_up.connect(func(id: String, level: int) -> void:
-		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -52), "%s %d" % [Professions.NAMES[id], level], UITheme.GOLD, 15)
+		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -52), "%s %d" % [Professions.NAMES[id], level], UITheme.ON_WORLD_GOLD, 15)
 		Audio.play("level_up", -10.0, 0.0)
 	)
 	_gather.draw.connect(_draw_gather)
@@ -90,7 +90,7 @@ func setup(player: Player) -> void:
 	add_child(feed)
 	_boss_bar.draw.connect(_draw_boss_bar)
 	Events.biome_discovered.connect(func(biome: String, xp: int) -> void:
-		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.INFO, 14)
+		DamageNumber.spawn_text(player.get_parent(), player.global_position + Vector2(0, -60), "Discovered: %s  (+%d XP)" % [biome, xp], UITheme.ON_WORLD_INFO, 14)
 	)
 	# Two bars: the abilities (a dock by the hotbar, or the classic column
 	# on the left, as the player likes) and the hotbar along the bottom.
@@ -289,7 +289,7 @@ func _draw_gather() -> void:
 	if _player.state == Player.State.GATHER and _player.gather_seconds > 0.0:
 		var share := clampf(_player.gather_progress / _player.gather_seconds, 0.0, 1.0)
 		_gather.draw_rect(Rect2(0, 22, width, 12), Color(0.071, 0.054, 0.040, 0.9))
-		_gather.draw_rect(Rect2(2, 24, (width - 4.0) * share, 8), UITheme.GOLD)
+		_gather.draw_rect(Rect2(2, 24, (width - 4.0) * share, 8), UITheme.ON_WORLD_GOLD)
 		_gather.draw_rect(Rect2(0, 22, width, 12), Color("8a683a"), false, 1.0)
 		return
 	if _player.state != Player.State.MOVE:
@@ -299,13 +299,13 @@ func _draw_gather() -> void:
 	if npc:
 		var talk := "%s  %s" % [use_key, npc.prompt()]
 		_gather.draw_string_outline(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
-		_gather.draw_string(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.GOLD)
+		_gather.draw_string(font, Vector2(0, 16), talk, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.ON_WORLD_GOLD)
 		return
 	var prop := _player.nearest_prop()
 	if prop:
 		var action := "%s  %s" % [use_key, prop.prompt_text] if prop.on_interact.is_valid() else prop.prompt_text
 		_gather.draw_string_outline(font, Vector2(0, 16), action, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
-		_gather.draw_string(font, Vector2(0, 16), action, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.GOLD if prop.on_interact.is_valid() else UITheme.DIM)
+		_gather.draw_string(font, Vector2(0, 16), action, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.ON_WORLD_GOLD if prop.on_interact.is_valid() else UITheme.ON_WORLD_DIM)
 		return
 	# What a left click would work on: the thing under the mouse first.
 	var text := ""
@@ -321,7 +321,7 @@ func _draw_gather() -> void:
 	if text == "":
 		return
 	_gather.draw_string_outline(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, 4, Color.BLACK)
-	_gather.draw_string(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.TEXT if good else UITheme.BAD)
+	_gather.draw_string(font, Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_CENTER, width, 16, UITheme.ON_WORLD if good else UITheme.ON_WORLD_BAD)
 
 
 ## Draws `bar` as an ornate gauge: a dark trough, the fill with a sheen and

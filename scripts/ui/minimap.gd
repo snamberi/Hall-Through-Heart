@@ -86,7 +86,7 @@ func _draw() -> void:
 			_dot(inner, middle, node.global_position - origin, DOT[node.kind()], 1.5)
 	for pickup in get_tree().get_nodes_in_group("pickups"):
 		if pickup.global_position.distance_to(origin) < sight:
-			_dot(inner, middle, pickup.global_position - origin, UITheme.GOLD, 1.5)
+			_dot(inner, middle, pickup.global_position - origin, UITheme.ON_WORLD_GOLD, 1.5)
 	# Places close by, as on the big map.
 	for place: Array in _places:
 		_icon(inner, middle, (place[0] as Vector2) - origin, place[1], 13.0)
@@ -117,7 +117,7 @@ func _draw() -> void:
 			var reach := minf(absf(edge.size.x / 2.0 / way.x) if way.x != 0.0 else INF, absf(edge.size.y / 2.0 / way.y) if way.y != 0.0 else INF)
 			point = middle + way * reach
 		draw_colored_polygon(PackedVector2Array([point + Vector2(0, -6), point + Vector2(5, 0), point + Vector2(0, 6), point + Vector2(-5, 0)]), Color(0, 0, 0, 0.8))
-		draw_colored_polygon(PackedVector2Array([point + Vector2(0, -4), point + Vector2(3.5, 0), point + Vector2(0, 4), point + Vector2(-3.5, 0)]), UITheme.GOLD)
+		draw_colored_polygon(PackedVector2Array([point + Vector2(0, -4), point + Vector2(3.5, 0), point + Vector2(0, 4), point + Vector2(-3.5, 0)]), UITheme.ON_WORLD_GOLD)
 	# Your pins, and where you last fell.
 	for pin: Dictionary in MapMenu.pins:
 		var spot := Vector2(float(pin["tile"][0]), float(pin["tile"][1])) * TerrainTiles.TILE_SIZE + Vector2.ONE * TerrainTiles.TILE_SIZE / 2.0
@@ -134,7 +134,7 @@ func _draw() -> void:
 		var font := UITheme.get_theme().default_font
 		var text := "%s  -  Day %d  -  %s" % [Seasons.name_of(_day_night.day, _day_night.time), _day_night.day, _day_night.phase()]
 		draw_string_outline(font, Vector2(0, size.y + 16.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, 4, Color.BLACK)
-		draw_string(font, Vector2(0, size.y + 16.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, UITheme.HEADING)
+		draw_string(font, Vector2(0, size.y + 16.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, UITheme.ON_WORLD_HEADING)
 		# Weather and blood moons, in a line of their own over the map.
 		var sky := Atmosphere.weather
 		if DayNight.blood_moon:

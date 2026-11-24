@@ -236,3 +236,18 @@ func test_professions_main_and_side(t: TestContext) -> void:
 	var plain: int = maxi(roundi(item.value() * float(player.trade.tier_info()["share"])), 1)
 	trades.practice("merchant", 100000.0)
 	t.check(player.trade.sell_price(item) >= plain, "a Merchant sells dearer")
+
+
+func test_interface_styles(t: TestContext) -> void:
+	t.equal(UITheme.STYLES.size(), 6, "six interface styles to choose from")
+	var before := UITheme.style
+	for id: String in UITheme.STYLES:
+		UITheme.use_style(id)
+		t.check(UITheme.art("panel") != null and UITheme.art("button") != null, "%s has its art" % id)
+		t.check(ResourceLoader.exists("res://assets/ui/themes/%s/panel.png" % id), "%s's frame is drawn" % id)
+	UITheme.use_style("parchment")
+	t.check(UITheme.TEXT.get_luminance() < 0.4, "parchment pages take dark ink")
+	UITheme.use_style("forge")
+	t.check(UITheme.TEXT.get_luminance() > 0.6, "dark styles take light ink")
+	t.check(UITheme.ON_WORLD.get_luminance() > 0.6, "text over the world stays light in every style")
+	UITheme.use_style(before)

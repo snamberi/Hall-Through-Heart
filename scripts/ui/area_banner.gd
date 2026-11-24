@@ -43,7 +43,7 @@ func setup(player: Player) -> void:
 	_title.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.04, 0.9))
 	_title.add_theme_constant_override("outline_size", 6)
 	box.add_child(_title)
-	_detail = UITheme.label("", 15, UITheme.TEXT)
+	_detail = UITheme.label("", 15, UITheme.ON_WORLD)
 	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.04, 0.9))
 	_detail.add_theme_constant_override("outline_size", 4)
@@ -92,7 +92,7 @@ func show_area(land: String, level: int) -> void:
 	var gap := level - _player.leveling.level
 	var warning := "  ·  dangerous for your level" if gap >= 8 else ("  ·  a little above you" if gap >= 3 else "")
 	_detail.text = "Area level %d%s" % [level, warning]
-	_detail.add_theme_color_override("font_color", UITheme.BAD if gap >= 8 else (UITheme.GOLD if gap >= 3 else UITheme.TEXT))
+	_detail.add_theme_color_override("font_color", UITheme.ON_WORLD_BAD if gap >= 8 else (UITheme.ON_WORLD_GOLD if gap >= 3 else UITheme.ON_WORLD))
 	if _tween:
 		_tween.kill()
 	_tween = create_tween()

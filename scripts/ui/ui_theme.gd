@@ -14,15 +14,79 @@ extends RefCounted
 ## level. Gold has one job: it marks what is chosen. Ordinary cards and
 ## buttons wear dark oak; keyboard focus is a bright double ring.
 
-const TEXT := Color("e6dfcf")
-const DIM := Color("9a8c74")
-const GOLD := Color("f2c14e")
-const HEADING := Color("e8c878")
-const GOOD := Color("8fd66a")
-const BAD := Color("e0555a")
-const INFO := Color("6fb6ff")
+## The interface styles the player can choose in Settings (art drawn by
+## tools/generate_ui_styles.py into assets/ui/themes/<style>/): name, and
+## the inks set on it: text, quiet text, headings, gold (what is chosen),
+## rules, good, bad, info.
+const STYLES := {
+	"parchment": {"name": "Parchment Book", "ink": ["3a2818", "6a5638", "5a2a10", "8a4a10", "a88a5a", "2e7a2a", "b02a2a", "1e5a9a"]},
+	"forge": {"name": "Forged Iron", "ink": ["e8e4dc", "8e8a84", "ffb060", "ff9a40", "45454e", "8fd66a", "ff5a5a", "6fb6ff"]},
+	"dwarven": {"name": "Dwarven Hall", "ink": ["eceae4", "9c9a94", "f0c070", "e0b050", "50505a", "8fd66a", "e0555a", "6fb6ff"]},
+	"ashen": {"name": "Ashen Bone", "ink": ["ece8e0", "8e8880", "f0e8d8", "e8dcc0", "3e3a36", "9ad890", "e06a6a", "8ac0ff"]},
+	"walnut": {"name": "Walnut & Gold (legacy)", "ink": ["e6dfcf", "9a8c74", "e8c878", "f2c14e", "5a4630", "8fd66a", "e0555a", "6fb6ff"]},
+	"navy": {"name": "Midnight Navy (legacy)", "ink": ["e6dfcf", "8f8a80", "e8c878", "f2c14e", "39415a", "8fd66a", "e0555a", "6fb6ff"]},
+}
+const DEFAULT_STYLE := "parchment"
+## The style in use (GameSettings.ui_style).
+static var style := DEFAULT_STYLE
+## Whether a style's inks have been put in use yet.
+static var styled := false
+
+static var TEXT := Color("e6dfcf")
+static var DIM := Color("9a8c74")
+static var GOLD := Color("f2c14e")
+static var HEADING := Color("e8c878")
+static var GOOD := Color("8fd66a")
+static var BAD := Color("e0555a")
+static var INFO := Color("6fb6ff")
 ## A quiet line colour for rules and neutral borders.
-const LINE := Color("5a4630")
+static var LINE := Color("5a4630")
+## Text drawn straight over the world (not on a panel): always light, with
+## a dark outline, whatever the style.
+const ON_WORLD := Color("ece6d8")
+const ON_WORLD_DIM := Color("b0a690")
+const ON_WORLD_GOLD := Color("f2c14e")
+const ON_WORLD_HEADING := Color("e8c878")
+const ON_WORLD_GOOD := Color("8fd66a")
+const ON_WORLD_BAD := Color("e0555a")
+const ON_WORLD_INFO := Color("6fb6ff")
+
+
+## Puts a style in use: its art and its inks. Screens built before keep
+## what they had until they are built again (Settings reloads the scene).
+static func use_style(id: String) -> void:
+	if not STYLES.has(id):
+		id = DEFAULT_STYLE
+	style = id
+	styled = true
+	var ink: Array = STYLES[id]["ink"]
+	TEXT = Color(ink[0])
+	DIM = Color(ink[1])
+	HEADING = Color(ink[2])
+	GOLD = Color(ink[3])
+	LINE = Color(ink[4])
+	GOOD = Color(ink[5])
+	BAD = Color(ink[6])
+	INFO = Color(ink[7])
+	_theme = null
+	_textures.clear()
+
+
+static var _textures: Dictionary = {}
+
+
+## A piece of interface art in the style in use (falling back to the base
+## set in assets/ui/).
+static func art(file: String) -> Texture2D:
+	if not _textures.has(file):
+		var themed := "res://assets/ui/themes/%s/%s.png" % [style, file]
+		_textures[file] = load(themed) if ResourceLoader.exists(themed) else load("res://assets/ui/%s.png" % file)
+	return _textures[file]
+
+
+## Whether the style's pages are light (so text on them is dark).
+static func light_pages() -> bool:
+	return style == "parchment"
 ## Text sizes: what is read, what is secondary, and the smallest allowed.
 const BODY := 16
 const SMALL := 14
@@ -141,6 +205,9 @@ static func refresh_contrast(tree: SceneTree) -> void:
 static func ink(color: Color) -> Color:
 	if not GameSettings.high_contrast:
 		return color
+	# On light pages contrast means darker ink; on dark ones, brighter.
+	if light_pages():
+		return TEXT if color == DIM else color.darkened(0.25)
 	if color == DIM:
 		return Color("cfc8ba")
 	return color.lightened(0.18)
@@ -281,11 +348,11 @@ static func rule(width: float = 0.0) -> ColorRect:
 
 ## The small padlock and tick pictures used for locked and done things.
 static func lock_texture() -> Texture2D:
-	return load("res://assets/ui/lock.png")
+	return art("lock")
 
 
 static func tick_texture() -> Texture2D:
-	return load("res://assets/ui/tick.png")
+	return art("tick")
 
 
 ## Puts keyboard focus on the first thing in `root` that can take it.
@@ -327,7 +394,7 @@ static func inset_panel() -> PanelContainer:
 
 static func _frame(file: String, margin: int, content: int) -> StyleBoxTexture:
 	var box := StyleBoxTexture.new()
-	box.texture = load("res://assets/ui/%s.png" % file)
+	box.texture = art(file)
 	box.set_texture_margin_all(margin)
 	box.set_content_margin_all(content)
 	# The middles and edges repeat rather than stretch, so no pixel smears.
@@ -381,7 +448,7 @@ static func tooltip_box() -> StyleBoxTexture:
 ## A worked rule to put under a heading.
 static func divider(width: float = 160.0) -> TextureRect:
 	var rule := TextureRect.new()
-	rule.texture = load("res://assets/ui/divider.png")
+	rule.texture = art("divider")
 	rule.custom_minimum_size = Vector2(width, 10.0)
 	rule.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -400,7 +467,7 @@ static func _flat(fill: Color, border: Color, width: int = 1, margin: int = 6) -
 ## The ring drawn round whatever has keyboard focus.
 static func focus_box() -> StyleBoxTexture:
 	var box := StyleBoxTexture.new()
-	box.texture = load("res://assets/ui/focus.png")
+	box.texture = art("focus")
 	box.set_texture_margin_all(6)
 	box.set_expand_margin_all(3)
 	box.draw_center = false
@@ -464,10 +531,10 @@ static func _build() -> Theme:
 		pad.set_content_margin_all(4)
 		theme.set_stylebox(state, "CheckBox", pad)
 	theme.set_stylebox("focus", "CheckBox", focus_box())
-	theme.set_icon("checked", "CheckBox", load("res://assets/ui/check_on.png"))
-	theme.set_icon("unchecked", "CheckBox", load("res://assets/ui/check_off.png"))
-	theme.set_icon("checked_disabled", "CheckBox", load("res://assets/ui/check_on.png"))
-	theme.set_icon("unchecked_disabled", "CheckBox", load("res://assets/ui/check_off.png"))
+	theme.set_icon("checked", "CheckBox", art("check_on"))
+	theme.set_icon("unchecked", "CheckBox", art("check_off"))
+	theme.set_icon("checked_disabled", "CheckBox", art("check_on"))
+	theme.set_icon("unchecked_disabled", "CheckBox", art("check_off"))
 	theme.set_constant("h_separation", "CheckBox", 10)
 	theme.set_color("default_color", "RichTextLabel", TEXT)
 	theme.set_font("bold_font", "RichTextLabel", body_bold())
@@ -481,9 +548,9 @@ static func _build() -> Theme:
 	theme.set_stylebox("slider", "HSlider", track)
 	theme.set_stylebox("grabber_area", "HSlider", filled)
 	theme.set_stylebox("grabber_area_highlight", "HSlider", filled_lit)
-	theme.set_icon("grabber", "HSlider", load("res://assets/ui/grabber.png"))
-	theme.set_icon("grabber_highlight", "HSlider", load("res://assets/ui/grabber_hover.png"))
-	theme.set_icon("grabber_disabled", "HSlider", load("res://assets/ui/grabber.png"))
+	theme.set_icon("grabber", "HSlider", art("grabber"))
+	theme.set_icon("grabber_highlight", "HSlider", art("grabber_hover"))
+	theme.set_icon("grabber_disabled", "HSlider", art("grabber"))
 
 	# Text boxes.
 	var field := _flat(Color("140f0a"), Color("6a5034"), 1, 5)

@@ -20,6 +20,7 @@ const DEFAULTS := {
 	"damage_numbers": true,
 	"last_slot": "",
 	"ui_scale": 1.0,
+	"ui_style": UITheme.DEFAULT_STYLE,
 	"text_scale": 1.0,
 	"hud_layout": "compact",
 	"show_worn": false,
@@ -131,6 +132,8 @@ var damage_numbers := true
 var last_slot := ""
 ## Size of everything on screen that is not the world itself.
 var ui_scale := 1.0
+## The interface style (UITheme.STYLES).
+var ui_style := UITheme.DEFAULT_STYLE
 ## Size of text alone, on top of the interface size (0.9 to 1.25).
 var text_scale := 1.0
 ## Where the ability slots sit: "compact" (a dock by the hotbar) or
@@ -247,6 +250,8 @@ func _ready() -> void:
 			if saved is Dictionary:
 				bindings = saved
 	ui_scale = clampf(ui_scale, 0.7, 1.3)
+	if not UITheme.STYLES.has(ui_style):
+		ui_style = UITheme.DEFAULT_STYLE
 	text_scale = clampf(text_scale, 0.9, 1.25)
 	shake_strength = clampf(shake_strength, 0.0, 1.5)
 	damage_number_size = clampf(damage_number_size, 0.7, 1.6)
@@ -495,7 +500,22 @@ func _events_to_data(events: Array) -> Array:
 	return result
 
 
+## Puts a new interface style in use and rebuilds the screen showing (the
+## game is saved first, so nothing is lost).
+func restyle(id: String) -> void:
+	if id == UITheme.style:
+		return
+	set_value("ui_style", id)
+	if not is_inside_tree():
+		return
+	if SaveGame.slot_id != "" and get_tree().get_first_node_in_group("player") != null:
+		SaveGame.save_now()
+	get_tree().reload_current_scene.call_deferred()
+
+
 func _apply() -> void:
+	if UITheme.style != ui_style or not UITheme.styled:
+		UITheme.use_style(ui_style)
 	_set_bus("Master", master_volume)
 	_set_bus("Music", music_volume)
 	_set_bus("SFX", sfx_volume)

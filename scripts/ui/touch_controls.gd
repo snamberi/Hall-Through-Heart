@@ -372,7 +372,7 @@ func _draw_controls() -> void:
 				_root.draw_arc(at, r - 3.0, -PI / 2.0, -PI / 2.0 + TAU * share, 24, Color(0.0, 0.0, 0.0, 0.7), 5.0)
 				var seconds := "%.1f" % left if left < 10.0 else "%d" % ceili(left)
 				_root.draw_string_outline(font, at + Vector2(-r, 6), seconds, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, 15, 4, Color.BLACK)
-				_root.draw_string(font, at + Vector2(-r, 6), seconds, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, 15, UITheme.TEXT)
+				_root.draw_string(font, at + Vector2(-r, 6), seconds, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, 15, UITheme.ON_WORLD)
 			continue
 		if id == "attack":
 			var weapon := _player.equipment.weapon()
@@ -419,4 +419,4 @@ func _label(font: Font, at: Vector2, text: String, size: int) -> void:
 	var width := 90.0
 	var origin := (at + Vector2(-width / 2.0, size * 0.35)).round()
 	_root.draw_string_outline(font, origin, text, HORIZONTAL_ALIGNMENT_CENTER, width, size, 4, Color(0.037, 0.028, 0.021))
-	_root.draw_string(font, origin, text, HORIZONTAL_ALIGNMENT_CENTER, width, size, UITheme.TEXT)
+	_root.draw_string(font, origin, text, HORIZONTAL_ALIGNMENT_CENTER, width, size, UITheme.ON_WORLD)

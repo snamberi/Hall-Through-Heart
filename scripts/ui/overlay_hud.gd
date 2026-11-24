@@ -73,7 +73,7 @@ func _targets() -> Array:
 	var out: Array = []
 	var world: Node = _player.get_parent()
 	if MapMenu.waypoint != null:
-		out.append([MapMenu.waypoint, UITheme.GOLD, "Waypoint"])
+		out.append([MapMenu.waypoint, UITheme.ON_WORLD_GOLD, "Waypoint"])
 	var pinned := MapMenu.tracked_pin()
 	if pinned >= 0:
 		var pin: Dictionary = MapMenu.pins[pinned]
@@ -155,8 +155,8 @@ func _monster_under_mouse() -> Variant:
 func _draw_enemy_card(enemy: Enemy) -> void:
 	var lines: Array = []
 	var rank_title: String = Enemy.RANK_DATA[enemy.rank]["title"]
-	lines.append([("Lv %d %s%s" % [enemy.level, rank_title, enemy.display_name]).strip_edges(), UITheme.HEADING, 16])
-	lines.append(["Health %s / %s" % [InventoryMenu._thousands(roundi(enemy.health.current)), InventoryMenu._thousands(roundi(enemy.health.max_health))], UITheme.TEXT, 14])
+	lines.append([("Lv %d %s%s" % [enemy.level, rank_title, enemy.display_name]).strip_edges(), UITheme.ON_WORLD_HEADING, 16])
+	lines.append(["Health %s / %s" % [InventoryMenu._thousands(roundi(enemy.health.current)), InventoryMenu._thousands(roundi(enemy.health.max_health))], UITheme.ON_WORLD, 14])
 	if enemy.shield > 0.0:
 		lines.append(["Ward %d" % roundi(enemy.shield), Color(0.6, 0.85, 1.0), 14])
 	if enemy.faction != "":
@@ -175,7 +175,7 @@ func _draw_enemy_card(enemy: Enemy) -> void:
 		if float(enemy.wards[ward]) > 0.0:
 			hardy.append("%s (warded)" % ward.capitalize())
 	if not weak.is_empty():
-		lines.append(["Weak to " + ", ".join(weak), UITheme.GOOD, 14])
+		lines.append(["Weak to " + ", ".join(weak), UITheme.ON_WORLD_GOOD, 14])
 	if not hardy.is_empty():
 		lines.append(["Resists " + ", ".join(hardy), Color(0.9, 0.7, 0.45), 14])
 	var traits: PackedStringArray = []
@@ -183,7 +183,7 @@ func _draw_enemy_card(enemy: Enemy) -> void:
 		if EnemyDB.TRAITS.has(id) and not id.capitalize() in traits:
 			traits.append(id.capitalize())
 	if not traits.is_empty():
-		lines.append([", ".join(traits), UITheme.DIM, 13])
+		lines.append([", ".join(traits), UITheme.ON_WORLD_DIM, 13])
 	var font := UITheme.body_bold()
 	var width := 0.0
 	for line: Array in lines:
@@ -217,4 +217,4 @@ func _draw_meter() -> void:
 	var feed_top := _canvas.size.y - 120.0 - PickupFeed.LINES * PickupFeed.LINE_HEIGHT
 	var box := Rect2(Vector2(_canvas.size.x - width - 34.0, feed_top - 40.0), Vector2(width + 20.0, 28.0))
 	_canvas.draw_style_box(UITheme.tooltip_box(), box)
-	_canvas.draw_string(font, box.position + Vector2(10, 19), words, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.GOLD)
+	_canvas.draw_string(font, box.position + Vector2(10, 19), words, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.ON_WORLD_GOLD)

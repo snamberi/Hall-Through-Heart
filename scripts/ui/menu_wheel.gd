@@ -118,7 +118,7 @@ func _draw() -> void:
 		var title: String = entries[index]["title"]
 		var title_font: Font = UITheme.bold() if lift > 0.5 else font
 		draw_string_outline(title_font, spot + Vector2(-70.0, 58.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 16, 4, Color(0, 0, 0, 0.9 * fade))
-		draw_string(title_font, spot + Vector2(-70.0, 58.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 16, Color(UITheme.TEXT.lerp(UITheme.GOLD, lift), fade))
+		draw_string(title_font, spot + Vector2(-70.0, 58.0), title, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 16, Color(UITheme.ON_WORLD.lerp(UITheme.ON_WORLD_GOLD, lift), fade))
 		# Its number key, on a small cap at the socket's shoulder.
 		var cap := Rect2((spot + Vector2(-34.0, -30.0)).floor(), Vector2(16, 17))
 		draw_rect(cap, Color(0.1, 0.125, 0.2, fade))
@@ -137,16 +137,16 @@ func _draw() -> void:
 	if _hovered >= 0 and _hovered < count:
 		var entry: Dictionary = entries[_hovered]
 		# The name large and bright; what it is for smaller and quieter below a rule.
-		draw_string(UITheme.bold(), center + Vector2(-width / 2.0, -14.0), entry["title"], HORIZONTAL_ALIGNMENT_CENTER, width, 25, Color(UITheme.GOLD, fade))
+		draw_string(UITheme.bold(), center + Vector2(-width / 2.0, -14.0), entry["title"], HORIZONTAL_ALIGNMENT_CENTER, width, 25, Color(UITheme.ON_WORLD_GOLD, fade))
 		draw_rect(Rect2(center + Vector2(-30, -6), Vector2(60, 2)), Color(0.54, 0.41, 0.23, fade))
-		draw_multiline_string(font, center + Vector2(-width / 2.0, 12.0), entry.get("text", ""), HORIZONTAL_ALIGNMENT_CENTER, width, 14, 3, Color(UITheme.DIM, fade))
+		draw_multiline_string(font, center + Vector2(-width / 2.0, 12.0), entry.get("text", ""), HORIZONTAL_ALIGNMENT_CENTER, width, 14, 3, Color(UITheme.ON_WORLD_DIM, fade))
 		var waiting: int = badge_for.call(entry["id"]) if badge_for.is_valid() else 0
 		var hint := "%d waiting" % waiting if waiting > 0 else "Click, Enter or %d" % (_hovered + 1)
 		draw_string(font, center + Vector2(-width / 2.0, 60.0), hint, HORIZONTAL_ALIGNMENT_CENTER, width, 14, Color(Color(1.0, 0.55, 0.45) if waiting > 0 else Color(0.62, 0.64, 0.72), fade))
 	else:
 		var lines: Array = hub_text.call() if hub_text.is_valid() else ["Menu", ""]
-		draw_string(UITheme.bold(), center + Vector2(-width / 2.0, -14.0), lines[0], HORIZONTAL_ALIGNMENT_CENTER, width, 24, Color(UITheme.HEADING, fade))
-		draw_multiline_string(font, center + Vector2(-width / 2.0, 10.0), lines[1], HORIZONTAL_ALIGNMENT_CENTER, width, 14, 3, Color(UITheme.DIM, fade))
+		draw_string(UITheme.bold(), center + Vector2(-width / 2.0, -14.0), lines[0], HORIZONTAL_ALIGNMENT_CENTER, width, 24, Color(UITheme.ON_WORLD_HEADING, fade))
+		draw_multiline_string(font, center + Vector2(-width / 2.0, 10.0), lines[1], HORIZONTAL_ALIGNMENT_CENTER, width, 14, 3, Color(UITheme.ON_WORLD_DIM, fade))
 		draw_string(font, center + Vector2(-width / 2.0, 60.0), "Keys 1-8 or arrows", HORIZONTAL_ALIGNMENT_CENTER, width, 14, Color(0.62, 0.64, 0.72, fade))
 
 

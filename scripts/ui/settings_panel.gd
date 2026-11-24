@@ -87,6 +87,7 @@ func _ready() -> void:
 		_check(page, "damage_numbers", "Damage numbers")
 	)
 	_pages["Interface"] = _scroll_page(holder, func(page: VBoxContainer) -> void:
+		_style_choice(page)
 		_choice(page, "hud_layout", "Ability slots", [["compact", "By the hotbar"], ["classic", "Column on the left"]])
 		_choice(page, "tracker_mode", "Quest tracker", [["full", "Full"], ["compact", "Compact"], ["off", "Off"]])
 		_check(page, "show_worn", "Show worn armour on the hotbar")
@@ -315,6 +316,36 @@ func _check(page: Control, setting: String, title: String) -> CheckBox:
 
 
 ## A row of buttons for a setting with a few named values.
+## The interface style: six looks, each with a swatch of its frame; picking
+## one rebuilds the screen in it.
+func _style_choice(page: Control) -> void:
+	page.add_child(UITheme.label("Interface style", 17))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	page.add_child(grid)
+	for id: String in UITheme.STYLES:
+		var button := Button.new()
+		button.toggle_mode = true
+		button.text = "  " + str(UITheme.STYLES[id]["name"])
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.custom_minimum_size = Vector2(250.0, 48.0)
+		UITheme.font_size(button, 15)
+		var swatch := load("res://assets/ui/themes/%s/panel.png" % id) as Texture2D
+		if swatch:
+			var atlas := AtlasTexture.new()
+			atlas.atlas = swatch
+			atlas.region = Rect2(0, 0, 40, 40)
+			button.icon = atlas
+			button.add_theme_constant_override("icon_max_width", 32)
+		button.set_pressed_no_signal(GameSettings.ui_style == id)
+		button.pressed.connect(func() -> void: GameSettings.restyle(id))
+		UITheme.sounds(button)
+		grid.add_child(button)
+	page.add_child(UITheme.label("Changing style saves the game and redraws the screen.", 14, UITheme.DIM))
+
+
 func _choice(page: Control, setting: String, title: String, options: Array, width: float = 150.0) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)

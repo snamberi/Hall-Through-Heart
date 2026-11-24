@@ -185,7 +185,7 @@ func _gui_input(event: InputEvent) -> void:
 		if spot[1] == "hotbar":
 			var problem := _player.hotbar.activate(spot[2])
 			if problem != "":
-				DamageNumber.spawn_text(_player.get_parent(), _player.global_position + Vector2(0, -50), problem, UITheme.BAD, 13)
+				DamageNumber.spawn_text(_player.get_parent(), _player.global_position + Vector2(0, -50), problem, UITheme.ON_WORLD_BAD, 13)
 			_press_flash[spot[2]] = 1.0
 		elif spot[1] == "quick":
 			_player.hotbar.use_quick()
@@ -207,7 +207,7 @@ func _show_tip() -> void:
 		"quick":
 			var quick := _player.hotbar.quick_item()
 			if quick:
-				_tip.show_item(quick, _player, "[color=#%s]Quick-use: %s[/color]" % [UITheme.GOLD.to_html(false), _key("quick_use")])
+				_tip.show_item(quick, _player, "[color=#%s]Quick-use: %s[/color]" % [UITheme.ON_WORLD_GOLD.to_html(false), _key("quick_use")])
 			else:
 				_tip.show_text("Quick-use", "Hover a potion or food in the inventory and press %s to put it here." % _key("quick_use"))
 		"hotbar":
@@ -218,7 +218,7 @@ func _show_tip() -> void:
 				return
 			var item := _player.hotbar.item_in(spot[2])
 			if item:
-				_tip.show_item(item, _player, "[color=#%s]Key %s[/color]" % [UITheme.GOLD.to_html(false), _key("hotbar_%d" % (spot[2] + 1))])
+				_tip.show_item(item, _player, "[color=#%s]Key %s[/color]" % [UITheme.ON_WORLD_GOLD.to_html(false), _key("hotbar_%d" % (spot[2] + 1))])
 			else:
 				_tip.show_text(Hotbar.LABELS[spot[2]], "Empty. Hover something in the inventory and press %s." % _key("hotbar_%d" % (spot[2] + 1)))
 		"off":
@@ -335,7 +335,7 @@ func _draw() -> void:
 		var label := "%s  %s" % [_set_name(abilities), _key("ability_swap")]
 		var bottom: Rect2 = _groups[0][1]
 		draw_string_outline(_font, Vector2(bottom.position.x + 4.0, bottom.end.y + 15.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 3, Color.BLACK)
-		draw_string(_font, Vector2(bottom.position.x + 4.0, bottom.end.y + 15.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADING)
+		draw_string(_font, Vector2(bottom.position.x + 4.0, bottom.end.y + 15.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.ON_WORLD_HEADING)
 	elif show_abilities:
 		var abilities := _player.abilities
 		var others := abilities.other_slots()
@@ -343,7 +343,7 @@ func _draw() -> void:
 		var casting := false
 		var set_text := "%s  %s" % [_set_name(abilities), _key("ability_swap")]
 		var text_width := _font.get_string_size(set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-		draw_string(_font, tab.position + Vector2(tab.size.x - text_width - 4.0 - 4 * 14.0, 13), set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.DIM)
+		draw_string(_font, tab.position + Vector2(tab.size.x - text_width - 4.0 - 4 * 14.0, 13), set_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.ON_WORLD_DIM)
 		for index in (0 if casting else AbilityDB.SET_SIZE):
 			var other_id: String = others[index] if index < others.size() else ""
 			var mini_rect := Rect2(tab.end.x - 4.0 * 14.0 - 2.0 + index * 14.0, tab.position.y + 2.0, 12.0, 12.0)
@@ -390,7 +390,7 @@ func _draw_dock() -> void:
 	draw_style_box(_light_plate, Rect2(Vector2(-2, -2), size + Vector2(4, 4)))
 	var abilities := _player.abilities
 	var name := _set_name(abilities)
-	draw_string(UITheme.body_bold(), Vector2(10, 19), name, HORIZONTAL_ALIGNMENT_LEFT, size.x - 96.0, 14, UITheme.HEADING)
+	draw_string(UITheme.body_bold(), Vector2(10, 19), name, HORIZONTAL_ALIGNMENT_LEFT, size.x - 96.0, 14, UITheme.ON_WORLD_HEADING)
 	# The switch key on a cap, and the other set's pictures small beside it.
 	var key := _key("ability_swap")
 	var key_width := maxf(_font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 10.0, 20.0)
@@ -566,7 +566,7 @@ func _mini(rect: Rect2, item: Item, ghost: int, dimmed: bool, hovered: bool) -> 
 func _count(rect: Rect2, count: int) -> void:
 	var text := str(count)
 	draw_string_outline(_font, rect.position + Vector2(0, rect.size.y - 3.0), text, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 3.0, 14, 4, Color.BLACK)
-	draw_string(_font, rect.position + Vector2(0, rect.size.y - 3.0), text, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 3.0, 14, Color.WHITE if count > 0 else UITheme.BAD)
+	draw_string(_font, rect.position + Vector2(0, rect.size.y - 3.0), text, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 3.0, 14, Color.WHITE if count > 0 else UITheme.ON_WORLD_BAD)
 
 
 ## The key on a small dark tab at the slot's top left corner.
@@ -575,4 +575,4 @@ func _key_badge(rect: Rect2, key: String) -> void:
 	var badge := Rect2(rect.position + Vector2(-2, -2), Vector2(width, 15))
 	draw_rect(badge, Color(0.065, 0.049, 0.036, 0.95))
 	draw_rect(badge, Color("8a683a"), false, 1.0)
-	draw_string(_font, badge.position + Vector2(3, 12), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADING)
+	draw_string(_font, badge.position + Vector2(3, 12), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.ON_WORLD_HEADING)

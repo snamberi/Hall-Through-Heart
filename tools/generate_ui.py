@@ -15,7 +15,7 @@ import random
 import zlib
 from PIL import Image
 
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "ui")
+ROOT = os.environ.get("UI_OUT") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "ui")
 SCALE = 2
 
 
@@ -614,7 +614,9 @@ def main():
     button("button_disabled", C(T["button_disabled"]), IRON, _shift(T["button_disabled"], 1.2), _shift(T["button_disabled"], 0.8))
     tooltip()
     divider()
-    wheel()
+    # The menu wheel is shared by every style; it is drawn only with the base set.
+    if not os.environ.get("UI_OUT"):
+        wheel()
 
 
 if __name__ == "__main__":

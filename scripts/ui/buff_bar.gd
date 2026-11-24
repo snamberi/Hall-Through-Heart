@@ -62,7 +62,7 @@ func _draw() -> void:
 			words = "bond"
 			low = false
 		draw_string_outline(_font, Vector2(rect.position.x - 4.0, rect.end.y + 13.0), words, HORIZONTAL_ALIGNMENT_CENTER, CHIP + 8.0, 13, 3, Color(0, 0, 0, 0.8))
-		draw_string(_font, Vector2(rect.position.x - 4.0, rect.end.y + 13.0), words, HORIZONTAL_ALIGNMENT_CENTER, CHIP + 8.0, 13, UITheme.BAD if low else UITheme.TEXT)
+		draw_string(_font, Vector2(rect.position.x - 4.0, rect.end.y + 13.0), words, HORIZONTAL_ALIGNMENT_CENTER, CHIP + 8.0, 13, UITheme.ON_WORLD_BAD if low else UITheme.ON_WORLD)
 		index += 1
 	if _hover != "" and _player.buffs.active.has(_hover):
 		_draw_detail(_player.buffs.active[_hover])
@@ -100,4 +100,4 @@ func _draw_detail(buff: Dictionary) -> void:
 	var box := Rect2(Vector2(0, CHIP + 22.0), Vector2(width + 16.0, lines.size() * 18.0 + 10.0))
 	draw_style_box(UITheme.tooltip_box(), box)
 	for k in lines.size():
-		draw_string(_font, box.position + Vector2(8, 20 + k * 18.0), lines[k], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.HEADING if k == 0 else UITheme.TEXT)
+		draw_string(_font, box.position + Vector2(8, 20 + k * 18.0), lines[k], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.ON_WORLD_HEADING if k == 0 else UITheme.ON_WORLD)
