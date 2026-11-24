@@ -33,11 +33,14 @@ const PUDDLE := Color("4a6276")
 const PUDDLE_LIP := Color("8eaabb")
 const PUDDLE_DEEP := Color("27333f")
 const RIPPLE := Color("a6bccb")
+## The sun's light playing on a shallow bed, and the sand and pebbles there.
+const CAUSTIC := Color("cfe8e0")
+const BED := Color("8a7a5a")
 
 const SHADER := """
 shader_type canvas_item;
 // TEXTURE is the chunk's own mask (one texel a tile, two tiles of border):
-// red is land, green is ground that holds puddles.
+// red is land, green is ground that holds puddles, blue is shallow water.
 uniform sampler2D noise : repeat_enable, filter_linear;
 uniform float wave_time = 0.0;
 uniform float daylight = 1.0;
@@ -60,6 +63,8 @@ uniform vec4 puddle : source_color;
 uniform vec4 puddle_lip : source_color;
 uniform vec4 puddle_deep : source_color;
 uniform vec4 ripple : source_color;
+uniform vec4 caustic : source_color;
+uniform vec4 bed : source_color;
 varying vec2 world;
 
 const float TILE = 44.0;
@@ -128,9 +133,11 @@ void fragment() {
 	vec2 px = cell * 2.0 + 1.0;
 	vec2 per_world = TEXTURE_PIXEL_SIZE / TILE;
 	vec2 here = UV + (px - world) * per_world;
-	vec2 mask = texture(TEXTURE, here).rg;
+	vec3 mask3 = texture(TEXTURE, here).rgb;
+	vec2 mask = mask3.rg;
 	// The tile's own texel, exactly: land is land, water is water.
-	vec2 own = texture(TEXTURE, (floor(here / TEXTURE_PIXEL_SIZE) + 0.5) * TEXTURE_PIXEL_SIZE).rg;
+	vec3 own3 = texture(TEXTURE, (floor(here / TEXTURE_PIXEL_SIZE) + 0.5) * TEXTURE_PIXEL_SIZE).rgb;
+	vec2 own = own3.rg;
 	// How far out from the bank (in world units; below zero is land). The
 	// mask grades across one tile; past that, the land a tile further on
 	// grades the next.
@@ -149,6 +156,35 @@ void fragment() {
 	vec4 col = vec4(0.0);
 	float night = 1.0 - daylight;
 	if (d > 0.0) {
+		// --- depth: where the shallows shelve off into deep water a dark
+		// band runs along the drop; on the shallow bed itself, sand and
+		// pebbles show through and the sun's light plays over them in a
+		// moving net (caustics), in whole pixels and only by day.
+		float shallow = mask3.b;
+		if (own3.b < 0.5 && shallow > 0.12) {
+			float band = (shallow - 0.12) / 0.38;
+			if (band > 0.55 || dither < band / 0.55) {
+				col = over(col, vec4(0.0, 0.02, 0.06, 0.2));
+			}
+		} else if (own3.b > 0.5) {
+			float grit = hash12(cell + 3.0);
+			if (grit > 0.965 && d > 6.0) {
+				col = over(col, vec4(grit > 0.99 ? caustic.rgb : bed.rgb, 0.2));
+			}
+			// The net shows in drifting patches where the sun gets through,
+			// thin and broken, never as a pattern over the whole bed.
+			float patch = texture(noise, px / 220.0 + vec2(wave_time * 0.004, wave_time * 0.002)).r;
+			if (daylight > 0.1 && d > 6.0 && patch > 0.52) {
+				vec2 q = px / 34.0;
+				float a = abs(sin(q.x * 2.1 + wave_time * 0.7 + sin(q.y * 1.7 + wave_time * 0.5) * 1.5));
+				float b = abs(sin(q.y * 2.4 - wave_time * 0.6 + sin(q.x * 1.3 - wave_time * 0.4) * 1.7));
+				float net = min(a, b);
+				float edge = smoothstep(0.52, 0.66, patch);
+				if (net < 0.05 && dither < edge) {
+					col = over(col, vec4(caustic.rgb, (0.16 * clear_sky + 0.04) * daylight));
+				}
+			}
+		}
 		// --- the sky in the water
 		if (d > 10.0) {
 			if (clear_sky > 0.0 && daylight > 0.05) {
@@ -322,7 +358,8 @@ static func shared_material() -> ShaderMaterial:
 		material.shader = shader
 		material.set_shader_parameter("noise", texture)
 		for pair: Array in [["foam_hi", FOAM_HI], ["foam_mid", FOAM_MID], ["swell", SWELL], ["film", FILM], ["cloud", CLOUD], ["star", STAR],
-				["moon", MOON], ["puddle", PUDDLE], ["puddle_lip", PUDDLE_LIP], ["puddle_deep", PUDDLE_DEEP], ["ripple", RIPPLE]]:
+				["moon", MOON], ["puddle", PUDDLE], ["puddle_lip", PUDDLE_LIP], ["puddle_deep", PUDDLE_DEEP], ["ripple", RIPPLE],
+				["caustic", CAUSTIC], ["bed", BED]]:
 			material.set_shader_parameter(pair[0], pair[1])
 	return material
 
@@ -332,7 +369,7 @@ static func shared_material() -> ShaderMaterial:
 ## of the land are drawn over it. `type_at` gives the terrain of a tile.
 static func chunk_surface(origin: Vector2i, size: int, type_at: Callable) -> Node2D:
 	var span := size + BORDER * 2
-	var image := Image.create(span, span, false, Image.FORMAT_RG8)
+	var image := Image.create(span, span, false, Image.FORMAT_RGB8)
 	var any_water := false
 	var any_hollow := false
 	for y in span:
@@ -342,7 +379,7 @@ static func chunk_surface(origin: Vector2i, size: int, type_at: Callable) -> Nod
 			any_water = any_water or not land
 			var hollow := type in PUDDLE_GROUND
 			any_hollow = any_hollow or hollow
-			image.set_pixel(x, y, Color(1.0 if land else 0.0, 1.0 if hollow else 0.0, 0.0))
+			image.set_pixel(x, y, Color(1.0 if land else 0.0, 1.0 if hollow else 0.0, 1.0 if type == TerrainTiles.Type.SHALLOW_WATER else 0.0))
 	var node := ChunkSurface.new()
 	node.name = "Surface"
 	node.mask = ImageTexture.create_from_image(image)

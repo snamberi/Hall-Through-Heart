@@ -67,11 +67,14 @@ uniform sampler2D noise : repeat_enable, filter_linear;
 uniform vec4 tint : source_color = vec4(0.8, 0.82, 0.85, 1.0);
 uniform float density = 0.0;
 uniform vec2 anchor = vec2(0.0);
+// How fast the wisps travel: a lazy drift in fair weather, a driving sweep
+// in a sandstorm or blizzard.
+uniform vec2 flow = vec2(0.01, 0.003);
 
 void fragment() {
 	vec2 uv = (UV + anchor * 1.35) * vec2(1.1, 0.65);
-	float n = texture(noise, uv * 0.55 + vec2(TIME * 0.01, TIME * 0.003)).r;
-	float m = texture(noise, uv * 1.3 - vec2(TIME * 0.006, 0.0) + vec2(0.4, 0.2)).r;
+	float n = texture(noise, uv * 0.55 + TIME * flow).r;
+	float m = texture(noise, uv * 1.3 - TIME * flow * 0.6 + vec2(0.4, 0.2)).r;
 	float wisps = smoothstep(0.58, 0.92, n * 0.7 + m * 0.4) * density;
 	float clear = smoothstep(0.16, 0.42, length((UV - vec2(0.5)) * vec2(1.0, 1.25)));
 	COLOR = vec4(tint.rgb, wisps * clear);
@@ -98,7 +101,7 @@ const PARTICLES := {
 	"storm": {"color": Color(0.7, 0.8, 1.0, 0.65), "gravity": Vector2(260, 1100), "speed": 560.0, "size": 1.0, "amount": 420, "streak": true},
 	"snow_heavy": {"color": Color(1, 1, 1, 0.9), "gravity": Vector2(-20, 50), "speed": 30.0, "size": 2.5, "amount": 240},
 	"blizzard": {"color": Color(1, 1, 1, 0.95), "gravity": Vector2(-260, 70), "speed": 120.0, "size": 3.0, "amount": 420},
-	"sandstorm": {"color": Color(0.92, 0.8, 0.56, 0.75), "gravity": Vector2(300, 10), "speed": 160.0, "size": 2.5, "amount": 380},
+	"sandstorm": {"color": Color(0.58, 0.44, 0.26, 0.85), "gravity": Vector2(300, 10), "speed": 160.0, "size": 2.0, "amount": 380},
 	"embers_heavy": {"color": Color(1.0, 0.55, 0.25, 0.9), "gravity": Vector2(80, -30), "speed": 60.0, "size": 2.0, "amount": 200},
 	"snow": {"color": Color(1, 1, 1, 0.9), "gravity": Vector2(-12, 40), "speed": 20.0, "size": 2.5, "amount": 120},
 	"ash": {"color": Color(0.75, 0.72, 0.72, 0.8), "gravity": Vector2(10, 18), "speed": 15.0, "size": 2.0, "amount": 80},
@@ -119,6 +122,15 @@ var _material: ShaderMaterial
 var _particles: CPUParticles2D
 ## Rain and storms are drawn in whole pixels (RainFX), not as particles.
 const RAIN_FX := preload("res://scripts/effects/rain_fx.gd")
+## The light's mood through the day (scripts/effects/color_grade.gd).
+const COLOR_GRADE := preload("res://scripts/effects/color_grade.gd")
+var _grade: ColorRect
+## Storms that sweep across the screen in driving bands: [flow, density].
+const SWEEPS := {
+	"Sandstorm": [Vector2(0.11, 0.014), 0.75], "Blizzard": [Vector2(0.085, 0.022), 0.6],
+	"Ash storm": [Vector2(0.05, -0.012), 0.5], "Dust": [Vector2(0.04, 0.006), 0.22],
+	"Ashfall": [Vector2(0.012, 0.01), 0.16],
+}
 var _rain: Node2D
 var _kind := ""
 var _check_left := 0.0
@@ -136,6 +148,7 @@ var _mist: ColorRect
 var _mist_material: ShaderMaterial
 var _haze_density := 0.0
 var _haze_target := 0.0
+var _mist_density := 0.0
 
 
 func setup(player: Player, world: World, day_night: DayNight) -> void:
@@ -153,6 +166,9 @@ func setup(player: Player, world: World, day_night: DayNight) -> void:
 	texture.height = 256
 	var shader := Shader.new()
 	shader.code = FOG_SHADER
+	# The colour grade goes first, so it works on the world alone.
+	_grade = COLOR_GRADE.new()
+	add_child(_grade)
 	_material = ShaderMaterial.new()
 	_material.shader = shader
 	_material.set_shader_parameter("noise", texture)
@@ -230,12 +246,19 @@ func _process(delta: float) -> void:
 	_haze_density = lerpf(_haze_density, _haze_target, 0.5 * delta)
 	_haze.density = _haze_density
 	_haze.tint = _tint
-	_mist_material.set_shader_parameter("density", _haze_density * 0.5 if GameSettings.fog and GameSettings.shader_level() >= 2 else 0.0)
+	var sweep: Array = SWEEPS.get(Atmosphere.weather, [Vector2(0.01, 0.003), 0.0])
+	_mist_density = lerpf(_mist_density, maxf(_haze_density * 0.5, float(sweep[1])), 0.5 * delta)
+	# Haze needs fog on; a storm's driving bands are weather, shown at any
+	# shader level but off.
+	var shown := _mist_density if (GameSettings.fog and GameSettings.shader_level() >= 2) else (float(sweep[1]) * minf(_mist_density / maxf(float(sweep[1]), 0.01), 1.0) if GameSettings.shader_level() >= 1 else 0.0)
+	_mist_material.set_shader_parameter("density", shown)
+	_mist_material.set_shader_parameter("flow", sweep[0])
 	_mist_material.set_shader_parameter("tint", _tint.lightened(0.1))
+	_grade.apply(_day_night.time, 0.0 if _player.indoors or GameSettings.shader_level() < 1 else 1.0, Atmosphere.weather, DayNight.blood_moon)
 	if camera:
 		var view := get_viewport().get_visible_rect().size / camera.zoom
 		_mist_material.set_shader_parameter("anchor", camera.get_screen_center_position() / view)
-	_mist.visible = _haze_density > 0.005
+	_mist.visible = _mist_density > 0.005
 
 
 func _read_place() -> void:
