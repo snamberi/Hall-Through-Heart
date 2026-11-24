@@ -314,7 +314,7 @@ func _bank(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 ## posts (timber in soil, stone in rock).
 func _steps(at: Vector2, drop: int, above: int, x: int, y: int) -> void:
 	var height := minf(STEP * drop, TILE - 4.0)
-	var road := _type(x, y) == T.PATH or above == T.PATH
+	var road := _type(x, y) in [T.PATH, T.TRACK] or above in [T.PATH, T.TRACK]
 	var tread := Color("a39478") if road else Color("8e6a42")
 	var riser := Color("6a5a44") if road else Color("553e26")
 	var post := Color("4a3626")

@@ -302,7 +302,7 @@ static var material: ShaderMaterial
 ## Ground that holds puddles in the rain (not sand, snow or salt, which
 ## drink it or freeze it).
 const PUDDLE_GROUND: Array[int] = [TerrainTiles.Type.DARK_GRASS, TerrainTiles.Type.DEAD_GRASS, TerrainTiles.Type.MUD, TerrainTiles.Type.BOG,
-	TerrainTiles.Type.PATH, TerrainTiles.Type.ASH, TerrainTiles.Type.THORN, TerrainTiles.Type.CRIMSON, TerrainTiles.Type.FUNGAL, TerrainTiles.Type.ROCK]
+	TerrainTiles.Type.PATH, TerrainTiles.Type.TRACK, TerrainTiles.Type.ASH, TerrainTiles.Type.THORN, TerrainTiles.Type.CRIMSON, TerrainTiles.Type.FUNGAL, TerrainTiles.Type.ROCK]
 const BORDER := 2
 
 

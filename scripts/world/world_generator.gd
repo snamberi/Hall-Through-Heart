@@ -167,7 +167,7 @@ func _broad_highland(cell: Vector2i) -> bool:
 func is_stairs(cell: Vector2i) -> bool:
 	if not is_cliff_base(cell) or CliffFaces.level(tile_type_at(cell + Vector2i.UP)) > 0:
 		return false
-	if tile_type_at(cell) == T.PATH or tile_type_at(cell + Vector2i.UP) == T.PATH:
+	if tile_type_at(cell) in [T.PATH, T.TRACK] or tile_type_at(cell + Vector2i.UP) in [T.PATH, T.TRACK]:
 		return true
 	return posmod(hash(Vector3i(cell.x, cell.y, world_seed + 5)), 9) == 0 and is_cliff_base(cell + Vector2i.LEFT) and is_cliff_base(cell + Vector2i.RIGHT)
 
@@ -449,7 +449,9 @@ func _compute(cell: Vector2i) -> int:
 		# stops them.
 		if natural == T.DEEP_WATER:
 			return natural
-		return T.PLANK if natural == T.SHALLOW_WATER else T.PATH
+		# Out in the country a road is a worn track of earth; the cobbles
+		# are kept for the villages' own streets.
+		return T.PLANK if natural == T.SHALLOW_WATER else T.TRACK
 	return natural
 
 

@@ -75,7 +75,7 @@ func _site(region: Vector2i, size: int, chance: float, salt: int) -> Variant:
 	for y in range(-6, 7, 3):
 		for x in range(-7, 8, 3):
 			var cell := center + Vector2i(x, y)
-			if not generator.is_dry_land(cell) or generator.tile_type_at(cell) in [T.PATH, T.VOIDSCAR]:
+			if not generator.is_dry_land(cell) or generator.tile_type_at(cell) in [T.PATH, T.TRACK, T.VOIDSCAR]:
 				return null
 	return center
 

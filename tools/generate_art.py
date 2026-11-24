@@ -1856,6 +1856,7 @@ TILES = [
     ("cave_floor", "mud", "34323a", "45434c", "24222a", "55535e"),
     ("peak", "peak", "7c7986", "a4a2ae", "55525e", "eef2f6"),
     ("path", "path", "7a6448", "8e7656", "5c4a34", "a6a2b0"),
+    ("track", "track", "6a5a40", "806c4e", "4e4030", "9a8a6a"),
 ]
 VARIANTS = 12
 # Variants below this are plain ground; the rest each carry one feature.
@@ -2373,7 +2374,7 @@ def _fringe_family(row):
     name, style = TILES[row][0], TILES[row][1]
     if style == "grass":
         return "grass"
-    if style in ("ash", "sand", "snow", "cracked", "cinder"):
+    if style in ("ash", "sand", "snow", "cracked", "cinder", "track"):
         return "powder"
     if style in ("rock", "mountain", "peak") or name in ("cave_floor", "path"):
         return "stone"

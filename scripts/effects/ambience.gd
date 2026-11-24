@@ -80,7 +80,7 @@ func _listen() -> void:
 	var warm_night := not inside and _day_night.is_night() and storm == "" and not tile in [T.SNOW, T.FROSTPINE, T.PEAK, T.SALT, T.VOIDSCAR, T.CINDER, T.ASH]
 	_wanted["amb_night"] = 1.0 if warm_night else 0.0
 	# Birdsong and the hum of insects on a fair day in green country.
-	var green := tile in [T.DARK_GRASS, T.DEAD_GRASS, T.THORN, T.FROSTPINE, T.FUNGAL, T.PATH]
+	var green := tile in [T.DARK_GRASS, T.DEAD_GRASS, T.THORN, T.FROSTPINE, T.FUNGAL, T.PATH, T.TRACK]
 	_wanted["amb_day"] = 1.0 if not inside and green and not _day_night.is_night() and storm == "" else 0.0
 	_wanted["amb_cave"] = 1.0 if cave else 0.0
 	# The nearest fire, louder the closer.

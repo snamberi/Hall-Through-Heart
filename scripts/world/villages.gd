@@ -288,7 +288,7 @@ func _build(center: Vector2i) -> Array:
 			Vector2i(-3, 3), Vector2i(-5, 3), Vector2i(5, 4), Vector2i(5, -3), Vector2i(2, -6), Vector2i(-6, -7), Vector2i(-7, 3)]:
 		used[center + offset] = true
 	var decor := func(kind: int, cell: Vector2i, solid: float = 8.0) -> Prop:
-		if used.has(cell) or _world.generator.tile_type_at(cell) == T.PATH or not _world.generator.is_dry_land(cell):
+		if used.has(cell) or _world.generator.tile_type_at(cell) in [T.PATH, T.TRACK] or not _world.generator.is_dry_land(cell):
 			return null
 		used[cell] = true
 		return add.call(Prop.create_decor(kind, _at(cell), solid))

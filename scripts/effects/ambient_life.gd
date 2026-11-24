@@ -7,9 +7,9 @@ extends Node2D
 ## turning over the desert. None of it can be touched or fought.
 
 const T := TerrainTiles.Type
-const GREEN: Array[int] = [T.DARK_GRASS, T.DEAD_GRASS, T.THORN, T.PATH]
+const GREEN: Array[int] = [T.DARK_GRASS, T.DEAD_GRASS, T.THORN, T.PATH, T.TRACK]
 const ROT: Array[int] = [T.BOG, T.MUD, T.TAR, T.FUNGAL, T.CRIMSON]
-const GLOW_LANDS: Array[int] = [T.DARK_GRASS, T.DEAD_GRASS, T.BOG, T.FROSTPINE, T.THORN, T.FUNGAL, T.PATH, T.MUD]
+const GLOW_LANDS: Array[int] = [T.DARK_GRASS, T.DEAD_GRASS, T.BOG, T.FROSTPINE, T.THORN, T.FUNGAL, T.PATH, T.TRACK, T.MUD]
 ## Most of each kind about at once.
 const LIMITS := {"bee": 5, "butterfly": 4, "fly": 12, "firefly": 22, "perched": 4, "vulture": 2}
 const BUTTERFLY_COLOURS: Array[Color] = [Color("f0d050"), Color("f08a40"), Color("e8e8f0"), Color("70b0f0"), Color("e070b0")]

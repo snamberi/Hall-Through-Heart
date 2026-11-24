@@ -826,6 +826,51 @@ def paint_path(tile, field, variant):
         tuft(tile, x + 2, y + 5, [(30, 44, 30, 255), (44, 64, 40, 255), (60, 86, 52, 255), (84, 112, 66, 255), (120, 144, 86, 255)], 2)
 
 
+def paint_track(tile, field, variant):
+    """A wayfarers' track across the country: earth trodden hard and pale,
+    scuffed with prints, pebbles kicked aside, the odd sprig of grass."""
+    t = tile.t
+    base_fill(tile, field, (0.3, 0.72), grain=0.03, seed=variant)
+    r = tile.r
+    # Prints: little dark ovals where feet and hooves have pressed in.
+    for _ in range(r.randrange(3, 7)):
+        x, y = tile.spot(4, N - 6)
+        tile.put(x, y, t[1])
+        tile.put(x + 1, y, t[1])
+        tile.put(x, y + 1, t[1])
+        tile.put(x + 1, y + 1, t[0] if r.random() < 0.4 else t[1])
+        tile.put(x, y - 1, t[3])
+    # Scuffs: short pale streaks where the ground is worn smooth.
+    for _ in range(4):
+        x, y = tile.spot(4, N - 10)
+        for k in range(r.randrange(3, 6)):
+            tile.put(x + k, y, t[3])
+    for _ in range(r.randrange(2, 5)):
+        x, y = tile.spot(4, N - 6)
+        stone(tile, x, y, 2, 2, [hsv_shift(c, ds=-0.25, k=1.05) for c in t])
+    grass = [(30, 44, 30, 255), (44, 64, 40, 255), (60, 86, 52, 255), (84, 112, 66, 255), (120, 144, 86, 255)]
+    if r.random() < 0.5:
+        x, y = tile.spot(5, N - 4)
+        tuft(tile, x, y, grass, 2)
+    if variant >= 6:
+        feature = variant % 3
+        if feature == 0:
+            x, y = tile.spot(8, N - 16)
+            puddle(tile, x, y, 10, 5, (60, 72, 84, 255), (44, 52, 62, 255), t[0], (130, 150, 170, 255))
+        elif feature == 1:
+            x, y = tile.spot(10, N - 16)
+            stone(tile, x, y, 6, 4, [hsv_shift(c, ds=-0.3, k=1.0) for c in t])
+            tuft(tile, x + 6, y + 5, grass, 3)
+        else:
+            # A lost horseshoe.
+            x, y = tile.spot(10, N - 12)
+            iron = (120, 120, 128, 255)
+            for dx, dy in ((0, 0), (0, 1), (0, 2), (1, 3), (2, 3), (3, 3), (4, 2), (4, 1), (4, 0)):
+                tile.put(x + dx, y + dy, iron)
+                tile.darken(x + dx + 1, y + dy + 1)
+            tile.put(x, y, (170, 170, 178, 255))
+
+
 def paint_floor(tile, field, variant):
     """Plain floor for anything else: the old tile, mottled."""
     base_fill(tile, field, (0.4, 0.62), grain=0.05, seed=variant)
@@ -851,6 +896,7 @@ PAINTERS = {
     "mountain": paint_rock,
     "peak": lambda tl, f, v: paint_rock(tl, f, v, peak=True),
     "path": paint_path,
+    "track": paint_track,
 }
 
 
