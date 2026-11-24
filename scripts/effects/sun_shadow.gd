@@ -20,6 +20,10 @@ uniform vec4 lights[8];
 uniform int light_count = 0;
 uniform float light_power = 0.0;
 varying float shade;
+// Where this point lands in the world, and how high above the feet it was
+// on the caster, for snapping and thinning in fragment().
+varying vec2 world;
+varying float height;
 
 void vertex() {
 	// Local y = 0 is the ground line. Everything above it is laid down
@@ -57,10 +61,36 @@ void vertex() {
 	} else {
 		VERTEX = sun;
 	}
+	world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	height = -rise;
+}
+
+// A 4x4 ordered dither, 0..1.
+float bayer(vec2 p) {
+	int x = int(mod(p.x, 4.0));
+	int y = int(mod(p.y, 4.0));
+	int i = x + y * 4;
+	int m[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+	return (float(m[i]) + 0.5) / 16.0;
 }
 
 void fragment() {
-	COLOR = vec4(0.03, 0.03, 0.08, texture(TEXTURE, UV).a * shade);
+	// The shadow is leaned by a shear, which would smear the caster's pixels
+	// across screen pixels. Instead each world pixel takes the one texel
+	// that falls on its centre, so the shadow is made of whole pixels.
+	vec2 uv = UV;
+	mat2 w = mat2(dFdx(world), dFdy(world));
+	float det = determinant(w);
+	if (abs(det) > 1e-6) {
+		vec2 snapped = floor(world) + 0.5;
+		uv = UV + mat2(dFdx(UV), dFdy(UV)) * inverse(w) * (snapped - world);
+	}
+	float inside = step(0.5, texture(TEXTURE, uv).a);
+	// Dark at the feet; the far end of a long shadow thins out in an
+	// ordered dither rather than a soft fade.
+	float thin = clamp((height - 26.0) / 80.0, 0.0, 0.7);
+	float keep = step(thin, bayer(floor(world)));
+	COLOR = vec4(0.03, 0.03, 0.08, inside * keep * shade);
 }
 """
 static var shared: ShaderMaterial = _make_material()
@@ -89,7 +119,7 @@ static func update(time: float, darkness: float, indoors: bool, lightning: float
 		return
 	var skew := 0.45
 	var squash := 0.45
-	var strength := 0.08 + (1.0 - darkness) * 0.28
+	var strength := 0.16 + (1.0 - darkness) * 0.36
 	if time > 0.24 and time < 0.78:
 		# The sun crosses from east to west: long shadows at either end of the day.
 		var sun := clampf((time - 0.24) / 0.54, 0.0, 1.0)
