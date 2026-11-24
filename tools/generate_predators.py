@@ -14,7 +14,10 @@ Drawn here:
 - frost_wolf: a pale ice-blue wolf, ice shards along its spine;
 - rot_hound: a mangy, starved hound, its ribs showing through the hide;
 - sand_scorpion: a plated scorpion, its tail arched over its back;
-- bog_slime: a murky bog slime that squashes, stretches and hops.
+- bog_slime: a murky bog slime that squashes, stretches and hops;
+- husk: a hunched, hollow thing on two legs, bone spurs up its back,
+  long arms ending in claws, its jaw hanging; it swipes with a smear of
+  pale light and falls forward onto its face.
 
 Each sheet has the nine rows of EnemyAnimator.ROWS plus the pets' rest,
 scratch and stretch, 96-pixel frames, facing right (the game mirrors it).
@@ -813,6 +816,217 @@ SCORPIONS = {
 }
 
 
+# ================================================================== husk
+def _ik(a, target, l1, l2, bend):
+    """The middle joint of a two-part limb from a to target: bend +1 bows
+    it to the right of the a->target line (screen), -1 to the left."""
+    dx, dy = target[0] - a[0], target[1] - a[1]
+    d = max(min(math.hypot(dx, dy), l1 + l2 - 0.01), abs(l1 - l2) + 0.01)
+    k = (l1 * l1 - l2 * l2 + d * d) / (2 * d)
+    h = math.sqrt(max(l1 * l1 - k * k, 0.0))
+    ux, uy = dx / max(math.hypot(dx, dy), 1e-6), dy / max(math.hypot(dx, dy), 1e-6)
+    return (a[0] + ux * k - uy * h * bend, a[1] + uy * k + ux * h * bend)
+
+
+def husk_pose(**kw):
+    p = dict(bx=0.0, by=0.0, lean=0.0, hx=0.0, hy=0.0, jaw=0.3, eye="open",
+             near_hand=(4.0, 13.0), far_hand=(2.0, 12.0), near_foot=(2.0, 0.0), far_foot=(-2.0, 0.0),
+             kneel=0.0, lying=0.0, smear=0, shadow=1.0)
+    p.update(kw)
+    return p
+
+
+def _shamble():
+    out = []
+    for i in range(8):
+        a = i / 8 * math.tau
+        s, c = math.sin(a), math.cos(a)
+        out.append(husk_pose(by=-1 if i % 4 in (1, 2) else 0, lean=0.5 * s,
+                             near_foot=(3.5 * s, max(0.0, c) * 2.5), far_foot=(-3.5 * s, max(0.0, -c) * 2.5),
+                             near_hand=(4 - 3 * s, 13 - abs(s)), far_hand=(2 + 3 * s, 12 - abs(s)), jaw=0.3 + 0.1 * c, hy=0.5 * (i % 4 == 2)))
+    return out
+
+
+HUSK_ANIMS = {
+    "idle": [husk_pose(), husk_pose(by=0.5, jaw=0.4), husk_pose(by=1, jaw=0.45, near_hand=(4, 14)), husk_pose(by=0.5, jaw=0.35)],
+    "walk": _shamble(),
+    "windup": [husk_pose(lean=-k * 0.5, bx=-k * 0.4, jaw=0.3 + k * 0.12, near_hand=(4 - k * 2.2, 13 - k * 5.2), far_hand=(3 + k * 0.6, 12 - k * 1.5),
+                         near_foot=(2 + k * 0.4, 0), far_foot=(-2 - k * 0.6, 0), hy=-k * 0.4)
+               for k in (0, 1, 2, 3, 3.6, 4)],
+    "lunge": [husk_pose(lean=1, bx=1, jaw=0.9, near_hand=(10, -4), far_hand=(4, 10), near_foot=(4, 0), far_foot=(-3, 0), smear=1),
+              husk_pose(lean=3, bx=3, jaw=1.0, near_hand=(14, 6), far_hand=(5, 9), near_foot=(5, 0), far_foot=(-4, 0), smear=2),
+              husk_pose(lean=3.5, bx=3, jaw=0.8, near_hand=(10, 15), far_hand=(6, 10), near_foot=(5, 0), far_foot=(-4, 0), smear=3),
+              husk_pose(lean=2.5, bx=2, jaw=0.6, near_hand=(7, 16), far_hand=(4, 12), near_foot=(4, 0), far_foot=(-3, 0)),
+              husk_pose(lean=1.2, bx=1, jaw=0.4, near_hand=(5, 14), far_hand=(3, 12), near_foot=(3, 0), far_foot=(-2, 0)),
+              husk_pose(jaw=0.3)],
+    "hurt": [husk_pose(lean=-2.5, bx=-3, hx=-1, hy=-1, jaw=0.9, eye="shut", near_hand=(0, 10), far_hand=(-1, 10)),
+             husk_pose(lean=-1.5, bx=-3, by=1, jaw=0.6, eye="shut", near_hand=(1, 12), far_hand=(0, 11)),
+             husk_pose(bx=-1, jaw=0.4)],
+    "death": [husk_pose(lean=-2.5, bx=-2, jaw=1.0, eye="shut", near_hand=(0, 9), far_hand=(-1, 9)),
+              husk_pose(lean=-1, bx=-2, by=1, jaw=0.8, eye="shut", near_hand=(2, 13), far_hand=(1, 13)),
+              husk_pose(bx=-2, kneel=0.5, jaw=0.7, eye="shut", near_hand=(5, 13), far_hand=(4, 13)),
+              husk_pose(bx=-2, kneel=1.0, lean=2, jaw=0.7, eye="shut", near_hand=(6, 11), far_hand=(5, 11)),
+              husk_pose(bx=-2, kneel=1.0, lying=0.5, jaw=0.6, eye="dead", shadow=1.1),
+              husk_pose(bx=-2, lying=1.0, jaw=0.5, eye="dead", shadow=1.3),
+              husk_pose(bx=-2, lying=1.0, jaw=0.5, eye="dead", shadow=1.3),
+              husk_pose(bx=-2, lying=1.0, jaw=0.5, eye="dead", shadow=1.3)],
+    "rest": [husk_pose(kneel=1.0, jaw=0.3, near_hand=(6, 12), far_hand=(5, 12)), husk_pose(kneel=1.0, by=0.5, jaw=0.35, near_hand=(6, 12), far_hand=(5, 12)),
+             husk_pose(kneel=1.0, by=0.5, jaw=0.4, eye="shut", near_hand=(6, 12), far_hand=(5, 12)), husk_pose(kneel=1.0, jaw=0.35, eye="shut", near_hand=(6, 12), far_hand=(5, 12))],
+    "scratch": [husk_pose(hx=1, hy=1, jaw=0.6), husk_pose(hx=-1, hy=0, jaw=0.2), husk_pose(hx=1, hy=1, jaw=0.7), husk_pose(hx=0, hy=0, jaw=0.3)],
+    "stretch": [husk_pose(), husk_pose(lean=-2, jaw=0.7, near_hand=(3, -6), far_hand=(1, -5)), husk_pose(lean=-3, jaw=1.0, eye="shut", near_hand=(2, -10), far_hand=(0, -9)),
+                husk_pose(lean=-1, jaw=0.5, near_hand=(4, 4), far_hand=(2, 5))],
+}
+
+
+def husk(spec, p):
+    cv = Canvas()
+    skin, far_skin = spec["skin"], darker(spec["skin"], 0.74)
+    bone = spec["bone"]
+    lying, kneel = p["lying"], p["kneel"]
+    rx = 44 + p["bx"]
+    cv.shadow(rx + 2 + lying * 6, (11 + lying * 9) * p["shadow"])
+    # Hips and shoulders: stooped forward, lower when kneeling, on the
+    # ground when lying.
+    hip_y = GROUND - 14 + p["by"] + kneel * 6
+    hip = (rx, hip_y)
+    sh = (rx + 6 + p["lean"], hip_y - 13 + abs(p["lean"]) * 0.15)
+    if lying > 0:
+        hip = (hip[0] * (1 - lying) + (rx - 4) * lying, hip[1] * (1 - lying) + (GROUND - 5) * lying)
+        sh = (sh[0] * (1 - lying) + (rx + 10) * lying, sh[1] * (1 - lying) + (GROUND - 6) * lying)
+    head = (sh[0] + 7 + p["hx"] + lying * 2, sh[1] - 1 + p["hy"] + lying * 1.5)
+
+    def leg(far):
+        tones = far_skin if far else skin
+        ox = -2 if far else 0
+        h = (hip[0] + ox, hip[1])
+        if lying >= 0.5:
+            knee = (h[0] - 7, GROUND - 4 + (1 if far else 0))
+            foot = (h[0] - 13, GROUND - 3 + (1 if far else 0))
+        elif kneel > 0:
+            fx, up = p["far_foot" if far else "near_foot"]
+            knee = (h[0] + 5 - kneel * 1, min(GROUND - 2, h[1] + 7))
+            foot = (h[0] - 4 - kneel * 3, GROUND - 1.5)
+        else:
+            fx, up = p["far_foot" if far else "near_foot"]
+            foot = (h[0] + fx + 1, GROUND - 1.5 - up)
+            knee = _ik(h, foot, 7.5, 7.5, -1)
+        cv.paint(union(capsule(h[0], h[1], knee[0], knee[1], 3.0, 2.0), capsule(knee[0], knee[1], foot[0], foot[1], 2.0, 1.4)), tones,
+                 seam=None if far else tones[4], only=None if far else cv.body)
+        # A long bony foot with two claw toes.
+        if lying < 0.5:
+            cv.paint(capsule(foot[0] - 1, foot[1], foot[0] + 3.5, foot[1] + 0.5, 1.3, 1.0), tones)
+            cv.put(foot[0] + 4.5, foot[1] + 0.5, bone[2])
+            cv.put(foot[0] + 4.5, foot[1] - 0.5, bone[1])
+
+    def arm(far):
+        tones = far_skin if far else skin
+        o = (-2.5, -1) if far else (0, 0)
+        s = (sh[0] + o[0], sh[1] + 2 + o[1])
+        if lying >= 0.5:
+            hand = (s[0] + 12, GROUND - 2 - (1 if far else 0))
+            elbow = (s[0] + 6, GROUND - 3)
+        else:
+            hx, hy = p["far_hand" if far else "near_hand"]
+            hand = (s[0] + hx, s[1] + hy)
+            elbow = _ik(s, hand, 8.5, 8.5, 1 if hx >= 0 else -1)
+        cv.paint(union(capsule(s[0], s[1], elbow[0], elbow[1], 2.4, 1.6), capsule(elbow[0], elbow[1], hand[0], hand[1], 1.6, 1.3)), tones,
+                 seam=None if far else tones[4], only=None if far else cv.body)
+        # The knob of the elbow, and three long claws raking from the hand.
+        cv.put(elbow[0] - 0.5, elbow[1] - 1.5, tones[1] if not far else tones[2])
+        ang = math.atan2(hand[1] - elbow[1], hand[0] - elbow[0])
+        cv.paint(ellipse(hand[0], hand[1], 1.6, 1.4), tones)
+        claws = bone if not far else darker(bone, 0.8)
+        for k in (-1, 0, 1):
+            a = ang + k * 0.55
+            for j in range(1, 5):
+                cv.put(hand[0] + math.cos(a) * (1.2 + j), hand[1] + math.sin(a) * (1.2 + j), claws[1] if j < 3 else claws[3])
+        return hand, ang
+
+    leg(True)
+    arm(True)
+    # The body: a sunken belly, a hunched back and a narrow chest, one mass.
+    mid = ((hip[0] + sh[0]) / 2, (hip[1] + sh[1]) / 2)
+    flat = lying
+    body = union(
+        ellipse(hip[0] + 0.5, hip[1] - 1, 5.0 + flat * 1.5, 4.5 - flat * 1.0),
+        ellipse(mid[0] - 2.5 + flat * 1, mid[1] - 2 + flat * 2.5, 6.5 + flat * 2, 6.5 - flat * 2.5),
+        ellipse(sh[0] - 0.5, sh[1] + 2.5, 5.5 + flat * 1.5, 5.0 - flat * 1.2),
+    )
+    cv.paint(body, skin)
+    cv.body = body[0].copy()
+    # Ribs pressed through the side, a pale scar, a patch of moss.
+    for k in range(3):
+        x = int(mid[0] + 1 - k * 2.4)
+        for j in range(4):
+            y = int(mid[1] + j - (1 if lying < 0.5 else 0))
+            if 0 <= y < F and cv.body[y, x] and cv.body[y, x - 1]:
+                cv.rgba[y, x] = skin[1] if j < 2 else skin[2]
+                cv.rgba[y, x - 1] = skin[4]
+    # Lichen grown on the shoulder.
+    for dx, dy, k in ((-2, -3, 1), (-1, -3, 2), (-3, -2, 2), (0, -4, 0), (-2, -2, 3)):
+        x, y = int(sh[0] + dx), int(sh[1] + dy + 2)
+        if 0 <= y < F and 0 <= x < F and cv.body[y, x]:
+            cv.rgba[y, x] = spec["moss"][k]
+    # Bone spurs breaking out along the hunched spine.
+    spine_top = [(hip[0] - 3 + (sh[0] - hip[0]) * t, mid[1] - 8.5 + flat * 5 + (sh[1] - hip[1]) * (t - 0.5) * 0.6) for t in (0.15, 0.4, 0.65, 0.88)]
+    for k, (x, y) in enumerate(spine_top):
+        h = (2.5 + (1.5 if k in (1, 2) else 0)) * (1 - flat * 0.5)
+        lean = -1.2 - flat
+        cv.paint(polygon([(x - 1.4, y + 1.5), (x + lean, y - h), (x + 0.2, y + 1.5)]), [bone[1]] * 5)
+        cv.paint(polygon([(x + 0.2, y + 1.5), (x + lean, y - h), (x + 1.6, y + 1.5)]), [bone[3]] * 5)
+    leg(False)
+    # The head: a hollow skull hung forward, the jaw dropped open.
+    cv.paint(capsule(sh[0] + 1, sh[1] + 1, head[0] - 2, head[1] + 1, 2.6, 2.2), skin)
+    jaw = p["jaw"]
+    cv.paint(ellipse(head[0], head[1], 5.0, 5.2), skin)
+    # Brow ridge shading and the deep socket with its cold light.
+    ex, ey = head[0] + 1.5, head[1] - 1
+    cv.paint(ellipse(ex, ey, 1.9, 1.7), [spec["socket"]] * 5)
+    if p["eye"] == "open":
+        cv.put(ex + 0.5, ey, spec["eye"])
+        cv.put(ex + 1.5, ey, spec["eye_dim"])
+    elif p["eye"] == "dead":
+        cv.put(ex - 0.5, ey - 0.5, skin[4])
+        cv.put(ex + 1, ey + 1, skin[4])
+    # The jaw hangs from the back of the skull: a dark maw, broken teeth.
+    jy = head[1] + 2.5 + jaw * 3.5
+    cv.paint(capsule(head[0] - 1, head[1] + 2.5, head[0] + 4, jy, 1.0 + jaw * 1.4, 0.8 + jaw), [spec["maw"]] * 5)
+    cv.paint(capsule(head[0] - 2, head[1] + 3.5, head[0] + 3.5, jy + 1.5, 1.6, 1.3), darker(skin, 0.85))
+    for k in range(3):
+        t = 0.25 + k * 0.3
+        cv.put(head[0] + 4.5 * t, head[1] + 2.2 + (jy - head[1] - 2.2) * 0.0, bone[0])
+        if k != 1:
+            cv.put(head[0] - 0.5 + 4.5 * t, jy + 0.2, bone[1])
+    if jaw > 0.5 and lying < 0.5:
+        for k in range(2 + int(jaw * 2)):
+            cv.put(head[0] + 2, jy + 2 + k, spec["drool"])
+    hand, ang = arm(False)
+    # The swipe's smear: a curved band of pale light behind the claws.
+    if p["smear"]:
+        cx_, cy_ = sh[0] + 1, sh[1] + 3
+        r = 15.5
+        a0 = {1: (-1.9, -0.9), 2: (-1.2, 0.3), 3: (-0.4, 1.1)}[p["smear"]]
+        steps = 22
+        for k in range(steps + 1):
+            a = a0[0] + (a0[1] - a0[0]) * k / steps
+            for w in range(3):
+                rr = r - w
+                x, y = cx_ + math.cos(a) * rr, cy_ + math.sin(a) * rr
+                xi, yi = int(x), int(y)
+                if 0 <= xi < F and 0 <= yi < F and cv.layer[yi, xi] < 0:
+                    cv.put(x, y, spec["smear"][min(w + (0 if k > steps * 0.4 else 1), 2)])
+    cv.outline(spec["out"])
+    return cv.image()
+
+
+HUSKS = {
+    "husk": dict(skin=ramp("a4acb8", "7e8696", "5e6474", "42464f", "2c2e36"), out=C("141218"),
+                 bone=ramp("f4ecd4", "dcd0b0", "b4a888", "8a7e62", "5e5440"), moss=ramp("9ac860", "74a040", "547a2e", "3a5a20", "263c14"),
+                 socket=C("0e0c12"), eye=C("9affd0"), eye_dim=C("3a9a78"), maw=C("2a0a0e"), drool=C("b8303a"),
+                 smear=[C("f4f0e8"), C("c8c4c0"), C("8e8a90")]),
+}
+
+
 # ================================================================== sheets
 def sheet(draw, spec, anims):
     img = Image.new("RGBA", (8 * F, len(ROWS) * F), (0, 0, 0, 0))
@@ -831,17 +1045,25 @@ def ALL():
         out[name] = (slime, spec, SLIME_ANIMS)
     for name, spec in SCORPIONS.items():
         out[name] = (scorpion, spec, SCORP_ANIMS)
+    for name, spec in HUSKS.items():
+        out[name] = (husk, spec, HUSK_ANIMS)
     return out
 
 
-NAMES = ["frost_wolf", "rot_hound", "sand_scorpion", "bog_slime"]
+NAMES = ["frost_wolf", "rot_hound", "sand_scorpion", "bog_slime", "husk"]
+
+
+def path_of(name):
+    if name == "husk":
+        return os.path.join(ROOT, "assets", "sprites", "husk_sheet.png")
+    return os.path.join(OUT, name + ".png")
 
 
 def main(only=None):
     for name, (draw, spec, anims) in ALL().items():
         if only and name not in only:
             continue
-        sheet(draw, spec, anims).save(os.path.join(OUT, name + ".png"))
+        sheet(draw, spec, anims).save(path_of(name))
     print("predators drawn:", ", ".join(n for n in NAMES if not only or n in only))
 
 
