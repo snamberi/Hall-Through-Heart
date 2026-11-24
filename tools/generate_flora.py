@@ -3554,7 +3554,10 @@ DECOR = ["floor", "rubble", "statue", "brazier", "banner", "bone_pile", "crate",
          # Each thing its own art: the ring of a henge is not made of waystones.
          "menhir", "lever", "answer_tablet",
          # The waygate the player builds, linked to the waystones.
-         "waygate"]
+         "waygate",
+         # Furnishings of the peoples: elves, dwarves and goblins at home.
+         "elf_lamp", "elf_hanging", "elf_basin", "dwarf_keg", "dwarf_table", "dwarf_trophy",
+         "goblin_totem", "goblin_scrap", "goblin_bed"]
 
 
 def sheet(images, w, h):

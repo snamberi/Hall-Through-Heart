@@ -367,3 +367,135 @@ PROPS = {
     "fireplace": prop_fireplace, "fountain": prop_fountain, "candles": prop_candles, "weapon_rack": prop_weapon_rack,
     "cage": prop_cage,
 }
+
+
+# --- furnishings for the peoples (phase 5 interiors) ---------------------------
+
+PALE = ramp("e8dcc0", "c8b490", "967e5a")
+LEAFG = ramp("9ad070", "5a9a48", "34603a")
+MOON = ramp("f0f8ff", "b8d8f0", "7aa0c8")
+HIDE = ramp("b08a5a", "86643c", "5a4026")
+SCRAP = ramp("9a9488", "6e6a60", "46423c")
+
+
+def prop_elf_lamp(c):
+    # A slender pale-wood stand twined with a vine, holding a moon-glass lamp.
+    c.shadow(32, 60, 8, 2, 90)
+    glow(c, 32, 16, 14, (190, 220, 255), 70)
+    c.shade("poly", [(28, 60), (36, 60), (34, 56), (30, 56)], PALE)
+    c.shade("rect", (31, 20, 33, 56), PALE)
+    for y in range(22, 56, 3):
+        c.put(30 + (y // 3) % 2 * 4, y, LEAFG[1])
+        if y % 6 == 1:
+            c.put(29 + (y // 3) % 2 * 6, y - 1, LEAFG[0])
+    c.shade("ellipse", (26, 8, 38, 21), MOON)
+    c.fill("ellipse", (29, 10, 35, 17), C("ffffff"))
+    c.fill("line", (32, 4, 32, 9), PALE[1], 1)
+
+
+def prop_elf_hanging(c):
+    # A woven wall hanging of a great tree under a crescent moon.
+    c.shade("rect", (14, 6, 50, 10), PALE)
+    c.shade("rect", (16, 10, 48, 50), ramp("3a6a5a", "2a5048", "1c3832"))
+    c.shade("ellipse", (24, 18, 40, 34), LEAFG)
+    c.fill("rect", (31, 32, 33, 44), C("8a6a48"))
+    c.fill("ellipse", (38, 13, 44, 19), C("f0f4e0"))
+    c.fill("ellipse", (40, 12, 46, 18), C("2a5048"))
+    for x in range(17, 48, 3):
+        c.fill("line", (x, 50, x, 54), PALE[1], 1)
+
+
+def prop_elf_basin(c):
+    # A moonwell basin of pale stone holding still, silver water.
+    c.shadow(32, 60, 18, 3, 90)
+    c.shade("poly", [(24, 60), (40, 60), (37, 44), (27, 44)], GREY)
+    c.shade("ellipse", (14, 34, 50, 48), GREYTOP)
+    c.shade("ellipse", (18, 36, 46, 45), MOON)
+    for x in (24, 30, 38):
+        c.put(x, 39, C("ffffff"))
+    for (x, y) in ((15, 41), (49, 40), (28, 47)):
+        c.put(x, y, LEAFG[1])
+
+
+def prop_dwarf_keg(c):
+    # A great ale keg on a trestle, iron-hooped, with a brass tap.
+    c.shadow(32, 61, 20, 2, 90)
+    for x in (16, 44):
+        c.shade("rect", (x, 46, x + 3, 60), DARKWOOD)
+    c.shade("ellipse", (10, 22, 54, 50), ramp("a07a50", "7a5a3a", "54402a"))
+    for x in (20, 30, 40):
+        c.fill("line", (x, 24, x, 48), C("4a3420"), 1)
+    for x in (14, 48):
+        c.shade("rect", (x, 23, x + 2, 49), IRON)
+    c.shade("ellipse", (8, 28, 18, 44), ramp("c09a70", "9a7a50", "6a5034"))
+    c.shade("rect", (4, 34, 9, 37), BRASS)
+    c.put(4, 38, BRASS[0])
+
+
+def prop_dwarf_table(c):
+    # A heavy table of dressed stone on two plinths, a tankard and a pick on it.
+    c.shadow(32, 60, 22, 3, 90)
+    for x in (12, 42):
+        c.shade("rect", (x, 42, x + 9, 60), GREY)
+        c.fill("line", (x, 51, x + 9, 51), GREY[2], 1)
+    box(c, 8, 36, 54, 42, 6, GREY, GREYTOP)
+    c.fill("line", (9, 36, 53, 36), C("e0dce8"), 1)
+    c.shade("rect", (16, 26, 21, 34), ramp("c09a70", "9a7a50", "6a5034"))
+    c.fill("rect", (16, 26, 21, 27), C("f8f0d8"))
+    c.fill("line", (30, 32, 46, 28), DARKWOOD[1], 2)
+    c.shade("poly", [(44, 22), (48, 22), (50, 34), (46, 30)], IRON)
+
+
+def prop_dwarf_trophy(c):
+    # Crossed axes over a round shield, hung on the wall.
+    c.shade("ellipse", (20, 14, 44, 38), ramp("b08a5a", "86643c", "5a4026"))
+    c.shade("ellipse", (28, 22, 36, 30), BRASS)
+    for (x0, y0, x1, y1, side) in ((12, 8, 50, 44, 1), (52, 8, 14, 44, -1)):
+        c.fill("line", (x0, y0, x1, y1), DARKWOOD[1], 2)
+        hx, hy = x0 + side * 2, y0 + 2
+        c.shade("poly", [(hx - 5, hy - 3), (hx + 5, hy - 3), (hx + 6 * side, hy + 6), (hx - 2 * side, hy + 3)], IRON)
+
+
+def prop_goblin_totem(c):
+    # A little totem of bones and a painted skull on a stick.
+    c.shadow(32, 60, 8, 2, 90)
+    c.shade("rect", (31, 22, 33, 60), HIDE)
+    c.shade("ellipse", (25, 10, 39, 24), GREYTOP)
+    c.put(29, 17, C("1a1414")); c.put(30, 17, C("1a1414")); c.put(34, 17, C("1a1414")); c.put(35, 17, C("1a1414"))
+    c.fill("line", (27, 13, 37, 21), C("b03a2a"), 1)
+    for (x, y) in ((26, 30), (37, 34)):
+        c.shade("rect", (x, y, x + 2, y + 8), ramp("f0e8d0", "d0c8b0", "a09880"))
+    for y in (28, 40):
+        c.fill("line", (28, y, 36, y), C("6a4a2a"), 1)
+    c.fill("line", (33, 26, 40, 46), C("c8a040"), 1)
+
+
+def prop_goblin_scrap(c):
+    # A heap of scavenged odds and ends: a dented pot, a cart wheel, rags.
+    c.shadow(32, 60, 22, 3, 90)
+    c.shade("ellipse", (10, 42, 54, 60), SCRAP)
+    c.shade("ellipse", (14, 28, 32, 46), ramp("8a6a48", "6a4e34", "4a3624"))
+    c.shade("ellipse", (18, 32, 28, 42), ramp("3a2a1e", "2a1e14", "1a120c"))
+    for k in range(8):
+        a = k / 8 * math.tau
+        c.fill("line", (23, 37, 23 + math.cos(a) * 8, 37 + math.sin(a) * 8), C("6a4e34"), 1)
+    c.shade("ellipse", (32, 34, 46, 46), IRON)
+    c.fill("rect", (36, 33, 42, 35), IRON[2])
+    c.shade("poly", [(40, 50), (54, 46), (56, 56), (44, 58)], ramp("8a3a34", "6a2a26", "4a1c18"))
+
+
+def prop_goblin_bed(c):
+    # A sleeping heap of hides and furs with a bone pillow.
+    c.shadow(32, 60, 24, 3, 90)
+    c.shade("ellipse", (6, 38, 58, 60), HIDE)
+    c.shade("ellipse", (14, 36, 44, 52), ramp("8a7a6a", "6a5a4a", "4a3e32"))
+    for x in range(10, 56, 4):
+        c.put(x, 59, HIDE[2]); c.put(x + 1, 58, HIDE[0])
+    c.shade("ellipse", (40, 36, 54, 44), ramp("f0e8d0", "d0c8b0", "a09880"))
+
+
+PROPS.update({
+    "elf_lamp": prop_elf_lamp, "elf_hanging": prop_elf_hanging, "elf_basin": prop_elf_basin,
+    "dwarf_keg": prop_dwarf_keg, "dwarf_table": prop_dwarf_table, "dwarf_trophy": prop_dwarf_trophy,
+    "goblin_totem": prop_goblin_totem, "goblin_scrap": prop_goblin_scrap, "goblin_bed": prop_goblin_bed,
+})

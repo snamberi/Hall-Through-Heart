@@ -427,7 +427,7 @@ func _build(center: Vector2i) -> Array:
 				instances.enter_dwelling("cottage", "A villager's house", _world.generator.enemy_level_at(center), hash(house_key), structures.used.has(house_key), func() -> void:
 					structures.used[house_key] = true
 					SaveGame.request_save()
-				)
+				, "", people)
 			)
 			doors.append(_at(center + spot, Vector2(0, 10)))
 			if people == "human":

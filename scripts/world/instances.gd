@@ -658,13 +658,36 @@ const HOUSEHOLDS := {
 }
 
 
+## A piece of a people's own hung or set at a spot, theirs and not to smash.
+func place_offset_piece(home: Room, decor: Prop.Decor, cell: Vector2i, offset: Vector2) -> void:
+	var prop := Prop.create_decor(decor, home.cell_position(cell) + offset, 0.0)
+	prop.hits_left = 0
+	prop.remove_from_group("breakables")
+	if decor == Prop.Decor.ELF_LAMP:
+		prop.add_light(0.9, 1.4)
+	home.add_prop(prop)
+
+
 ## Who lives in the house with this seed.
 static func household_for(dwelling_seed: int) -> String:
 	var kinds := HOUSEHOLDS.keys()
 	return kinds[posmod(dwelling_seed, kinds.size())]
 
 
-func enter_dwelling(kind: String, title: String, level: int, dwelling_seed: int, looted: bool, on_loot: Callable, household: String = "") -> void:
+## How each people furnish a home: the walls and floor, the pieces swapped
+## for their own, and what hangs on the far wall beside the hearth.
+const PEOPLE_HOMES := {
+	"elf": {"walls": "wood", "floor": TerrainTiles.Type.PLANK, "swap": {Prop.Decor.CANDLES: Prop.Decor.ELF_LAMP, Prop.Decor.PLANT_POT: Prop.Decor.ELF_BASIN},
+		"wall_piece": Prop.Decor.ELF_HANGING},
+	"dwarf": {"walls": "stone", "floor": TerrainTiles.Type.PATH, "swap": {Prop.Decor.TABLE: Prop.Decor.DWARF_TABLE, Prop.Decor.BARREL: Prop.Decor.DWARF_KEG},
+		"wall_piece": Prop.Decor.DWARF_TROPHY},
+	"goblin": {"walls": "rock", "floor": TerrainTiles.Type.CAVE_FLOOR, "swap": {Prop.Decor.RUG: Prop.Decor.PELT_RUG, Prop.Decor.CRATE: Prop.Decor.GOBLIN_SCRAP,
+		Prop.Decor.CHAIR: Prop.Decor.STOOL, Prop.Decor.PLANT_POT: Prop.Decor.GOBLIN_TOTEM}, "wall_piece": Prop.Decor.GOBLIN_TOTEM, "bed": Prop.Decor.GOBLIN_BED},
+}
+
+
+func enter_dwelling(kind: String, title: String, level: int, dwelling_seed: int, looted: bool, on_loot: Callable, household: String = "", people: String = "human") -> void:
+	var home_style: Dictionary = PEOPLE_HOMES.get(people, {})
 	prepare_room()
 	var random := RandomNumberGenerator.new()
 	random.seed = dwelling_seed
@@ -675,13 +698,13 @@ func enter_dwelling(kind: String, title: String, level: int, dwelling_seed: int,
 		title = HOUSEHOLDS[household][0]
 	var size := Vector2i(5, 4) if tent else Vector2i(7, 5)
 	var home := Room.new()
-	home.wall_style = "cloth" if tent else "wood"
+	home.wall_style = "cloth" if tent else str(home_style.get("walls", "wood"))
 	home.title = title
 	home.gloom = 0.25 if tent else 0.1
 	for y in range(-1, size.y + 1):
 		for x in range(-1, size.x + 1):
 			var wall := x < 0 or y < 0 or x >= size.x or y >= size.y
-			home.cells[Vector2i(x, y)] = T.WALL if wall else (T.PATH if tent else T.PLANK)
+			home.cells[Vector2i(x, y)] = T.WALL if wall else (T.PATH if tent else int(home_style.get("floor", T.PLANK)))
 	home.entry = Vector2i(size.x / 2, size.y - 1)
 	home.build(_world.tile_set())
 	enter(home)
@@ -707,11 +730,20 @@ func enter_dwelling(kind: String, title: String, level: int, dwelling_seed: int,
 		if not looted:
 			contents = Structures.roll_chest(level, 0.9)
 	else:
-		home.add_prop(Prop.create(Prop.Art.BED, home.cell_position(Vector2i(0, 0)), 13.0))
+		if home_style.has("bed"):
+			var bed := Prop.create_decor(home_style["bed"], home.cell_position(Vector2i(0, 0)), 13.0)
+			bed.hits_left = 0
+			bed.remove_from_group("breakables")
+			home.add_prop(bed)
+		else:
+			home.add_prop(Prop.create(Prop.Art.BED, home.cell_position(Vector2i(0, 0)), 13.0))
+		if home_style.has("wall_piece"):
+			place_offset_piece(home, home_style["wall_piece"], Vector2i(2, 0), Vector2(0, -18))
 		place.call(Prop.Decor.FIREPLACE, Vector2i(size.x / 2, 0), 20.0, true)
 		# What the household keeps: theirs, not loot to smash.
+		var swaps: Dictionary = home_style.get("swap", {})
 		for piece: Array in HOUSEHOLDS[household][1]:
-			var prop := Prop.create_decor(piece[0], home.cell_position(piece[1]) + (piece[4] as Vector2), piece[2])
+			var prop := Prop.create_decor(swaps.get(piece[0], piece[0]), home.cell_position(piece[1]) + (piece[4] as Vector2), piece[2])
 			prop.hits_left = 0
 			prop.remove_from_group("breakables")
 			if piece[3]:
