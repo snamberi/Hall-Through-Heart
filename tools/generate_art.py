@@ -3442,6 +3442,8 @@ def main():
     # Animals and mounts are drawn at their shown size by their own tools.
     import generate_animals
     generate_animals.main()
+    import generate_birds
+    generate_birds.main()
     import generate_mounts
     generate_mounts.main()
     import generate_people

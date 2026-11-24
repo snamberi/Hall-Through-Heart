@@ -87,9 +87,11 @@ def main():
     out = os.path.join(GA.ROOT, "sprites", "enemies")
     drawn = []
     import generate_beasts
+    import generate_birds
     for name, (rig, order, animations) in GA.WILDLIFE.items():
-        # The four-legged ones are drawn pixel by pixel by generate_beasts.py.
-        if name in generate_beasts.SPECIES:
+        # The four-legged ones are drawn pixel by pixel by generate_beasts.py,
+        # the birds on their two legs by generate_birds.py.
+        if name in generate_beasts.SPECIES or name in generate_birds.SPECIES:
             continue
         size = table.get(name, 1.0)
         big, scale = improved(name, rig, size)
