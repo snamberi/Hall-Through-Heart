@@ -219,6 +219,10 @@ func tend_plot(player: Player, record: Dictionary, seed_id: String = "") -> Stri
 	elif float(record.get("growth", 0.0)) >= 1.0:
 		var data: Dictionary = Crops.CROPS[crop]
 		var count := randi_range(data["yield"][0], data["yield"][1])
+		# A Farmer brings in more.
+		if player.trades:
+			var extra: float = player.trades.bonus("harvest") * count
+			count += int(extra) + (1 if randf() < extra - int(extra) else 0)
 		player.inventory.add(Item.create(data["item"], count))
 		if randf() < 0.6:
 			player.inventory.add(Item.create(data["seed"], randi_range(1, 2)))

@@ -11,7 +11,9 @@ const FILTERS: Array[String] = ["All", "Can make", "Missing", "Locked"]
 const FILTER_STATES: Array[String] = ["", "ready", "missing", "locked"]
 const ROW := 44.0
 
+const TRADES := preload("res://scripts/progression/trades.gd")
 var _rows: Dictionary[String, Dictionary] = {}
+var _trade_strip: HBoxContainer
 var _selected := "cooking"
 var _tab := "recipes"
 var _filter := 0
@@ -99,6 +101,11 @@ func _build() -> void:
 	content.add_child(title)
 	_tip = ItemTooltip.new()
 	add_child(_tip)
+	# --- the character's own professions: main and side, levels and work
+	_trade_strip = HBoxContainer.new()
+	_trade_strip.alignment = BoxContainer.ALIGNMENT_CENTER
+	_trade_strip.add_theme_constant_override("separation", 10)
+	content.add_child(_trade_strip)
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 12)
 	content.add_child(columns)
@@ -330,7 +337,71 @@ func _build() -> void:
 	player.inventory.changed.connect(refresh_if_open)
 
 
+## Your three professions as cards (level, progress, what they give), or,
+## for a character from before professions, the choice of them.
+func _refresh_trades() -> void:
+	for child in _trade_strip.get_children():
+		child.queue_free()
+	var trades: Node = player.trades
+	if trades == null:
+		return
+	if not trades.changed.is_connected(refresh_if_open):
+		trades.changed.connect(refresh_if_open)
+	if not trades.has_chosen():
+		_trade_strip.add_child(UITheme.label("Choose your professions:", 15, UITheme.GOLD))
+		var pickers: Array[OptionButton] = []
+		for k in 3:
+			var pick := OptionButton.new()
+			for id: String in TRADES.LIST:
+				pick.add_icon_item(TRADES.icon(id), str(TRADES.LIST[id]["name"]))
+				pick.set_item_metadata(pick.item_count - 1, id)
+			pick.select(k * 4)
+			pick.tooltip_text = "Main profession (to level %d)" % TRADES.MAIN_MAX if k == 0 else "Side profession (to level %d)" % TRADES.SIDE_MAX
+			_trade_strip.add_child(pick)
+			pickers.append(pick)
+		_trade_strip.add_child(UITheme.primary_button("Take up", func() -> void:
+			var ids: Array[String] = []
+			for pick in pickers:
+				ids.append(str(pick.get_item_metadata(pick.selected)))
+			if not trades.choose(ids[0], [ids[1], ids[2]] as Array[String]):
+				Events.announcement.emit("", "Choose three different professions.")
+			_refresh_trades()
+		, 120.0))
+		return
+	for id: String in trades.chosen():
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", UITheme.card("card_selected" if id == trades.main else "card", 6))
+		card.custom_minimum_size = Vector2(250.0, 0.0)
+		_trade_strip.add_child(card)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		card.add_child(row)
+		var icon := TextureRect.new()
+		icon.texture = TRADES.icon(id)
+		icon.custom_minimum_size = Vector2(32.0, 32.0)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(icon)
+		var words := VBoxContainer.new()
+		words.add_theme_constant_override("separation", 0)
+		row.add_child(words)
+		var level: int = trades.level(id)
+		var top: int = trades.max_level(id)
+		words.add_child(UITheme.strong("%s  %d / %d" % [TRADES.LIST[id]["name"], level, top], 15, UITheme.GOLD if id == trades.main else UITheme.TEXT))
+		var share := 1.0 if level >= top else float(trades.xp.get(id, 0.0)) / TRADES.xp_required(level)
+		var bar := ProgressBar.new()
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(190.0, 8.0)
+		bar.value = share * 100.0
+		words.add_child(bar)
+		words.add_child(UITheme.label(("Main" if id == trades.main else "Side") + ("  ·  mastered" if level >= top else ""), 13, UITheme.DIM))
+		card.tooltip_text = "%s\n%s" % [TRADES.LIST[id]["name"], TRADES.LIST[id]["text"]]
+
+
 func refresh() -> void:
+	_refresh_trades()
 	var professions := player.professions
 	for id in _rows:
 		var level := professions.level(id)

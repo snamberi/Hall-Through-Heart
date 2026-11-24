@@ -94,17 +94,27 @@ func sell_price(item: Item, stock_kind := "general", wandering := false) -> int:
 	var share := float(tier_info()["share"])
 	if is_specialty(item, stock_kind, wandering):
 		share *= 1.0 + SPECIALTY_BONUS
+	share *= 1.0 + _merchant("sell")
 	return maxi(roundi(item.value() * share), 1)
 
 
 ## A ware's price after the standing discount.
 func buy_price(base: int) -> int:
-	return maxi(roundi(base * (1.0 - float(tier_info()["discount"]))), 1)
+	return maxi(roundi(base * (1.0 - float(tier_info()["discount"]) - _merchant("buy"))), 1)
+
+
+## A Merchant's better prices (see Trades).
+func _merchant(key: String) -> float:
+	var holder := get_parent() as Player
+	return holder.trades.bonus(key) if holder and holder.trades else 0.0
 
 
 ## Notes gold spent with (or taken from) a merchant, and says so when the
 ## standing climbs to a new tier.
 func note_spent(gold: int) -> void:
+	var holder := get_parent() as Player
+	if holder and holder.trades:
+		holder.trades.practice("merchant", absf(gold) / 3.0)
 	_add(func() -> void: spent += maxi(gold, 0))
 
 

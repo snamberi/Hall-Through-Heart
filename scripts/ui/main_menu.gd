@@ -31,6 +31,12 @@ var _difficulty_text: Label
 var _armed_delete := ""
 var _hardcore: CheckBox
 var _class := "warrior"
+## The professions chosen: one main, two side.
+var _trade_main := "guard"
+var _trade_sides: Array[String] = ["miner", "cook"]
+var _trade_main_buttons: Dictionary = {}
+var _trade_side_buttons: Dictionary = {}
+var _trade_text: RichTextLabel
 var _class_buttons: Dictionary[String, Button] = {}
 var _class_text: RichTextLabel
 var _figure: LookPreview
@@ -339,7 +345,8 @@ func _delete(id: String) -> void:
 
 
 ## A step of the character creator: [id, title, hint].
-const STEPS: Array[Array] = [["look", "Race & Look", "Who they are"], ["class", "Class", "Their calling"], ["world", "World", "Where they wake"]]
+const STEPS: Array[Array] = [["look", "Race & Look", "Who they are"], ["class", "Class", "Their calling"], ["trades", "Professions", "Their work"], ["world", "World", "Where they wake"]]
+const TRADES := preload("res://scripts/progression/trades.gd")
 
 
 func _new_page() -> Control:
@@ -518,7 +525,48 @@ func _new_page() -> Control:
 	_class_skills.add_theme_constant_override("separation", 8)
 	detail_box.add_child(_class_skills)
 
-	# --- step 3: the world
+	# --- step 3: the professions
+	var trade_page := HBoxContainer.new()
+	trade_page.add_theme_constant_override("separation", 10)
+	pages.add_child(trade_page)
+	_step_pages["trades"] = trade_page
+	for half: String in ["main", "side"]:
+		var panel := UITheme.inset_panel()
+		trade_page.add_child(panel)
+		var column := VBoxContainer.new()
+		column.add_theme_constant_override("separation", 4)
+		panel.add_child(column)
+		column.add_child(UITheme.heading("Main profession (to level %d)" % TRADES.MAIN_MAX if half == "main" else "Two side professions (to level %d)" % TRADES.SIDE_MAX, 16))
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 4)
+		grid.add_theme_constant_override("v_separation", 4)
+		column.add_child(grid)
+		for id: String in TRADES.LIST:
+			var button := Button.new()
+			button.text = "  " + str(TRADES.LIST[id]["name"])
+			button.icon = TRADES.icon(id)
+			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			button.toggle_mode = true
+			button.custom_minimum_size = Vector2(150.0, 40.0)
+			UITheme.font_size(button, 15)
+			button.add_theme_constant_override("icon_max_width", 24)
+			button.pressed.connect(_choose_trade.bind(id, half))
+			UITheme.sounds(button)
+			grid.add_child(button)
+			(_trade_main_buttons if half == "main" else _trade_side_buttons)[id] = button
+	var trade_detail := UITheme.inset_panel()
+	trade_page.add_child(trade_detail)
+	_trade_text = RichTextLabel.new()
+	_trade_text.bbcode_enabled = true
+	_trade_text.fit_content = true
+	_trade_text.scroll_active = false
+	_trade_text.custom_minimum_size = Vector2(250.0, 300.0)
+	UITheme.font_size(_trade_text, 15, "normal_font_size")
+	_trade_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	trade_detail.add_child(_trade_text)
+
+	# --- step 4: the world
 	var world_panel := UITheme.inset_panel()
 	pages.add_child(world_panel)
 	_step_pages["world"] = world_panel
@@ -601,6 +649,7 @@ func _new_page() -> Control:
 	buttons.add_child(_next_button)
 	_choose_difficulty("normal")
 	_choose_class("warrior")
+	_choose_trade("", "")
 	_on_look_changed(_appearance)
 	_show_step("look")
 	return _framed(box)
@@ -671,6 +720,44 @@ func _randomise_all() -> void:
 	_remember()
 	_set_look(Appearance.random())
 	_choose_class(HeroClasses.CHOICES.pick_random())
+	var ids: Array = TRADES.LIST.keys()
+	ids.shuffle()
+	_trade_main = ids[0]
+	_trade_sides.assign([ids[1], ids[2]])
+	_choose_trade("", "")
+
+
+## Picks a main or side profession (a side one replaces the older of the
+## two); "" just shows the choice as it stands.
+func _choose_trade(id: String, half: String) -> void:
+	if half == "main" and id != "":
+		_trade_main = id
+		_trade_sides.erase(id)
+	elif half == "side" and id != "" and id != _trade_main and not id in _trade_sides:
+		_trade_sides.append(id)
+		if _trade_sides.size() > TRADES.SIDES:
+			_trade_sides.pop_front()
+	var spare: Array = TRADES.LIST.keys().filter(func(other: String) -> bool: return other != _trade_main and not other in _trade_sides)
+	while _trade_sides.size() < TRADES.SIDES:
+		_trade_sides.append(spare.pop_front())
+	for other: String in _trade_main_buttons:
+		_trade_main_buttons[other].set_pressed_no_signal(other == _trade_main)
+		_trade_side_buttons[other].set_pressed_no_signal(other in _trade_sides)
+		_trade_side_buttons[other].disabled = other == _trade_main
+	if _trade_text == null:
+		return
+	var shown := id if id != "" else _trade_main
+	var data: Dictionary = TRADES.LIST[shown]
+	var gold := UITheme.GOLD.to_html(false)
+	var dim := UITheme.DIM.to_html(false)
+	var lines: PackedStringArray = ["[font_size=20][color=#%s]%s[/color][/font_size]" % [gold, data["name"]], str(data["text"]), ""]
+	var earns: String = "by %s" % ", ".join((data.get("skills", []) as Array).map(func(s: String) -> String: return Professions.NAMES.get(s, s).to_lower())) if data.has("skills") else \
+		{"monsters": "by putting monsters down", "beasts": "by hunting wild beasts", "trade": "by buying and selling", "harvest": "by bringing in harvests"}[data["earns"]]
+	lines.append("[color=#%s]Levels up %s.[/color]" % [dim, earns])
+	lines.append("")
+	lines.append("[color=#%s]Main:[/color] %s  [color=#%s]Side:[/color] %s, %s" % [dim, TRADES.LIST[_trade_main]["name"], dim,
+		TRADES.LIST[_trade_sides[0]]["name"], TRADES.LIST[_trade_sides[1]]["name"]])
+	_trade_text.text = "\n".join(lines)
 
 
 func _remember() -> void:
@@ -720,6 +807,8 @@ func _update_summary() -> void:
 	var lines: PackedStringArray = []
 	lines.append("[color=#%s]Race[/color]  [color=#%s]%s[/color]  [color=#%s](for life)[/color]" % [dim, gold, Appearance.RACES[worn["race"]]["name"], dim])
 	lines.append("[color=#%s]Class[/color]  [color=#%s]%s[/color]  [color=#%s](for life; its first ability is yours from the start)[/color]" % [dim, gold, HeroClasses.CLASSES[_class]["name"], dim])
+	lines.append("[color=#%s]Professions[/color]  [color=#%s]%s[/color]  [color=#%s](main)  ·  %s, %s (side)[/color]" % [dim, gold, TRADES.LIST[_trade_main]["name"], dim,
+		TRADES.LIST[_trade_sides[0]]["name"], TRADES.LIST[_trade_sides[1]]["name"]])
 	lines.append("[color=#%s]World[/color]  [color=#%s]%s[/color]  [color=#%s]·  seed %s  ·[/color]  [color=#%s]%s[/color]" % [dim, gold, world_name, dim, seed_words,
 		UITheme.BAD.to_html(false) if _hardcore.button_pressed else gold, "Hardcore (Insane)" if _hardcore.button_pressed else Difficulty.display_name(_difficulty)])
 	_summary.text = "\n".join(lines)
@@ -809,6 +898,7 @@ func _create() -> void:
 	if _for_server != "":
 		SaveGame.create_slot(world_name, _difficulty, 0, _appearance, _class, false)
 		SaveGame.set_meta_value("server_character", true)
+		SaveGame.set_meta_value("trades", {"main": _trade_main, "sides": _trade_sides.duplicate()})
 		var back_to := _for_server
 		_for_server = ""
 		# Shown again, the page fills its list and picks the newest (the
@@ -820,6 +910,7 @@ func _create() -> void:
 	if seed_text != "":
 		world_seed = int(seed_text) if seed_text.is_valid_int() else hash(seed_text)
 	var id := SaveGame.create_slot(world_name, _difficulty, world_seed, _appearance, _class, _hardcore.button_pressed)
+	SaveGame.set_meta_value("trades", {"main": _trade_main, "sides": _trade_sides.duplicate()})
 	_play(id)
 
 

@@ -27,7 +27,7 @@ var slot_id := ""
 ## they were, so the guest's own world is waiting for them at home.
 var guest := false
 ## What a character carries between worlds.
-const CARRIED: Array[String] = ["character", "bonds", "leveling", "attributes", "talents", "abilities", "inventory", "equipment", "hotbar",
+const CARRIED: Array[String] = ["character", "bonds", "trades", "leveling", "attributes", "talents", "abilities", "inventory", "equipment", "hotbar",
 	"loadouts", "relics", "mastery", "styles", "professions", "ego", "codex", "chronicle", "echoes", "pact", "shadows",
 	"dread_aura", "pets", "stable"]
 

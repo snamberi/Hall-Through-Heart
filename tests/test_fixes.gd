@@ -212,3 +212,27 @@ func test_back_views_and_pixel_numbers(t: TestContext) -> void:
 	var before := main.get_child_count()
 	DamageNumber.spawn(main, Vector2(100, 100), 42.0, Color.WHITE, true)
 	t.check(main.get_child_count() == before + 1 or not GameSettings.damage_numbers, "a hit shows a pixel number")
+
+
+func test_professions_main_and_side(t: TestContext) -> void:
+	var main := await t.game()
+	var player: Player = main.get_node("Player")
+	var trades: Node = player.trades
+	t.check(trades != null, "the player follows professions")
+	t.equal(trades.LIST.size(), 12, "twelve professions to choose from")
+	t.check(not trades.choose("miner", ["miner", "cook"] as Array[String]), "the main can't also be a side")
+	t.check(trades.choose("miner", ["guard", "merchant"] as Array[String]), "one main and two sides")
+	t.equal(trades.max_level("miner"), 15, "the main goes to 15")
+	t.equal(trades.max_level("guard"), 10, "a side goes to 10")
+	t.equal(trades.level("cook"), 0, "a profession not taken has no level")
+	var speed_before := player.professions.speed_multiplier("mining")
+	player.professions.add_xp("mining", 100000.0)
+	t.equal(trades.level("miner"), 15, "mining levels the Miner, to the main's cap")
+	t.check(player.professions.speed_multiplier("mining") > speed_before + 0.3, "a Miner mines faster")
+	trades._on_kill({"id": "husk", "xp": 100000})
+	t.equal(trades.level("guard"), 10, "putting monsters down levels the Guard, to the side cap")
+	t.check(player.stats.sources_of("armor").any(func(s: Array) -> bool: return s[0] == "Professions"), "a Guard is tougher, and the ledger says why")
+	var item := Item.create("iron_ingot")
+	var plain: int = maxi(roundi(item.value() * float(player.trade.tier_info()["share"])), 1)
+	trades.practice("merchant", 100000.0)
+	t.check(player.trade.sell_price(item) >= plain, "a Merchant sells dearer")

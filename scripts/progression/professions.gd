@@ -3,6 +3,8 @@ extends Node
 ## Gathering and crafting skill levels, separate from character level.
 
 signal changed
+## Experience gained in a skill, for the professions that practise it.
+signal practised(id: String, amount: float)
 
 const MAX_LEVEL := 100
 const GATHERING: Array[String] = ["mining", "woodcutting", "herbalism", "fishing"]
@@ -58,6 +60,10 @@ func add_xp(id: String, amount: float) -> void:
 	var holder := get_parent() as Player
 	if holder:
 		amount *= float(RaceTraits.value(holder.race(), "learning", 1.0))
+		# A profession that practises this skill learns it faster.
+		if holder.trades:
+			amount *= 1.0 + holder.trades.skill_learning(id)
+	practised.emit(id, amount)
 	xp[id] += amount
 	while levels[id] < MAX_LEVEL and xp[id] >= xp_required(levels[id]):
 		xp[id] -= xp_required(levels[id])
@@ -70,11 +76,17 @@ func add_xp(id: String, amount: float) -> void:
 
 
 func speed_multiplier(id: String) -> float:
-	return 1.0 + SPEED_PER_LEVEL * (level(id) - 1)
+	return 1.0 + SPEED_PER_LEVEL * (level(id) - 1) + _trade(id, "speed")
 
 
 func double_chance(id: String) -> float:
-	return DOUBLE_PER_LEVEL * (level(id) - 1)
+	return DOUBLE_PER_LEVEL * (level(id) - 1) + _trade(id, "double")
+
+
+## What the character's professions add to a skill's work.
+func _trade(id: String, key: String) -> float:
+	var holder := get_parent() as Player
+	return holder.trades.skill_bonus(id, key) if holder and holder.trades else 0.0
 
 
 ## "Master Miner" and so on at the level cap, otherwise "".

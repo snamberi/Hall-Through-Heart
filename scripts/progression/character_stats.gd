@@ -84,7 +84,7 @@ func set_modifiers_quietly(source_id: String, modifiers: Dictionary) -> void:
 const SOURCE_NAMES := {"equipment": "Gear", "talents": "Talents", "class": "Class", "class_tree": "Class path", "class_weapon": "Class weapon",
 	"second_class": "Second class", "race": "Race", "race_hour": "Race (time of day)", "evolution": "Evolution", "relics": "Relics",
 	"trinkets": "Trinkets", "pet": "Pet", "ego": "Ego", "echoes": "Echoes", "pact_job": "The Pact", "trophies": "Trophies",
-	"monster_town": "Monster town", "rift": "Rift", "saint_lull": "Saint Lull's house", "barding": "Mount's barding", "ability_crit": "Ability"}
+	"monster_town": "Monster town", "rift": "Rift", "professions": "Professions", "saint_lull": "Saint Lull's house", "barding": "Mount's barding", "ability_crit": "Ability"}
 
 
 ## Everything that adds to one statistic: [[where it comes from, flat,

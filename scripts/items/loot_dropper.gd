@@ -23,6 +23,11 @@ func _on_enemy_killed(info: Dictionary) -> void:
 		drop_gold(roundi(drops["gold"] * _player.stats.get_stat("gold_find")), info["position"])
 	for item: Item in drops["items"]:
 		drop_item(item, info["position"])
+	# A Hunter takes more from a beast: now and then a second share.
+	if _player.trades and EnemyDB.ENEMIES.get(str(info.get("id", "")), {}).has("wild") and randf() < _player.trades.bonus("loot"):
+		for item: Item in LootGenerator.roll_enemy_drops(info, 0.0)["items"]:
+			if not item.is_equipment():
+				drop_item(item, info["position"])
 	# Relics: always from a boss, now and then from an Ancient or Champion.
 	var rank := str(info.get("rank", "normal"))
 	var relic_chance: float = {"boss": 1.0, "miniboss": 0.2, "champion": 0.03}.get(rank, 0.0)

@@ -88,6 +88,8 @@ var swimming := false
 ## The trinkets worn and what they have grown into (scripts/player/trinkets.gd).
 const TRINKETS_SCRIPT := preload("res://scripts/player/trinkets.gd")
 var trinkets: Node
+## The professions followed (scripts/progression/trades.gd).
+var trades: Node
 ## True while choosing where to set something down; clicks place it
 ## instead of attacking.
 var placing := false
@@ -752,6 +754,9 @@ func use_item(item: Item) -> String:
 				for kind: String in mods[stat]:
 					scaled[stat][kind] = float(mods[stat][kind]) * skill
 			mods = scaled
+		if course == "" and trades:
+			# An Alchemist's potions last longer.
+			duration *= 1.0 + trades.bonus("potion")
 		buffs.add(buff_id, use["name"], duration, mods, item.icon(), course if course != "" else "potion")
 	Events.codex_event.emit("meals" if int(item.definition().get("icon", 0)) == 48 else "potions", 1)
 	inventory.take(item.id, 1)
@@ -762,7 +767,7 @@ func use_item(item: Item) -> String:
 ## How much more a meal does in this player's hands: +0.4% per level of
 ## cooking (up to +40%).
 func food_potency() -> float:
-	return 1.0 + professions.level("cooking") * 0.004
+	return 1.0 + professions.level("cooking") * 0.004 + (trades.bonus("potency") if trades else 0.0)
 
 
 ## Drinks a health potion if there is one (the quick-use key).

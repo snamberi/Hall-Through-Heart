@@ -514,6 +514,8 @@ func _sell_all_marked() -> void:
 	_picking = false
 	if count > 0:
 		player.inventory.add_gold(gold)
+		if player.trades:
+			player.trades.practice("merchant", gold / 3.0)
 		player.trade.note_earned(gold)
 		Events.codex_event.emit("sales", count)
 		Audio.play("pickup", -6.0)
@@ -539,6 +541,8 @@ func _trade() -> void:
 		_confirm_sell = null
 		var amount := clampi(_quantity, 1, item.count)
 		inventory.add_gold(int(_choice["price"]) * amount)
+		if player.trades:
+			player.trades.practice("merchant", int(_choice["price"]) * amount / 3.0)
 		player.trade.note_earned(int(_choice["price"]) * amount)
 		npc.note_sold(item, amount)
 		Events.codex_event.emit("sales", 1)
