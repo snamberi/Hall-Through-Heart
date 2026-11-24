@@ -19,7 +19,7 @@ const STICK_RADIUS := 64.0
 const DEAD_ZONE := 0.18
 ## How far round the player a tap looks for something to strike.
 const AUTO_AIM := 320.0
-const NAVY := Color(0.06, 0.08, 0.16, 0.55)
+const NAVY := Color(0.125, 0.095, 0.070, 0.55)
 const NAVY_HELD := Color(0.16, 0.12, 0.08, 0.7)
 const BRONZE := Color(0.83, 0.66, 0.35, 0.9)
 const BRONZE_DIM := Color(0.52, 0.33, 0.15, 0.75)
@@ -403,7 +403,7 @@ func _draw_controls() -> void:
 
 func _ring(at: Vector2, r: float, fill: Color, edge: Color) -> void:
 	_root.draw_circle(at, r, fill)
-	_root.draw_arc(at, r, 0.0, TAU, maxi(24, int(r)), Color(0.04, 0.05, 0.09, 0.8), 4.0)
+	_root.draw_arc(at, r, 0.0, TAU, maxi(24, int(r)), Color(0.075, 0.057, 0.042, 0.8), 4.0)
 	_root.draw_arc(at, r - 2.0, 0.0, TAU, maxi(24, int(r)), edge, 2.0)
 
 
@@ -418,5 +418,5 @@ func _icon(texture: Texture2D, at: Vector2, tint: Color, scale: int = 1) -> void
 func _label(font: Font, at: Vector2, text: String, size: int) -> void:
 	var width := 90.0
 	var origin := (at + Vector2(-width / 2.0, size * 0.35)).round()
-	_root.draw_string_outline(font, origin, text, HORIZONTAL_ALIGNMENT_CENTER, width, size, 4, Color(0.02, 0.02, 0.05))
+	_root.draw_string_outline(font, origin, text, HORIZONTAL_ALIGNMENT_CENTER, width, size, 4, Color(0.037, 0.028, 0.021))
 	_root.draw_string(font, origin, text, HORIZONTAL_ALIGNMENT_CENTER, width, size, UITheme.TEXT)

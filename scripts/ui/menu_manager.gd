@@ -74,7 +74,7 @@ func setup(player: Player) -> void:
 	add_child(_root)
 
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.03, 0.05, 0.78)
+	dim.color = Color(0.042, 0.032, 0.023, 0.78)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(dim)
 	# A Hardcore world wears its mark: a darker, bloodied backdrop with a

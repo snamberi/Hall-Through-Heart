@@ -288,7 +288,7 @@ func _draw_gather() -> void:
 	var width := _gather.size.x
 	if _player.state == Player.State.GATHER and _player.gather_seconds > 0.0:
 		var share := clampf(_player.gather_progress / _player.gather_seconds, 0.0, 1.0)
-		_gather.draw_rect(Rect2(0, 22, width, 12), Color(0.04, 0.05, 0.08, 0.9))
+		_gather.draw_rect(Rect2(0, 22, width, 12), Color(0.071, 0.054, 0.040, 0.9))
 		_gather.draw_rect(Rect2(2, 24, (width - 4.0) * share, 8), UITheme.GOLD)
 		_gather.draw_rect(Rect2(0, 22, width, 12), Color("8a683a"), false, 1.0)
 		return
@@ -371,7 +371,7 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 			var medal := Vector2(-16.0, size.y / 2.0)
 			var radius := maxf(size.y / 2.0 + 3.0, 11.0)
 			bar.draw_circle(medal, radius + 2.0, Color("402f1c"))
-			bar.draw_circle(medal, radius, Color(0.07, 0.08, 0.13))
+			bar.draw_circle(medal, radius, Color(0.117, 0.089, 0.065))
 			bar.draw_arc(medal, radius, 0.0, TAU, 24, Color("b08a4a"), 1.5)
 			# The heart on the health bar beats with the player's own.
 			var beat := (radius - 3.0) * (1.0 + 0.28 * Heartbeat.pulse if icon == 35 else 1.0)

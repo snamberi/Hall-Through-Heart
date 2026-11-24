@@ -50,7 +50,7 @@ func _draw() -> void:
 	draw_style_box(ActionBar._make_light_plate(), Rect2(Vector2.ZERO, size))
 	var rect := Rect2(6, 6, SIZE, SIZE)
 	draw_style_box(UITheme.slot("slot"), rect.grow(3.0))
-	draw_rect(rect, Color(0.05, 0.06, 0.1))
+	draw_rect(rect, Color(0.088, 0.067, 0.049))
 	draw_rect(rect, Color(item.color(), 0.9), false, 2.0)
 	var icon := item.icon()
 	if icon:
@@ -68,7 +68,7 @@ func _draw() -> void:
 	var body := UITheme.get_theme().default_font
 	var key_width := maxf(body.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 6.0, 14.0)
 	var cap := Rect2(rect.position + Vector2(-2, -2), Vector2(key_width, 15))
-	draw_rect(cap, Color(0.04, 0.045, 0.07, 0.95))
+	draw_rect(cap, Color(0.065, 0.049, 0.036, 0.95))
 	draw_rect(cap, Color("8a683a"), false, 1.0)
 	draw_string(body, cap.position + Vector2(3, 12), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADING)
 	# Its power's name, and whether it is ready.

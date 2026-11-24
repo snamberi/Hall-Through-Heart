@@ -121,7 +121,7 @@ func _draw() -> void:
 	if _marks.is_empty():
 		return
 	var strip := Rect2(Vector2.ZERO, Vector2(WIDTH, HEIGHT))
-	draw_rect(strip, Color(0.04, 0.05, 0.08, 0.72))
+	draw_rect(strip, Color(0.071, 0.054, 0.040, 0.72))
 	draw_rect(strip, Color("8a683a"), false, 1.0)
 	var font := UITheme.body_bold()
 	# The compass points and ticks: N in the middle, S at both ends.

@@ -206,7 +206,7 @@ func _home_page() -> Control:
 	var line := UITheme.label("The land is the corpse of a god. Its heart still beats.", 18, Color("c8c0b0"))
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# Dark-edged, so it reads over the sky and the mountains behind.
-	line.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05, 0.95))
+	line.add_theme_color_override("font_outline_color", Color(0.037, 0.028, 0.021, 0.95))
 	line.add_theme_constant_override("outline_size", 6)
 	box.add_child(line)
 	var gap := Control.new()

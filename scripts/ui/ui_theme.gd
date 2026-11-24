@@ -1,7 +1,8 @@
 class_name UITheme
 extends RefCounted
-## The game's interface style: pixel-art panels of dark navy cloth in heavy
-## riveted bronze frames, stone buttons, sunken slots, gold headings, and
+## The game's interface style: pixel-art boards of dark walnut bound in
+## bronze with gold trim (like the covers of an old book), aged-vellum
+## pages, wooden plaque buttons, leather slots, gold headings, and
 ## the Almendra typeface. The art is drawn by tools/generate_ui.py at twice
 ## size, so its pixels match the game's.
 ##
@@ -11,17 +12,17 @@ extends RefCounted
 ## Type: Almendra is the display face (titles and headings); everything
 ## meant to be read is set in Alegreya, with lining figures so numbers sit
 ## level. Gold has one job: it marks what is chosen. Ordinary cards and
-## buttons wear quiet steel; keyboard focus is a bright double ring.
+## buttons wear dark oak; keyboard focus is a bright double ring.
 
 const TEXT := Color("e6dfcf")
-const DIM := Color("8f8a80")
+const DIM := Color("9a8c74")
 const GOLD := Color("f2c14e")
 const HEADING := Color("e8c878")
 const GOOD := Color("8fd66a")
 const BAD := Color("e0555a")
 const INFO := Color("6fb6ff")
 ## A quiet line colour for rules and neutral borders.
-const LINE := Color("39415a")
+const LINE := Color("5a4630")
 ## Text sizes: what is read, what is secondary, and the smallest allowed.
 const BODY := 16
 const SMALL := 14
@@ -195,7 +196,7 @@ static func danger_button(text: String, action: Callable, minimum_width: float =
 ## "Active", "Locked". `kind` is "gold" (chosen), "good", "bad", "info" or
 ## "plain".
 static func badge(text: String, kind: String = "plain") -> PanelContainer:
-	var colors := {"gold": GOLD, "good": GOOD, "bad": BAD, "info": INFO, "plain": Color("aab0c4")}
+	var colors := {"gold": GOLD, "good": GOOD, "bad": BAD, "info": INFO, "plain": Color("c8bca0")}
 	var color: Color = colors.get(kind, colors["plain"])
 	var box := PanelContainer.new()
 	var style := StyleBoxFlat.new()
@@ -221,8 +222,8 @@ static func badge(text: String, kind: String = "plain") -> PanelContainer:
 static func key_cap(text: String) -> PanelContainer:
 	var box := PanelContainer.new()
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("1a2032")
-	style.border_color = Color("8a90a4")
+	style.bg_color = Color("2a1e14")
+	style.border_color = Color("a89070")
 	style.set_border_width_all(1)
 	style.border_width_bottom = 3
 	style.set_corner_radius_all(3)
@@ -450,7 +451,7 @@ static func _build() -> Theme:
 	theme.set_color("font_pressed_color", "Button", Color("ffe7a8"))
 	theme.set_color("font_hover_pressed_color", "Button", Color("ffe7a8"))
 	# Disabled labels stay legible: dim, not invisible.
-	theme.set_color("font_disabled_color", "Button", Color("7a7c86"))
+	theme.set_color("font_disabled_color", "Button", Color("7e7264"))
 
 	theme.set_color("font_color", "Label", TEXT)
 	theme.set_color("font_color", "CheckBox", TEXT)
@@ -472,11 +473,11 @@ static func _build() -> Theme:
 	theme.set_font("bold_font", "RichTextLabel", body_bold())
 
 	# Sliders: a clear track, a filled part, and a handle big enough to catch.
-	var track := _flat(Color("0a0c14"), Color("39415a"), 1, 0)
+	var track := _flat(Color("120d09"), Color("5a4630"), 1, 0)
 	track.content_margin_top = 4
 	track.content_margin_bottom = 4
-	var filled := _flat(Color("8a6234"), Color("0a0c14"), 1, 0)
-	var filled_lit := _flat(Color("c8902e"), Color("0a0c14"), 1, 0)
+	var filled := _flat(Color("8a6234"), Color("120d09"), 1, 0)
+	var filled_lit := _flat(Color("c8902e"), Color("120d09"), 1, 0)
 	theme.set_stylebox("slider", "HSlider", track)
 	theme.set_stylebox("grabber_area", "HSlider", filled)
 	theme.set_stylebox("grabber_area_highlight", "HSlider", filled_lit)
@@ -485,31 +486,31 @@ static func _build() -> Theme:
 	theme.set_icon("grabber_disabled", "HSlider", load("res://assets/ui/grabber.png"))
 
 	# Text boxes.
-	var field := _flat(Color("0a0d15"), Color("4e5876"), 1, 5)
+	var field := _flat(Color("140f0a"), Color("6a5034"), 1, 5)
 	field.content_margin_left = 9
 	field.content_margin_right = 9
-	var field_focus := _flat(Color("0c1019"), GOLD, 2, 4)
+	var field_focus := _flat(Color("18120c"), GOLD, 2, 4)
 	field_focus.content_margin_left = 8
 	field_focus.content_margin_right = 8
 	theme.set_stylebox("normal", "LineEdit", field)
 	theme.set_stylebox("focus", "LineEdit", field_focus)
 	theme.set_stylebox("read_only", "LineEdit", field)
 	theme.set_color("font_color", "LineEdit", TEXT)
-	theme.set_color("font_placeholder_color", "LineEdit", Color("6c7080"))
+	theme.set_color("font_placeholder_color", "LineEdit", Color("8a7c66"))
 	theme.set_color("caret_color", "LineEdit", GOLD)
 
 	# Slim scroll bars that do not shout.
 	for bar: String in ["VScrollBar", "HScrollBar"]:
-		var groove := _flat(Color("0a0c14", 0.6), Color("0a0c14", 0.0), 0, 3)
+		var groove := _flat(Color("120d09", 0.6), Color("120d09", 0.0), 0, 3)
 		theme.set_stylebox("scroll", bar, groove)
 		theme.set_stylebox("scroll_focus", bar, groove)
-		theme.set_stylebox("grabber", bar, _flat(Color("39415a"), Color("0a0c14"), 1, 3))
-		theme.set_stylebox("grabber_highlight", bar, _flat(Color("8a6234"), Color("0a0c14"), 1, 3))
-		theme.set_stylebox("grabber_pressed", bar, _flat(Color("c8902e"), Color("0a0c14"), 1, 3))
+		theme.set_stylebox("grabber", bar, _flat(Color("5a4630"), Color("120d09"), 1, 3))
+		theme.set_stylebox("grabber_highlight", bar, _flat(Color("8a6234"), Color("120d09"), 1, 3))
+		theme.set_stylebox("grabber_pressed", bar, _flat(Color("c8902e"), Color("120d09"), 1, 3))
 
 	# Drop-down lists.
 	theme.set_stylebox("focus", "OptionButton", focus_box())
-	theme.set_stylebox("panel", "PopupMenu", _flat(Color("0e1220"), Color("8a6234"), 2, 6))
+	theme.set_stylebox("panel", "PopupMenu", _flat(Color("1c140e"), Color("8a6234"), 2, 6))
 	theme.set_stylebox("hover", "PopupMenu", _flat(Color("2a2414"), GOLD, 1, 4))
 	theme.set_color("font_color", "PopupMenu", TEXT)
 	theme.set_color("font_hover_color", "PopupMenu", Color.WHITE)
@@ -518,13 +519,13 @@ static func _build() -> Theme:
 	theme.set_font_size("font_size", "TooltipLabel", px(SMALL))
 
 	var bar_back := StyleBoxFlat.new()
-	bar_back.bg_color = Color("0a0c14")
+	bar_back.bg_color = Color("120d09")
 	bar_back.border_color = Color("403020")
 	bar_back.set_border_width_all(1)
 	var bar_fill := StyleBoxFlat.new()
-	bar_fill.bg_color = Color("9aa3b4")
+	bar_fill.bg_color = Color("c8b48a")
 	bar_fill.set_border_width_all(1)
-	bar_fill.border_color = Color("0a0c14")
+	bar_fill.border_color = Color("120d09")
 	theme.set_stylebox("background", "ProgressBar", bar_back)
 	theme.set_stylebox("fill", "ProgressBar", bar_fill)
 	return theme

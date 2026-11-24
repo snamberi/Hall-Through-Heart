@@ -60,7 +60,7 @@ var _slot_styles := {"slot": UITheme.slot("slot"), "slot_hover": UITheme.slot("s
 
 static func _make_light_plate() -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.035, 0.045, 0.08, 0.86)
+	box.bg_color = Color(0.067, 0.051, 0.037, 0.86)
 	box.border_color = Color("4a3a24")
 	box.set_border_width_all(2)
 	box.set_corner_radius_all(3)
@@ -327,7 +327,7 @@ func _draw() -> void:
 		for index in AbilityDB.SET_SIZE:
 			var slot: Rect2 = _spots[index][0]
 			var mini_rect := Rect2(slot.end.x + 6.0, slot.position.y + (COLUMN_SLOT - COLUMN_MINI) / 2.0, COLUMN_MINI, COLUMN_MINI)
-			draw_rect(mini_rect, Color(0.05, 0.05, 0.08, 0.85))
+			draw_rect(mini_rect, Color(0.075, 0.057, 0.042, 0.85))
 			var other_id: String = others[index] if index < others.size() else ""
 			if other_id != "":
 				draw_texture_rect(AbilityDB.icon(other_id), mini_rect.grow(-3.0), false, Color(0.62, 0.62, 0.68))
@@ -347,7 +347,7 @@ func _draw() -> void:
 		for index in (0 if casting else AbilityDB.SET_SIZE):
 			var other_id: String = others[index] if index < others.size() else ""
 			var mini_rect := Rect2(tab.end.x - 4.0 * 14.0 - 2.0 + index * 14.0, tab.position.y + 2.0, 12.0, 12.0)
-			draw_rect(mini_rect, Color(0.05, 0.05, 0.08))
+			draw_rect(mini_rect, Color(0.075, 0.057, 0.042))
 			if other_id != "":
 				draw_texture_rect(AbilityDB.icon(other_id), mini_rect, false, Color(0.7, 0.7, 0.75))
 	for index in _spots.size():
@@ -399,13 +399,13 @@ func _draw_dock() -> void:
 	for index in AbilityDB.SET_SIZE:
 		var other_id: String = others[index] if index < others.size() else ""
 		var mini_rect := Rect2(x + index * 13.0, 9.0, 11.0, 11.0)
-		draw_rect(mini_rect, Color(0.08, 0.09, 0.13))
+		draw_rect(mini_rect, Color(0.125, 0.095, 0.070))
 		if other_id != "":
 			draw_texture_rect(AbilityDB.icon(other_id), mini_rect, false, Color(0.72, 0.72, 0.78))
 	var cap := Rect2(x - key_width - 6.0, 6.0, key_width, 17.0)
-	draw_rect(cap, Color("1a2032"))
-	draw_rect(cap, Color("8a90a4"), false, 1.0)
-	draw_rect(Rect2(cap.position.x, cap.end.y - 2.0, cap.size.x, 2.0), Color("8a90a4"))
+	draw_rect(cap, Color("2a1e14"))
+	draw_rect(cap, Color("a89070"), false, 1.0)
+	draw_rect(Rect2(cap.position.x, cap.end.y - 2.0, cap.size.x, 2.0), Color("a89070"))
 	draw_string(UITheme.body_bold(), cap.position + Vector2(0, 13), key, HORIZONTAL_ALIGNMENT_CENTER, cap.size.x, 13, Color.WHITE)
 	for index in _spots.size():
 		_draw_ability(_spots[index][0], _spots[index][2], index == _hover)
@@ -416,7 +416,7 @@ func _draw_dock() -> void:
 			if why != "":
 				var width := _font.get_string_size(why, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 12.0
 				var tag := Rect2((_spots[index][0] as Rect2).get_center().x - width / 2.0, -22.0, width, 18.0)
-				draw_rect(tag, Color(0.04, 0.045, 0.07, 0.95))
+				draw_rect(tag, Color(0.065, 0.049, 0.036, 0.95))
 				draw_rect(tag, Color("8a683a"), false, 1.0)
 				draw_string(_font, tag.position + Vector2(0, 13), why, HORIZONTAL_ALIGNMENT_CENTER, tag.size.x, 13, Color("e8a070"))
 
@@ -494,7 +494,7 @@ func _draw_ability(rect: Rect2, index: int, hovered: bool) -> void:
 			draw_texture_rect(icon, rect.grow(-7.0), false, Color(0.5, 0.5, 0.56))
 			draw_rect(rect, Color(0.0, 0.0, 0.0, 0.22))
 			var lock := rect.end + Vector2(-11, -rect.size.y + 15)
-			draw_rect(Rect2(lock + Vector2(-7, -9), Vector2(14, 17)), Color(0.05, 0.05, 0.08, 0.85))
+			draw_rect(Rect2(lock + Vector2(-7, -9), Vector2(14, 17)), Color(0.075, 0.057, 0.042, 0.85))
 			draw_arc(lock + Vector2(0, -3), 3.5, PI, TAU, 8, Color(0.85, 0.78, 0.6), 2.0)
 			draw_rect(Rect2(lock + Vector2(-5, -3), Vector2(10, 8)), Color(0.85, 0.78, 0.6))
 			draw_rect(Rect2(lock + Vector2(-1, -1), Vector2(2, 3)), Color(0.15, 0.12, 0.08))
@@ -573,6 +573,6 @@ func _count(rect: Rect2, count: int) -> void:
 func _key_badge(rect: Rect2, key: String) -> void:
 	var width := maxf(_font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 6.0, 14.0)
 	var badge := Rect2(rect.position + Vector2(-2, -2), Vector2(width, 15))
-	draw_rect(badge, Color(0.04, 0.045, 0.07, 0.95))
+	draw_rect(badge, Color(0.065, 0.049, 0.036, 0.95))
 	draw_rect(badge, Color("8a683a"), false, 1.0)
 	draw_string(_font, badge.position + Vector2(3, 12), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADING)

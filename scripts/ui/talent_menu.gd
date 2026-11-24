@@ -219,7 +219,7 @@ func _draw_link(a_id: String, b_id: String, color: Color, width: float) -> void:
 
 
 func _draw_tree() -> void:
-	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), Color("0b0d15"))
+	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), Color("130e0a"))
 	var talents := player.talents
 	# Faint rings for each distance out.
 	for ring in range(1, 10):

@@ -119,15 +119,15 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	if not framed:
 		draw_set_transform(Vector2(size.x / 2.0, size.y - 12.0), 0.0, Vector2(1.0, 0.32))
-		draw_circle(Vector2.ZERO, size.x * 0.36, Color("2a2c36"))
+		draw_circle(Vector2.ZERO, size.x * 0.36, Color("33281e"))
 		draw_set_transform(Vector2.ZERO)
 		return
 	# A stone niche and a plinth for the figure to stand on.
 	var center := size / 2.0
-	draw_rect(Rect2(center.x - 96.0, 30.0, 192.0, size.y - 90.0), Color("0b0e17"))
-	draw_circle(Vector2(center.x, 126.0), 96.0, Color("0b0e17"))
+	draw_rect(Rect2(center.x - 96.0, 30.0, 192.0, size.y - 90.0), Color("140f0b"))
+	draw_circle(Vector2(center.x, 126.0), 96.0, Color("140f0b"))
 	draw_arc(Vector2(center.x, 126.0), 96.0, PI, TAU, 40, Color("403020"), 3.0)
 	draw_set_transform(Vector2(center.x, size.y - 58.0), 0.0, Vector2(1.0, 0.32))
-	draw_circle(Vector2.ZERO, 110.0, Color("2a2c36"))
-	draw_circle(Vector2.ZERO, 92.0, Color("3a3c48"))
+	draw_circle(Vector2.ZERO, 110.0, Color("33281e"))
+	draw_circle(Vector2.ZERO, 92.0, Color("43362a"))
 	draw_set_transform(Vector2.ZERO)

@@ -6,7 +6,7 @@ extends Control
 ## Use LoadingScreen.go(tree, "res://scenes/main.tscn") in place of
 ## change_scene_to_file.
 
-const BACK := Color("0b0d15")
+const BACK := Color("130e0a")
 const NAVY := Color("161b2e")
 const BRONZE := Color("c8904a")
 const GOLD := Color("e8bc4a")

@@ -90,7 +90,7 @@ func _draw() -> void:
 	for entry: Array in entries:
 		var marker := Vector2(panel.position.x + 14.0, y + 9.0)
 		var diamond := PackedVector2Array([marker + Vector2(0, -6), marker + Vector2(6, 0), marker + Vector2(0, 6), marker + Vector2(-6, 0)])
-		draw_colored_polygon(diamond, UITheme.GOLD if entry[2] else Color(0.12, 0.13, 0.18))
+		draw_colored_polygon(diamond, UITheme.GOLD if entry[2] else Color(0.179, 0.136, 0.100))
 		draw_polyline(diamond + PackedVector2Array([diamond[0]]), UITheme.GOLD, 1.5)
 		draw_string_outline(bold, Vector2(panel.position.x + 26.0, y + 15.0), entry[0], HORIZONTAL_ALIGNMENT_LEFT, WIDTH - 34.0, 15, 3, Color(0, 0, 0, 0.7))
 		draw_string(bold, Vector2(panel.position.x + 26.0, y + 15.0), entry[0], HORIZONTAL_ALIGNMENT_LEFT, WIDTH - (78.0 if compact else 34.0), 15, UITheme.HEADING)
@@ -105,7 +105,7 @@ func _draw() -> void:
 		for step: Array in entry[1]:
 			var done: bool = step[1] >= step[2]
 			var box := Rect2(panel.position.x + 14.0, y + 3.0, 11.0, 11.0)
-			draw_rect(box, Color(0.05, 0.06, 0.09))
+			draw_rect(box, Color(0.083, 0.063, 0.047))
 			draw_rect(box, Color("8a683a") if not done else UITheme.GOOD, false, 1.5)
 			if done:
 				draw_polyline(PackedVector2Array([box.position + Vector2(2, 6), box.position + Vector2(5, 9), box.position + Vector2(10, 1)]), UITheme.GOOD, 2.0)

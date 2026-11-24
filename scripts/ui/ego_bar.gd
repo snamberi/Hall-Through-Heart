@@ -38,7 +38,7 @@ func _draw() -> void:
 	var bar := Rect2(40, 6, 210, 8)
 	draw_string_outline(UITheme.body_bold(), Vector2(8, 15), "Ego", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 3, Color(0, 0, 0, 0.8))
 	draw_string(UITheme.body_bold(), Vector2(8, 15), "Ego", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.82, 0.68, 1.0))
-	draw_rect(bar.grow(1.0), Color(0.05, 0.04, 0.08, 0.9))
+	draw_rect(bar.grow(1.0), Color(0.071, 0.054, 0.040, 0.9))
 	var share := _shown / Ego.MAX
 	var hot := clampf((_shown - Ego.FREE) / (Ego.MAX - Ego.FREE), 0.0, 1.0)
 	var fill := Color(0.6, 0.42, 0.95).lerp(Color(0.95, 0.25, 0.3), hot)

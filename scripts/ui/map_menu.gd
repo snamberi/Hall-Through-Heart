@@ -621,7 +621,7 @@ func _draw_view() -> void:
 		var font := UITheme.body_bold()
 		var words: String = _marker[1]
 		var width := font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
-		_view.draw_rect(Rect2(spot + Vector2(-width / 2.0 - 6.0, -50.0), Vector2(width + 12.0, 24.0)), Color(0.04, 0.05, 0.08, 0.85))
+		_view.draw_rect(Rect2(spot + Vector2(-width / 2.0 - 6.0, -50.0), Vector2(width + 12.0, 24.0)), Color(0.071, 0.054, 0.040, 0.85))
 		_view.draw_string(font, spot + Vector2(-width / 2.0, -32.0), words, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UITheme.GOLD)
 	# A frame around the map.
 	_view.draw_rect(Rect2(Vector2.ZERO, _view.size), Color("402f1c"), false, 4.0)
@@ -725,7 +725,7 @@ static func _draw_skull(canvas: CanvasItem, at: Vector2, scale: float) -> void:
 
 ## A small compass rose: north is up.
 func _draw_compass(middle: Vector2) -> void:
-	_view.draw_circle(middle, 22.0, Color(0.03, 0.04, 0.07, 0.8))
+	_view.draw_circle(middle, 22.0, Color(0.058, 0.044, 0.033, 0.8))
 	_view.draw_arc(middle, 22.0, 0.0, TAU, 32, Color("8a683a"), 1.5)
 	_view.draw_colored_polygon(PackedVector2Array([middle + Vector2(0, -16), middle + Vector2(5, 0), middle + Vector2(-5, 0)]), UITheme.BAD)
 	_view.draw_colored_polygon(PackedVector2Array([middle + Vector2(0, 16), middle + Vector2(5, 0), middle + Vector2(-5, 0)]), Color(0.8, 0.8, 0.85))
@@ -771,5 +771,5 @@ func _draw_icon(at: Vector2, kind: String) -> void:
 		var words := "%dm" % ceili(Npc.restock_in() / 60.0)
 		var font := UITheme.body_bold()
 		var spot := at + Vector2(size * 0.45, size * 0.55)
-		_view.draw_rect(Rect2(spot + Vector2(-2, -12), Vector2(font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 4, 15)), Color(0.04, 0.05, 0.08, 0.85))
+		_view.draw_rect(Rect2(spot + Vector2(-2, -12), Vector2(font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 4, 15)), Color(0.071, 0.054, 0.040, 0.85))
 		_view.draw_string(font, spot, words, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.GOLD)

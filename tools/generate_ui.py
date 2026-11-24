@@ -25,10 +25,11 @@ def C(h, a=255):
 
 BRONZE = {"out": C("120c08"), "dark": C("4a3218"), "mid": C("8a6234"), "light": C("c89a52"), "hi": C("f0d088")}
 GOLD = {"out": C("1a1206"), "dark": C("7a5418"), "mid": C("c8902e"), "light": C("f2c14e"), "hi": C("fff0b0")}
-IRON = {"out": C("0c0d12"), "dark": C("2c303c"), "mid": C("4a5062"), "light": C("6e7488"), "hi": C("9aa0b4")}
-# Ordinary cards and buttons wear this quiet blue steel, so that gold only
-# ever means "chosen".
-STEEL = {"out": C("080a10"), "dark": C("222838"), "mid": C("39415a"), "light": C("4e5876"), "hi": C("6a7494")}
+IRON = {"out": C("0c0a08"), "dark": C("2e2924"), "mid": C("4a433a"), "light": C("6e6558"), "hi": C("9a8f7e")}
+# Ordinary cards and buttons are rimmed in dark oak, so that gold only ever
+# means "chosen". (The name is kept from the old steel skin.)
+STEEL = {"out": C("0c0805"), "dark": C("2e1f14"), "mid": C("4a3424"), "light": C("664a32"), "hi": C("8a6a48")}
+WOOD = {"dark": C("2a1a10"), "mid": C("3a2616"), "light": C("4a321e"), "grain": C("22150c"), "knot": C("1a1008")}
 RED = {"out": C("14060a"), "dark": C("5a1c24"), "mid": C("8e2c36"), "light": C("c0444e"), "hi": C("e8747c")}
 
 
@@ -109,41 +110,83 @@ def corner_piece(img, t, metal, gem=None):
             rivet(img, cx + m - 1, cy + m - 1, metal)
 
 
+def wood_grain(img, x0, y0, x1, y1, seed, palette=None):
+    """Dark walnut planks: long wavy grain lines running across, a seam
+    between planks every 11 pixels, the odd knot. Tiles cleanly."""
+    pal = palette or WOOD
+    r = random.Random(seed)
+    w, h = x1 - x0, y1 - y0
+    for y in range(h):
+        plank = y // 11
+        seam = y % 11 == 10
+        for x in range(w):
+            wave = math.sin((x / w) * math.tau * 2 + plank * 1.7) * 1.2
+            band = (y + wave + plank * 3) % 4
+            c = pal["mid"] if band < 2 else pal["dark"] if band < 3 else pal["light"] if r.random() < 0.15 else pal["mid"]
+            if r.random() < 0.025:
+                c = pal["grain"]
+            if seam:
+                c = pal["knot"]
+            img.putpixel((x0 + x, y0 + y), c)
+
+
+def gold_trim(img, t):
+    """A gold inner rule just inside a frame of thickness t, with small
+    leaf flourishes at the corners."""
+    w, h = img.size
+    for x in range(t + 1, w - t - 1):
+        img.putpixel((x, t + 1), GOLD["mid"])
+        img.putpixel((x, h - t - 2), GOLD["dark"])
+    for y in range(t + 1, h - t - 1):
+        img.putpixel((t + 1, y), GOLD["mid"])
+        img.putpixel((w - t - 2, y), GOLD["dark"])
+    for (cx, cy, sx, sy) in ((t + 1, t + 1, 1, 1), (w - t - 2, t + 1, -1, 1), (t + 1, h - t - 2, 1, -1), (w - t - 2, h - t - 2, -1, -1)):
+        # (Kept within the nine-slice margin, so it never repeats.)
+        img.putpixel((cx, cy), GOLD["hi"])
+        img.putpixel((cx + sx, cy), GOLD["light"])
+        img.putpixel((cx, cy + sy), GOLD["light"])
+
+
 def panel():
-    # The main window: deep navy cloth with a faint weave, a heavy bronze
-    # frame with rivets along it and worked corner bosses with red gems.
+    # The main window: a book's board of dark walnut, bound in a heavy
+    # bronze frame with brass studs, a gold rule inside it, and worked gold
+    # corner bosses set with red gems.
     w = h = 44
     t = 7
     img = Image.new("RGBA", (w, h))
-    # The cloth is nearly flat: a few faint threads, so text reads cleanly.
-    fill(img, 0, 0, w, h, C("131929"), 1, 0.025, C("161d30"), C("111624"))
-    frame(img, t, BRONZE, C("06080c"))
+    wood_grain(img, 0, 0, w, h, 1)
+    frame(img, t, BRONZE, C("0a0604"))
     for k in range(t + 6, w - t - 6, 6):
-        rivet(img, k, 3, BRONZE)
-        rivet(img, k, h - 4, BRONZE)
-        rivet(img, 3, k, BRONZE)
-        rivet(img, w - 4, k, BRONZE)
-    corner_piece(img, t, BRONZE, C("c83a3a"))
+        rivet(img, k, 3, GOLD)
+        rivet(img, k, h - 4, GOLD)
+        rivet(img, 3, k, GOLD)
+        rivet(img, w - 4, k, GOLD)
+    gold_trim(img, t)
+    corner_piece(img, t, GOLD, C("c83a3a"))
     save(img, "panel")
 
 
 def inset():
-    # A recessed well: dark, shadowed along the top and left, catching a
-    # little light along the bottom and right.
+    # A page of the book: aged, smoke-darkened vellum (dark enough that the
+    # cream ink of the text reads at a glance), with faint fibres, its edge
+    # sunk into the board and a thin gilt rule round it.
     w = h = 20
     img = Image.new("RGBA", (w, h))
-    # A flat reading surface.
-    fill(img, 0, 0, w, h, C("0c101a"), 2, 0.012, C("0e131f"), C("0b0e17"))
+    fill(img, 0, 0, w, h, C("1e1610"), 2, 0.03, C("231a13"), C("1a130d"))
     for x in range(w):
-        img.putpixel((x, 0), C("05070b"))
-        img.putpixel((x, 1), C("080a10"))
-        img.putpixel((x, h - 1), C("3a3020"))
-        img.putpixel((x, h - 2), C("1c1a1e"))
+        img.putpixel((x, 0), C("0a0604"))
+        img.putpixel((x, 1), C("120c08"))
+        img.putpixel((x, 2), C("6a5028"))
+        img.putpixel((x, h - 1), C("4a3620"))
+        img.putpixel((x, h - 2), C("120c08"))
+        img.putpixel((x, h - 3), C("5a4422"))
     for y in range(h):
-        img.putpixel((0, y), C("05070b"))
-        img.putpixel((1, y), C("080a10"))
-        img.putpixel((w - 1, y), C("3a3020"))
-        img.putpixel((w - 2, y), C("1c1a1e"))
+        img.putpixel((0, y), C("0a0604"))
+        img.putpixel((1, y), C("120c08"))
+        img.putpixel((2, y), C("6a5028"))
+        img.putpixel((w - 1, y), C("4a3620"))
+        img.putpixel((w - 2, y), C("120c08"))
+        img.putpixel((w - 3, y), C("5a4422"))
     for p in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
         img.putpixel(p, C("000000", 0))
     save(img, "inset")
@@ -154,7 +197,7 @@ def card(name, metal, base, light, dark, gem=None):
     t = 4
     img = Image.new("RGBA", (w, h))
     fill(img, 0, 0, w, h, base, zlib.crc32(name.encode()) & 0xff, 0.015, light, dark)
-    frame(img, t, metal, C("06080c"))
+    frame(img, t, metal, C("0a0604"))
     if gem:
         corner_piece(img, t - 1, metal, gem)
     save(img, name)
@@ -167,9 +210,9 @@ def slot(name, metal, base):
     fill(img, 0, 0, w, h, base, 7, 0.05, None, C("080a10"))
     frame(img, 3, metal)
     for x in range(3, w - 3):
-        img.putpixel((x, 3), C("05070b"))
+        img.putpixel((x, 3), C("0a0604"))
     for y in range(3, h - 3):
-        img.putpixel((3, y), C("05070b"))
+        img.putpixel((3, y), C("0a0604"))
     save(img, name)
 
 
@@ -191,7 +234,7 @@ def rarity_slot(index):
     glow, metal, strength, corners = RARITY_SLOTS[index]
     glow = C(glow)
     w = h = 24
-    base = C("0b0e16")
+    base = C("140e0a")
     img = Image.new("RGBA", (w, h))
     for y in range(h):
         for x in range(w):
@@ -206,9 +249,9 @@ def rarity_slot(index):
             img.putpixel((x, y), c)
     frame(img, 3, metal)
     for x in range(3, w - 3):
-        img.putpixel((x, 3), C("05070b"))
+        img.putpixel((x, 3), C("0a0604"))
     for y in range(3, h - 3):
-        img.putpixel((3, y), C("05070b"))
+        img.putpixel((3, y), C("0a0604"))
     if corners == "pips":
         for (x, y) in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2)):
             img.putpixel((x, y), metal["hi"])
@@ -341,8 +384,8 @@ def tick_icon():
 def tooltip():
     w = h = 20
     img = Image.new("RGBA", (w, h))
-    fill(img, 0, 0, w, h, C("0e1220", 248), 13, 0.012, C("111627", 248), C("0c0f1a", 248))
-    frame(img, 3, BRONZE)
+    fill(img, 0, 0, w, h, C("1c140e", 250), 13, 0.03, C("22190f", 250), C("18110b", 250))
+    frame(img, 3, GOLD)
     for p in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2)):
         img.putpixel(p, BRONZE["hi"])
     save(img, "tooltip")
@@ -430,7 +473,7 @@ def wheel():
                     else:
                         col = C("0c101a") if n > 0.08 else C("10151f")
                         if d > hub - 3:
-                            col = C("06080c")
+                            col = C("0a0604")
                 else:
                     continue
                 img.putpixel((x, y), col)
@@ -453,7 +496,7 @@ def wheel():
                             else:
                                 col = GOLD["hi"] if lit else GOLD["mid"]
                         elif d > 16.5:
-                            col = C("05070b")
+                            col = C("0a0604")
                         else:
                             col = C("0a0e18") if lit_index is None else C("2a2210")
                         img.putpixel((x, y), col)
@@ -471,16 +514,16 @@ def main():
     os.makedirs(ROOT, exist_ok=True)
     panel()
     inset()
-    card("card", STEEL, C("151b2b"), C("182033"), C("121725"))
-    card("card_hover", BRONZE, C("1c2338"), C("20283f"), C("181e30"))
-    card("card_selected", GOLD, C("2a2414"), C("352d18"), C("221d10"), C("ffd860"))
-    card("card_dim", IRON, C("0e1119"), C("121621"), C("0b0d14"))
-    slot("slot", IRON, C("0b0e16"))
-    slot("slot_hover", BRONZE, C("141a28"))
-    slot("slot_active", GOLD, C("1e1a10"))
+    card("card", STEEL, C("261a11"), C("2c1f14"), C("20160e"))
+    card("card_hover", BRONZE, C("33241a"), C("3a2a1e"), C("2a1d14"))
+    card("card_selected", GOLD, C("3a2c16"), C("46361c"), C("2e2210"), C("ffd860"))
+    card("card_dim", IRON, C("17110c"), C("1b140e"), C("130e0a"))
+    slot("slot", BRONZE, C("140e0a"))
+    slot("slot_hover", GOLD, C("221810"))
+    slot("slot_active", GOLD, C("2e2210"))
     for index in range(len(RARITY_SLOTS)):
         rarity_slot(index)
-    button("button", C("242a3c"), STEEL, C("343c52"), C("171b27"))
+    button("button", C("3a2818"), STEEL, C("553a24"), C("24180e"))
     button("button_primary", C("c8902e"), GOLD, C("f2c14e"), C("8a6220"))
     button("button_primary_hover", C("dca43a"), GOLD, C("ffe08a"), C("9a6e24"))
     button("button_primary_pressed", C("a8761f"), GOLD, C("c8902e"), C("6e4c14"))
@@ -495,9 +538,9 @@ def main():
     grabber("grabber_hover", GOLD)
     lock_icon()
     tick_icon()
-    button("button_hover", C("323a52"), GOLD, C("4a5470"), C("1e2232"))
-    button("button_pressed", C("4a3a20"), GOLD, C("5e4a28"), C("2e2414"))
-    button("button_disabled", C("181b24"), IRON, C("20242e"), C("12141a"))
+    button("button_hover", C("4a331e"), GOLD, C("6a4a2c"), C("2e1f12"))
+    button("button_pressed", C("5a4320"), GOLD, C("74582c"), C("3a2a14"))
+    button("button_disabled", C("1e1712"), IRON, C("261d16"), C("16110c"))
     tooltip()
     divider()
     wheel()

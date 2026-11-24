@@ -120,7 +120,7 @@ func _draw_arrow(target: Vector2, color: Color, label: String) -> void:
 	var tip := at + dir * 12.0 + bob
 	var shape := PackedVector2Array([tip, at - dir * 4.0 + side * 10.0 + bob, at + dir * 1.0 + bob, at - dir * 4.0 - side * 10.0 + bob])
 	var outline := PackedVector2Array([tip + dir * 3.0, at - dir * 6.0 + side * 13.0 + bob, at + dir * 0.0 + bob, at - dir * 6.0 - side * 13.0 + bob])
-	_canvas.draw_colored_polygon(outline, Color(0.02, 0.02, 0.05, 0.85))
+	_canvas.draw_colored_polygon(outline, Color(0.037, 0.028, 0.021, 0.85))
 	_canvas.draw_colored_polygon(shape, color)
 	var tiles := roundi(_player.global_position.distance_to(target) / TerrainTiles.TILE_SIZE)
 	var font := UITheme.body_bold()

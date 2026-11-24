@@ -33,12 +33,12 @@ func _draw() -> void:
 	# A stone niche and a plinth for the figure to stand on.
 	var feet := _feet()
 	var top := feet.y - 118.0
-	draw_rect(Rect2(feet.x - 78.0, top, 156.0, feet.y - top), Color("0b0e17"))
-	draw_circle(Vector2(feet.x, top), 78.0, Color("0b0e17"))
+	draw_rect(Rect2(feet.x - 78.0, top, 156.0, feet.y - top), Color("140f0b"))
+	draw_circle(Vector2(feet.x, top), 78.0, Color("140f0b"))
 	draw_arc(Vector2(feet.x, top), 78.0, PI, TAU, 32, Color("403020"), 3.0)
 	draw_set_transform(feet + Vector2(0, 6), 0.0, Vector2(1.0, 0.32))
-	draw_circle(Vector2.ZERO, 92.0, Color("2a2c36"))
-	draw_circle(Vector2.ZERO, 76.0, Color("3a3c48"))
+	draw_circle(Vector2.ZERO, 92.0, Color("33281e"))
+	draw_circle(Vector2.ZERO, 76.0, Color("43362a"))
 	draw_set_transform(Vector2.ZERO)
 
 

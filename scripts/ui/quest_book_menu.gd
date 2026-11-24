@@ -229,7 +229,7 @@ func _build() -> void:
 	fill_style.set_corner_radius_all(3)
 	_progress_bar.add_theme_stylebox_override("fill", fill_style)
 	var back_style := StyleBoxFlat.new()
-	back_style.bg_color = Color(0.06, 0.06, 0.1)
+	back_style.bg_color = Color(0.092, 0.070, 0.051)
 	back_style.border_color = Color("8a683a")
 	back_style.set_border_width_all(1)
 	back_style.set_corner_radius_all(3)
@@ -258,7 +258,7 @@ func _legend(state: String, text: String) -> HBoxContainer:
 	sample.custom_minimum_size = Vector2(18, 18)
 	sample.draw.connect(func() -> void:
 		var rect := Rect2(2, 2, 14, 14)
-		sample.draw_rect(rect, Color(0.17, 0.13, 0.26) if state == "open" else Color(0.18, 0.15, 0.1) if state == "done" else Color(0.11, 0.11, 0.15))
+		sample.draw_rect(rect, Color(0.17, 0.13, 0.26) if state == "open" else Color(0.18, 0.15, 0.1) if state == "done" else Color(0.154, 0.117, 0.086))
 		sample.draw_rect(rect, PURPLE.lightened(0.3) if state == "open" else Color(0.98, 0.8, 0.38) if state == "done" else Color(0.44, 0.42, 0.52), false, 2.0)
 		if state == "done":
 			sample.draw_polyline(PackedVector2Array([Vector2(5, 9), Vector2(8, 12), Vector2(13, 5)]), Color(0.75, 1.0, 0.65), 2.0)
@@ -431,7 +431,7 @@ func _section(title: String, note: String) -> VBoxContainer:
 func _row_panel(selected: bool) -> PanelContainer:
 	var panel := PanelContainer.new()
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.13, 0.1, 0.2) if selected else Color(0.08, 0.08, 0.12)
+	style.bg_color = Color(0.179, 0.136, 0.100) if selected else Color(0.117, 0.089, 0.065)
 	style.border_color = PURPLE if selected else Color(0.3, 0.26, 0.4)
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(4)
@@ -526,7 +526,7 @@ func _progress_line(text: String, have: int, need: int) -> HBoxContainer:
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var share := clampf(float(have) / maxf(need, 1.0), 0.0, 1.0)
 	bar.draw.connect(func() -> void:
-		bar.draw_rect(Rect2(0, 4, 150, 7), Color(0.05, 0.05, 0.08))
+		bar.draw_rect(Rect2(0, 4, 150, 7), Color(0.075, 0.057, 0.042))
 		bar.draw_rect(Rect2(0, 4, 150 * share, 7), UITheme.GOOD if done else PURPLE)
 		bar.draw_rect(Rect2(0, 4, 150, 7), Color("8a683a"), false, 1.0)
 	)
@@ -761,7 +761,7 @@ func _texture(spec: Dictionary) -> Texture2D:
 
 func _draw_map() -> void:
 	var size := _canvas.size
-	_canvas.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.05, 0.09))
+	_canvas.draw_rect(Rect2(Vector2.ZERO, size), Color(0.079, 0.060, 0.044))
 	# A faint grid of dots, moving with the map.
 	var grid := 32.0 * _zoom
 	if grid > 6.0:
@@ -834,7 +834,7 @@ func _draw_map() -> void:
 			glow.set_corner_radius_all(int(8.0 * _zoom))
 			_canvas.draw_style_box(glow, rect)
 		var box := StyleBoxFlat.new()
-		box.bg_color = Color(0.17, 0.13, 0.26) if state == "open" else Color(0.18, 0.15, 0.1) if state == "done" else Color(0.11, 0.11, 0.15)
+		box.bg_color = Color(0.17, 0.13, 0.26) if state == "open" else Color(0.18, 0.15, 0.1) if state == "done" else Color(0.154, 0.117, 0.086)
 		if faded:
 			box.bg_color = box.bg_color.darkened(0.4)
 		box.border_color = border
@@ -921,7 +921,7 @@ func _draw_map() -> void:
 			var max_width := STEP.x * _zoom * 2.0 - 10.0
 			var width := minf(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x, max_width) + 10.0
 			var pill := Rect2(at + Vector2(-width / 2.0, half + 5.0 + drop), Vector2(width, 18))
-			_canvas.draw_rect(pill, Color(0.05, 0.05, 0.09, 0.92))
+			_canvas.draw_rect(pill, Color(0.079, 0.060, 0.044, 0.92))
 			if id == _selected:
 				_canvas.draw_rect(pill, Color(1, 1, 1, 0.7), false, 1.0)
 			var color := Color.WHITE if id == _selected else (UITheme.TEXT if state == "open" else Color(0.98, 0.84, 0.5) if state == "done" else UITheme.DIM)
@@ -938,7 +938,7 @@ func _draw_map() -> void:
 		var pill := Rect2(at - Vector2(text_width / 2.0, 0), Vector2(text_width, 20))
 		var current: bool = chapter["id"] == _chapter
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.13, 0.08, 0.22, 0.95) if current else Color(0.08, 0.08, 0.12, 0.9)
+		style.bg_color = Color(0.179, 0.136, 0.100, 0.95) if current else Color(0.117, 0.089, 0.065, 0.9)
 		style.border_color = PURPLE if current else Color(0.35, 0.33, 0.42)
 		style.set_border_width_all(1)
 		style.set_corner_radius_all(9)
@@ -951,7 +951,7 @@ func _draw_map() -> void:
 		var text: String = quest["title"]
 		var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 16.0
 		var box := Rect2(at - Vector2(width / 2.0, 20), Vector2(width, 22))
-		_canvas.draw_rect(box, Color(0.06, 0.05, 0.1, 0.95))
+		_canvas.draw_rect(box, Color(0.088, 0.067, 0.049, 0.95))
 		_canvas.draw_rect(box, PURPLE, false, 1.0)
 		_canvas.draw_string(font, box.position + Vector2(8, 16), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.TEXT)
 	# A soft dark edge.
@@ -966,7 +966,7 @@ func _draw_overview(size: Vector2) -> void:
 	if bounds.size.x < 1.0 or bounds.size.y < 1.0:
 		return
 	var box := Rect2(size - Vector2(150, 92), Vector2(140, 82))
-	_canvas.draw_rect(box, Color(0.03, 0.03, 0.06, 0.92))
+	_canvas.draw_rect(box, Color(0.050, 0.038, 0.028, 0.92))
 	_canvas.draw_rect(box, Color(0.4, 0.36, 0.52), false, 1.0)
 	var scale := minf((box.size.x - 8.0) / bounds.size.x, (box.size.y - 8.0) / bounds.size.y)
 	var origin := box.get_center() - bounds.get_center() * scale
@@ -1018,7 +1018,7 @@ func _show_details() -> void:
 		tick.custom_minimum_size = Vector2(16, 16)
 		var met := have >= need or state == "done"
 		tick.draw.connect(func() -> void:
-			tick.draw_rect(Rect2(1, 1, 14, 14), Color(0.06, 0.06, 0.1))
+			tick.draw_rect(Rect2(1, 1, 14, 14), Color(0.092, 0.070, 0.051))
 			tick.draw_rect(Rect2(1, 1, 14, 14), UITheme.GOOD if met else Color(0.5, 0.48, 0.55), false, 1.5)
 			if met:
 				tick.draw_polyline(PackedVector2Array([Vector2(4, 8), Vector2(7, 11), Vector2(12, 4)]), UITheme.GOOD, 2.0)

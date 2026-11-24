@@ -328,9 +328,9 @@ func _creature_page(codex: Codex, id: String) -> void:
 	var stage := Control.new()
 	stage.custom_minimum_size = Vector2(384, 150)
 	stage.draw.connect(func() -> void:
-		stage.draw_rect(Rect2(Vector2.ZERO, stage.size), Color("0b0e17"))
+		stage.draw_rect(Rect2(Vector2.ZERO, stage.size), Color("140f0b"))
 		stage.draw_set_transform(Vector2(stage.size.x / 2.0, stage.size.y - 28.0), 0.0, Vector2(1.0, 0.3))
-		stage.draw_circle(Vector2.ZERO, 70.0, Color("2a2c36"))
+		stage.draw_circle(Vector2.ZERO, 70.0, Color("33281e"))
 		stage.draw_set_transform(Vector2.ZERO)
 		stage.draw_rect(Rect2(Vector2.ZERO, stage.size), Color("403020"), false, 2.0)
 	)
@@ -361,7 +361,7 @@ func _creature_page(codex: Codex, id: String) -> void:
 	bar.draw.connect(func() -> void:
 		var font := UITheme.get_theme().default_font
 		var track := Rect2(0, 4, bar.size.x, 12)
-		bar.draw_rect(track, Color(0.03, 0.035, 0.06))
+		bar.draw_rect(track, Color(0.052, 0.040, 0.029))
 		bar.draw_rect(Rect2(track.position, Vector2(track.size.x * minf(float(kills) / goal, 1.0), track.size.y)), UITheme.GOLD if kills >= goal else Color("b0503a"))
 		bar.draw_rect(track, Color("8a683a"), false, 1.0)
 		for notch: Array in [[Codex.REVEAL["weakness"], "weakness"], [Codex.REVEAL["drops"], "drops"], [Codex.REVEAL["mark"], "mark"]]:
@@ -484,7 +484,7 @@ func _item_chip(item_id: String, words: String, dim: bool = false) -> Control:
 	chip.add_theme_stylebox_override("panel", ItemGrid.frame_style(null if dim else item, false))
 	var picture := TextureRect.new()
 	picture.texture = item.icon()
-	picture.modulate = Color(0.03, 0.03, 0.06) if dim else item.icon_tint()
+	picture.modulate = Color(0.050, 0.038, 0.028) if dim else item.icon_tint()
 	picture.position = Vector2(4, 4)
 	picture.size = Vector2(30, 30)
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -533,11 +533,11 @@ func _achievements(codex: Codex) -> void:
 			var font := UITheme.get_theme().default_font
 			var rect := Rect2(Vector2.ZERO, card.size)
 			card.draw_rect(rect, Color("1c1a12") if done else Color("151823"))
-			card.draw_rect(rect, UITheme.GOLD if done else Color("3a3e50"), false, 2.0 if done else 1.0)
+			card.draw_rect(rect, UITheme.GOLD if done else Color("4a3a2a"), false, 2.0 if done else 1.0)
 			# A medal: bright when earned, a dull blank when not.
 			var medal := Vector2(29, 29)
 			card.draw_circle(medal, 19.0, Color("403020"))
-			card.draw_circle(medal, 16.0, Color("f0cf6a") if done else Color("3a3e50"))
+			card.draw_circle(medal, 16.0, Color("f0cf6a") if done else Color("4a3a2a"))
 			card.draw_circle(medal, 11.0, Color("c09a3c") if done else Color("2a2c38"))
 			if done:
 				card.draw_colored_polygon(PackedVector2Array([medal + Vector2(0, -9), medal + Vector2(2.6, -3), medal + Vector2(9, -3), medal + Vector2(4, 1.4), medal + Vector2(6, 8),
@@ -551,7 +551,7 @@ func _achievements(codex: Codex) -> void:
 				rewards.append("look")
 			card.draw_string(font, Vector2(card.size.x - 160.0, 20), ", ".join(rewards), HORIZONTAL_ALIGNMENT_RIGHT, 150.0, 12, UITheme.GOLD if done else UITheme.DIM)
 			var track := Rect2(58, 44, card.size.x - 190.0, 7)
-			card.draw_rect(track, Color(0.03, 0.035, 0.06))
+			card.draw_rect(track, Color(0.052, 0.040, 0.029))
 			card.draw_rect(Rect2(track.position, Vector2(track.size.x * minf(float(progress) / goal, 1.0), track.size.y)), UITheme.GOLD if done else Color("5a8ad0"))
 			card.draw_string(font, Vector2(card.size.x - 126.0, 52), "%d / %d" % [mini(progress, goal), goal], HORIZONTAL_ALIGNMENT_RIGHT, 116.0, 12, UITheme.GOOD if done else UITheme.TEXT)
 		)
@@ -650,7 +650,7 @@ func _knowledge_bar(title: String, share: float, tint: Color) -> void:
 	name.custom_minimum_size.x = 150.0
 	row.add_child(name)
 	var back := ColorRect.new()
-	back.color = Color(0.05, 0.06, 0.1)
+	back.color = Color(0.088, 0.067, 0.049)
 	back.custom_minimum_size = Vector2(160, 10)
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var fill := ColorRect.new()

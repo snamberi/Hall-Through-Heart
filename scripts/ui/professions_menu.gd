@@ -225,8 +225,8 @@ func _build() -> void:
 	plate.custom_minimum_size = Vector2(108.0, 100.0)
 	plate.draw.connect(func() -> void:
 		plate.draw_set_transform(Vector2(54, 84), 0.0, Vector2(1.0, 0.32))
-		plate.draw_circle(Vector2.ZERO, 46.0, Color("2a2c36"))
-		plate.draw_circle(Vector2.ZERO, 38.0, Color("3a3c48"))
+		plate.draw_circle(Vector2.ZERO, 46.0, Color("33281e"))
+		plate.draw_circle(Vector2.ZERO, 38.0, Color("43362a"))
 		plate.draw_set_transform(Vector2.ZERO)
 	)
 	top.add_child(plate)
@@ -400,7 +400,7 @@ func _draw_xp() -> void:
 	var have: float = professions.xp[_selected]
 	var maxed := level >= Professions.MAX_LEVEL
 	var rect := Rect2(Vector2.ZERO, _xp_bar.size)
-	_xp_bar.draw_rect(rect, Color(0.03, 0.035, 0.06))
+	_xp_bar.draw_rect(rect, Color(0.052, 0.040, 0.029))
 	var share := 1.0 if maxed else clampf(have / maxf(need, 1.0), 0.0, 1.0)
 	_xp_bar.draw_rect(Rect2(rect.position + Vector2(2, 2), Vector2((rect.size.x - 4.0) * share, rect.size.y - 4.0)), Color("d9a441"))
 	_xp_bar.draw_rect(Rect2(rect.position + Vector2(2, 2), Vector2((rect.size.x - 4.0) * share, (rect.size.y - 4.0) * 0.4)), Color("f0d28a"))
