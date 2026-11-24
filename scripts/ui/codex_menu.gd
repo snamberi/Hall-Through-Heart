@@ -37,7 +37,7 @@ func _build() -> void:
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.add_theme_constant_override("separation", 8)
 	content.add_child(tabs)
-	for tab: Array in [["bestiary", "Bestiary"], ["factions", "Factions"], ["achievements", "Achievements"], ["collection", "Collection"]]:
+	for tab: Array in [["lore", "The Telling"], ["bestiary", "Bestiary"], ["factions", "Factions"], ["achievements", "Achievements"], ["collection", "Collection"]]:
 		var button := UITheme.button(tab[1], func() -> void:
 			_tab = tab[0]
 			_picked = ""
@@ -119,6 +119,8 @@ func refresh() -> void:
 			_achievements(codex)
 		"factions":
 			_factions(codex)
+		"lore":
+			_lore(codex)
 		_:
 			_collection(codex)
 
@@ -134,6 +136,62 @@ func _say(bbcode: String) -> void:
 	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text.text = bbcode
 	_right.add_child(text)
+
+
+const LORE_BOOK := preload("res://scripts/progression/lore.gd")
+
+
+## The Telling: the world's history in chapters, opened by what the player
+## has done, then the peoples and places they have found. No ending: the
+## last chapter is the one being lived.
+func _lore(codex: Codex) -> void:
+	var chapters := LORE_BOOK.open_chapters(codex.stats)
+	var places := LORE_BOOK.known_places(codex.stats)
+	_left.add_child(UITheme.label("%d of %d chapters  ·  %d of %d places" % [chapters.size(), LORE_BOOK.CHAPTERS.size(), places.size(), LORE_BOOK.PLACES.size()], 15, UITheme.TEXT))
+	var pages := {}
+	_left.add_child(UITheme.label("THE HISTORY", 14, UITheme.GOLD))
+	for chapter: Dictionary in LORE_BOOK.CHAPTERS:
+		var open := chapter in chapters
+		var hint := "" if open else "  (%s)" % _chapter_hint(chapter)
+		pages["c:" + chapter["id"]] = [chapter["title"], chapter["text"]] if open else []
+		_lore_row(chapter["title"] + hint, "c:" + chapter["id"], open)
+	_left.add_child(UITheme.label("THE PEOPLES", 14, UITheme.GOLD))
+	for people: String in LORE_BOOK.PEOPLES:
+		var open := int(codex.stats.get("lore:people_" + people, 0)) > 0
+		var title := {"human": "Humans", "elf": "Elves", "dwarf": "Dwarves", "goblin": "Goblins"}[people] as String
+		pages["p:" + people] = [title, LORE_BOOK.PEOPLES[people]] if open else []
+		_lore_row(title if open else "???  (meet them)", "p:" + people, open)
+	_left.add_child(UITheme.label("THE PLACES", 14, UITheme.GOLD))
+	for kind: String in LORE_BOOK.PLACES:
+		var open := kind in places
+		var title: String = {"goblin_camp": "Goblin Camp", "castle": "Castle"}.get(kind, Structures.SITE_NAMES.get(kind, kind.capitalize()))
+		pages["s:" + kind] = [title, LORE_BOOK.PLACES[kind]] if open else []
+		if open:
+			_lore_row(title, "s:" + kind, true)
+	if places.size() < LORE_BOOK.PLACES.size():
+		_left.add_child(UITheme.label("%d more places to find" % (LORE_BOOK.PLACES.size() - places.size()), 13, UITheme.DIM))
+	var page: Array = pages.get(_picked, [])
+	if page.is_empty():
+		page = [chapters[0]["title"], chapters[0]["text"]]
+	_say("[font_size=22][color=#%s]%s[/color][/font_size]\n\n%s" % [UITheme.HEADING.to_html(false), page[0], page[1]])
+
+
+func _lore_row(text: String, id: String, open: bool) -> void:
+	var button := UITheme.button(text, func() -> void:
+		_picked = id
+		refresh()
+	, 500.0)
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.disabled = not open
+	button.toggle_mode = true
+	button.set_pressed_no_signal(_picked == id)
+	_left.add_child(button)
+
+
+static func _chapter_hint(chapter: Dictionary) -> String:
+	var hints := {"villages": "visit a village", "talks": "talk with people", "kills": "defeat monsters", "minibosses": "defeat a named monster",
+		"dungeons": "clear a crypt", "colossus_seen": "find a fallen colossus", "bosses": "defeat great bosses"}
+	return str(hints.get(chapter["stat"], "keep exploring"))
 
 
 func _bestiary(codex: Codex) -> void:
@@ -288,6 +346,10 @@ func _creature_page(codex: Codex, id: String) -> void:
 	var lines: PackedStringArray = []
 	lines.append("[font_size=22][color=#%s]%s[/color][/font_size]" % [UITheme.HEADING.to_html(false), data["name"]])
 	lines.append("[i][color=#%s]%s[/color][/i]" % [UITheme.DIM.to_html(false), Codex.LORE.get(id, "")])
+	var family := LORE_BOOK.family_of(id)
+	if family != "":
+		lines.append("")
+		lines.append("[color=#%s]%s[/color]  %s" % [UITheme.GOLD.to_html(false), LORE_BOOK.FAMILIES[family]["name"], LORE_BOOK.FAMILIES[family]["text"]])
 	lines.append("")
 	lines.append("Roams %s, from level %d. %s." % [", ".join((data["tiles"] as Array).slice(0, 4).map(func(t: int) -> String: return TerrainTiles.display_name(t))).to_lower(), data["min_level"],
 		{"night": "Comes out at night", "day": "Roams by day", "always": "Day and night"}[data.get("active", "night")]])

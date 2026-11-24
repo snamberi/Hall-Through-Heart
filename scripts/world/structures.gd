@@ -247,7 +247,7 @@ func nearest_sites(cell: Vector2i, count: int, reach: int = 6, skip: Array = [],
 				if center != null:
 					var distance := Vector2(Vector2i(center) - cell).length()
 					if distance > WorldGenerator.VILLAGE_RADIUS:
-						found.append({"kind": "village", "name": "Village", "cell": center, "distance": distance})
+						found.append({"kind": "village", "name": _world.generator.village_name(center), "cell": center, "distance": distance})
 	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["distance"] < b["distance"])
 	return found.slice(0, count)
 

@@ -166,3 +166,15 @@ func test_peoples_villages_and_goblins(t: TestContext) -> void:
 	t.check(a.angered and b.angered, "strike one goblin and the camp takes up arms")
 	t.check(not EnemyDB.ENEMIES["goblin_raider"].has("wild"), "raiders attack on sight")
 	t.check(main.get_node_or_null("GoblinCamps") != null, "goblin camps are built")
+
+
+func test_the_telling(t: TestContext) -> void:
+	var lore := preload("res://scripts/progression/lore.gd")
+	var seen := {}
+	for id: String in EnemyDB.ENEMIES:
+		t.check(Codex.LORE.has(id), "%s has lore" % id)
+		t.check(lore.family_of(id) != "", "%s belongs to a family" % id)
+	for kind: String in Structures.SITE_NAMES:
+		t.check(lore.PLACES.has(kind), "%s has a story" % kind)
+	t.equal(lore.open_chapters({}).size(), 1, "the first chapter is open from the start")
+	t.equal(lore.open_chapters({"villages": 1, "talks": 10, "kills": 50}).size(), 4, "chapters open with deeds")

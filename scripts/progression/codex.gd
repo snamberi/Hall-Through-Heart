@@ -148,6 +148,12 @@ const LORE := {
 	"salt_antelope": "It licks the salt flats white and runs faster than anything that chases it.",
 	"mountain_ram": "Its horns curl like the mountain roads. It settles every argument with them.",
 	"dawn_unicorn": "Seen at first light at the edge of old meadows. To harm one is to be remembered by the land.",
+	"veinheart": "A heart that kept beating after its body was gone, and grew veins to walk on.",
+	"heartsworn_knight": "Sworn to the Heart's blood, and given more of it than any body can hold.",
+	"rotten_corpse": "The graveyard's dead, roots grown through them. They answer to something older underneath.",
+	"ghost": "A grudge that outlived the one who held it.",
+	"masked_noble": "A courtier of Saint Lull. The mask smiles so the face beneath need not.",
+	"matron": "She keeps Saint Lull's house warm, clean and very quiet. She does not like noise.",
 	"alpha_wolf": "The white leader of a wolf pack: bigger, older and scarred. Kill it and the pack scatters.",
 }
 
@@ -322,6 +328,34 @@ var _place_left := 0.0
 
 
 ## Where the player is: villages walked into and islands set foot on.
+const LORE_BOOK := preload("res://scripts/progression/lore.gd")
+
+
+## Opens a story of the world (see Lore), once; `tell` says it aloud too.
+func _open_lore(id: String, tell: bool = false) -> void:
+	if int(stats.get("lore:" + id, 0)) > 0:
+		return
+	set_stat("lore:" + id, 1)
+	if tell and LORE_BOOK.PLACES.has(id):
+		var sites := {"castle": "A KING'S CASTLE", "goblin_camp": "A GOBLIN CAMP"}
+		Events.announcement.emit(sites.get(id, str(Structures.SITE_NAMES.get(id, id)).to_upper()), LORE_BOOK.PLACES[id])
+
+
+## The first time the player stands at a kind of place, its story.
+func _check_places(world: World, cell: Vector2i) -> void:
+	var structures: Structures = _player.get_parent().get_node_or_null("Structures")
+	if structures:
+		var site := structures.site_for(Vector2i((Vector2(cell) / World.CHUNK_SIZE).floor()))
+		if not site.is_empty() and Vector2(cell - (site["cell"] as Vector2i)).length() < 8.0:
+			_open_lore(str(site["kind"]), true)
+	var camps: Node = _player.get_parent().get_node_or_null("GoblinCamps")
+	if camps:
+		var camp: Variant = camps.camp_center(Vector2i((Vector2(cell) / camps.CAMP_REGION).floor()))
+		if camp != null and Vector2(cell - (camp as Vector2i)).length() < 10.0:
+			_open_lore("goblin_camp", true)
+			_open_lore("people_goblin")
+
+
 func _physics_process(delta: float) -> void:
 	_place_left -= delta
 	if _place_left > 0.0 or _player == null or _player.indoors:
@@ -337,5 +371,16 @@ func _physics_process(delta: float) -> void:
 		if not villages.has(key):
 			villages[key] = true
 			set_stat("villages", villages.size())
+			# Each new village by name, and its people's story the first time.
+			var people: String = world.generator.village_culture(village)
+			var kind := "%s %s" % ["an" if people == "elf" else "a", "elven" if people == "elf" else "dwarven" if people == "dwarf" else "human"]
+			Events.announcement.emit(world.generator.village_name(village).to_upper(),
+				("The capital, %s city" % kind.substr(kind.find(" ") + 1)) if world.generator.is_capital(village) else "%s village" % kind.capitalize())
+			_open_lore("people_" + people)
+			_open_lore("village")
+		if world.generator.has_castle(village) and Vector2(cell - (village as Vector2i) - Villages.CASTLE_SPOT).length() < 7.0:
+			_open_lore("castle", true)
+	else:
+		_check_places(world, cell)
 	if world.generator.is_island(cell) and not stats.has("islands"):
 		set_stat("islands", 1)
