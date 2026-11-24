@@ -30,6 +30,32 @@ IRON = {"out": C("0c0a08"), "dark": C("2e2924"), "mid": C("4a433a"), "light": C(
 # means "chosen". (The name is kept from the old steel skin.)
 STEEL = {"out": C("0c0805"), "dark": C("2e1f14"), "mid": C("4a3424"), "light": C("664a32"), "hi": C("8a6a48")}
 WOOD = {"dark": C("2a1a10"), "mid": C("3a2616"), "light": C("4a321e"), "grain": C("22150c"), "knot": C("1a1008")}
+
+# The skin in use (tools/ui_themes.py); UI_THEME=<name> draws another.
+import sys  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ui_themes  # noqa: E402
+THEME_NAME = os.environ.get("UI_THEME", "walnut")
+T = ui_themes.THEMES[THEME_NAME]
+
+
+def _metal(m):
+    return {k: C(v) for k, v in m.items()}
+
+
+def _shift(hexc, k):
+    c = C(hexc)
+    return tuple(max(0, min(255, int(v * k))) for v in c[:3]) + (255,)
+
+
+FRAME = _metal(T["frame"])
+TRIM = _metal(T["trim"])
+RIM = _metal(T["rim"])
+STEEL = RIM
+BRONZE = FRAME
+GOLD = TRIM if THEME_NAME != "walnut" else GOLD
+SURFACE_KIND, _surf = T["surface"]
+SURF = {k: C(v) for k, v in _surf.items()}
 RED = {"out": C("14060a"), "dark": C("5a1c24"), "mid": C("8e2c36"), "light": C("c0444e"), "hi": C("e8747c")}
 
 
@@ -130,21 +156,64 @@ def wood_grain(img, x0, y0, x1, y1, seed, palette=None):
             img.putpixel((x0 + x, y0 + y), c)
 
 
+def surface(img, x0, y0, x1, y1, seed):
+    """The window's surface, in the theme's material; every pattern repeats
+    every 11 pixels so the middle of the frame tiles cleanly."""
+    pal = SURF
+    if SURFACE_KIND == "wood":
+        wood_grain(img, x0, y0, x1, y1, seed, pal)
+        return
+    r = random.Random(seed)
+    w, h = x1 - x0, y1 - y0
+    for y in range(h):
+        for x in range(w):
+            c = pal["mid"]
+            v = r.random()
+            if SURFACE_KIND == "cloth":
+                # A fine weave: alternate threads a shade apart.
+                c = pal["light"] if (x + y) % 2 == 0 and y % 2 == 0 else pal["mid"] if (x + y) % 2 == 0 else pal["dark"] if v < 0.4 else pal["mid"]
+                if v < 0.012:
+                    c = pal["knot"]
+            elif SURFACE_KIND == "stone":
+                # Dressed blocks 22 wide and 11 high, offset each course, with mortar.
+                row = y // 11
+                bx = (x + (11 if row % 2 else 0)) % 22
+                if y % 11 == 10 or bx == 21:
+                    c = pal["grain"] if v > 0.03 else pal["knot"]
+                else:
+                    c = pal["light"] if (y % 11 < 2 or bx < 2) else pal["dark"] if (y % 11 > 7 or bx > 18) else pal["mid"]
+                    if v < 0.05:
+                        c = pal["dark"]
+            elif SURFACE_KIND == "leather":
+                # Tooled leather: soft mottling and pores.
+                n = (math.sin(x * 0.57) + math.sin(y * 0.57 + 1.3) + math.sin((x + y) * 0.285))
+                c = pal["light"] if n > 1.2 else pal["dark"] if n < -1.2 else pal["mid"]
+                if v < 0.03:
+                    c = pal["grain"]
+            elif SURFACE_KIND == "glass":
+                # Frosted glass: faint diagonal streaks and the odd glint.
+                band = (x + y) % 11
+                c = pal["light"] if band == 0 else pal["mid"] if band < 6 else pal["dark"]
+                if v < 0.01:
+                    c = pal["knot"]
+            img.putpixel((x0 + x, y0 + y), c)
+
+
 def gold_trim(img, t):
     """A gold inner rule just inside a frame of thickness t, with small
     leaf flourishes at the corners."""
     w, h = img.size
     for x in range(t + 1, w - t - 1):
-        img.putpixel((x, t + 1), GOLD["mid"])
-        img.putpixel((x, h - t - 2), GOLD["dark"])
+        img.putpixel((x, t + 1), TRIM["mid"])
+        img.putpixel((x, h - t - 2), TRIM["dark"])
     for y in range(t + 1, h - t - 1):
-        img.putpixel((t + 1, y), GOLD["mid"])
-        img.putpixel((w - t - 2, y), GOLD["dark"])
+        img.putpixel((t + 1, y), TRIM["mid"])
+        img.putpixel((w - t - 2, y), TRIM["dark"])
     for (cx, cy, sx, sy) in ((t + 1, t + 1, 1, 1), (w - t - 2, t + 1, -1, 1), (t + 1, h - t - 2, 1, -1), (w - t - 2, h - t - 2, -1, -1)):
         # (Kept within the nine-slice margin, so it never repeats.)
-        img.putpixel((cx, cy), GOLD["hi"])
-        img.putpixel((cx + sx, cy), GOLD["light"])
-        img.putpixel((cx, cy + sy), GOLD["light"])
+        img.putpixel((cx, cy), TRIM["hi"])
+        img.putpixel((cx + sx, cy), TRIM["light"])
+        img.putpixel((cx, cy + sy), TRIM["light"])
 
 
 def panel():
@@ -154,15 +223,15 @@ def panel():
     w = h = 44
     t = 7
     img = Image.new("RGBA", (w, h))
-    wood_grain(img, 0, 0, w, h, 1)
-    frame(img, t, BRONZE, C("0a0604"))
+    surface(img, 0, 0, w, h, 1)
+    frame(img, t, FRAME, C("0a0604"))
     for k in range(t + 6, w - t - 6, 6):
-        rivet(img, k, 3, GOLD)
-        rivet(img, k, h - 4, GOLD)
-        rivet(img, 3, k, GOLD)
-        rivet(img, w - 4, k, GOLD)
+        rivet(img, k, 3, TRIM)
+        rivet(img, k, h - 4, TRIM)
+        rivet(img, 3, k, TRIM)
+        rivet(img, w - 4, k, TRIM)
     gold_trim(img, t)
-    corner_piece(img, t, GOLD, C("c83a3a"))
+    corner_piece(img, t, TRIM, C(T["gem"]))
     save(img, "panel")
 
 
@@ -172,21 +241,22 @@ def inset():
     # sunk into the board and a thin gilt rule round it.
     w = h = 20
     img = Image.new("RGBA", (w, h))
-    fill(img, 0, 0, w, h, C("1e1610"), 2, 0.03, C("231a13"), C("1a130d"))
+    base, fibre_light, fibre_dark, rule, lip = T["page"]
+    fill(img, 0, 0, w, h, C(base), 2, 0.03, C(fibre_light), C(fibre_dark))
     for x in range(w):
         img.putpixel((x, 0), C("0a0604"))
-        img.putpixel((x, 1), C("120c08"))
-        img.putpixel((x, 2), C("6a5028"))
-        img.putpixel((x, h - 1), C("4a3620"))
-        img.putpixel((x, h - 2), C("120c08"))
-        img.putpixel((x, h - 3), C("5a4422"))
+        img.putpixel((x, 1), _shift(base, 0.5))
+        img.putpixel((x, 2), C(rule))
+        img.putpixel((x, h - 1), C(lip))
+        img.putpixel((x, h - 2), _shift(base, 0.5))
+        img.putpixel((x, h - 3), _shift(rule, 0.85))
     for y in range(h):
         img.putpixel((0, y), C("0a0604"))
-        img.putpixel((1, y), C("120c08"))
-        img.putpixel((2, y), C("6a5028"))
-        img.putpixel((w - 1, y), C("4a3620"))
-        img.putpixel((w - 2, y), C("120c08"))
-        img.putpixel((w - 3, y), C("5a4422"))
+        img.putpixel((1, y), _shift(base, 0.5))
+        img.putpixel((2, y), C(rule))
+        img.putpixel((w - 1, y), C(lip))
+        img.putpixel((w - 2, y), _shift(base, 0.5))
+        img.putpixel((w - 3, y), _shift(rule, 0.85))
     for p in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
         img.putpixel(p, C("000000", 0))
     save(img, "inset")
@@ -234,7 +304,7 @@ def rarity_slot(index):
     glow, metal, strength, corners = RARITY_SLOTS[index]
     glow = C(glow)
     w = h = 24
-    base = C("140e0a")
+    base = C(T["slot"])
     img = Image.new("RGBA", (w, h))
     for y in range(h):
         for x in range(w):
@@ -384,8 +454,9 @@ def tick_icon():
 def tooltip():
     w = h = 20
     img = Image.new("RGBA", (w, h))
-    fill(img, 0, 0, w, h, C("1c140e", 250), 13, 0.03, C("22190f", 250), C("18110b", 250))
-    frame(img, 3, GOLD)
+    tip = T["tooltip"]
+    fill(img, 0, 0, w, h, C(tip, 250), 13, 0.03, _shift(tip, 1.15)[:3] + (250,), _shift(tip, 0.85)[:3] + (250,))
+    frame(img, 3, TRIM)
     for p in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2)):
         img.putpixel(p, BRONZE["hi"])
     save(img, "tooltip")
@@ -514,16 +585,16 @@ def main():
     os.makedirs(ROOT, exist_ok=True)
     panel()
     inset()
-    card("card", STEEL, C("261a11"), C("2c1f14"), C("20160e"))
-    card("card_hover", BRONZE, C("33241a"), C("3a2a1e"), C("2a1d14"))
-    card("card_selected", GOLD, C("3a2c16"), C("46361c"), C("2e2210"), C("ffd860"))
-    card("card_dim", IRON, C("17110c"), C("1b140e"), C("130e0a"))
-    slot("slot", BRONZE, C("140e0a"))
-    slot("slot_hover", GOLD, C("221810"))
-    slot("slot_active", GOLD, C("2e2210"))
+    for name, metal in (("card", RIM), ("card_hover", FRAME), ("card_selected", TRIM), ("card_dim", IRON)):
+        base = T[name]
+        card(name, metal, C(base), _shift(base, 1.15), _shift(base, 0.85), C("ffd860") if name == "card_selected" else None)
+    slot("slot", FRAME, C(T["slot"]))
+    slot("slot_hover", TRIM, _shift(T["slot"], 1.5))
+    slot("slot_active", TRIM, _shift(T["slot"], 2.0))
     for index in range(len(RARITY_SLOTS)):
         rarity_slot(index)
-    button("button", C("3a2818"), STEEL, C("553a24"), C("24180e"))
+    face, lit, dark = T["button"]
+    button("button", C(face), RIM, C(lit), C(dark))
     button("button_primary", C("c8902e"), GOLD, C("f2c14e"), C("8a6220"))
     button("button_primary_hover", C("dca43a"), GOLD, C("ffe08a"), C("9a6e24"))
     button("button_primary_pressed", C("a8761f"), GOLD, C("c8902e"), C("6e4c14"))
@@ -538,9 +609,9 @@ def main():
     grabber("grabber_hover", GOLD)
     lock_icon()
     tick_icon()
-    button("button_hover", C("4a331e"), GOLD, C("6a4a2c"), C("2e1f12"))
-    button("button_pressed", C("5a4320"), GOLD, C("74582c"), C("3a2a14"))
-    button("button_disabled", C("1e1712"), IRON, C("261d16"), C("16110c"))
+    for name in ("button_hover", "button_pressed"):
+        button(name, C(T[name]), TRIM, _shift(T[name], 1.3), _shift(T[name], 0.7))
+    button("button_disabled", C(T["button_disabled"]), IRON, _shift(T["button_disabled"], 1.2), _shift(T["button_disabled"], 0.8))
     tooltip()
     divider()
     wheel()
