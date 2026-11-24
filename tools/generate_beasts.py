@@ -16,8 +16,9 @@ rest, a grazing head-down and a stretch. Nothing is stretched, squashed or
 turned, so no pixel is ever resampled. Every beast faces right; the game
 mirrors it.
 
-Writes assets/sprites/enemies/<name>.png (9 rows of 96-pixel frames, the
-rows of EnemyAnimator.ROWS then the pets' rest, scratch and stretch).
+Writes assets/sprites/enemies/<name>.png (11 rows of 96-pixel frames, the
+rows of EnemyAnimator.ROWS, the pets' rest, scratch and stretch, then the
+beast walking away, seen from behind: idle and walk).
 
 Run from the repository root:  python3 tools/generate_beasts.py
 """
@@ -575,12 +576,116 @@ def head(f, spec, p, hx, hy, rnd):
         f.put(ex - 1, ey + 2, C("2a1e1a"))
 
 
+def draw_back(spec, p):
+    """The beast walking away, seen from behind: its rump and tail, the hind
+    legs in front and the forelegs (darker) between them, and over the
+    back, the back of its head with ears and horns. Moved by the same poses."""
+    f = Frame()
+    fur, out = spec["fur"], spec["out"]
+    dark_fur = tuple(shade(c, 0.72) for c in fur)
+    L, H, LL, W = spec["length"], spec["height"], spec["legs"], spec["leg_w"]
+    cx = 48
+    bottom = GROUND - LL + p["by"]
+    top = bottom - H
+    half = max(5, int(max(H * 0.62, L * 0.24)))
+    sw = half + 3
+    ImageDraw.Draw(f.img).ellipse((cx - sw, GROUND - 2, cx + sw, GROUND + 2), fill=(0, 0, 0, 70))
+
+    def leg(x, lift, ramp):
+        w = max(2, W)
+        foot = GROUND - lift
+        f.shape("poly", [(x - w / 2 - 1, bottom - 3), (x + w / 2 + 1, bottom - 3), (x + w / 2, foot - 1), (x - w / 2, foot - 1)], ramp)
+        if spec["feet"] == "hoof":
+            f.fill("rect", (int(x - w / 2), foot - 1, int(x + w / 2), foot), C("2e2420"))
+        else:
+            f.fill("rect", (int(x - w / 2), foot - 1, int(x + w / 2), foot), shade(ramp[1], 0.85))
+
+    legs = p["legs"]
+    # Forelegs, further away, between the hind ones.
+    leg(cx - half // 2 + 1, legs[1][1], dark_fur)
+    leg(cx + half // 2 - 1, legs[0][1], dark_fur)
+    # The head over the back: no face from here, just its back and ears.
+    hw, hh = max(4, spec["head"][0] * 2 // 3), max(4, spec["head"][1] * 3 // 4)
+    hy = top - hh + 3 + p["hy"] // 2
+    f.shape("ellipse", (cx - hw, hy, cx + hw, hy + hh * 2 - 2), fur)
+    ears = spec["ears"]
+    for side in (-1, 1):
+        ex = cx + side * (hw - 1)
+        if ears in ("pointy", "big_pointy", "tufted"):
+            tall = 5 if ears != "big_pointy" else 8
+            f.shape("poly", [(ex - 2, hy + 2), (ex + side * 2, hy - tall), (ex + 2, hy + 2)], fur)
+            if ears == "tufted":
+                f.put(ex + side * 2, hy - tall - 1, out)
+        elif ears == "long":
+            f.shape("poly", [(ex - 1, hy + 2), (ex + side * 2, hy - 11), (ex + side * 3 + 1, hy - 10), (ex + 2, hy + 2)], fur)
+        elif ears == "round":
+            f.shape("ellipse", (ex - 2, hy - 3, ex + 2, hy + 1), fur)
+        elif ears == "floppy":
+            f.shape("poly", [(ex, hy + 1), (ex + side * 4, hy + 2), (ex + side * 3, hy + 6), (ex, hy + 4)], dark_fur)
+        elif ears == "side":
+            f.shape("poly", [(ex, hy + 2), (ex + side * 4, hy), (ex + side * 4, hy + 2)], fur)
+    horns = spec["horns"]
+    hc = (shade(spec["horn_col"], 1.15), spec["horn_col"], shade(spec["horn_col"], 0.7))
+    if horns in ("antlers", "broad_antlers"):
+        spread = 9 if horns == "broad_antlers" else 7
+        for side in (-1, 1):
+            bx = cx + side * 2
+            f.fill("line", (bx, hy, bx + side * spread, hy - 9), hc[1], 2)
+            f.fill("line", (bx + side * (spread // 2), hy - 4, bx + side * (spread // 2 - 2), hy - 10), hc[0], 1)
+            f.fill("line", (bx + side * spread, hy - 9, bx + side * (spread + 2), hy - 13), hc[0], 1)
+    elif horns in ("ox", "curved", "ram", "short", "straight"):
+        for side in (-1, 1):
+            bx = cx + side * (hw - 2)
+            if horns == "ram":
+                f.shape("ellipse", (bx - 2 + side * 2, hy - 1, bx + 2 + side * 2, hy + 4), hc)
+            elif horns == "ox":
+                f.fill("line", (bx, hy + 1, bx + side * 5, hy - 2), hc[1], 2)
+            else:
+                f.fill("line", (bx, hy + 1, bx + side * 2, hy - 6), hc[1], 2)
+    elif horns == "unicorn":
+        f.fill("line", (cx, hy, cx + 1, hy - 9), hc[0], 1)
+    if spec["mane"]:
+        f.fill("rect", (cx - 1, hy + hh - 2, cx + 1, top + 3), spec["mane"])
+    # The body from behind: a broad rump, a darker line down the spine.
+    f.shape("ellipse", (cx - half, top, cx + half, bottom + 2), fur)
+    f.fill("line", (cx, top + 1, cx, top + H // 3), shade(fur[1], 0.85))
+    # Hind legs, nearest of all.
+    leg(cx - half + 2, legs[3][1], fur)
+    leg(cx + half - 2, legs[2][1], fur)
+    # The tail, on the rump.
+    tail = spec["tail"]
+    sway = p["tail"][1] - p["tail"][0]
+    ty = top + max(2, H // 4)
+    if tail in ("short", "curly"):
+        f.shape("ellipse", (cx - 2, ty - 1, cx + 2, ty + 3), dark_fur if tail == "short" else fur)
+    elif tail in ("fluffy", "bushy"):
+        f.shape("ellipse", (cx - 3 + sway, ty - 2, cx + 3 + sway, ty + 5), (C("f6f2ea"), shade(C("f6f2ea"), 0.9), shade(C("f6f2ea"), 0.75)) if tail == "fluffy" else fur)
+    elif tail in ("long", "long_thick", "thin", "flowing"):
+        w = 3 if tail == "long_thick" else 2 if tail != "thin" else 1
+        f.fill("line", (cx, ty, cx + sway * 2, bottom + 6), shade(fur[1], 0.9), w)
+    elif tail == "flame":
+        f.shape("ellipse", (cx - 2 + sway, ty - 3, cx + 2 + sway, ty + 4), (C("ffe080"), C("ff9a30"), C("d05020")))
+    if spec["glow"]:
+        f.put(cx - 2, top + 3, spec["glow"])
+        f.put(cx + 3, top + 5, spec["glow"])
+    f.outline(out)
+    return f.img
+
+
+BACK_ROWS = [("idle", 4), ("walk", 8)]
+
+
 def sheet(spec):
-    out = Image.new("RGBA", (8 * F, len(ROWS) * F), (0, 0, 0, 0))
+    out = Image.new("RGBA", (8 * F, (len(ROWS) + len(BACK_ROWS)) * F), (0, 0, 0, 0))
     for row, (name, count) in enumerate(ROWS):
         frames = ANIMS[name]
         for col in range(count):
             out.paste(draw(spec, frames[col % len(frames)]), (col * F, row * F))
+    # Rows 9 and 10: walking away (EnemyAnimator.BACK_ROWS).
+    for k, (name, count) in enumerate(BACK_ROWS):
+        frames = ANIMS[name]
+        for col in range(count):
+            out.paste(draw_back(spec, frames[col % len(frames)]), (col * F, (len(ROWS) + k) * F))
     return out
 
 
