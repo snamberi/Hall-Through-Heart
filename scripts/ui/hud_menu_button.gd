@@ -62,7 +62,7 @@ func _draw() -> void:
 	# The key, on a little keycap.
 	var key := GameSettings.describe("toggle_menu").split(" / ")[0]
 	var cap := Rect2(size.x - 44.0, 6.0, 34.0, 22.0)
-	draw_style_box(UITheme.slot("slot_hover"), cap.grow(2.0))
+	draw_style_box(UITheme.hud_slot("hud_slot_hover"), cap.grow(2.0))
 	draw_string(UITheme.bold(), cap.position + Vector2(0, 16.0), key, HORIZONTAL_ALIGNMENT_CENTER, cap.size.x, 14, Color.WHITE)
 	if _waiting > 0:
 		var at := Vector2(size.x - 2.0, 2.0)

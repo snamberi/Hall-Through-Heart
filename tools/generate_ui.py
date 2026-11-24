@@ -411,6 +411,55 @@ def tab(name, face, metal, lit, dark):
     save(img, name)
 
 
+def _night(c, most=58):
+    """A colour kept dark enough for light HUD text to read over it: a light
+    style's tone is brought down, keeping its hue; dark ones stay as they are."""
+    lum = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    if lum <= most:
+        return c
+    k = most / lum
+    return tuple(int(v * k) for v in c[:3]) + (c[3] if len(c) > 3 else 255,)
+
+
+def hud_plate():
+    # What the HUD's pieces sit on over the world (hotbar, hand dock,
+    # minimap, bars): the style's own material and metal, kept dark so the
+    # HUD's light text reads, and a touch see-through at the middle.
+    global SURF
+    w = h = 30
+    t = 3
+    img = Image.new("RGBA", (w, h))
+    keep = SURF
+    lum = sum(0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] for c in keep.values()) / len(keep)
+    if lum > 110:
+        # A light style (parchment): the plates are the book's own dark
+        # binding leather instead of its pale pages.
+        f = FRAME
+        dim = lambda c, k: tuple(int(v * k) for v in c[:3]) + (255,)
+        SURF = {"dark": dim(f["dark"], 0.62), "mid": dim(f["dark"], 0.78), "light": dim(f["mid"], 0.7), "grain": f["out"], "knot": dim(f["dark"], 0.5)}
+    else:
+        SURF = {k: _night(v, 52 if k != "knot" else 70) for k, v in keep.items()}
+    surface(img, 0, 0, w, h, 5)
+    SURF = keep
+    for y in range(t, h - t):
+        for x in range(t, w - t):
+            c = img.getpixel((x, y))
+            img.putpixel((x, y), c[:3] + (226,))
+    frame(img, t, FRAME, _night(C(T["slot"]), 18))
+    for (x, y) in ((0, 0), (w - 2, 0), (0, h - 2), (w - 2, h - 2)):
+        rivet(img, x, y, TRIM)
+    save(img, "hud_plate")
+
+
+def hud_slots():
+    # The HUD's own slots: the style's metal lip round a well dark enough
+    # for item pictures and key letters to stand out over the world.
+    base = _night(C(T["slot"]), 30)
+    slot("hud_slot", FRAME, base)
+    slot("hud_slot_hover", TRIM, tuple(min(255, int(v * 1.6)) for v in base[:3]) + (255,))
+    slot("hud_slot_active", TRIM, tuple(min(255, int(v * 2.1)) for v in base[:3]) + (255,))
+
+
 def cursor():
     """The pointer: an arrowhead in the style's trim metal, outlined, lit
     along its left edge (art 11x16, hotspot at its tip)."""
@@ -699,6 +748,8 @@ def main():
     base = T["page"][0]
     tab("tab_active", C(base), TRIM, _shift(base, 1.08), C(base))
     cursor()
+    hud_plate()
+    hud_slots()
     # The menu wheel is shared by every style; it is drawn only with the base set.
     if not os.environ.get("UI_OUT"):
         wheel()

@@ -47,10 +47,10 @@ func _draw() -> void:
 		return
 	# The same light plate and dark slot as the ability dock, edged in the
 	# relic's rarity colour.
-	draw_style_box(ActionBar._make_light_plate(), Rect2(Vector2.ZERO, size))
+	draw_style_box(UITheme.hud_plate(), Rect2(Vector2.ZERO, size))
 	var rect := Rect2(6, 6, SIZE, SIZE)
-	draw_style_box(UITheme.slot("slot"), rect.grow(3.0))
-	draw_rect(rect, Color(0.088, 0.067, 0.049))
+	draw_style_box(UITheme.hud_slot("hud_slot"), rect.grow(3.0))
+	draw_rect(rect, Color(UITheme.WELL))
 	draw_rect(rect, Color(item.color(), 0.9), false, 2.0)
 	var icon := item.icon()
 	if icon:

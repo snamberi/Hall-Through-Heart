@@ -70,8 +70,9 @@ func _render(center: Vector2i) -> void:
 
 func _draw() -> void:
 	var inner := Rect2(Vector2(4, 4), size - Vector2(8, 8))
-	draw_rect(Rect2(Vector2.ZERO, size), Color(UITheme.EDGE))
-	draw_rect(Rect2(Vector2(2, 2), size - Vector2(4, 4)), Color("8a683a"), false, 1.0)
+	# The map sits in a HUD plate of the style's material and metal.
+	draw_style_box(UITheme.hud_plate(), Rect2(Vector2(-2, -2), size + Vector2(4, 4)))
+	draw_rect(Rect2(Vector2(3, 3), size - Vector2(6, 6)), UITheme.METAL, false, 1.0)
 	if _texture:
 		draw_texture_rect(_texture, inner, false)
 	var middle := size / 2.0

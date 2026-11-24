@@ -19,10 +19,11 @@ const STICK_RADIUS := 64.0
 const DEAD_ZONE := 0.18
 ## How far round the player a tap looks for something to strike.
 const AUTO_AIM := 320.0
-const NAVY := Color(0.125, 0.095, 0.070, 0.55)
-const NAVY_HELD := Color(0.16, 0.12, 0.08, 0.7)
-const BRONZE := Color(0.83, 0.66, 0.35, 0.9)
-const BRONZE_DIM := Color(0.52, 0.33, 0.15, 0.75)
+## The buttons' faces and rims, in the interface style's tones and metal.
+var NAVY := Color(UITheme.SHADE, 0.55)
+var NAVY_HELD := Color(UITheme.SHADE.lightened(0.12), 0.7)
+var BRONZE := Color(UITheme.METAL.lightened(0.3), 0.9)
+var BRONZE_DIM := Color(UITheme.METAL.darkened(0.3), 0.75)
 ## The buttons' pictures (tools/generate_touch_icons.py), in sheet order.
 const TOUCH_SHEET: Texture2D = preload("res://assets/icons/touch.png")
 const TOUCH_ICONS: Array[String] = ["dash", "parry", "swap", "run", "walk", "ride", "drink", "chat", "use", "talk", "open", "enter",
@@ -348,7 +349,7 @@ func _draw_controls() -> void:
 	# The stick.
 	var stick_held := held_ids.has("stick")
 	_ring(_stick_base, STICK_RADIUS, NAVY if not stick_held else NAVY_HELD, BRONZE_DIM if not stick_held else BRONZE)
-	_ring(_stick_knob.round(), 26.0, Color(0.83, 0.66, 0.35, 0.35 if not stick_held else 0.6), BRONZE)
+	_ring(_stick_knob.round(), 26.0, Color(BRONZE, 0.35 if not stick_held else 0.6), BRONZE)
 	var font := UITheme.bold()
 	var slots: Array[String] = _player.abilities.slots()
 	for id: String in _buttons:
@@ -403,7 +404,7 @@ func _draw_controls() -> void:
 
 func _ring(at: Vector2, r: float, fill: Color, edge: Color) -> void:
 	_root.draw_circle(at, r, fill)
-	_root.draw_arc(at, r, 0.0, TAU, maxi(24, int(r)), Color(0.075, 0.057, 0.042, 0.8), 4.0)
+	_root.draw_arc(at, r, 0.0, TAU, maxi(24, int(r)), Color(UITheme.WELL, 0.8), 4.0)
 	_root.draw_arc(at, r - 2.0, 0.0, TAU, maxi(24, int(r)), edge, 2.0)
 
 

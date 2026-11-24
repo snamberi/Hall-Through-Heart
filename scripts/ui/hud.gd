@@ -289,7 +289,7 @@ func _draw_gather() -> void:
 		var share := clampf(_player.gather_progress / _player.gather_seconds, 0.0, 1.0)
 		_gather.draw_rect(Rect2(0, 22, width, 12), Color(0.071, 0.054, 0.040, 0.9))
 		_gather.draw_rect(Rect2(2, 24, (width - 4.0) * share, 8), UITheme.ON_WORLD_GOLD)
-		_gather.draw_rect(Rect2(0, 22, width, 12), Color("8a683a"), false, 1.0)
+		_gather.draw_rect(Rect2(0, 22, width, 12), UITheme.METAL, false, 1.0)
 		return
 	if _player.state != Player.State.MOVE:
 		return
@@ -332,7 +332,7 @@ var _bar_frame: StyleBoxTexture = _open_frame()
 
 
 static func _open_frame() -> StyleBoxTexture:
-	var box := UITheme.slot("slot_hover")
+	var box := UITheme.hud_slot("hud_slot_hover")
 	box.draw_center = false
 	return box
 
@@ -364,14 +364,14 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 			bar.draw_style_box(_bar_frame, Rect2(Vector2(-3, -3), size + Vector2(6, 6)))
 		else:
 			# A slim bar gets a slim frame: the slot frame's lip would cover it.
-			bar.draw_rect(Rect2(Vector2(-1, -1), size + Vector2(2, 2)), Color("8a6234"), false, 1.0)
+			bar.draw_rect(Rect2(Vector2(-1, -1), size + Vector2(2, 2)), UITheme.METAL, false, 1.0)
 			bar.draw_rect(Rect2(Vector2(0, 0), Vector2(size.x, 1)), Color(1, 0.9, 0.6, 0.25))
 		if icon >= 0:
 			var medal := Vector2(-16.0, size.y / 2.0)
 			var radius := maxf(size.y / 2.0 + 3.0, 11.0)
 			bar.draw_circle(medal, radius + 2.0, Color(UITheme.EDGE))
-			bar.draw_circle(medal, radius, Color(0.117, 0.089, 0.065))
-			bar.draw_arc(medal, radius, 0.0, TAU, 24, Color("b08a4a"), 1.5)
+			bar.draw_circle(medal, radius, Color(UITheme.WELL).lerp(Color(UITheme.SHADE), 0.5))
+			bar.draw_arc(medal, radius, 0.0, TAU, 24, UITheme.METAL, 1.5)
 			# The heart on the health bar beats with the player's own.
 			var beat := (radius - 3.0) * (1.0 + 0.28 * Heartbeat.pulse if icon == 35 else 1.0)
 			if icon == 35 and Heartbeat.tension > 0.22:
@@ -426,7 +426,7 @@ func _draw_boss_bar() -> void:
 	# Banner behind the name.
 	var banner := Rect2(bar.position.x + 40.0, 2, bar.size.x - 80.0, 24)
 	_boss_bar.draw_rect(banner, Color(0.12, 0.03, 0.04, 0.85))
-	_boss_bar.draw_rect(banner, Color("8a683a"), false, 1.0)
+	_boss_bar.draw_rect(banner, UITheme.METAL, false, 1.0)
 	var title := "%s%s   Lv %d" % [Enemy.RANK_DATA[boss.rank]["title"] if boss.named_id == "" else "", boss.display_name, boss.level]
 	_boss_bar.draw_string_outline(font, Vector2(banner.position.x, 20), title, HORIZONTAL_ALIGNMENT_CENTER, banner.size.x, 19, 5, Color.BLACK)
 	_boss_bar.draw_string(font, Vector2(banner.position.x, 20), title, HORIZONTAL_ALIGNMENT_CENTER, banner.size.x, 19, Color(1.0, 0.6, 0.48))
@@ -459,7 +459,7 @@ func _draw_boss_bar() -> void:
 	if face:
 		_boss_bar.draw_texture_rect(face, Rect2(center - Vector2(25, 25), Vector2(50, 50)), false)
 	_boss_bar.draw_arc(center, 28.0, 0.0, TAU, 40, Color("d9b26a"), 2.0)
-	_boss_bar.draw_arc(center, 31.0, 0.0, TAU, 40, Color("8a683a"), 1.0)
+	_boss_bar.draw_arc(center, 31.0, 0.0, TAU, 40, UITheme.METAL, 1.0)
 	# Modifiers in their colours under the bar.
 	var names: PackedStringArray = []
 	for id in boss.modifiers:

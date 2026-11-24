@@ -45,7 +45,7 @@ func _draw() -> void:
 		var buff: Dictionary = _player.buffs.active[id]
 		var rect := Rect2(index * (CHIP + GAP), 0, CHIP, CHIP)
 		var color: Color = KIND_COLORS.get(buff.get("kind", ""), Color(0.75, 0.72, 0.65))
-		draw_style_box(UITheme.slot("slot"), rect.grow(2.0))
+		draw_style_box(UITheme.hud_slot("hud_slot"), rect.grow(2.0))
 		var icon: Texture2D = buff.get("icon")
 		if icon:
 			draw_texture_rect(icon, rect.grow(-3.0), false)

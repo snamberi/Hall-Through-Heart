@@ -19,12 +19,12 @@ extends RefCounted
 ## the inks set on it: text, quiet text, headings, gold (what is chosen),
 ## rules, good, bad, info.
 const STYLES := {
-	"parchment": {"tones": ["2a1e12", "4a3826", "6a5034"], "name": "Parchment Book", "ink": ["3a2818", "6a5638", "5a2a10", "8a4a10", "a88a5a", "2e7a2a", "b02a2a", "1e5a9a"]},
-	"forge": {"tones": ["111113", "2a2a2e", "45454e"], "name": "Forged Iron", "ink": ["e8e4dc", "8e8a84", "ffb060", "ff9a40", "45454e", "8fd66a", "ff5a5a", "6fb6ff"]},
-	"dwarven": {"tones": ["1e1e22", "34343a", "50505a"], "name": "Dwarven Hall", "ink": ["eceae4", "9c9a94", "f0c070", "e0b050", "50505a", "8fd66a", "e0555a", "6fb6ff"]},
-	"ashen": {"tones": ["0f0e0d", "2a2826", "3e3a36"], "name": "Ashen Bone", "ink": ["ece8e0", "8e8880", "f0e8d8", "e8dcc0", "3e3a36", "9ad890", "e06a6a", "8ac0ff"]},
-	"walnut": {"tones": ["120d09", "33281e", "403020"], "name": "Walnut & Gold (legacy)", "ink": ["e6dfcf", "9a8c74", "e8c878", "f2c14e", "5a4630", "8fd66a", "e0555a", "6fb6ff"]},
-	"navy": {"tones": ["0a0c14", "2a2c36", "39415a"], "name": "Midnight Navy (legacy)", "ink": ["e6dfcf", "8f8a80", "e8c878", "f2c14e", "39415a", "8fd66a", "e0555a", "6fb6ff"]},
+	"parchment": {"metal": "a8784a", "tones": ["2a1e12", "4a3826", "6a5034"], "name": "Parchment Book", "ink": ["3a2818", "6a5638", "5a2a10", "8a4a10", "a88a5a", "2e7a2a", "b02a2a", "1e5a9a"]},
+	"forge": {"metal": "d06020", "tones": ["111113", "2a2a2e", "45454e"], "name": "Forged Iron", "ink": ["e8e4dc", "8e8a84", "ffb060", "ff9a40", "45454e", "8fd66a", "ff5a5a", "6fb6ff"]},
+	"dwarven": {"metal": "a87a30", "tones": ["1e1e22", "34343a", "50505a"], "name": "Dwarven Hall", "ink": ["eceae4", "9c9a94", "f0c070", "e0b050", "50505a", "8fd66a", "e0555a", "6fb6ff"]},
+	"ashen": {"metal": "a89a80", "tones": ["0f0e0d", "2a2826", "3e3a36"], "name": "Ashen Bone", "ink": ["ece8e0", "8e8880", "f0e8d8", "e8dcc0", "3e3a36", "9ad890", "e06a6a", "8ac0ff"]},
+	"walnut": {"metal": "c8902e", "tones": ["120d09", "33281e", "403020"], "name": "Walnut & Gold (legacy)", "ink": ["e6dfcf", "9a8c74", "e8c878", "f2c14e", "5a4630", "8fd66a", "e0555a", "6fb6ff"]},
+	"navy": {"metal": "8a6234", "tones": ["0a0c14", "2a2c36", "39415a"], "name": "Midnight Navy (legacy)", "ink": ["e6dfcf", "8f8a80", "e8c878", "f2c14e", "39415a", "8fd66a", "e0555a", "6fb6ff"]},
 }
 const DEFAULT_STYLE := "parchment"
 ## The style in use (GameSettings.ui_style).
@@ -43,6 +43,8 @@ static var INFO := Color("6fb6ff")
 static var LINE := Color("5a4630")
 ## The style's own darks: the deepest well (bar tracks, stages), a shade
 ## for backdrops, and an edge for borders.
+## The style's trim metal, for thin rules and rings drawn over the world.
+static var METAL := Color("c8902e")
 static var WELL := Color("120d09")
 static var SHADE := Color("33281e")
 static var EDGE := Color("403020")
@@ -73,6 +75,7 @@ static func use_style(id: String) -> void:
 	GOOD = Color(ink[5])
 	BAD = Color(ink[6])
 	INFO = Color(ink[7])
+	METAL = Color(STYLES[id]["metal"])
 	var tones: Array = STYLES[id]["tones"]
 	WELL = Color(tones[0])
 	SHADE = Color(tones[1])
@@ -445,6 +448,18 @@ static func card(kind: String = "card", content: int = 10) -> StyleBoxTexture:
 
 ## An item slot: "slot", "slot_hover" or "slot_active".
 static func slot(kind: String = "slot") -> StyleBoxTexture:
+	return _frame(kind, 8, 4)
+
+
+## The plate the HUD's pieces sit on over the world: the style's material
+## and metal, always dark enough for the HUD's light text.
+static func hud_plate() -> StyleBoxTexture:
+	return _frame("hud_plate", 8, 0)
+
+
+## A HUD slot ("hud_slot", "hud_slot_hover", "hud_slot_active"): the style's
+## metal round a dark well.
+static func hud_slot(kind: String = "hud_slot") -> StyleBoxTexture:
 	return _frame(kind, 8, 4)
 
 

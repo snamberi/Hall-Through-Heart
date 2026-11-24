@@ -52,19 +52,10 @@ var _press_flash: Array[float] = []
 ## Pixel-art frames (see tools/generate_ui.py).
 var _plate_style: StyleBox = UITheme._frame("panel", 20, 0)
 var _group_style: StyleBox = UITheme._frame("inset", 6, 0)
-## The lighter plate the dock and the hotbar sit on.
-var _light_plate: StyleBoxFlat = _make_light_plate()
+## The plate the dock and the hotbar sit on, in the style's material.
+var _light_plate: StyleBox = UITheme.hud_plate()
 var _show_worn := false
-var _slot_styles := {"slot": UITheme.slot("slot"), "slot_hover": UITheme.slot("slot_hover"), "slot_active": UITheme.slot("slot_active")}
-
-
-static func _make_light_plate() -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.067, 0.051, 0.037, 0.86)
-	box.border_color = Color("4a3a24")
-	box.set_border_width_all(2)
-	box.set_corner_radius_all(3)
-	return box
+var _slot_styles := {"slot": UITheme.hud_slot("hud_slot"), "slot_hover": UITheme.hud_slot("hud_slot_hover"), "slot_active": UITheme.hud_slot("hud_slot_active")}
 
 
 ## Switches the ability slots between the dock and the classic column.
@@ -305,13 +296,13 @@ func _draw() -> void:
 	if show_items:
 		# The hotbar: one light plate, the groups told apart by a quiet
 		# label and a thin divider, so the weapon in hand is what stands out.
-		draw_style_box(_light_plate, Rect2(Vector2(-2, -2), size + Vector2(4, 4)))
+		draw_style_box(_light_plate, Rect2(Vector2(-4, -4), size + Vector2(8, 8)))
 		for index in _groups.size():
 			var rect: Rect2 = _groups[index][1]
 			draw_string(_font, rect.position + Vector2(5, 13), _groups[index][0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 13, Color("9a927c"))
 			if index > 0:
 				var x := rect.position.x - (GROUP - 8.0) / 2.0
-				draw_line(Vector2(x, rect.position.y + 4.0), Vector2(x, rect.end.y - 2.0), Color(1, 1, 1, 0.12), 1.0)
+				draw_line(Vector2(x, rect.position.y + 4.0), Vector2(x, rect.end.y - 2.0), Color(UITheme.METAL, 0.45), 1.0)
 	else:
 		# The classic column keeps its riveted bronze plate.
 		draw_style_box(_plate_style, Rect2(Vector2(-8, -8), size + Vector2(16, 16)))
@@ -327,7 +318,7 @@ func _draw() -> void:
 		for index in AbilityDB.SET_SIZE:
 			var slot: Rect2 = _spots[index][0]
 			var mini_rect := Rect2(slot.end.x + 6.0, slot.position.y + (COLUMN_SLOT - COLUMN_MINI) / 2.0, COLUMN_MINI, COLUMN_MINI)
-			draw_rect(mini_rect, Color(0.075, 0.057, 0.042, 0.85))
+			draw_rect(mini_rect, Color(UITheme.WELL, 0.85))
 			var other_id: String = others[index] if index < others.size() else ""
 			if other_id != "":
 				draw_texture_rect(AbilityDB.icon(other_id), mini_rect.grow(-3.0), false, Color(0.62, 0.62, 0.68))
@@ -347,7 +338,7 @@ func _draw() -> void:
 		for index in (0 if casting else AbilityDB.SET_SIZE):
 			var other_id: String = others[index] if index < others.size() else ""
 			var mini_rect := Rect2(tab.end.x - 4.0 * 14.0 - 2.0 + index * 14.0, tab.position.y + 2.0, 12.0, 12.0)
-			draw_rect(mini_rect, Color(0.075, 0.057, 0.042))
+			draw_rect(mini_rect, Color(UITheme.WELL))
 			if other_id != "":
 				draw_texture_rect(AbilityDB.icon(other_id), mini_rect, false, Color(0.7, 0.7, 0.75))
 	for index in _spots.size():
@@ -387,7 +378,7 @@ func _draw() -> void:
 
 ## The dock: which set the keys use and how to switch, then the four slots.
 func _draw_dock() -> void:
-	draw_style_box(_light_plate, Rect2(Vector2(-2, -2), size + Vector2(4, 4)))
+	draw_style_box(_light_plate, Rect2(Vector2(-4, -4), size + Vector2(8, 8)))
 	var abilities := _player.abilities
 	var name := _set_name(abilities)
 	draw_string(UITheme.body_bold(), Vector2(10, 19), name, HORIZONTAL_ALIGNMENT_LEFT, size.x - 96.0, 14, UITheme.ON_WORLD_HEADING)
@@ -399,13 +390,13 @@ func _draw_dock() -> void:
 	for index in AbilityDB.SET_SIZE:
 		var other_id: String = others[index] if index < others.size() else ""
 		var mini_rect := Rect2(x + index * 13.0, 9.0, 11.0, 11.0)
-		draw_rect(mini_rect, Color(0.125, 0.095, 0.070))
+		draw_rect(mini_rect, Color(UITheme.SHADE))
 		if other_id != "":
 			draw_texture_rect(AbilityDB.icon(other_id), mini_rect, false, Color(0.72, 0.72, 0.78))
 	var cap := Rect2(x - key_width - 6.0, 6.0, key_width, 17.0)
-	draw_rect(cap, Color("2a1e14"))
-	draw_rect(cap, Color("a89070"), false, 1.0)
-	draw_rect(Rect2(cap.position.x, cap.end.y - 2.0, cap.size.x, 2.0), Color("a89070"))
+	draw_rect(cap, Color(UITheme.WELL))
+	draw_rect(cap, UITheme.METAL, false, 1.0)
+	draw_rect(Rect2(cap.position.x, cap.end.y - 2.0, cap.size.x, 2.0), UITheme.METAL)
 	draw_string(UITheme.body_bold(), cap.position + Vector2(0, 13), key, HORIZONTAL_ALIGNMENT_CENTER, cap.size.x, 13, Color.WHITE)
 	for index in _spots.size():
 		_draw_ability(_spots[index][0], _spots[index][2], index == _hover)
@@ -417,7 +408,7 @@ func _draw_dock() -> void:
 				var width := _font.get_string_size(why, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 12.0
 				var tag := Rect2((_spots[index][0] as Rect2).get_center().x - width / 2.0, -22.0, width, 18.0)
 				draw_rect(tag, Color(UITheme.SHADE, 0.95))
-				draw_rect(tag, Color("8a683a"), false, 1.0)
+				draw_rect(tag, UITheme.METAL, false, 1.0)
 				draw_string(_font, tag.position + Vector2(0, 13), why, HORIZONTAL_ALIGNMENT_CENTER, tag.size.x, 13, Color("e8a070"))
 
 
@@ -574,5 +565,5 @@ func _key_badge(rect: Rect2, key: String) -> void:
 	var width := maxf(_font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 6.0, 14.0)
 	var badge := Rect2(rect.position + Vector2(-2, -2), Vector2(width, 15))
 	draw_rect(badge, Color(UITheme.SHADE, 0.95))
-	draw_rect(badge, Color("8a683a"), false, 1.0)
+	draw_rect(badge, UITheme.METAL, false, 1.0)
 	draw_string(_font, badge.position + Vector2(3, 12), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.ON_WORLD_HEADING)
