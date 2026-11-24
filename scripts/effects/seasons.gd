@@ -53,6 +53,13 @@ const SPECIES := {
 	Flora.Tall.CHERRY: [Vector4(0.27, 0.39, 0.55, 0.72), 0.64, [KEEP, SUMMER, ORANGE, BARE]],
 	Flora.Tall.BUSH: [Vector4(0.235, 0.337, 0.453, 0.6), 1.0, [SPRING, KEEP, RUST, BARE]],
 	Flora.Tall.BERRY_BUSH: [Vector4(0.235, 0.337, 0.453, 0.6), 1.0, [SPRING, KEEP, RUST, BARE]],
+	# The grand broadleaves: painted in the summer greens; only green pixels
+	# turn (bark, fruit and blossom keep their colours).
+	Flora.Tall.GREAT_OAK: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.BIRCH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.APPLE: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.BEECH: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
+	Flora.Tall.GREAT_WILLOW: [Vector4(0.237, 0.337, 0.452, 0.6), 1.0, [SPRING, KEEP, AUTUMN, BARE], true],
 }
 
 static var _materials: Dictionary = {}
@@ -95,6 +102,9 @@ static func material_for(tall: int) -> ShaderMaterial:
 		material.shader = _shader
 		material.set_shader_parameter("cuts", entry[0])
 		material.set_shader_parameter("canopy_line", entry[1])
+		material.set_shader_parameter("green_only", entry.size() > 3 and entry[3])
+		if tall >= Flora.FIRST_GRAND:
+			material.set_shader_parameter("reach", 64.0)
 		var modes: Array = entry[2]
 		material.set_shader_parameter("modes", Vector4(modes[0], modes[1], modes[2], modes[3]))
 		for key: String in RAMPS:

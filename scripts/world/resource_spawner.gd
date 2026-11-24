@@ -238,6 +238,7 @@ func _place_node(placed: Array, id: String, cell: Vector2i, look: int, offset: V
 		_gathered[gone.cell] = _now()
 		if tree:
 			placed.append(_stump(gone.position))
+			_fell_animation(gone.position, look, hash(gone.cell) % 2 == 0)
 			var memory: WorldMemory = get_parent().get_node_or_null("WorldMemory")
 			if memory:
 				memory.note(gone.cell, "chops"))
@@ -270,6 +271,84 @@ func fell(cell: Vector2i, ago: float) -> void:
 				placed.append(_stump(gone.position))
 			placed.erase(gone)
 			gone.queue_free()
+
+
+## A tree coming down (never rotated, so its pixels stay whole): it shudders,
+## then sinks away into a burst of leaves and dust, and its trunk lies on
+## the ground beside the stump for a while before it is carried off.
+func _fell_animation(at: Vector2, look: int, flipped: bool) -> void:
+	var holder := Node2D.new()
+	holder.position = at.round()
+	add_child(holder)
+	var tree := Sprite2D.new()
+	tree.texture = Flora.tall_texture(look)
+	tree.region_enabled = true
+	tree.region_rect = Flora.tall_region(look)
+	tree.position.y = Flora.tall_offset(look)
+	tree.flip_h = flipped
+	tree.material = Seasons.material_for(look)
+	holder.add_child(tree)
+	var log := Sprite2D.new()
+	log.texture = Flora.GRAND
+	log.region_enabled = true
+	log.region_rect = Flora.tall_region(Flora.Tall.FALLEN_LOG)
+	log.position = Vector2(-30.0 if flipped else 30.0, Flora.tall_offset(Flora.Tall.FALLEN_LOG))
+	log.flip_h = not flipped
+	log.modulate.a = 0.0
+	holder.add_child(log)
+	var burst := LeafBurst.new()
+	burst.colour = Color("4a7a3a") if Seasons.is_leafy(look) else Color("6a5a40")
+	burst.position = Vector2(0, -40)
+	holder.add_child(burst)
+	var tween := holder.create_tween()
+	for k in 5:
+		tween.tween_property(tree, "position:x", 2.0 if k % 2 == 0 else -2.0, 0.05)
+	tween.tween_property(tree, "position:x", 0.0, 0.04)
+	tween.tween_callback(burst.start)
+	tween.tween_property(tree, "position:y", tree.position.y + 14.0, 0.35).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(tree, "modulate:a", 0.0, 0.35)
+	tween.parallel().tween_property(log, "modulate:a", 1.0, 0.3)
+	tween.tween_interval(2.6)
+	tween.tween_property(log, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(holder.queue_free)
+
+
+## Leaves and dust flying off a falling tree: whole-pixel flecks that
+## scatter, drift down and fade.
+class LeafBurst:
+	extends Node2D
+	var colour := Color("4a7a3a")
+	var _bits: Array[Vector4] = []
+	var _age := -1.0
+
+	func start() -> void:
+		_age = 0.0
+		for k in 26:
+			var angle := randf_range(-PI, 0.0)
+			var speed := randf_range(30.0, 90.0)
+			_bits.append(Vector4(randf_range(-18, 18), randf_range(-30, 10), cos(angle) * speed, sin(angle) * speed))
+
+	func _process(delta: float) -> void:
+		if _age < 0.0:
+			return
+		_age += delta
+		for i in _bits.size():
+			var b := _bits[i]
+			b.x += b.z * delta
+			b.y += b.w * delta
+			b.w += 120.0 * delta
+			b.z *= 0.96
+			_bits[i] = b
+		queue_redraw()
+
+	func _draw() -> void:
+		if _age < 0.0:
+			return
+		var fade := clampf(1.0 - _age / 1.4, 0.0, 1.0)
+		for i in _bits.size():
+			var b := _bits[i]
+			var c := colour.lightened(0.25) if i % 3 == 0 else colour if i % 3 == 1 else Color(0.55, 0.48, 0.38)
+			draw_rect(Rect2(Vector2(b.x, b.y).round(), Vector2(2 if i % 4 == 0 else 1, 1)), Color(c, fade))
 
 
 ## What is left of a felled tree.
@@ -330,10 +409,10 @@ func _scenery(look: int, at: Vector2, solid: float) -> Node2D:
 	holder.position = at
 	holder.add_to_group("reflects")
 	var sprite := Sprite2D.new()
-	sprite.texture = Flora.TALL
+	sprite.texture = Flora.tall_texture(look)
 	sprite.region_enabled = true
 	sprite.region_rect = Flora.tall_region(look)
-	sprite.position.y = -42.0
+	sprite.position.y = Flora.tall_offset(look)
 	sprite.flip_h = hash(at) % 2 == 0
 	sprite.material = Seasons.material_for(look)
 	if Seasons.is_leafy(look):

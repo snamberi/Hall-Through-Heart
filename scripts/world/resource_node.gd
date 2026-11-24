@@ -51,11 +51,11 @@ func _ready() -> void:
 	if tall_look >= 0 or _data.has("tall"):
 		# A tree or bush from the flora sheet.
 		var sprite := Sprite2D.new()
-		sprite.texture = Flora.TALL
 		sprite.region_enabled = true
 		var look: int = tall_look if tall_look >= 0 else _data["tall"]
+		sprite.texture = Flora.tall_texture(look)
 		sprite.region_rect = Flora.tall_region(look)
-		sprite.position.y = -42.0
+		sprite.position.y = Flora.tall_offset(look)
 		sprite.flip_h = hash(cell) % 2 == 0
 		sprite.add_to_group("occluders")
 		# Broadleaf trees and bushes turn with the seasons.

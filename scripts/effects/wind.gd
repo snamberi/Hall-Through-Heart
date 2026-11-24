@@ -164,6 +164,8 @@ uniform float reach = 48.0;
 """ + DUSTING + GUSTS + """
 uniform vec4 cuts = vec4(0.235, 0.337, 0.453, 0.6);
 uniform float canopy_line = 0.63;
+// Only green pixels are leaves (bark, fruit and blossom drawn among them stay).
+uniform bool green_only = false;
 uniform vec4 modes = vec4(1.0, 0.0, 3.0, 7.0);
 uniform int season_a = 0;
 uniform int season_b = 1;
@@ -262,7 +264,8 @@ void fragment() {
 	vec4 c = picture * COLOR;
 	vec2 texel = floor(uv / TEXTURE_PIXEL_SIZE);
 	float in_frame = fract(uv.y);
-	if (picture.a > 0.5 && in_frame < canopy_line) {
+	bool leafy = !green_only || (picture.g > picture.r * 1.05 && picture.g >= picture.b * 0.98);
+	if (picture.a > 0.5 && in_frame < canopy_line && leafy) {
 		vec3 rgb = picture.rgb;
 		float l = dot(rgb, vec3(0.299, 0.587, 0.114));
 		float hi = max(rgb.r, max(rgb.g, rgb.b));
