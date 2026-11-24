@@ -70,7 +70,7 @@ func _render(center: Vector2i) -> void:
 
 func _draw() -> void:
 	var inner := Rect2(Vector2(4, 4), size - Vector2(8, 8))
-	draw_rect(Rect2(Vector2.ZERO, size), Color("402f1c"))
+	draw_rect(Rect2(Vector2.ZERO, size), Color(UITheme.EDGE))
 	draw_rect(Rect2(Vector2(2, 2), size - Vector2(4, 4)), Color("8a683a"), false, 1.0)
 	if _texture:
 		draw_texture_rect(_texture, inner, false)

@@ -58,13 +58,8 @@ func _ready() -> void:
 		var title: String = tab[0]
 		if title == "Race" and not allow_race:
 			continue
-		var button := Button.new()
-		button.text = title
-		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(width / (TABS.size() - (0 if allow_race else 1)) - 4.0, 34.0)
+		var button := UITheme.tab(title, show_tab.bind(title), width / (TABS.size() - (0 if allow_race else 1)) - 4.0)
 		UITheme.font_size(button, 15)
-		button.pressed.connect(show_tab.bind(title))
-		UITheme.sounds(button)
 		tabs.add_child(button)
 		_tab_buttons[title] = button
 		var scroll := ScrollContainer.new()

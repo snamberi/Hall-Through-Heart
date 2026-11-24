@@ -26,11 +26,10 @@ func _build() -> void:
 	tabs.add_theme_constant_override("separation", 6)
 	content.add_child(tabs)
 	for page: Array in PAGES:
-		var button := UITheme.button(page[1], func() -> void:
+		var button := UITheme.tab(page[1], func() -> void:
 			_page = page[0]
 			refresh()
 		, 150.0)
-		button.toggle_mode = true
 		tabs.add_child(button)
 		_tabs[page[0]] = button
 	var panel := UITheme.inset_panel()

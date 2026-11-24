@@ -173,16 +173,12 @@ func _build() -> void:
 	tabs.add_theme_constant_override("separation", 6)
 	middle.add_child(tabs)
 	for tab: Array in [["recipes", "Recipes"], ["knowledge", "Knowledge"]]:
-		var button := Button.new()
-		button.text = tab[1]
-		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(192.0, 32.0)
-		UITheme.font_size(button, 16)
-		button.pressed.connect(func() -> void:
+		var button := UITheme.tab(tab[1], func() -> void:
 			_tab = tab[0]
 			refresh()
-		)
-		UITheme.sounds(button)
+		, 192.0)
+		button.custom_minimum_size.y = 32.0
+		UITheme.font_size(button, 16)
 		tabs.add_child(button)
 		_tabs[tab[0]] = button
 	_search_field = UITheme.search_box("Search recipes...", 390.0, func() -> void:
@@ -232,8 +228,8 @@ func _build() -> void:
 	plate.custom_minimum_size = Vector2(108.0, 100.0)
 	plate.draw.connect(func() -> void:
 		plate.draw_set_transform(Vector2(54, 84), 0.0, Vector2(1.0, 0.32))
-		plate.draw_circle(Vector2.ZERO, 46.0, Color("33281e"))
-		plate.draw_circle(Vector2.ZERO, 38.0, Color("43362a"))
+		plate.draw_circle(Vector2.ZERO, 46.0, Color(UITheme.SHADE))
+		plate.draw_circle(Vector2.ZERO, 38.0, Color(UITheme.SHADE))
 		plate.draw_set_transform(Vector2.ZERO)
 	)
 	top.add_child(plate)
@@ -471,7 +467,7 @@ func _draw_xp() -> void:
 	var have: float = professions.xp[_selected]
 	var maxed := level >= Professions.MAX_LEVEL
 	var rect := Rect2(Vector2.ZERO, _xp_bar.size)
-	_xp_bar.draw_rect(rect, Color(0.052, 0.040, 0.029))
+	_xp_bar.draw_rect(rect, Color(UITheme.WELL))
 	var share := 1.0 if maxed else clampf(have / maxf(need, 1.0), 0.0, 1.0)
 	_xp_bar.draw_rect(Rect2(rect.position + Vector2(2, 2), Vector2((rect.size.x - 4.0) * share, rect.size.y - 4.0)), Color("d9a441"))
 	_xp_bar.draw_rect(Rect2(rect.position + Vector2(2, 2), Vector2((rect.size.x - 4.0) * share, (rect.size.y - 4.0) * 0.4)), Color("f0d28a"))

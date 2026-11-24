@@ -68,7 +68,7 @@ func _draw() -> void:
 	var body := UITheme.get_theme().default_font
 	var key_width := maxf(body.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 6.0, 14.0)
 	var cap := Rect2(rect.position + Vector2(-2, -2), Vector2(key_width, 15))
-	draw_rect(cap, Color(0.065, 0.049, 0.036, 0.95))
+	draw_rect(cap, Color(UITheme.SHADE, 0.95))
 	draw_rect(cap, Color("8a683a"), false, 1.0)
 	draw_string(body, cap.position + Vector2(3, 12), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADING)
 	# Its power's name, and whether it is ready.

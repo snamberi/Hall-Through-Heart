@@ -243,11 +243,11 @@ func _inspector(index: int) -> void:
 	var points := pets.points_left(pet)
 	for tab: Array in [["about", "About"], ["talents", "Talents & gear" + ("  (%d)" % points if points > 0 else "")]]:
 		var chosen: bool = _pet_tab == tab[0]
-		var tab_button := UITheme.button(tab[1], func() -> void:
+		var tab_button := UITheme.tab(tab[1], func() -> void:
 			_pet_tab = tab[0]
 			refresh()
 		, 172.0)
-		tab_button.add_theme_stylebox_override("normal", UITheme.card("card_selected" if chosen else "card", 4))
+		tab_button.set_pressed_no_signal(chosen)
 		tabs.add_child(tab_button)
 	if _pet_tab == "talents":
 		_talents_page(index)

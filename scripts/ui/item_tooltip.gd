@@ -10,6 +10,8 @@ extends PanelContainer
 const WIDTH := 300.0
 
 var _icon: TextureRect
+## The picture's frame: a slot in the item's rarity look.
+var _icon_frame: PanelContainer
 var _text: RichTextLabel
 ## Show the worn piece beside hovered gear.
 var side_by_side := false
@@ -27,6 +29,11 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
+	_icon_frame = PanelContainer.new()
+	_icon_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_icon_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_icon_frame.add_theme_stylebox_override("panel", UITheme.rarity_slot(0))
+	row.add_child(_icon_frame)
 	_icon = TextureRect.new()
 	_icon.custom_minimum_size = Vector2(44.0, 44.0)
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -34,7 +41,9 @@ func _ready() -> void:
 	_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_icon.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(_icon)
+	_icon_frame.add_child(_icon)
+	# The frame comes and goes with its picture.
+	_icon.visibility_changed.connect(func() -> void: _icon_frame.visible = _icon.visible)
 	_text = RichTextLabel.new()
 	_text.bbcode_enabled = true
 	_text.fit_content = true
@@ -46,13 +55,13 @@ func _ready() -> void:
 
 
 ## The item's picture shown large, at a whole multiple of its own size so
-## every pixel stays square (about 64 on screen).
+## every pixel stays square (about 80 on screen).
 static func _set_icon(rect: TextureRect, texture: Texture2D) -> void:
 	rect.texture = texture
 	if texture == null:
 		return
 	var side := maxf(texture.get_width(), texture.get_height())
-	var times := maxf(floorf(64.0 / maxf(side, 1.0)), 1.0)
+	var times := maxf(floorf(80.0 / maxf(side, 1.0)), 1.0)
 	rect.custom_minimum_size = Vector2(texture.get_width(), texture.get_height()) * times
 	rect.stretch_mode = TextureRect.STRETCH_SCALE
 
@@ -64,6 +73,7 @@ func show_item(item: Item, player: Player, extra: String = "") -> void:
 	_icon.visible = true
 	_set_icon(_icon, item.icon())
 	_icon.modulate = item.icon_tint()
+	_icon_frame.add_theme_stylebox_override("panel", UITheme.rarity_slot(item.rarity))
 	_fill(ItemText.describe(item, player) + ("\n\n" + extra if extra != "" else ""), item.color().darkened(0.1))
 	_show_worn(item, player)
 
@@ -83,6 +93,7 @@ func _show_worn(item: Item, player: Player) -> void:
 	_worn._icon.visible = true
 	_set_icon(_worn._icon, rival.icon())
 	_worn._icon.modulate = rival.icon_tint()
+	_worn._icon_frame.add_theme_stylebox_override("panel", UITheme.rarity_slot(rival.rarity))
 	_worn._fill("[color=#%s]WORN NOW[/color]\n%s" % [UITheme.DIM.to_html(false), ItemText.describe(rival, player)], rival.color().darkened(0.1))
 	_place_worn()
 
@@ -106,6 +117,7 @@ func show_recipe(recipe: Dictionary, player: Player) -> void:
 		var sample := Item.create(made)
 		_set_icon(_icon, sample.icon())
 		_icon.modulate = sample.icon_tint()
+		_icon_frame.add_theme_stylebox_override("panel", UITheme.rarity_slot(sample.rarity))
 	_fill(ItemText.describe_recipe(recipe, player), Color("8a683a"))
 
 

@@ -516,6 +516,9 @@ func restyle(id: String) -> void:
 func _apply() -> void:
 	if UITheme.style != ui_style or not UITheme.styled:
 		UITheme.use_style(ui_style)
+		# The pointer in the style's metal (not on phones, which have none).
+		if DisplayServer.get_name() != "headless" and not OS.has_feature("mobile"):
+			Input.set_custom_mouse_cursor(UITheme.art("cursor"), Input.CURSOR_ARROW, Vector2(2, 2))
 	_set_bus("Master", master_volume)
 	_set_bus("Music", music_volume)
 	_set_bus("SFX", sfx_volume)

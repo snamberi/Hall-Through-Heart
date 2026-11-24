@@ -303,6 +303,9 @@ RARITY_SLOTS = [
 def rarity_slot(index):
     glow, metal, strength, corners = RARITY_SLOTS[index]
     glow = C(glow)
+    if index == 0:
+        # Plain things sit in the style's own quiet rim.
+        metal = RIM
     w = h = 24
     base = C(T["slot"])
     img = Image.new("RGBA", (w, h))
@@ -318,10 +321,27 @@ def rarity_slot(index):
                 c = tuple(min(255, int(v + 18)) for v in c[:3]) + (255,)
             img.putpixel((x, y), c)
     frame(img, 3, metal)
+    # The well's shadow under the lip, in the slot's own darkest tone.
+    shadow = tuple(int(v * 0.35) for v in base[:3]) + (255,)
     for x in range(3, w - 3):
-        img.putpixel((x, 3), C("0a0604"))
+        img.putpixel((x, 3), shadow)
     for y in range(3, h - 3):
-        img.putpixel((3, y), C("0a0604"))
+        img.putpixel((3, y), shadow)
+    if strength >= 0.3:
+        # Finer things: a lit rim of their colour inside the well, brightest
+        # on the far edges where the glow catches it.
+        lit = tuple(min(255, int(base[i] + (glow[i] - base[i]) * 0.8)) for i in range(3)) + (255,)
+        for k in range(5, w - 4):
+            img.putpixel((k, h - 4), lit)
+            img.putpixel((w - 4, k), lit)
+    if index >= 4:
+        # A set stone at the top of the frame.
+        cx = w // 2 - 2
+        for y in range(0, 3):
+            for x in range(4):
+                edge = x in (0, 3) or y == 0
+                img.putpixel((cx + x, y), metal["out"] if edge and y == 0 else (glow if not edge else metal["dark"]))
+        img.putpixel((cx + 1, 1), C("ffffff"))
     if corners == "pips":
         for (x, y) in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2)):
             img.putpixel((x, y), metal["hi"])
@@ -342,7 +362,8 @@ def rarity_slot(index):
             img.putpixel((cx + 4 * sx, cy + 1 * sy), metal["mid"])
             img.putpixel((cx + 1 * sx, cy + 4 * sy), metal["mid"])
         for k in range(8, w - 8, 3):
-            img.putpixel((k, 1), metal["hi"])
+            if not w // 2 - 3 <= k <= w // 2 + 2:
+                img.putpixel((k, 1), metal["hi"])
             img.putpixel((k, h - 2), metal["mid"])
     save(img, "slot_r%d" % index)
 
@@ -360,6 +381,64 @@ def button(name, face, metal, edge_lit, edge_dark):
         img.putpixel((2, y), edge_lit)
         img.putpixel((w - 3, y), edge_dark)
     save(img, name)
+
+
+def tab(name, face, metal, lit, dark):
+    """A folder tab for a page: chamfered top corners, a metal lip along
+    the top and sides, open at the bottom where it meets its page."""
+    w, h = 20, 14
+    img = Image.new("RGBA", (w, h))
+    for y in range(h):
+        for x in range(w):
+            corner = (x + y < 3) or (w - 1 - x + y < 3)
+            if corner:
+                continue
+            edge_top = y == 0 or (x + y == 3) or (w - 1 - x + y == 3)
+            edge_side = x == 0 or x == w - 1
+            if edge_top or edge_side:
+                c = metal["out"]
+            elif y == 1 or x == 1:
+                c = metal["light"] if y == 1 else metal["mid"]
+            elif x == w - 2:
+                c = metal["dark"]
+            elif y == 2:
+                c = lit
+            elif y >= h - 2:
+                c = dark
+            else:
+                c = face
+            img.putpixel((x, y), c)
+    save(img, name)
+
+
+def cursor():
+    """The pointer: an arrowhead in the style's trim metal, outlined, lit
+    along its left edge (art 11x16, hotspot at its tip)."""
+    rows = [
+        "O..........",
+        "OO.........",
+        "OhO........",
+        "OhLO.......",
+        "OhLLO......",
+        "OhLLMO.....",
+        "OhLLMMO....",
+        "OhLLMMMO...",
+        "OhLLMMMDO..",
+        "OhLLMMMDDO.",
+        "OhLLMOOOOOO",
+        "OhLOLMO....",
+        "OhO.OLMO...",
+        "OO..OLMO...",
+        "O....OLMO..",
+        ".....OOO...",
+    ]
+    keys = {"O": TRIM["out"], "h": TRIM["hi"], "L": TRIM["light"], "M": TRIM["mid"], "D": TRIM["dark"]}
+    img = Image.new("RGBA", (11, 16))
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch in keys:
+                img.putpixel((x, y), keys[ch])
+    save(img, "cursor")
 
 
 def focus_ring():
@@ -614,6 +693,12 @@ def main():
     button("button_disabled", C(T["button_disabled"]), IRON, _shift(T["button_disabled"], 1.2), _shift(T["button_disabled"], 0.8))
     tooltip()
     divider()
+    face, lit, dark = T["button"]
+    tab("tab", _shift(face, 0.85), RIM, C(lit), _shift(face, 0.6))
+    tab("tab_hover", C(T["button_hover"]), TRIM, _shift(T["button_hover"], 1.3), _shift(T["button_hover"], 0.7))
+    base = T["page"][0]
+    tab("tab_active", C(base), TRIM, _shift(base, 1.08), C(base))
+    cursor()
     # The menu wheel is shared by every style; it is drawn only with the base set.
     if not os.environ.get("UI_OUT"):
         wheel()

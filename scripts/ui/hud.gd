@@ -2,6 +2,7 @@ extends CanvasLayer
 ## On-screen player status: health, experience, stamina, level, and messages.
 
 const EVIL_HEART := preload("res://scripts/ui/evil_heart.gd")
+const PIXEL_DIGITS := preload("res://scripts/ui/pixel_digits.gd")
 var _player: Player
 var _banner_tween: Tween
 
@@ -48,12 +49,10 @@ func setup(player: Player) -> void:
 	_xp_text.position = Vector2(4.0, 112.0)
 	_xp_text.size = Vector2(330.0, 22.0)
 	_xp_text.draw.connect(func() -> void:
-		var font := UITheme.get_theme().default_font
 		_xp_text.draw_string_outline(UITheme.body_bold(), Vector2(8, 17), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 3, Color(0, 0, 0, 0.8))
 		_xp_text.draw_string(UITheme.body_bold(), Vector2(8, 17), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.86, 0.5))
-		var numbers := "%d / %d" % [player.leveling.xp, player.leveling.xp_to_next()]
-		_xp_text.draw_string_outline(font, Vector2(256, 17), numbers, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 3, Color(0, 0, 0, 0.8))
-		_xp_text.draw_string(font, Vector2(256, 17), numbers, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.9, 0.86, 0.76))
+		var numbers := "%d/%d" % [player.leveling.xp, player.leveling.xp_to_next()]
+		PIXEL_DIGITS.draw(_xp_text, Vector2(258, 7), numbers, 2, Color(0.9, 0.86, 0.76))
 	)
 	add_child(_xp_text)
 	$Minimap.setup(player, player.get_parent().get_node("World"))
@@ -370,7 +369,7 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 		if icon >= 0:
 			var medal := Vector2(-16.0, size.y / 2.0)
 			var radius := maxf(size.y / 2.0 + 3.0, 11.0)
-			bar.draw_circle(medal, radius + 2.0, Color("402f1c"))
+			bar.draw_circle(medal, radius + 2.0, Color(UITheme.EDGE))
 			bar.draw_circle(medal, radius, Color(0.117, 0.089, 0.065))
 			bar.draw_arc(medal, radius, 0.0, TAU, 24, Color("b08a4a"), 1.5)
 			# The heart on the health bar beats with the player's own.
@@ -394,8 +393,8 @@ func _bind(bar: Control, fill: Color, icon: int, fraction: Callable, values: Cal
 				bar.draw_string_outline(font, Vector2(x, y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color(0, 0, 0, 0.85))
 				bar.draw_string(font, Vector2(x, y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 0.97, 0.9))
 				x += font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 8.0
-			bar.draw_string_outline(font, Vector2(x, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color(0, 0, 0, 0.85))
-			bar.draw_string(font, Vector2(x, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 0.97, 0.9))
+			# The numbers in pixel digits, two screen pixels to a cell.
+			PIXEL_DIGITS.draw(bar, Vector2(x, roundf(size.y / 2.0) - 5.0), text.replace(" ", ""), 2, Color(1, 0.97, 0.9))
 	)
 
 
@@ -443,18 +442,17 @@ func _draw_boss_bar() -> void:
 	for quarter in [0.25, 0.5, 0.75]:
 		var x: float = bar.position.x + bar.size.x * quarter
 		_boss_bar.draw_line(Vector2(x, bar.position.y), Vector2(x, bar.end.y), Color(0, 0, 0, 0.6), 2.0)
-	_boss_bar.draw_rect(bar.grow(3.0), Color("402f1c"), false, 3.0)
+	_boss_bar.draw_rect(bar.grow(3.0), Color(UITheme.EDGE), false, 3.0)
 	_boss_bar.draw_rect(bar.grow(1.0), Color("d9b26a"), false, 1.0)
 	# Spikes on the right end.
 	var tip := Vector2(bar.end.x + 3.0, bar.get_center().y)
-	_boss_bar.draw_colored_polygon(PackedVector2Array([tip + Vector2(0, -9), tip + Vector2(14, 0), tip + Vector2(0, 9)]), Color("402f1c"))
+	_boss_bar.draw_colored_polygon(PackedVector2Array([tip + Vector2(0, -9), tip + Vector2(14, 0), tip + Vector2(0, 9)]), Color(UITheme.EDGE))
 	_boss_bar.draw_colored_polygon(PackedVector2Array([tip + Vector2(0, -5), tip + Vector2(9, 0), tip + Vector2(0, 5)]), Color("d9b26a"))
-	var numbers := "%d / %d" % [ceili(boss.health.current), ceili(boss.health.max_health)]
-	_boss_bar.draw_string_outline(UITheme.get_theme().default_font, Vector2(bar.position.x, bar.position.y + 14), numbers, HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 13, 3, Color.BLACK)
-	_boss_bar.draw_string(UITheme.get_theme().default_font, Vector2(bar.position.x, bar.position.y + 14), numbers, HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 13, Color.WHITE)
+	var numbers := "%d/%d" % [ceili(boss.health.current), ceili(boss.health.max_health)]
+	PIXEL_DIGITS.draw(_boss_bar, Vector2(bar.position.x + floorf((bar.size.x - PIXEL_DIGITS.width(numbers, 2)) / 2.0), bar.get_center().y - 5.0), numbers, 2, Color.WHITE)
 	# The face, in a medallion overlapping the bar's left end.
 	var center := Vector2(30, 34)
-	_boss_bar.draw_circle(center, 31.0, Color("402f1c"))
+	_boss_bar.draw_circle(center, 31.0, Color(UITheme.EDGE))
 	_boss_bar.draw_circle(center, 28.0, Color(0.1, 0.04, 0.06))
 	_boss_bar.draw_circle(center, 28.0, Color(0.9, 0.2, 0.15, 0.15 + 0.2 * pulse))
 	var face := _portrait(boss.enemy_id)

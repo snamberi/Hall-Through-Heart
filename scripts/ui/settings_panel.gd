@@ -49,7 +49,7 @@ func _ready() -> void:
 	tabs.add_theme_constant_override("separation", 8)
 	add_child(tabs)
 	for tab in TABS:
-		var button := UITheme.button(tab, show_tab.bind(tab), 118.0)
+		var button := UITheme.tab(tab, show_tab.bind(tab), 118.0)
 		button.toggle_mode = true
 		button.custom_minimum_size.y = 38.0
 		tabs.add_child(button)

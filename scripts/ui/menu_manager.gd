@@ -58,6 +58,9 @@ var _close: Button
 var _hardcore_marks: Control
 const EVIL_HEART := preload("res://scripts/ui/evil_heart.gd")
 var _fade: Tween
+## The page-turn: a page's edge sweeping across a screen as it opens.
+var _turn: Control
+var _turn_t := 1.0
 
 
 func _ready() -> void:
@@ -101,6 +104,11 @@ func setup(player: Player) -> void:
 	_holder.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_holder)
+	_turn = Control.new()
+	_turn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_turn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn.draw.connect(_draw_turn)
+	_root.add_child(_turn)
 
 	_back = UITheme.button("<  Menu", _go_back, 118.0)
 	_back.position = Vector2(18.0, 16.0)
@@ -259,7 +267,37 @@ func _show(id: String) -> void:
 		_holder.modulate.a = 0.0
 		_fade = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 		_fade.tween_property(_holder, "modulate:a", 1.0, 0.12)
+		# ...and turn in like a book's page: its edge sweeps right to left.
+		_turn_t = 0.0
+		_fade.parallel().tween_method(func(t: float) -> void:
+			_turn_t = t
+			_turn.queue_redraw()
+		, 0.0, 1.0, 0.26).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	_fit.call_deferred()
+
+
+## The turning page: the part still to turn lies dim over the new screen,
+## its edge a lit fold with a shadow under it, all in whole-pixel rects.
+func _draw_turn() -> void:
+	if _turn_t >= 1.0 or _open_id == "" or _open_id == "wheel" or not _menus.has(_open_id):
+		return
+	var menu: Control = _menus[_open_id]
+	var area := Rect2(menu.get_global_rect().position - _turn.get_global_rect().position, menu.get_global_rect().size)
+	if area.size.x < 8.0:
+		return
+	var edge := roundf(area.position.x + area.size.x * (1.0 - _turn_t))
+	var top := roundf(area.position.y)
+	var tall := roundf(area.size.y)
+	var fade := 1.0 - _turn_t
+	var under := UITheme.WELL
+	under.a = 0.55 * fade
+	_turn.draw_rect(Rect2(area.position.x, top, maxf(edge - area.position.x, 0.0), tall), under)
+	var shade := UITheme.SHADE
+	shade.a = 0.8 * fade
+	_turn.draw_rect(Rect2(edge, top, 6.0, tall), shade)
+	var lit := UITheme.GOLD
+	lit.a = 0.7 * fade
+	_turn.draw_rect(Rect2(edge - 2.0, top, 2.0, tall), lit)
 
 
 func _draw_hardcore() -> void:

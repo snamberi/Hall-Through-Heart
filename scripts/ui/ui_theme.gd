@@ -19,12 +19,12 @@ extends RefCounted
 ## the inks set on it: text, quiet text, headings, gold (what is chosen),
 ## rules, good, bad, info.
 const STYLES := {
-	"parchment": {"name": "Parchment Book", "ink": ["3a2818", "6a5638", "5a2a10", "8a4a10", "a88a5a", "2e7a2a", "b02a2a", "1e5a9a"]},
-	"forge": {"name": "Forged Iron", "ink": ["e8e4dc", "8e8a84", "ffb060", "ff9a40", "45454e", "8fd66a", "ff5a5a", "6fb6ff"]},
-	"dwarven": {"name": "Dwarven Hall", "ink": ["eceae4", "9c9a94", "f0c070", "e0b050", "50505a", "8fd66a", "e0555a", "6fb6ff"]},
-	"ashen": {"name": "Ashen Bone", "ink": ["ece8e0", "8e8880", "f0e8d8", "e8dcc0", "3e3a36", "9ad890", "e06a6a", "8ac0ff"]},
-	"walnut": {"name": "Walnut & Gold (legacy)", "ink": ["e6dfcf", "9a8c74", "e8c878", "f2c14e", "5a4630", "8fd66a", "e0555a", "6fb6ff"]},
-	"navy": {"name": "Midnight Navy (legacy)", "ink": ["e6dfcf", "8f8a80", "e8c878", "f2c14e", "39415a", "8fd66a", "e0555a", "6fb6ff"]},
+	"parchment": {"tones": ["2a1e12", "4a3826", "6a5034"], "name": "Parchment Book", "ink": ["3a2818", "6a5638", "5a2a10", "8a4a10", "a88a5a", "2e7a2a", "b02a2a", "1e5a9a"]},
+	"forge": {"tones": ["111113", "2a2a2e", "45454e"], "name": "Forged Iron", "ink": ["e8e4dc", "8e8a84", "ffb060", "ff9a40", "45454e", "8fd66a", "ff5a5a", "6fb6ff"]},
+	"dwarven": {"tones": ["1e1e22", "34343a", "50505a"], "name": "Dwarven Hall", "ink": ["eceae4", "9c9a94", "f0c070", "e0b050", "50505a", "8fd66a", "e0555a", "6fb6ff"]},
+	"ashen": {"tones": ["0f0e0d", "2a2826", "3e3a36"], "name": "Ashen Bone", "ink": ["ece8e0", "8e8880", "f0e8d8", "e8dcc0", "3e3a36", "9ad890", "e06a6a", "8ac0ff"]},
+	"walnut": {"tones": ["120d09", "33281e", "403020"], "name": "Walnut & Gold (legacy)", "ink": ["e6dfcf", "9a8c74", "e8c878", "f2c14e", "5a4630", "8fd66a", "e0555a", "6fb6ff"]},
+	"navy": {"tones": ["0a0c14", "2a2c36", "39415a"], "name": "Midnight Navy (legacy)", "ink": ["e6dfcf", "8f8a80", "e8c878", "f2c14e", "39415a", "8fd66a", "e0555a", "6fb6ff"]},
 }
 const DEFAULT_STYLE := "parchment"
 ## The style in use (GameSettings.ui_style).
@@ -41,6 +41,11 @@ static var BAD := Color("e0555a")
 static var INFO := Color("6fb6ff")
 ## A quiet line colour for rules and neutral borders.
 static var LINE := Color("5a4630")
+## The style's own darks: the deepest well (bar tracks, stages), a shade
+## for backdrops, and an edge for borders.
+static var WELL := Color("120d09")
+static var SHADE := Color("33281e")
+static var EDGE := Color("403020")
 ## Text drawn straight over the world (not on a panel): always light, with
 ## a dark outline, whatever the style.
 const ON_WORLD := Color("ece6d8")
@@ -68,6 +73,10 @@ static func use_style(id: String) -> void:
 	GOOD = Color(ink[5])
 	BAD = Color(ink[6])
 	INFO = Color(ink[7])
+	var tones: Array = STYLES[id]["tones"]
+	WELL = Color(tones[0])
+	SHADE = Color(tones[1])
+	EDGE = Color(tones[2])
 	_theme = null
 	_textures.clear()
 
@@ -213,6 +222,22 @@ static func ink(color: Color) -> Color:
 	return color.lightened(0.18)
 
 
+## A bright accent colour (a rarity's, a status's, a gem's) made readable
+## as text on this style's pages: on light pages it is darkened until it
+## stands out from the paper; dark pages take it as it is.
+static func accent(color: Color) -> Color:
+	if not light_pages():
+		return ink(color)
+	# Its hue kept and its colour kept strong; only its brightness drops.
+	var result := color
+	var saturation := maxf(color.s, 0.8) if color.s > 0.2 else color.s
+	for i in 8:
+		if result.get_luminance() <= 0.3:
+			break
+		result = Color.from_hsv(color.h, saturation, result.v * 0.86, color.a)
+	return ink(result)
+
+
 ## Body text that wraps within a width.
 static func paragraph(text: String, width: float, size: int = BODY, color: Color = TEXT) -> Label:
 	var result := label(text, size, color)
@@ -241,6 +266,14 @@ static func button(text: String, action: Callable, minimum_width: float = 84.0) 
 	result.custom_minimum_size = Vector2(minimum_width, 34.0)
 	result.pressed.connect(action)
 	sounds(result)
+	return result
+
+
+## A tab along the top of a page (pressed while its page is shown).
+static func tab(text: String, action: Callable, minimum_width: float = 120.0) -> Button:
+	var result := button(text, action, minimum_width)
+	result.theme_type_variation = "TabButton"
+	result.toggle_mode = true
 	return result
 
 
@@ -503,6 +536,18 @@ static func _build() -> Theme:
 	theme.set_color("font_focus_color", "PrimaryButton", Color("140c02"))
 	theme.set_color("font_hover_pressed_color", "PrimaryButton", Color("140c02"))
 	theme.set_font("font", "PrimaryButton", body_bold())
+	# Tabs: folder tabs standing on their page; the open one is the page's
+	# own colour, joined to it.
+	theme.set_type_variation("TabButton", "Button")
+	for state: Array in [["normal", "tab"], ["hover", "tab_hover"], ["pressed", "tab_active"], ["hover_pressed", "tab_active"], ["disabled", "tab"]]:
+		var box := _frame(state[1], 6, 6)
+		box.content_margin_left = 14.0
+		box.content_margin_right = 14.0
+		box.content_margin_bottom = 4.0
+		theme.set_stylebox(state[0], "TabButton", box)
+	theme.set_color("font_pressed_color", "TabButton", HEADING)
+	theme.set_color("font_hover_pressed_color", "TabButton", HEADING)
+	theme.set_font("font", "TabButton", body_bold())
 	# Destructive actions: red-rimmed.
 	theme.set_type_variation("DangerButton", "Button")
 	for state: Array in [["normal", "button_danger"], ["hover", "button_danger_hover"], ["pressed", "button_danger_hover"]]:
@@ -540,11 +585,11 @@ static func _build() -> Theme:
 	theme.set_font("bold_font", "RichTextLabel", body_bold())
 
 	# Sliders: a clear track, a filled part, and a handle big enough to catch.
-	var track := _flat(Color("120d09"), Color("5a4630"), 1, 0)
+	var track := _flat(Color(WELL), Color("5a4630"), 1, 0)
 	track.content_margin_top = 4
 	track.content_margin_bottom = 4
-	var filled := _flat(Color("8a6234"), Color("120d09"), 1, 0)
-	var filled_lit := _flat(Color("c8902e"), Color("120d09"), 1, 0)
+	var filled := _flat(Color("8a6234"), Color(WELL), 1, 0)
+	var filled_lit := _flat(Color("c8902e"), Color(WELL), 1, 0)
 	theme.set_stylebox("slider", "HSlider", track)
 	theme.set_stylebox("grabber_area", "HSlider", filled)
 	theme.set_stylebox("grabber_area_highlight", "HSlider", filled_lit)
@@ -568,12 +613,12 @@ static func _build() -> Theme:
 
 	# Slim scroll bars that do not shout.
 	for bar: String in ["VScrollBar", "HScrollBar"]:
-		var groove := _flat(Color("120d09", 0.6), Color("120d09", 0.0), 0, 3)
+		var groove := _flat(Color(WELL, 0.6), Color(WELL, 0.0), 0, 3)
 		theme.set_stylebox("scroll", bar, groove)
 		theme.set_stylebox("scroll_focus", bar, groove)
-		theme.set_stylebox("grabber", bar, _flat(Color("5a4630"), Color("120d09"), 1, 3))
-		theme.set_stylebox("grabber_highlight", bar, _flat(Color("8a6234"), Color("120d09"), 1, 3))
-		theme.set_stylebox("grabber_pressed", bar, _flat(Color("c8902e"), Color("120d09"), 1, 3))
+		theme.set_stylebox("grabber", bar, _flat(Color("5a4630"), Color(WELL), 1, 3))
+		theme.set_stylebox("grabber_highlight", bar, _flat(Color("8a6234"), Color(WELL), 1, 3))
+		theme.set_stylebox("grabber_pressed", bar, _flat(Color("c8902e"), Color(WELL), 1, 3))
 
 	# Drop-down lists.
 	theme.set_stylebox("focus", "OptionButton", focus_box())
@@ -586,13 +631,13 @@ static func _build() -> Theme:
 	theme.set_font_size("font_size", "TooltipLabel", px(SMALL))
 
 	var bar_back := StyleBoxFlat.new()
-	bar_back.bg_color = Color("120d09")
-	bar_back.border_color = Color("403020")
+	bar_back.bg_color = Color(WELL)
+	bar_back.border_color = Color(EDGE)
 	bar_back.set_border_width_all(1)
 	var bar_fill := StyleBoxFlat.new()
 	bar_fill.bg_color = Color("c8b48a")
 	bar_fill.set_border_width_all(1)
-	bar_fill.border_color = Color("120d09")
+	bar_fill.border_color = Color(WELL)
 	theme.set_stylebox("background", "ProgressBar", bar_back)
 	theme.set_stylebox("fill", "ProgressBar", bar_fill)
 	return theme

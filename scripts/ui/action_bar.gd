@@ -416,7 +416,7 @@ func _draw_dock() -> void:
 			if why != "":
 				var width := _font.get_string_size(why, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 12.0
 				var tag := Rect2((_spots[index][0] as Rect2).get_center().x - width / 2.0, -22.0, width, 18.0)
-				draw_rect(tag, Color(0.065, 0.049, 0.036, 0.95))
+				draw_rect(tag, Color(UITheme.SHADE, 0.95))
 				draw_rect(tag, Color("8a683a"), false, 1.0)
 				draw_string(_font, tag.position + Vector2(0, 13), why, HORIZONTAL_ALIGNMENT_CENTER, tag.size.x, 13, Color("e8a070"))
 
@@ -573,6 +573,6 @@ func _count(rect: Rect2, count: int) -> void:
 func _key_badge(rect: Rect2, key: String) -> void:
 	var width := maxf(_font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 6.0, 14.0)
 	var badge := Rect2(rect.position + Vector2(-2, -2), Vector2(width, 15))
-	draw_rect(badge, Color(0.065, 0.049, 0.036, 0.95))
+	draw_rect(badge, Color(UITheme.SHADE, 0.95))
 	draw_rect(badge, Color("8a683a"), false, 1.0)
 	draw_string(_font, badge.position + Vector2(3, 12), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.ON_WORLD_HEADING)

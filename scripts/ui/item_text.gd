@@ -126,12 +126,12 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 	var lines: PackedStringArray = []
 	var def := item.definition()
 	if not bare:
-		lines.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [item.color().to_html(false), item.display_name()])
+		lines.append("[font_size=20][color=#%s]%s[/color][/font_size]" % [UITheme.accent(item.color()).to_html(false), item.display_name()])
 	var rarity: String = ItemDB.RARITIES[item.rarity]["name"]
 	if not item.is_equipment():
 		var kind := type_name(item)
 		if not bare:
-			lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s[/color]" % [item.color().to_html(false), rarity, dim, kind])
+			lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s[/color]" % [UITheme.accent(item.color()).to_html(false), rarity, dim, kind])
 			lines.append("")
 		lines.append("[i][color=#%s]%s[/color][/i]" % [dim, def["text"]])
 		if item.is_backpack():
@@ -165,7 +165,7 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 	if def.get("magic", false):
 		kind_name += ", magic"
 	if not bare:
-		lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s  -  item level %d[/color]" % [item.color().to_html(false), rarity, dim, kind_name, item.level])
+		lines.append("[color=#%s]%s[/color]  [color=#%s]-  %s  -  item level %d[/color]" % [UITheme.accent(item.color()).to_html(false), rarity, dim, kind_name, item.level])
 		lines.append("")
 	if def.has("damage") and not bare:
 		var weapon: Dictionary = def["weapon"]
@@ -199,7 +199,7 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 		var effect: Dictionary = def["on_hit"]
 		var status: Dictionary = ItemDB.STATUSES[effect["status"]]
 		var detail := "slows by %d%%" % roundi(effect["power"] * 100.0) if effect["status"] == "chill" else "%d%% of the hit per second" % roundi(effect["power"] * 100.0)
-		lines.append("[color=#%s]Inflicts %s: %s for %.1fs[/color]" % [status["color"].to_html(false), status["name"], detail, effect["duration"]])
+		lines.append("[color=#%s]Inflicts %s: %s for %.1fs[/color]" % [UITheme.accent(status["color"]).to_html(false), status["name"], detail, effect["duration"]])
 	if def.has("life_steal"):
 		lines.append("[color=#%s]Heals you for %d%% of damage dealt[/color]" % [UITheme.GOOD.to_html(false), roundi(def["life_steal"] * 100.0)])
 	if def.has("unique"):
@@ -210,7 +210,7 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 		for line: String in TRINKETS.describe(item.id, item.trinket_level, item.trinket_progress):
 			lines.append("[color=#%s]%s[/color]" % [UITheme.GOLD.to_html(false), line])
 	for modifier in item.rarity_gift():
-		lines.append("[color=#%s]%s: %s[/color]" % [item.color().to_html(false), rarity, ItemDB.describe_modifier(modifier)])
+		lines.append("[color=#%s]%s: %s[/color]" % [UITheme.accent(item.color()).to_html(false), rarity, ItemDB.describe_modifier(modifier)])
 	for modifier in item.implicit_modifiers():
 		lines.append("[color=#%s]+[/color] %s" % [UITheme.HEADING.to_html(false), ItemDB.describe_modifier(modifier)])
 	for modifier in item.mods:
@@ -227,12 +227,12 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 		if gem == "":
 			lines.append("[color=#%s]<> Empty socket[/color]" % dim)
 		else:
-			lines.append("[color=#%s]<> %s: %s[/color]" % [(ItemDB.ITEMS[gem]["tint"] as Color).to_html(false), ItemDB.ITEMS[gem]["name"], ItemDB.describe_modifier(Gems.modifier(gem, item.slot()))])
+			lines.append("[color=#%s]<> %s: %s[/color]" % [UITheme.accent(ItemDB.ITEMS[gem]["tint"] as Color).to_html(false), ItemDB.ITEMS[gem]["name"], ItemDB.describe_modifier(Gems.modifier(gem, item.slot()))])
 	if item.set_id != "":
 		var set_data: Dictionary = ItemDB.ITEM_SETS[item.set_id]
 		var worn: int = player.equipment.named_set_counts().get(item.set_id, 0)
 		lines.append("")
-		lines.append("[color=#%s]%s set  (%d / %d worn)[/color]" % [ItemDB.SET_COLOR.to_html(false), set_data["name"], worn, set_data["pieces"].size()])
+		lines.append("[color=#%s]%s set  (%d / %d worn)[/color]" % [UITheme.accent(ItemDB.SET_COLOR).to_html(false), set_data["name"], worn, set_data["pieces"].size()])
 		for needed: int in set_data["bonuses"]:
 			var parts: PackedStringArray = []
 			for stat: String in set_data["bonuses"][needed]:
@@ -240,7 +240,7 @@ static func describe(item: Item, player: Player, bare: bool = false) -> String:
 					var value: float = set_data["bonuses"][needed][stat][kind]
 					var text_part := ItemDB.describe_modifier({"stat": stat, "kind": kind, "value": absf(value)})
 					parts.append(text_part if value >= 0.0 else "-" + text_part.substr(1))
-			lines.append("[color=#%s](%d) %s[/color]" % [ItemDB.SET_COLOR.to_html(false) if worn >= needed else dim, needed, ", ".join(parts)])
+			lines.append("[color=#%s](%d) %s[/color]" % [UITheme.accent(ItemDB.SET_COLOR).to_html(false) if worn >= needed else dim, needed, ", ".join(parts)])
 	# What changes against what is worn in its place.
 	var comparison := compare(item, player)
 	if comparison != "":

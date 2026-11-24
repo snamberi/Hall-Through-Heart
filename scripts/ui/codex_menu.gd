@@ -38,7 +38,7 @@ func _build() -> void:
 	tabs.add_theme_constant_override("separation", 8)
 	content.add_child(tabs)
 	for tab: Array in [["lore", "The Telling"], ["bestiary", "Bestiary"], ["factions", "Factions"], ["achievements", "Achievements"], ["collection", "Collection"]]:
-		var button := UITheme.button(tab[1], func() -> void:
+		var button := UITheme.tab(tab[1], func() -> void:
 			_tab = tab[0]
 			_picked = ""
 			_filter = "all"
@@ -289,7 +289,7 @@ func _creature_tile(codex: Codex, id: String) -> Button:
 	picture.modulate = Color.WHITE if kills > 0 else Color(0.16, 0.14, 0.3)
 	button.add_child(picture)
 	if kills == 0:
-		var ask := UITheme.label("?", 30, Color(0.85, 0.75, 0.5, 0.55))
+		var ask := UITheme.label("?", 30, Color(UITheme.GOLD, 0.6))
 		ask.add_theme_font_override("font", UITheme.bold())
 		ask.position = Vector2(0, 26)
 		ask.size = Vector2(TILE.x, 40)
@@ -305,7 +305,8 @@ func _creature_tile(codex: Codex, id: String) -> Button:
 		button.add_child(mark)
 	var label := UITheme.label(("%d slain" % kills) if kills > 0 else "unknown", 14, UITheme.TEXT if kills > 0 else UITheme.DIM)
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	label.offset_top = -20.0
+	label.offset_top = -26.0
+	label.offset_bottom = -6.0
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(label)
@@ -343,11 +344,11 @@ func _creature_page(codex: Codex, id: String) -> void:
 	var stage := Control.new()
 	stage.custom_minimum_size = Vector2(384, 150)
 	stage.draw.connect(func() -> void:
-		stage.draw_rect(Rect2(Vector2.ZERO, stage.size), Color("140f0b"))
+		stage.draw_rect(Rect2(Vector2.ZERO, stage.size), Color(UITheme.WELL))
 		stage.draw_set_transform(Vector2(stage.size.x / 2.0, stage.size.y - 28.0), 0.0, Vector2(1.0, 0.3))
-		stage.draw_circle(Vector2.ZERO, 70.0, Color("33281e"))
+		stage.draw_circle(Vector2.ZERO, 70.0, Color(UITheme.SHADE))
 		stage.draw_set_transform(Vector2.ZERO)
-		stage.draw_rect(Rect2(Vector2.ZERO, stage.size), Color("403020"), false, 2.0)
+		stage.draw_rect(Rect2(Vector2.ZERO, stage.size), Color(UITheme.EDGE), false, 2.0)
 	)
 	var sprite := AnimatedSprite2D.new()
 	sprite.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -376,7 +377,7 @@ func _creature_page(codex: Codex, id: String) -> void:
 	bar.draw.connect(func() -> void:
 		var font := UITheme.get_theme().default_font
 		var track := Rect2(0, 4, bar.size.x, 12)
-		bar.draw_rect(track, Color(0.052, 0.040, 0.029))
+		bar.draw_rect(track, Color(UITheme.WELL))
 		bar.draw_rect(Rect2(track.position, Vector2(track.size.x * minf(float(kills) / goal, 1.0), track.size.y)), UITheme.GOLD if kills >= goal else Color("b0503a"))
 		bar.draw_rect(track, Color("8a683a"), false, 1.0)
 		for notch: Array in [[Codex.REVEAL["weakness"], "weakness"], [Codex.REVEAL["drops"], "drops"], [Codex.REVEAL["mark"], "mark"]]:
@@ -551,7 +552,7 @@ func _achievements(codex: Codex) -> void:
 			card.draw_rect(rect, UITheme.GOLD if done else Color("4a3a2a"), false, 2.0 if done else 1.0)
 			# A medal: bright when earned, a dull blank when not.
 			var medal := Vector2(29, 29)
-			card.draw_circle(medal, 19.0, Color("403020"))
+			card.draw_circle(medal, 19.0, Color(UITheme.EDGE))
 			card.draw_circle(medal, 16.0, Color("f0cf6a") if done else Color("4a3a2a"))
 			card.draw_circle(medal, 11.0, Color("c09a3c") if done else Color("2a2c38"))
 			if done:
@@ -566,7 +567,7 @@ func _achievements(codex: Codex) -> void:
 				rewards.append("look")
 			card.draw_string(font, Vector2(card.size.x - 160.0, 20), ", ".join(rewards), HORIZONTAL_ALIGNMENT_RIGHT, 150.0, 12, UITheme.GOLD if done else UITheme.DIM)
 			var track := Rect2(58, 44, card.size.x - 190.0, 7)
-			card.draw_rect(track, Color(0.052, 0.040, 0.029))
+			card.draw_rect(track, Color(UITheme.WELL))
 			card.draw_rect(Rect2(track.position, Vector2(track.size.x * minf(float(progress) / goal, 1.0), track.size.y)), UITheme.GOLD if done else Color("5a8ad0"))
 			card.draw_string(font, Vector2(card.size.x - 126.0, 52), "%d / %d" % [mini(progress, goal), goal], HORIZONTAL_ALIGNMENT_RIGHT, 116.0, 12, UITheme.GOOD if done else UITheme.TEXT)
 		)

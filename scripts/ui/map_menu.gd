@@ -624,7 +624,7 @@ func _draw_view() -> void:
 		_view.draw_rect(Rect2(spot + Vector2(-width / 2.0 - 6.0, -50.0), Vector2(width + 12.0, 24.0)), Color(0.071, 0.054, 0.040, 0.85))
 		_view.draw_string(font, spot + Vector2(-width / 2.0, -32.0), words, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UITheme.GOLD)
 	# A frame around the map.
-	_view.draw_rect(Rect2(Vector2.ZERO, _view.size), Color("402f1c"), false, 4.0)
+	_view.draw_rect(Rect2(Vector2.ZERO, _view.size), Color(UITheme.EDGE), false, 4.0)
 	_view.draw_rect(Rect2(Vector2(2, 2), _view.size - Vector2(4, 4)), Color("8a683a"), false, 1.5)
 
 
