@@ -169,6 +169,27 @@ const ENEMIES := {
 		"radius": 16.0, "size": 1.3, "tiles": [T.DARK_GRASS, T.FROSTPINE, T.ROCK, T.THORN], "min_level": 4, "weight": 2.5,
 		"attack": {"kind": "swipe", "range": 74.0, "windup": 0.55, "arc": 130.0, "recover": 0.9, "knockback": 380.0, "color": Color(1.0, 0.9, 0.75)}, "traits": ["enrage"],
 	},
+	# --- goblins (tools/generate_goblins.py). Camp goblins and their chief
+	# live in the tent camps (GoblinCamps) and leave travellers be until one
+	# of them is struck; raiders roam the wilds and attack on sight.
+	"goblin": {
+		"active": "always", "wild": "neutral", "name": "Camp Goblin", "health": 30.0, "damage": 7.0, "speed": 120.0, "xp": 8,
+		"radius": 11.0, "size": 0.85, "tiles": [], "min_level": 1, "weight": 0.0,
+		"attack": {"kind": "thrust", "range": 84.0, "windup": 0.4, "arc": 30.0, "recover": 0.7, "color": Color(0.85, 0.95, 0.7)},
+		"traits": ["pack"],
+	},
+	"goblin_chief": {
+		"active": "always", "wild": "neutral", "name": "Goblin Chief", "health": 110.0, "damage": 15.0, "speed": 115.0, "xp": 30,
+		"radius": 14.0, "size": 1.15, "tiles": [], "min_level": 1, "weight": 0.0,
+		"attack": {"kind": "slam", "range": 80.0, "windup": 0.65, "radius": 80.0, "recover": 0.9, "knockback": 300.0, "color": Color(0.9, 0.8, 0.5)},
+		"traits": ["enrage"],
+	},
+	"goblin_raider": {
+		"active": "always", "name": "Goblin Raider", "health": 26.0, "damage": 9.0, "speed": 135.0, "xp": 10,
+		"radius": 11.0, "size": 0.85, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.THORN, T.MUD, T.ROCK], "min_level": 2, "weight": 4.0,
+		"attack": {"kind": "swipe", "range": 66.0, "windup": 0.36, "arc": 110.0, "recover": 0.6, "knockback": 220.0, "color": Color(1.0, 0.6, 0.5)},
+		"traits": ["pack"],
+	},
 	# --- the lands' own beasts and fantasy creatures (tools/generate_beasts.py)
 	"elk": {
 		"active": "day", "wild": "defend", "name": "Elk", "health": 60.0, "damage": 10.0, "speed": 140.0, "xp": 10,

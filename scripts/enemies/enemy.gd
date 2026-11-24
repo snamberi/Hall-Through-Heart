@@ -903,6 +903,13 @@ func _update_nameplate() -> void:
 	_nameplate.modulate.a = move_toward(_nameplate.modulate.a, target_alpha, 0.35)
 
 
+## Camp goblins: the camp they belong to, where it stands, and whether the
+## camp has been wronged (then they fight like any monster).
+var camp := ""
+var home_spot := Vector2.ZERO
+var angered := false
+
+
 ## A wild animal rather than a monster.
 func is_wild() -> bool:
 	return _data.get("wild", "") != ""
@@ -915,6 +922,26 @@ func _wild_turn(delta: float, has_target: bool, to_target: Vector2, distance: fl
 	var hurt := _since_hurt < 5.0
 	if _data["wild"] == "defend" and hurt:
 		return false
+	# Goblins of a camp: at peace until one of them is struck, then the
+	# whole camp takes up arms (see GoblinCamps).
+	if _data["wild"] == "neutral":
+		if hurt and not angered:
+			angered = true
+			for node in get_tree().get_nodes_in_group("enemies"):
+				var kin := node as Enemy
+				if kin and kin != self and kin.camp != "" and kin.camp == camp:
+					kin.angered = true
+		if angered:
+			return false
+		if state != State.WANDER:
+			_pick_wander()
+		# Stays near its tents.
+		if home_spot != Vector2.ZERO and global_position.distance_to(home_spot) > 150.0:
+			_direction = (home_spot - global_position).normalized()
+		velocity = _direction * _speed * 0.25 * _ground_speed
+		if _state_time_left == 0.0:
+			_pick_wander()
+		return true
 	if state in [State.STAGGER, State.DEAD]:
 		return false
 	var scared := has_target and (hurt or (distance < 90.0 and target.velocity.length() > 160.0))

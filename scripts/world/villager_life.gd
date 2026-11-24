@@ -53,6 +53,63 @@ const JOBS := {
 	"child": {"title": "Child", "carry": "", "fetch": [["wild_berries", 5], ["feather", 3], ["egg", 2]], "small": true,
 		"pays": [["taming_treat", 2], ["sweet_roll", 2], ["topaz_1", 1]],
 		"lines": ["Are you an adventurer? Have you killed a dragon?", "I'm not scared of ghosts. Much.", "Mum says not to go past the lanterns."]},
+	# --- the elves: guards with blades and longbows, and the sages who lead.
+	"bladewarden": {"title": "Bladewarden", "carry": "katana", "people": "elf",
+		"wears": [{"l": "chest", "s": "layers/chest_leather", "t": Color(0.75, 0.95, 0.8)}, {"l": "boots", "s": "layers/boots_leather", "t": Color(0.8, 0.95, 0.85)}],
+		"fetch": [["mana_flower", 3], ["feather", 4]], "cull": true, "night_watch": true,
+		"pays": [["health_potion", 2], ["@gear", 1], ["mana_potion", 2]],
+		"lines": ["Our blades are thin so they leave no scar on the wood.", "Walk softly under the old trees, outsider.", "The forest told us you were coming."]},
+	"longbow_warden": {"title": "Longbow Warden", "carry": "bow", "people": "elf",
+		"wears": [{"l": "chest", "s": "layers/chest_leather", "t": Color(0.7, 0.9, 0.75)}, {"l": "helmet", "s": "layers/hood", "t": Color(0.55, 0.75, 0.6)}],
+		"fetch": [["feather", 6], ["oak_wood", 6]], "cull": true, "night_watch": true,
+		"pays": [["jerky", 4], ["might_elixir", 1], ["@gear", 1]],
+		"lines": ["I can split a falling leaf at two hundred paces.", "Nothing crosses the tree line unseen.", "Strangers keep to the paths. The paths are watched."]},
+	"high_sage": {"title": "High Sage", "carry": "staff", "people": "elf", "fetch": [["mana_flower", 4], ["enchanted_dust", 2], ["heartwood", 1]], "cull": true, "slow": true,
+		"pays": [["@gear", 2], ["enchanted_dust", 4], ["mana_potion", 3], ["treasure_map", 1]],
+		"lines": ["We counted the years before your grandfathers' grandfathers were born.", "The Heart beats slower every century. We listen.",
+			"This village answers to the old trees, and the old trees answer to me."]},
+	# --- the dwarves: hold guards with axes, and the thane who leads.
+	"hold_guard": {"title": "Hold Guard", "carry": "axe", "people": "dwarf",
+		"wears": [{"l": "helmet", "s": "layers/helmet_plate_2", "t": Color(0.66, 0.6, 0.52)}, {"l": "chest", "s": "layers/chest_plate_2", "t": Color(0.66, 0.6, 0.52)},
+			{"l": "boots", "s": "layers/boots_plate", "t": Color(0.7, 0.66, 0.6)}], "fetch": [["iron_ingot", 3], ["coal", 8]], "cull": true, "night_watch": true,
+		"pays": [["iron_ingot", 3], ["might_elixir", 1], ["@gear", 1]],
+		"lines": ["Stone remembers. So do we.", "Mind the forge, it bites.", "No husk has ever broken a dwarf door. Not one."]},
+	"thane": {"title": "Thane", "carry": "greatsword", "people": "dwarf",
+		"wears": [{"l": "chest", "s": "layers/chest_plate_3", "t": Color(1.0, 0.86, 0.6)}, {"l": "helmet", "s": "layers/helmet_plate_3", "t": Color(1.0, 0.86, 0.6)}],
+		"fetch": [["gold_ingot", 2], ["iron_ingot", 6], ["heartstone", 1]], "cull": true, "slow": true,
+		"pays": [["@gear", 2], ["gold_ingot", 2], ["dungeon_key", 1], ["heart_shard", 1]],
+		"lines": ["My hold has stood nine hundred winters. It will stand nine hundred more.", "Bring me good iron and I'll make you a friend of the hold.",
+			"Deep under us the Heart is hot. We dig toward it. Carefully."]},
+	# --- the crown: a king who rarely visits, the royal household, and guards.
+	"king": {"title": "King", "carry": "sword", "people": "human",
+		"wears": [{"l": "helmet", "s": "layers/helmet_crown", "t": Color.WHITE}, {"l": "chest", "s": "layers/chest_plate_3", "t": Color(1.0, 0.85, 0.5)},
+			{"l": "cape", "s": "layers/cape", "t": Color(0.7, 0.15, 0.2)}], "fetch": [["gold_ingot", 4], ["heart_shard", 1]], "cull": true, "slow": true,
+		"pays": [["@gear", 3], ["gold_ingot", 4], ["treasure_map", 2]],
+		"lines": ["We ride from village to village. The people must see their king.", "The realm is wide and the night is long. Serve it well.",
+			"Kneel if you like. I prefer a strong arm to a bent knee."]},
+	"royal": {"title": "Royal", "carry": "", "people": "human",
+		"wears": [{"l": "cape", "s": "layers/cape", "t": Color(0.35, 0.3, 0.7)}], "fetch": [["sweet_roll", 3], ["mana_flower", 3]], "slow": true,
+		"pays": [["@gear", 2], ["gold_ingot", 1], ["custard_tart", 3]],
+		"lines": ["Father says the villages are the realm's true walls.", "The castle is cold. I like the market better.", "You've the look of someone who's seen the Voidscar."]},
+	"royal_guard": {"title": "Royal Guard", "carry": "halberd", "people": "human",
+		"wears": [{"l": "helmet", "s": "layers/helmet_plate_3", "t": Color(1.0, 0.9, 0.6)}, {"l": "chest", "s": "layers/chest_plate_3", "t": Color(1.0, 0.9, 0.6)},
+			{"l": "boots", "s": "layers/boots_plate", "t": Color(0.9, 0.8, 0.55)}], "fetch": [["iron_ingot", 4], ["bandage", 4]], "cull": true, "night_watch": true,
+		"pays": [["@gear", 2], ["health_potion", 3], ["dungeon_key", 1]],
+		"lines": ["Keep your distance from the crown.", "The castle gate opens for the king alone.", "We are sworn to the realm, not to the man. Usually they're the same."]},
+}
+## Ordinary trades, any of which a villager might follow.
+const TRADES: Array[String] = ["farmer", "woodcutter", "fisher", "miner", "hunter", "herbalist", "baker", "elder", "child"]
+## Which trades each people favours.
+const PEOPLE_TRADES := {
+	"human": TRADES,
+	"elf": ["herbalist", "hunter", "fisher", "farmer", "baker", "child"],
+	"dwarf": ["miner", "miner", "baker", "hunter", "farmer", "elder", "child"],
+}
+## Who keeps a village of each people: its guards and its leader, by index.
+const KEEPERS := {
+	"human": ["guard", "guard", "elder"],
+	"elf": ["bladewarden", "longbow_warden", "high_sage"],
+	"dwarf": ["hold_guard", "hold_guard", "thane"],
 }
 ## What each trade tends to wear (indices into Appearance's lists).
 const WEAR := {
@@ -69,13 +126,21 @@ const NIGHT: Array[String] = ["What are you doing out? Get inside!", "Keep your 
 
 ## Rolls one villager of a village: name, trade, look. The same village
 ## always has the same people.
-static func make(village: Vector2i, index: int, world_seed: int) -> Dictionary:
+static func make(village: Vector2i, index: int, world_seed: int, people: String = "human", job_override: String = "") -> Dictionary:
 	var random := RandomNumberGenerator.new()
 	random.seed = hash(Vector4i(village.x, village.y, index, world_seed + 17))
-	var jobs: Array = JOBS.keys()
-	# The first is always on watch; the rest follow their own trades.
-	var job: String = "guard" if index == 0 else jobs[random.randi() % jobs.size()]
+	var jobs: Array = PEOPLE_TRADES.get(people, TRADES)
+	# The first few keep the village (guards, then its leader); the rest
+	# follow their own trades.
+	var keepers: Array = KEEPERS.get(people, KEEPERS["human"])
+	var job: String = job_override if job_override != "" else str(keepers[index]) if index < keepers.size() else jobs[random.randi() % jobs.size()]
+	# Elves live among elves and dwarves among dwarves; humans share their
+	# villages with everyone.
 	var race := _pick_race(random)
+	if people != "human" and random.randf() < 0.85:
+		race = people
+	elif JOBS[job].get("people", "") == "human":
+		race = "human"
 	var look := Appearance.for_race(race)
 	for row in Appearance.OPTIONS:
 		if row[0] in ["hair", "clothes", "trousers", "eyes"]:
@@ -169,6 +234,6 @@ static func passing_remark(job: String, name: String, friend: bool) -> String:
 		options.append_array(["Good to see you again!", "Back so soon, friend?", "Thanks again for the help."])
 	if job == "child":
 		options = ["Hi!", "Watch this!", "Are you strong?", "Tag, you're it!"]
-	if job == "guard":
+	if job in ["guard", "hold_guard", "royal_guard", "bladewarden", "longbow_warden"]:
 		options.append_array(["Move along.", "Eyes open out there."])
 	return options.pick_random()

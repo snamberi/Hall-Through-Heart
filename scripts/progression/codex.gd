@@ -82,6 +82,9 @@ const ACHIEVEMENTS: Array[Dictionary] = [
 const LORE := {
 	"husk": "What is left when the Heart's pull takes a person and leaves the body walking.",
 	"rot_hound": "Dogs of the old farms, gone wild and wrong. They hunt in packs by day.",
+	"goblin": "Goblins remember every kindness and every blow. Leave the camp in peace and it leaves you in peace.",
+	"goblin_raider": "Cast out of the camps for breaking the peace, raiders paint themselves red so their kin know them on sight.",
+	"goblin_chief": "The chief keeps the great tent and the camp's one law: no goblin strikes first.",
 	"bone_archer": "A soldier who never stopped standing guard, long after the flesh gave up.",
 	"bog_slime": "Living muck. Cut it, and you have two problems.",
 	"carrion_bat": "It drinks from the wounded and the dead, and cannot tell the difference.",

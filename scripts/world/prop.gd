@@ -70,8 +70,63 @@ static func create(art: Art, at: Vector2, solid: float = 0.0, prompt: String = "
 	return prop
 
 
+## The peoples' buildings (tools/generate_houses.py): 128 x 128 frames drawn
+## at the size they stand, one row each for human, elf and dwarf houses
+## (15 apiece) and a fourth for goblin tents; and the castle, 256 x 224.
+const HOUSES: Texture2D = preload("res://assets/sprites/houses.png")
+const CASTLE: Texture2D = preload("res://assets/sprites/castle.png")
+enum People { HUMAN, ELF, DWARF, GOBLIN }
+const HOUSE_VARIANTS := 15
+
+
+## A building of one of the peoples, standing with its base on `at`.
+static func create_building(people: int, variant: int, at: Vector2, solid: float = 34.0, prompt: String = "", action: Callable = Callable()) -> Prop:
+	var prop := create(Art.HOUSE, at, solid, prompt, action)
+	prop._sprite.texture = HOUSES
+	prop._sprite.hframes = HOUSE_VARIANTS
+	prop._sprite.vframes = 4
+	prop._sprite.frame = people * HOUSE_VARIANTS + posmod(variant, HOUSE_VARIANTS)
+	# The art stands on row 124 of its frame.
+	prop._sprite.position.y = -60.0 + 14.0
+	prop.set_meta("building", people)
+	return prop
+
+
+## The castle of a village with a king: its gate on `at`.
+static func create_castle(at: Vector2) -> Prop:
+	var prop := create(Art.HOUSE, at, 0.0)
+	prop._sprite.texture = CASTLE
+	prop._sprite.hframes = 1
+	prop._sprite.frame = 0
+	prop._sprite.position.y = -108.0 + 10.0
+	prop.set_meta("building", -1)
+	# Solid walls either side of the gate, which can be walked into.
+	var body := StaticBody2D.new()
+	for side: float in [-1.0, 1.0]:
+		var shape := CollisionShape2D.new()
+		var box := RectangleShape2D.new()
+		box.size = Vector2(96.0, 40.0)
+		shape.shape = box
+		shape.position = Vector2(side * 70.0, -10.0)
+		body.add_child(shape)
+	var keep := CollisionShape2D.new()
+	var keep_box := RectangleShape2D.new()
+	keep_box.size = Vector2(240.0, 30.0)
+	keep.shape = keep_box
+	keep.position = Vector2(0, -46.0)
+	body.add_child(keep)
+	prop.add_child(body)
+	return prop
+
+
+## Whether a prop is a house (old or new) for keeping plots clear of it.
+func is_house() -> bool:
+	return has_meta("building") or (_sprite != null and _sprite.texture == SHEET and _sprite.frame == Art.HOUSE)
+
+
 ## Things lying flat on the floor cast no shadow.
 const FLAT_ART: Array[int] = [Art.CAVE, Art.LADDER, Art.DOOR, Art.PORTAL]
+const NOT_FLAT: Array[int] = []
 const FLAT_DECOR: Array[int] = [Decor.FLOOR, Decor.RUBBLE, Decor.BONES, Decor.RUG, Decor.SOIL, Decor.SPIKE_TRAP, Decor.PELT_RUG]
 
 
@@ -81,7 +136,7 @@ func _ready() -> void:
 		return
 	if z_index < 0 or _sprite == null:
 		return
-	var flat: Array[int] = FLAT_DECOR if _sprite.texture == DECOR else FLAT_ART
+	var flat: Array[int] = FLAT_DECOR if _sprite.texture == DECOR else FLAT_ART if _sprite.texture == SHEET else NOT_FLAT
 	if not _sprite.frame in flat:
 		SunShadow.cast(_sprite)
 		ContactShadow.under(_sprite)

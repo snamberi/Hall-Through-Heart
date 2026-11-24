@@ -126,3 +126,43 @@ func test_eight_directions_and_walls(t: TestContext) -> void:
 	await main.get_tree().physics_frame
 	t.check(EnemyDB.ENEMIES["carrion_bat"].get("flying", false), "the bat flies")
 	t.check(bat.collision_mask & TerrainTiles.WALL_COLLISION != 0, "a flying monster is stopped by walls")
+
+
+func test_peoples_villages_and_goblins(t: TestContext) -> void:
+	var main := await t.game()
+	var world: World = main.get_node("World")
+	var gen := world.generator
+	var kinds := {}
+	var castles := 0
+	var total := 0
+	for ry in range(-9, 10):
+		for rx in range(-9, 10):
+			var c: Variant = gen.village_center(Vector2i(rx, ry))
+			if c == null:
+				continue
+			total += 1
+			kinds[gen.village_culture(c)] = true
+			castles += 1 if gen.has_castle(c) else 0
+			t.check(gen.village_name(c) != "", "every village has a name")
+	t.check(kinds.has("human") and kinds.has("elf") and kinds.has("dwarf"), "humans, elves and dwarves all build villages")
+	t.check(castles > 0 and castles < total / 3, "a few villages have castles (%d of %d)" % [castles, total])
+	t.equal(gen.village_culture(gen.first_village()), "human", "the first village is human")
+	t.check(Prop.create_building(Prop.People.ELF, 3, Vector2.ZERO).is_house(), "a new house counts as a house")
+	var keepers: Array = VillagerLife.KEEPERS["elf"]
+	t.equal(VillagerLife.make(Vector2i(5, 5), 0, 1, "elf")["job"], keepers[0], "an elf village is kept by bladewardens")
+	t.equal(VillagerLife.make(Vector2i(5, 5), 2, 1, "dwarf")["job"], "thane", "a dwarf village is led by its thane")
+	# Camp goblins leave you be until one is struck; then the camp fights.
+	var spawner = main.get_node("Enemies")
+	var player: Player = main.get_node("Player")
+	var a: Enemy = spawner.spawn_at(player.global_position + Vector2(80, 0), 1, Enemy.Rank.NORMAL, "goblin")
+	var b: Enemy = spawner.spawn_at(player.global_position + Vector2(-80, 0), 1, Enemy.Rank.NORMAL, "goblin")
+	a.camp = "camp:test"
+	b.camp = "camp:test"
+	await main.get_tree().physics_frame
+	t.check(a.is_wild() and not a.angered, "a camp goblin starts at peace")
+	a.take_damage(1.0, player.global_position)
+	for i in 3:
+		await main.get_tree().physics_frame
+	t.check(a.angered and b.angered, "strike one goblin and the camp takes up arms")
+	t.check(not EnemyDB.ENEMIES["goblin_raider"].has("wild"), "raiders attack on sight")
+	t.check(main.get_node_or_null("GoblinCamps") != null, "goblin camps are built")

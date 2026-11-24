@@ -1,4 +1,5 @@
 extends Node2D
+const GOBLIN_CAMPS := preload("res://scripts/world/goblin_camps.gd")
 
 ## Loaded by path, so a game whose script cache predates these still runs.
 const SharedWorld := preload("res://scripts/net/net_world.gd")
@@ -155,6 +156,11 @@ func _ready() -> void:
 	projects.name = "VillageProjects"
 	add_child(projects)
 	$Villages.setup(_world)
+	var camps: Node2D = GOBLIN_CAMPS.new()
+	camps.name = "GoblinCamps"
+	camps.y_sort_enabled = true
+	add_child(camps)
+	camps.setup(_world)
 	$Exploration.setup(_player, _world)
 	_resources.setup(_world)
 	$Atmosphere.setup(_player, _world, _day_night)

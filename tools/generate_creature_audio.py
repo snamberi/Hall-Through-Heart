@@ -405,6 +405,10 @@ CREATURES = {
     "mountain_ram": ("bleat", {"pitch": 280, "f1": 620, "f2": 1600, "rough": 0.4, "vibrato": (10, 0.09)}, "hoof", 1.1),
     "dawn_unicorn": ("spirit", {"pitch": 640, "f1": 1100, "f2": 2800}, "hoof", 1.0),
     "alpha_wolf": ("canine", {"pitch": 220, "f1": 680, "f2": 1500, "howl": True}, "paw", 1.2),
+    # The goblins (tools/generate_goblins.py).
+    "goblin": ("grunt", {"pitch": 330, "f1": 900, "f2": 2300, "rough": 0.35}, "patter", 0.6),
+    "goblin_raider": ("grunt", {"pitch": 290, "f1": 820, "f2": 2100, "rough": 0.6}, "patter", 0.65),
+    "goblin_chief": ("grunt", {"pitch": 170, "f1": 560, "f2": 1500, "rough": 0.55}, "shuffle", 1.0),
 }
 
 

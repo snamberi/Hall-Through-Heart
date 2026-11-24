@@ -32,6 +32,7 @@ const CREATURE_FEET := {
 	"heartsworn_knight": "boot", "rotten_corpse": "drag", "ghost": "", "magma_slime": "blob", "cinder_imp": "claw", "bog_lurker": "blob",
 	"storm_harpy": "", "masked_noble": "boot", "matron": "boot",
 	"elk": "hoof", "badger": "claw", "hedgehog": "dots", "moonstag": "hoof", "snow_leopard": "paw", "musk_ox": "hoof", "ice_bear": "big_paw", "frostmane": "paw", "camel": "hoof", "sand_cat": "paw", "jackal": "paw", "sunscale_basilisk": "claw", "river_otter": "paw", "moss_tortoise": "claw", "swamp_boar": "hoof", "sporeback_deer": "hoof", "cinder_hound": "paw", "ember_salamander": "claw", "thornback_boar": "hoof", "crimson_lynx": "paw", "void_prowler": "paw", "void_hare": "dots", "salt_antelope": "hoof", "mountain_ram": "hoof", "dawn_unicorn": "hoof", "alpha_wolf": "paw",
+	"goblin": "boot", "goblin_raider": "boot", "goblin_chief": "boot",
 }
 
 ## The player's footsteps, which also draw every print near them.

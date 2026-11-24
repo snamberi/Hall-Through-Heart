@@ -41,7 +41,10 @@ static func dress(house: Prop, tile: int, style: String = "") -> void:
 	if style == "igloo":
 		house.sprite().texture = IGLOO
 		house.sprite().hframes = 1
+		house.sprite().vframes = 1
 		house.sprite().frame = 0
+		house.sprite().scale = Vector2(2.0, 2.0)
+		house.sprite().position.y = -50.0
 
 
 static var IGLOO: Texture2D = _draw_igloo()

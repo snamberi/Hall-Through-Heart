@@ -153,7 +153,7 @@ func _try_spawn() -> void:
 
 ## Wolves run in packs of three to six, led by a white or grey alpha;
 ## jackals and frostmanes hunt in twos and threes more.
-const PACKS := {"grey_wolf": [3, 6, "alpha_wolf"], "jackal": [2, 4, ""], "frostmane": [2, 3, ""]}
+const PACKS := {"grey_wolf": [3, 6, "alpha_wolf"], "jackal": [2, 4, ""], "frostmane": [2, 3, ""], "goblin_raider": [2, 4, ""]}
 
 
 func _spawn_pack(enemy_id: String, at: Vector2, level: int) -> void:

@@ -6,6 +6,11 @@ extends Node2D
 ## from WorldGenerator.village_center.
 
 const T := TerrainTiles.Type
+const HOUSE_ART := preload("res://scripts/world/house_art.gd")
+## Where a castle stands in a village that has one, off the north road.
+const CASTLE_SPOT := Vector2i(-11, -18)
+## How often the king is in residence when you come by.
+const KING_CHANCE := 0.3
 const LINES: Array[String] = [
 	"Stay off the roads after dark.",
 	"The husks never come this close. Not yet.",
@@ -97,6 +102,30 @@ func _on_chunk_freed(chunk: Vector2i) -> void:
 			_built.erase(center)
 
 
+## Shuffles in place with the village's own dice, so it is the same each time.
+static func _shuffle(list: Array, random: RandomNumberGenerator) -> void:
+	for i in range(list.size() - 1, 0, -1):
+		var j := random.randi_range(0, i)
+		var held: Variant = list[i]
+		list[i] = list[j]
+		list[j] = held
+
+
+## Someone of the village in a given role, standing at `at`.
+func _person(center: Vector2i, index: int, people: String, job: String, at: Vector2, doors: Array[Vector2]) -> Npc:
+	var person := VillagerLife.make(center, index, _world.generator.world_seed, people, job)
+	var npc := Npc.create("villager", at)
+	npc.lines = LINES
+	npc.villager_name = person["name"]
+	npc.job = person["job"]
+	npc.look = (person["look"] as Dictionary).duplicate()
+	npc.villager_key = person["key"]
+	npc.square = _at(center)
+	npc.door = doors[index % doors.size()] if not doors.is_empty() else Vector2.ZERO
+	npc.home = at
+	return npc
+
+
 ## Every so often along a road, a signpost to the places nearby.
 const SIGN_EVERY := 80.0
 
@@ -153,7 +182,7 @@ func _free_plot(center: Vector2i, placed: Array, taken: Array[Vector2i]) -> Vect
 			if not clear or not is_instance_valid(node) or not node is Node2D or node is Npc:
 				continue
 			# Houses keep a wide berth; lanterns and barrels a small one.
-			var house: bool = node is Prop and (node as Prop).sprite().texture == Prop.SHEET and (node as Prop).sprite().frame == Prop.Art.HOUSE
+			var house: bool = node is Prop and (node as Prop).is_house()
 			if (node as Node2D).position.distance_to(middle) < (6.0 if house else 3.2) * TerrainTiles.TILE_SIZE:
 				clear = false
 		for other in taken:
@@ -181,16 +210,14 @@ func _build_project(project: String, plot: Vector2i, center: Vector2i, add: Call
 			smith.village = center
 			add.call(smith)
 		"inn":
-			var inn := Prop.create(Prop.Art.HOUSE, _at(plot), 34.0, "Rest at the inn", func(player: Player) -> void:
+			var inn := Prop.create_building(Prop.People.HUMAN, 4, _at(plot), 34.0, "Rest at the inn", func(player: Player) -> void:
 				player.health.heal_full()
 				player.stamina.fill()
 				player.mana.fill()
 				player.buffs.add("well_rested", "Well Rested", 1200.0, {"xp_gain": {"flat": 0.1}})
 				Events.announcement.emit("WELL RESTED", "+10% experience for 20 minutes")
 			)
-			inn.sprite().scale = Vector2(2.0, 2.0)
-			inn.sprite().position.y = -50.0
-			HouseStyles.dress(inn, tile)
+			inn.sprite().material = Wind.roof
 			add.call(inn)
 			var sign := Prop.create_decor(Prop.Decor.BANNER, _at(plot + Vector2i(3, 1)), 5.0)
 			sign.sprite().modulate = Color(0.9, 0.75, 0.5)
@@ -251,6 +278,10 @@ func _build(center: Vector2i) -> Array:
 		placed.append(node)
 		return node
 	var tile := _world.generator.tile_type_at(center + Vector2i(3, 3))
+	var people := _world.generator.village_culture(center)
+	var capital := _world.generator.is_capital(center)
+	var castle := _world.generator.has_castle(center)
+	var town_name := _world.generator.village_name(center)
 	# Tiles already taken, so the dressing below never piles up or lands on a road.
 	var used := {}
 	for offset: Vector2i in [Vector2i(3, -3), Vector2i(-3, -3), Vector2i(-5, -3), Vector2i(-5, -2), Vector2i(3, 3), Vector2i(-3, -2),
@@ -297,7 +328,7 @@ func _build(center: Vector2i) -> Array:
 	add.call(recruit)
 	var stones: Waystones = get_parent().get_node_or_null("Waystones")
 	if stones:
-		add.call(stones.make_stone("village:%d,%d" % [center.x, center.y], "Village (%d, %d)" % [center.x, center.y], center + Vector2i(5, -3)))
+		add.call(stones.make_stone("village:%d,%d" % [center.x, center.y], ("%s (capital)" if capital else "%s") % town_name, center + Vector2i(5, -3)))
 
 	# The square: benches by the fire, flowers at its corners, hay by the stall.
 	decor.call(Prop.Decor.BENCH, center + Vector2i(5, 2), 8.0)
@@ -312,7 +343,7 @@ func _build(center: Vector2i) -> Array:
 	decor.call(Prop.Decor.ANVIL, center + Vector2i(-4, 6), 10.0)
 	decor.call(Prop.Decor.WEAPON_RACK, center + Vector2i(-6, 6), 10.0)
 	# A field outside, its rows tilled, a scarecrow and hay at its edge.
-	var field_quarter: Vector2i = [Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)][random.randi_range(0, 3)]
+	var field_quarter: Vector2i = [Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)][random.randi_range(0, 2 if castle else 3)]
 	var field := Vector2i(field_quarter.x * 15, field_quarter.y * 15)
 	for row in 3:
 		for column in 4:
@@ -365,15 +396,30 @@ func _build(center: Vector2i) -> Array:
 	project_board.sprite().modulate = Color(0.8, 0.9, 1.0)
 	add.call(project_board)
 
-	# Houses in each quarter between the roads.
+	# Houses in each quarter between the roads, each different, in the
+	# people's own way of building; a capital has a second ring of them.
 	var doors: Array[Vector2] = []
+	var building := {"human": Prop.People.HUMAN, "elf": Prop.People.ELF, "dwarf": Prop.People.DWARF}[people] as int
+	var variants: Array = range(Prop.HOUSE_VARIANTS)
+	_shuffle(variants, random)
+	var spots: Array[Vector2i] = []
 	for quarter: Vector2i in [Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
 		for house_index in random.randi_range(1, 2):
-			var spot := Vector2i(quarter.x * random.randi_range(8, 12), quarter.y * random.randi_range(3, 5) if house_index == 0 else quarter.y * random.randi_range(9, 12))
+			spots.append(Vector2i(quarter.x * random.randi_range(8, 12), quarter.y * random.randi_range(3, 5) if house_index == 0 else quarter.y * random.randi_range(9, 12)))
+		if capital:
+			spots.append(Vector2i(quarter.x * random.randi_range(16, 19), quarter.y * random.randi_range(4, 6)))
+			spots.append(Vector2i(quarter.x * random.randi_range(4, 6), quarter.y * random.randi_range(16, 19)))
+			if quarter.y > 0 or not castle:
+				spots.append(Vector2i(quarter.x * random.randi_range(14, 17), quarter.y * random.randi_range(13, 16)))
+	for spot: Vector2i in spots:
+		if true:
 			if absi(spot.x) <= 2 or absi(spot.y) <= 2:
 				continue
+			if castle and spot.x < -3 and spot.y < -13:
+				continue
 			var house_key := "house:%d,%d" % [center.x + spot.x, center.y + spot.y]
-			var house := Prop.create(Prop.Art.HOUSE, _at(center + spot), 34.0, "Enter the house", func(_player: Player) -> void:
+			var variant: int = variants[doors.size() % variants.size()]
+			var house := Prop.create_building(building, variant, _at(center + spot), 34.0, "Enter the house", func(_player: Player) -> void:
 				var structures: Structures = get_parent().get_node_or_null("Structures")
 				var instances: Instances = get_parent().get_node_or_null("Instances")
 				if structures == null or instances == null:
@@ -384,14 +430,16 @@ func _build(center: Vector2i) -> Array:
 				)
 			)
 			doors.append(_at(center + spot, Vector2(0, 10)))
-			house.sprite().scale = Vector2(2.0, 2.0)
-			house.sprite().position.y = -50.0
-			HouseStyles.dress(house, tile)
+			if people == "human":
+				HouseStyles.dress(house, tile)
+			else:
+				house.sprite().material = Wind.roof
 			add.call(house)
 			# Someone is home: smoke from the chimney.
-			if random.randf() < 0.7:
+			var chimney: Variant = HOUSE_ART.CHIMNEYS.get("%d,%d" % [building, variant])
+			if chimney != null and random.randf() < 0.8 and house.sprite().texture == Prop.HOUSES:
 				var smoke := ChimneySmoke.new()
-				smoke.position = Vector2(16, -92)
+				smoke.position = house.sprite().position + (chimney as Vector2)
 				house.add_child(smoke)
 			for k in range(-1, 2):
 				used[center + spot + Vector2i(k, 0)] = true
@@ -399,10 +447,13 @@ func _build(center: Vector2i) -> Array:
 			# A yard: a fence along its front with a gap at the door, a
 			# garden or flowers to one side, barrels and crates to the other,
 			# and a lamp at the gate.
-			for k in [-3, -2, 2, 3]:
-				decor.call(Prop.Decor.FENCE, center + spot + Vector2i(k, 2), 0.0)
-			decor.call(Prop.Decor.FENCE, center + spot + Vector2i(-3, 1), 0.0)
-			decor.call(Prop.Decor.FENCE, center + spot + Vector2i(3, 1), 0.0)
+			if people == "human":
+				for k in [-3, -2, 2, 3]:
+					decor.call(Prop.Decor.FENCE, center + spot + Vector2i(k, 2), 0.0)
+				decor.call(Prop.Decor.FENCE, center + spot + Vector2i(-3, 1), 0.0)
+				decor.call(Prop.Decor.FENCE, center + spot + Vector2i(3, 1), 0.0)
+			elif people == "dwarf":
+				decor.call(Prop.Decor.ANVIL if random.randf() < 0.4 else Prop.Decor.BARREL, center + spot + Vector2i(-3, 1), 8.0)
 			match random.randi_range(0, 2):
 				0:
 					decor.call(Prop.Decor.FLOWER_BED, center + spot + Vector2i(-2, 1), 6.0)
@@ -421,8 +472,9 @@ func _build(center: Vector2i) -> Array:
 				lamp.add_light(0.8, 1.3)
 
 	# Villagers about the place, each with a name, a trade and a door.
-	for i in random.randi_range(5, 7):
-		var person := VillagerLife.make(center, i, _world.generator.world_seed)
+	var folk := random.randi_range(9, 12) if capital else random.randi_range(5, 7)
+	for i in folk:
+		var person := VillagerLife.make(center, i, _world.generator.world_seed, people)
 		var villager := Npc.create("villager", _at(center + Vector2i(random.randi_range(-6, 6), random.randi_range(-6, 6))))
 		villager.lines = LINES
 		# What happened near the village is on everyone's lips.
@@ -460,6 +512,34 @@ func _build(center: Vector2i) -> Array:
 		if person["job"] == "fisher" or person["job"] == "farmer":
 			villager.home = _at(center + Vector2i(random.randi_range(-9, 9), random.randi_range(6, 11)))
 		add.call(villager)
+	# A capital keeps more guards, at its gates.
+	if capital:
+		var keeper: String = VillagerLife.KEEPERS.get(people, VillagerLife.KEEPERS["human"])[0]
+		for k in 2:
+			var gate: Vector2i = [Vector2i(2, 20), Vector2i(-2, -20)][k]
+			add.call(_person(center, folk + k, people, keeper, _at(center + gate), doors))
+	# The castle, its guards at the gate, and now and then the king himself
+	# with his household, walking the village.
+	if castle:
+		var keep := Prop.create_castle(_at(center + CASTLE_SPOT))
+		add.call(keep)
+		for side: int in [-3, 3]:
+			var royal_guard := _person(center, 40 + side, people, "royal_guard", _at(center + CASTLE_SPOT + Vector2i(side, 1)), doors)
+			royal_guard.home = royal_guard.position
+			add.call(royal_guard)
+		for side: int in [-5, 5]:
+			var torch := Prop.create_decor(Prop.Decor.LANTERN, _at(center + CASTLE_SPOT + Vector2i(side, 1)), 5.0)
+			torch.add_light(1.0, 1.8)
+			add.call(torch)
+		if randf() < KING_CHANCE:
+			var king := _person(center, 50, people, "king", _at(center + Vector2i(1, -2)), doors)
+			king.home = _at(center + Vector2i(0, -4))
+			add.call(king)
+			for k in randi_range(1, 2):
+				var royal := _person(center, 51 + k, people, "royal", _at(center + Vector2i(-1 - k, -2)), doors)
+				royal.home = king.home
+				add.call(royal)
+			Events.announcement.emit("THE KING IS IN %s" % town_name.to_upper(), "His guards walk with him. Mind your manners.")
 	# A festival: the village's colours out, and the Festival Keeper.
 	var festivals: Festivals = get_parent().get_node_or_null("Festivals")
 	var festival := festivals.current() if festivals else ""

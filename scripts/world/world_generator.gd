@@ -367,9 +367,69 @@ func first_village() -> Vector2i:
 func village_near(cell: Vector2i) -> Variant:
 	var region := Vector2i((Vector2(cell) / VILLAGE_REGION).floor())
 	var center: Variant = village_center(region)
-	if center != null and Vector2(cell - center).length() <= VILLAGE_RADIUS + 2.0:
+	if center != null and Vector2(cell - center).length() <= village_radius(center) + 2.0:
 		return center
 	return null
+
+
+## Capitals are bigger: more houses on a wider clearing.
+const CAPITAL_RADIUS := 22.0
+const CAPITAL_CHANCE := 0.18
+const CASTLE_CHANCE := 0.10
+
+
+func _village_roll(center: Vector2i, salt: int) -> float:
+	var random := RandomNumberGenerator.new()
+	random.seed = hash(Vector4i(center.x, center.y, world_seed, salt))
+	return random.randf()
+
+
+## Who built a village: "human", "elf" (in the deep woods) or "dwarf" (up
+## in the high, rocky ground). The first village anyone finds is human.
+func village_culture(center: Vector2i) -> String:
+	if center == first_village():
+		return "human"
+	var roll := _village_roll(center, 1)
+	var high := _base_elevation(center) > 0.2
+	var tile := _natural(center)
+	var wooded := tile in [T.DARK_GRASS, T.FUNGAL, T.THORN, T.FROSTPINE, T.BOG]
+	if high:
+		return "dwarf" if roll < 0.7 else "human"
+	if wooded:
+		return "elf" if roll < 0.6 else "human"
+	return "elf" if roll < 0.18 else "dwarf" if roll < 0.3 else "human"
+
+
+## A capital: the biggest village of its people for miles around.
+func is_capital(center: Vector2i) -> bool:
+	return center != first_village() and _village_roll(center, 2) < CAPITAL_CHANCE
+
+
+## One village in ten has a castle where the king sometimes stays.
+func has_castle(center: Vector2i) -> bool:
+	return village_culture(center) == "human" and _village_roll(center, 3) < CASTLE_CHANCE / 0.62
+
+
+func village_radius(center: Vector2i) -> float:
+	return CAPITAL_RADIUS if is_capital(center) or has_castle(center) else VILLAGE_RADIUS
+
+
+const NAME_PARTS := {
+	"human": [["Ash", "Briar", "Corn", "Dun", "Elder", "Fair", "Gold", "Hollow", "Ivy", "Kings", "Lark", "Mill", "Oak", "Red", "Stone", "Thorn", "Wey", "Wil"],
+		["ford", "bury", "field", "wick", "stead", "brook", "haven", "ham", "mere", "gate", "cross", "dale"]],
+	"elf": [["Sil", "Ael", "Lor", "Ith", "Fae", "Cael", "Elu", "Nym", "Thal", "Ver", "Ys", "Mir"],
+		["varen", "aneth", "dorel", "ithil", "wyn", "lasse", "oriel", "athae", "enor", "iel"]],
+	"dwarf": [["Khaz", "Dur", "Bar", "Grom", "Thor", "Kar", "Bel", "Dun", "Mor", "Az", "Gund", "Oth"],
+		["-Dorran", "-Haldur", "grim", "dak", "rund", "-Bakar", "mar", "zul", "-Karak", "hold"]],
+}
+
+
+## What a village is called, after the people who built it.
+func village_name(center: Vector2i) -> String:
+	var parts: Array = NAME_PARTS[village_culture(center)]
+	var random := RandomNumberGenerator.new()
+	random.seed = hash(Vector4i(center.x, center.y, world_seed, 4))
+	return str((parts[0] as Array)[random.randi() % (parts[0] as Array).size()]) + str((parts[1] as Array)[random.randi() % (parts[1] as Array).size()])
 
 
 func _base_elevation(cell: Vector2i) -> float:
@@ -470,7 +530,8 @@ func roads_from(region: Vector2i) -> Array:
 func _village_tile(cell: Vector2i, center: Vector2i) -> int:
 	var offset := cell - center
 	var distance := Vector2(offset).length()
-	if distance <= VILLAGE_RADIUS and (absi(offset.x) <= 1 or absi(offset.y) <= 1 or (distance > 5.5 and distance < 7.0)):
+	var reach := village_radius(center)
+	if distance <= reach and (absi(offset.x) <= 1 or absi(offset.y) <= 1 or (distance > 5.5 and distance < 7.0) or (reach > VILLAGE_RADIUS and distance > 13.5 and distance < 15.0)):
 		return T.PATH
 	var natural := _natural(cell)
 	if TerrainTiles.is_water(natural) or natural in TerrainTiles.HIGH or natural == T.VOIDSCAR:

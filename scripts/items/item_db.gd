@@ -885,6 +885,12 @@ const LOOT_TABLES := {
 		{"id": "husk_fragment", "chance": 0.35, "count": [1, 1]}, {"id": "bone", "chance": 0.08, "count": [1, 1]}]},
 	"rot_hound": {"gold": [0, 1], "gear": [["boots", 0.02]], "materials": [
 		{"id": "hound_pelt", "chance": 0.3, "count": [1, 1]}, {"id": "claw", "chance": 0.18, "count": [1, 1]}]},
+	"goblin": {"gold": [1, 3], "gear": [["spear", 0.03]], "materials": [
+		{"id": "leather", "chance": 0.35, "count": [1, 1]}, {"id": "bone", "chance": 0.2, "count": [1, 2]}]},
+	"goblin_raider": {"gold": [1, 4], "gear": [["dagger", 0.04]], "materials": [
+		{"id": "leather", "chance": 0.3, "count": [1, 1]}, {"id": "bone", "chance": 0.3, "count": [1, 2]}]},
+	"goblin_chief": {"gold": [8, 16], "gear": [["club", 0.35], ["shield", 0.2]], "materials": [
+		{"id": "leather", "chance": 0.8, "count": [2, 3]}, {"id": "bone", "chance": 0.6, "count": [2, 4]}]},
 	"bone_archer": {"gold": [1, 2], "gear": [["bow", 0.03]], "materials": [
 		{"id": "bone", "chance": 0.4, "count": [1, 2]}]},
 	"bog_slime": {"gold": [0, 1], "gear": [["ring", 0.015]], "materials": [
