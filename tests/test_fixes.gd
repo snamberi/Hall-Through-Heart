@@ -201,3 +201,14 @@ func test_bonds_connect_the_systems(t: TestContext) -> void:
 	bonds._check()
 	t.check(player.buffs.has("bond_momentum"), "three quick kills give Momentum")
 	t.check(player.buffs.has("bond_telling"), "the opened chapters of the Telling give a bond")
+
+
+func test_back_views_and_pixel_numbers(t: TestContext) -> void:
+	var husk: Texture2D = load("res://assets/sprites/husk_sheet.png")
+	t.check(husk.get_height() >= 11 * 96, "the husk's sheet has walking-away rows")
+	var frames := SheetAnimations.build(husk, 96, EnemyAnimator.ROWS + EnemyAnimator.BACK_ROWS)
+	t.check(frames.has_animation("walk_back"), "monsters can walk away from the viewer")
+	var main := await t.game()
+	var before := main.get_child_count()
+	DamageNumber.spawn(main, Vector2(100, 100), 42.0, Color.WHITE, true)
+	t.check(main.get_child_count() == before + 1 or not GameSettings.damage_numbers, "a hit shows a pixel number")

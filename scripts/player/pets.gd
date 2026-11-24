@@ -655,13 +655,13 @@ func _physics_process(delta: float) -> void:
 					_critter.frame = still + 2
 				"sleep":
 					_critter.frame = still + 3
-			_critter.position.y = -10.0
+			_critter.position.y = -14.0
 		elif moving:
 			_critter.frame = base + (2 if cos(_bob * 11.0) * signf(hop) > 0.0 else 3)
-			_critter.position.y = -10.0 - absf(hop) * 5.0
+			_critter.position.y = -14.0 - absf(hop) * 5.0
 		else:
 			_critter.frame = base + (1 if fmod(_bob, 2.6) < 0.35 else 0)
-			_critter.position.y = -10.0
+			_critter.position.y = -14.0
 		if absf(_velocity.x) > 4.0:
 			_critter.flip_h = _velocity.x < 0.0
 	else:

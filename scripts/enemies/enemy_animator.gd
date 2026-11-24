@@ -14,6 +14,13 @@ const ROWS: Array[Dictionary] = [
 	{"name": "death", "frames": 8, "fps": 10.0, "loop": false},
 ]
 
+## Walking away (tools/generate_back_views.py): sheets eleven rows tall
+## have these two, seen from behind.
+const BACK_ROWS: Array[Dictionary] = [
+	{"name": "idle_back", "frames": 4, "fps": 6.0, "loop": true, "row": 9},
+	{"name": "walk_back", "frames": 8, "fps": 10.0, "loop": true, "row": 10},
+]
+
 @export var sheet: Texture2D
 @export var frame_size := 96
 
@@ -31,12 +38,19 @@ func _ready() -> void:
 ## Builds the animations from `sheet`; call again after changing it.
 func rebuild() -> void:
 	if not _cache.has(sheet):
-		_cache[sheet] = SheetAnimations.build(sheet, frame_size, ROWS)
+		var rows: Array[Dictionary] = ROWS.duplicate()
+		if sheet.get_height() >= (BACK_ROWS[1]["row"] + 1) * frame_size:
+			rows.append_array(BACK_ROWS)
+		_cache[sheet] = SheetAnimations.build(sheet, frame_size, rows)
 	sprite_frames = _cache[sheet]
+	_has_back = sprite_frames.has_animation("walk_back")
 	play("idle")
 
 
 var _time := 0.0
+## Whether this sheet has walking-away rows, and whether it last moved away.
+var _has_back := false
+var _away := false
 var _base_position := Vector2.ZERO
 var _base_ready := false
 ## A blow just landed: the hurt frames (drawn squashed on the impact and
@@ -123,7 +137,10 @@ func _choose_animation() -> void:
 		_:
 			var moving := _enemy.velocity.length() > 8.0
 			speed_scale = 1.5 if _enemy.state == Enemy.State.CHASE else 1.0
-			var wanted := "walk" if moving else "idle"
+			if moving:
+				# Heading up the screen: seen from behind.
+				_away = _has_back and _enemy.velocity.y < -0.55 * _enemy.velocity.length()
+			var wanted := ("walk" if moving else "idle") + ("_back" if _away else "")
 			if animation != wanted:
 				play(wanted)
 

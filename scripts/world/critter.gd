@@ -11,6 +11,8 @@ const KINDS := ["rabbit", "bird", "butterfly", "frog"]
 const FRAMES := 8
 ## Where a kind's fidget frames start.
 const FIDGETS := 4
+## Frame size (tools/generate_critters.py).
+const SIZE := 32
 const SCARE := 120.0
 
 var kind := "rabbit"
@@ -37,7 +39,7 @@ func _ready() -> void:
 	_sprite.texture = SHEET
 	_sprite.hframes = KINDS.size() * FRAMES
 	_sprite.frame = KINDS.find(kind) * FRAMES
-	_sprite.position.y = -8.0
+	_sprite.position.y = -12.0
 	add_child(_sprite)
 	_flying = kind == "butterfly"
 	_time = randf() * 10.0
@@ -88,7 +90,7 @@ func _process(delta: float) -> void:
 				_sprite.frame = base + (2 if cos(_time * 10.0) * signf(arc) > 0.0 else 3)
 			else:
 				_sprite.frame = base + (1 if fmod(_time, 2.6) < 0.35 else 0)
-			_sprite.position.y = -8.0 - (absf(arc) * 5.0 if moving else 0.0)
+			_sprite.position.y = -12.0 - (absf(arc) * 5.0 if moving else 0.0)
 			_velocity = _velocity.move_toward(Vector2.ZERO, 40.0 * delta) if _think < 0.3 else _velocity
 	position += _velocity * delta
 	if absf(_velocity.x) > 1.0:

@@ -72,7 +72,7 @@ func test_allies_and_pets_are_drawn_for_themselves(t: TestContext) -> void:
 	var wolf: Texture2D = load("res://assets/sprites/enemies/grey_wolf.png")
 	t.check(wolf.get_height() >= 96 * 9, "monster sheets carry a pet's resting rows")
 	var critters: Texture2D = Critter.SHEET
-	t.equal(critters.get_width(), Critter.KINDS.size() * Critter.FRAMES * 24, "critters have their fidget frames")
+	t.equal(critters.get_width(), Critter.KINDS.size() * Critter.FRAMES * Critter.SIZE, "critters have their fidget frames")
 
 
 func test_riders_legs_are_drawn_on_their_mounts(t: TestContext) -> void:

@@ -72,7 +72,7 @@ func _portrait(pet: Dictionary) -> Texture2D:
 	var atlas := AtlasTexture.new()
 	if pet["kind"] == "critter":
 		atlas.atlas = Critter.SHEET
-		atlas.region = Rect2(Critter.KINDS.find(pet["species"]) * Critter.FRAMES * 24, 0, 24, 24)
+		atlas.region = Rect2(Critter.KINDS.find(pet["species"]) * Critter.FRAMES * Critter.SIZE, 0, Critter.SIZE, Critter.SIZE)
 	else:
 		atlas.atlas = EnemyDB.sheet(pet["species"])
 		atlas.region = Rect2(20, 22, 56, 56)
@@ -188,7 +188,7 @@ func _empty_state() -> void:
 	var shadow := TextureRect.new()
 	var atlas := AtlasTexture.new()
 	atlas.atlas = Critter.SHEET
-	atlas.region = Rect2(0, 0, 24, 24)
+	atlas.region = Rect2(0, 0, Critter.SIZE, Critter.SIZE)
 	shadow.texture = atlas
 	shadow.custom_minimum_size = Vector2(48, 48)
 	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

@@ -45,12 +45,24 @@ func _ready() -> void:
 	row.add_child(_text)
 
 
+## The item's picture shown large, at a whole multiple of its own size so
+## every pixel stays square (about 64 on screen).
+static func _set_icon(rect: TextureRect, texture: Texture2D) -> void:
+	rect.texture = texture
+	if texture == null:
+		return
+	var side := maxf(texture.get_width(), texture.get_height())
+	var times := maxf(floorf(64.0 / maxf(side, 1.0)), 1.0)
+	rect.custom_minimum_size = Vector2(texture.get_width(), texture.get_height()) * times
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+
+
 func show_item(item: Item, player: Player, extra: String = "") -> void:
 	if item == null:
 		hide_tip()
 		return
 	_icon.visible = true
-	_icon.texture = item.icon()
+	_set_icon(_icon, item.icon())
 	_icon.modulate = item.icon_tint()
 	_fill(ItemText.describe(item, player) + ("\n\n" + extra if extra != "" else ""), item.color().darkened(0.1))
 	_show_worn(item, player)
@@ -69,7 +81,7 @@ func _show_worn(item: Item, player: Player) -> void:
 		_worn = ItemTooltip.new()
 		add_child(_worn)
 	_worn._icon.visible = true
-	_worn._icon.texture = rival.icon()
+	_set_icon(_worn._icon, rival.icon())
 	_worn._icon.modulate = rival.icon_tint()
 	_worn._fill("[color=#%s]WORN NOW[/color]\n%s" % [UITheme.DIM.to_html(false), ItemText.describe(rival, player)], rival.color().darkened(0.1))
 	_place_worn()
@@ -92,7 +104,7 @@ func show_recipe(recipe: Dictionary, player: Player) -> void:
 	_icon.visible = made != "" and ItemDB.ITEMS.has(made)
 	if _icon.visible:
 		var sample := Item.create(made)
-		_icon.texture = sample.icon()
+		_set_icon(_icon, sample.icon())
 		_icon.modulate = sample.icon_tint()
 	_fill(ItemText.describe_recipe(recipe, player), Color("8a683a"))
 

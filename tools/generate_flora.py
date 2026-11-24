@@ -3459,6 +3459,8 @@ def sheet(images, w, h):
 if __name__ == "__main__":
     sheet(TALL, 64, 96).save(os.path.join(ROOT, "flora_tall.png"))
     sheet(SMALL, 32, 32).save(os.path.join(ROOT, "flora_small.png"))
-    sheet([critter(k, f) for k in CRITTERS for f in range(CRITTER_FRAMES)], 24, 24).save(os.path.join(ROOT, "critters.png"))
+    # The critters are drawn at 32x32 by tools/generate_critters.py.
+    import generate_critters
+    generate_critters.main()
     sheet([decor(k) for k in DECOR], 64, 64).save(os.path.join(ROOT, "decor.png"))
     manor().save(os.path.join(ROOT, "manor.png"))

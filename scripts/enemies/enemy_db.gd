@@ -174,7 +174,7 @@ const ENEMIES := {
 	# of them is struck; raiders roam the wilds and attack on sight.
 	"goblin": {
 		"active": "always", "wild": "neutral", "name": "Camp Goblin", "health": 30.0, "damage": 7.0, "speed": 120.0, "xp": 8,
-		"radius": 11.0, "size": 0.85, "tiles": [], "min_level": 1, "weight": 0.0,
+		"radius": 11.0, "size": 0.95, "tiles": [], "min_level": 1, "weight": 0.0,
 		"attack": {"kind": "thrust", "range": 84.0, "windup": 0.4, "arc": 30.0, "recover": 0.7, "color": Color(0.85, 0.95, 0.7)},
 		"traits": ["pack"],
 	},
@@ -186,7 +186,7 @@ const ENEMIES := {
 	},
 	"goblin_raider": {
 		"active": "always", "name": "Goblin Raider", "health": 26.0, "damage": 9.0, "speed": 135.0, "xp": 10,
-		"radius": 11.0, "size": 0.85, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.THORN, T.MUD, T.ROCK], "min_level": 2, "weight": 4.0,
+		"radius": 11.0, "size": 0.95, "tiles": [T.DARK_GRASS, T.DEAD_GRASS, T.THORN, T.MUD, T.ROCK], "min_level": 2, "weight": 4.0,
 		"attack": {"kind": "swipe", "range": 66.0, "windup": 0.36, "arc": 110.0, "recover": 0.6, "knockback": 220.0, "color": Color(1.0, 0.6, 0.5)},
 		"traits": ["pack"],
 	},
