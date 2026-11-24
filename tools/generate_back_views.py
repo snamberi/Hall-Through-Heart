@@ -78,5 +78,56 @@ def main(only=()):
     print("back views:", done)
 
 
+# The four-legged hunters drawn on the monster rigs get their rear views from
+# the beast drawer (tools/generate_beasts.py), in colours taken from their own
+# sheets so they match.
+QUADS = {
+    "rot_hound": dict(length=28, height=11, legs=11, ears="pointy", tail="thin", feet="paw", marks=("spikes",), glow="e04040"),
+    "frost_wolf": dict(length=30, height=12, legs=12, ears="pointy", tail="bushy", feet="paw", marks=("spikes",), glow="8ad8ff"),
+    "dire_boar": dict(length=30, height=15, legs=8, ears="side", tail="short", feet="hoof", horns="tusks", marks=("spikes",)),
+    "thorn_stalker": dict(length=30, height=12, legs=12, ears="tufted", tail="long", feet="claw", marks=("spikes",), glow="7aff6a"),
+    "void_stalker": dict(length=30, height=12, legs=13, ears="big_pointy", tail="long", feet="claw", marks=("spikes",), glow="c070ff"),
+    "bog_lurker": dict(length=32, height=13, legs=7, ears="tiny", tail="long_thick", feet="claw"),
+}
+
+
+def palette_of(sheet):
+    """The three main tones of a creature's coat, light to dark."""
+    frame = sheet.crop((0, 0, GA.FRAME, GA.FRAME)).convert("RGBA")
+    counts = {}
+    for r, g, b, a in frame.getdata():
+        if a < 250:
+            continue
+        key = (r // 12 * 12, g // 12 * 12, b // 12 * 12)
+        counts[key] = counts.get(key, 0) + 1
+    tones = [c for c, _n in sorted(counts.items(), key=lambda kv: -kv[1])]
+    # Drop the near-black outline; keep the commonest coat colours.
+    tones = [c for c in tones if sum(c) > 90][:3] or [(120, 110, 100)]
+    while len(tones) < 3:
+        tones.append(tuple(int(v * 0.75) for v in tones[-1]))
+    tones.sort(key=lambda c: -sum(c))
+    return tuple("%02x%02x%02x" % c for c in tones)
+
+
+def quad_backs(only=()):
+    import generate_beasts as BE
+    out = os.path.join(GA.ROOT, "sprites", "enemies")
+    for name, shape in QUADS.items():
+        if only and name not in only:
+            continue
+        path = os.path.join(out, name + ".png")
+        old = Image.open(path).convert("RGBA")
+        spec = BE.beast(palette_of(old), **shape)
+        sheet = Image.new("RGBA", (old.width, (ROWS_BEFORE + 2) * GA.FRAME), (0, 0, 0, 0))
+        sheet.paste(old.crop((0, 0, old.width, ROWS_BEFORE * GA.FRAME)), (0, 0))
+        for k, (anim, count) in enumerate(BE.BACK_ROWS):
+            frames = BE.ANIMS[anim]
+            for col in range(count):
+                sheet.paste(BE.draw_back(spec, frames[col % len(frames)]), (col * GA.FRAME, (ROWS_BEFORE + k) * GA.FRAME))
+        sheet.save(path)
+    print("four-legged back views:", len(QUADS))
+
+
 if __name__ == "__main__":
     main(set(sys.argv[1:]))
+    quad_backs(set(sys.argv[1:]))

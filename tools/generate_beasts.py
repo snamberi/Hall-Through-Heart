@@ -665,9 +665,17 @@ def draw_back(spec, p):
         f.fill("line", (cx, ty, cx + sway * 2, bottom + 6), shade(fur[1], 0.9), w)
     elif tail == "flame":
         f.shape("ellipse", (cx - 2 + sway, ty - 3, cx + 2 + sway, ty + 4), (C("ffe080"), C("ff9a30"), C("d05020")))
+    if "spikes" in spec["marks"]:
+        # A ridge of spines down the back, seen end on.
+        spine = (C("f0e8d8"), C("c8bca8"), C("8a8070"))
+        for k, dx in enumerate((-half + 3, -2, 3, half - 4)):
+            tall = 4 if k in (1, 2) else 3
+            f.shape("poly", [(cx + dx - 1, top + 2), (cx + dx, top - tall), (cx + dx + 2, top + 2)], spine)
     if spec["glow"]:
         f.put(cx - 2, top + 3, spec["glow"])
         f.put(cx + 3, top + 5, spec["glow"])
+        f.put(cx, top + H // 2, spec["glow"])
+        f.put(cx - half + 3, top + H // 2 + 1, spec["glow"])
     f.outline(out)
     return f.img
 
