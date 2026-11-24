@@ -12,6 +12,8 @@ uniform float density = 0.15;
 uniform vec2 drift = vec2(0.0);
 uniform vec2 anchor = vec2(0.0);
 uniform float vignette = 0.35;
+// Low on health: the edges of the sight darken red in time with the heart.
+uniform float danger = 0.0;
 
 void fragment() {
 	// Anchored to the land, so fog banks stay put as the player walks through them.
@@ -20,7 +22,10 @@ void fragment() {
 	float b = texture(noise, uv * 1.7 - drift * 1.4 + vec2(0.3, 0.7)).r;
 	float fog = smoothstep(0.35, 0.85, a * 0.65 + b * 0.45) * density;
 	float edge = smoothstep(0.45, 0.95, distance(UV, vec2(0.5)) * 1.35) * vignette;
-	COLOR = vec4(mix(tint.rgb, vec3(0.0), edge / max(fog + edge, 0.001) * step(0.001, edge)), clamp(fog + edge, 0.0, 0.85));
+	vec3 colour = mix(tint.rgb, vec3(0.0), edge / max(fog + edge, 0.001) * step(0.001, edge));
+	float rim = smoothstep(0.55, 1.05, distance(UV, vec2(0.5)) * 1.4) * danger;
+	colour = mix(colour, vec3(0.5, 0.02, 0.05), clamp(rim / max(fog + edge + rim, 0.001), 0.0, 1.0));
+	COLOR = vec4(colour, clamp(fog + edge + rim, 0.0, 0.85));
 }
 """
 ## Per terrain: fog colour, fog thickness, and the particle kind.
@@ -208,8 +213,10 @@ func _process(delta: float) -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	# Fog and its edge darkening are full-shader effects; fog can also be
 	# turned off alone (graphics settings).
-	_fog.visible = GameSettings.shader_level() >= 2
-	_material.set_shader_parameter("density", _density if GameSettings.fog else 0.0)
+	var danger := _danger(t)
+	_material.set_shader_parameter("danger", danger)
+	_fog.visible = GameSettings.shader_level() >= 2 or danger > 0.0
+	_material.set_shader_parameter("density", _density if GameSettings.fog and GameSettings.shader_level() >= 2 else 0.0)
 	_material.set_shader_parameter("tint", _tint)
 	# The fog drifts slowly, and is pinned to the land rather than the screen.
 	_material.set_shader_parameter("drift", Vector2(t * 0.006, t * 0.002))
@@ -348,3 +355,17 @@ func _near_fire() -> bool:
 		if prop and prop.global_position.distance_to(_player.global_position) < 160.0 and prop.find_children("*", "PointLight2D", false, false).size() > 0:
 			return true
 	return false
+
+
+## Below 30% health, a heartbeat at the edges of the screen: two beats and
+## a rest, faster and stronger the closer to death.
+func _danger(t: float) -> float:
+	if _player == null or _player.health == null or _player.is_dead():
+		return 0.0
+	var share := _player.health.current / maxf(_player.health.max_health, 1.0)
+	if share >= 0.3:
+		return 0.0
+	var fear := 1.0 - share / 0.3
+	var beat := fmod(t * (1.1 + 1.2 * fear), 1.0)
+	var pulse := exp(-beat * 10.0) + (0.65 * exp(-(beat - 0.2) * 10.0) if beat > 0.2 else 0.0)
+	return (0.14 + 0.42 * pulse) * (0.5 + 0.5 * fear)
