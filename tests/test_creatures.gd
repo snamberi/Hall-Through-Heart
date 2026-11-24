@@ -12,6 +12,7 @@ func test_people_are_drawn_from_every_side(t: TestContext) -> void:
 	var deepest := 0
 	for row: Dictionary in PlayerAnimator.ROWS:
 		deepest = maxi(deepest, int(row.get("row", PlayerAnimator.ROWS.find(row))))
+		deepest = maxi(deepest, int(row.get("wrap_row", 0)))
 	for path: String in ["res://assets/sprites/player_sheet.png", "res://assets/sprites/looks/hair_0.png", "res://assets/sprites/layers/chest_plate_1.png"]:
 		var sheet: Texture2D = load(path)
 		t.check(sheet.get_height() >= (deepest + 1) * PlayerAnimator.FRAME_SIZE, "%s holds every row" % path.get_file())
@@ -19,7 +20,10 @@ func test_people_are_drawn_from_every_side(t: TestContext) -> void:
 	t.equal(PlayerAnimator.view_of(Vector2(100, 10)), "side", "going sideways, in profile")
 	t.equal(PlayerAnimator.view_of(Vector2(0, 100)), "front", "coming down, from the front")
 	var frames := BodyFit.frames("people/body_h2_b1")
-	t.check(frames.has_animation("walk_side") and frames.get_frame_count("walk_side") == 8, "the profile walk has its eight frames")
+	t.check(frames.has_animation("walk_side") and frames.get_frame_count("walk_side") == 12, "the profile walk has its twelve frames")
+	# Frames past the eighth carry on in the walk's own wrap row.
+	var ninth := frames.get_frame_texture("walk_side", 8) as AtlasTexture
+	t.equal(int(ninth.region.position.y), 56 * PlayerAnimator.FRAME_SIZE, "the ninth step is on the wrap row")
 
 
 func test_each_class_has_its_own_stance(t: TestContext) -> void:

@@ -383,50 +383,67 @@ KNEEL = [
 # pose, how each leg steps, the weapon's angle (multiples of 45 degrees, so
 # blades stay clean stair-steps) and a quarter-turn for the whole figure.
 def F(body=(0, 0), head=None, arm_l=("down", 0, 0), arm_r=("down", 0, 0), leg_l=(0, 0), leg_r=(0, 0),
-      weapon=45, turn=0, crouch=0, legs=None, shadow=9, ground_shift=0, view="front"):
+      weapon=45, turn=0, crouch=0, legs=None, shadow=9, ground_shift=0, view="front", trail=0):
     """`view`: "front" (the usual three-quarter front), "back" (walking up,
-    away from us) or "side" (in profile, walking sideways)."""
+    away from us) or "side" (in profile, walking sideways). `trail`: how
+    far a cape's hem and long hair swing behind (whole pixels; negative is
+    back, in profile)."""
     return {"body": body, "head": head if head is not None else body, "arm_l": arm_l, "arm_r": arm_r,
             "leg_l": leg_l, "leg_r": leg_r, "weapon": weapon, "turn": turn, "crouch": crouch, "legs": legs,
-            "shadow": shadow, "ground_shift": ground_shift, "view": view}
+            "shadow": shadow, "ground_shift": ground_shift, "view": view, "trail": trail}
+
+
+# Twelve frames a stride (phase 6): contact, passing and the held lift
+# between, the arms swinging a frame behind the legs.
+WALK_STEPS = [0, 1, 1, 1, 0, 0, 0, -1, -1, -1, 0, 0]
+RUN_STEPS = [0, 1, 2, 2, 1, 0, 0, -1, -2, -2, -1, 0]
 
 
 def _walk():
     frames = []
-    for i in range(8):
-        step = [0, 1, 1, 0, 0, -1, -1, 0][i]
-        lift_l = 1 if step > 0 else 0
-        lift_r = 1 if step < 0 else 0
-        bob = -1 if step != 0 else 0
-        frames.append(F(body=(0, bob), arm_l=("down", -step, 0), arm_r=("down", step, 0),
-                        leg_l=(lift_l, step), leg_r=(lift_r, -step)))
+    n = len(WALK_STEPS)
+    for i in range(n):
+        step = WALK_STEPS[i]
+        arm = WALK_STEPS[(i - 1) % n]
+        # The foot lifts only while it passes (the middle of a held step).
+        lift_l = 1 if step > 0 and WALK_STEPS[(i - 1) % n] > 0 else 0
+        lift_r = 1 if step < 0 and WALK_STEPS[(i - 1) % n] < 0 else 0
+        bob = -1 if lift_l or lift_r else 0
+        frames.append(F(body=(0, bob), head=(0, bob if i % 2 else 0), arm_l=("down", -arm, 0), arm_r=("down", arm, 0),
+                        leg_l=(lift_l, step), leg_r=(lift_r, -step), trail=1 if step > 0 else -1 if step < 0 else 0))
     return frames
 
 
 def _run():
     frames = []
-    for i in range(8):
-        step = [0, 1, 2, 1, 0, -1, -2, -1][i]
+    n = len(RUN_STEPS)
+    for i in range(n):
+        step = RUN_STEPS[i]
+        arm = RUN_STEPS[(i - 1) % n]
         lift_l = 2 if step >= 2 else (1 if step == 1 else 0)
         lift_r = 2 if step <= -2 else (1 if step == -1 else 0)
         bob = -1 if abs(step) == 2 else 0
-        front = "fwd_down" if step > 0 else "down"
-        frames.append(F(body=(1, bob), arm_l=("down", -step, -1 if step < 0 else 0), arm_r=(front, 0, 0),
-                        leg_l=(lift_l, step), leg_r=(lift_r, -step), weapon=90 if step > 0 else 45))
+        front = "fwd_down" if arm > 0 else "down"
+        frames.append(F(body=(1, bob), arm_l=("down", -arm, -1 if arm < 0 else 0), arm_r=(front, 0, 0),
+                        leg_l=(lift_l, step), leg_r=(lift_r, -step), weapon=90 if arm > 0 else 45,
+                        trail=1 if step > 0 else -1 if step < 0 else 0))
     return frames
 
 
 ANIMATIONS = [
-    ("idle", [F(body=(0, b)) for b in (0, 0, 1, 1)]),
+    # Breathing: the chest rises and settles, the head following a beat behind.
+    ("idle", [F(body=(0, b), head=(0, h)) for b, h in ((0, 0), (0, 0), (0, 0), (1, 0), (1, 1), (1, 1), (1, 1), (0, 1))]),
     ("walk", _walk()),
     ("run", _run()),
     ("attack", [
         F(body=(-1, 0), arm_r=("up", 0, 0), weapon=-45),
-        F(body=(-1, 0), arm_r=("up", 0, 0), weapon=0, leg_l=(0, -1)),
-        F(body=(1, 0), arm_r=("fwd_up", 0, 0), weapon=45),
+        F(body=(-1, 0), arm_r=("up", 0, 0), weapon=-10, leg_l=(0, -1)),
+        F(body=(0, 0), arm_r=("up", 0, 0), weapon=20, leg_l=(0, -1)),
+        F(body=(1, 0), arm_r=("fwd_up", 0, 0), weapon=50),
         F(body=(2, 0), arm_r=("fwd", 0, 0), weapon=90, leg_r=(0, 1), arm_l=("down", -1, 0)),
+        F(body=(2, 0), arm_r=("fwd", 0, 0), weapon=115, leg_r=(0, 1), arm_l=("down", -1, 0)),
         F(body=(1, 0), arm_r=("fwd_down", 0, 0), weapon=135, leg_r=(0, 1)),
-        F(body=(0, 0), arm_r=("down", 0, 0), weapon=45),
+        F(body=(0, 0), arm_r=("down", 0, 0), weapon=70),
     ]),
     ("heavy", [
         F(body=(-1, 0), arm_r=("up", 0, 0), weapon=-45),
@@ -543,34 +560,38 @@ CLASS_IDLES = [
 
 def _walk_view(view):
     frames = []
-    for i in range(8):
-        step = [0, 1, 1, 0, 0, -1, -1, 0][i]
-        lift_l = 1 if step > 0 else 0
-        lift_r = 1 if step < 0 else 0
-        bob = -1 if step != 0 else 0
+    n = len(WALK_STEPS)
+    for i in range(n):
+        step = WALK_STEPS[i]
+        arm = WALK_STEPS[(i - 1) % n]
+        lift_l = 1 if step > 0 and WALK_STEPS[(i - 1) % n] > 0 else 0
+        lift_r = 1 if step < 0 and WALK_STEPS[(i - 1) % n] < 0 else 0
+        bob = -1 if lift_l or lift_r else 0
         if view == "side":
-            # In profile the legs stride ahead and behind, the arms swing.
-            frames.append(F(body=(0, bob), arm_l=("down", -step, 0), arm_r=("down", step, 0),
-                            leg_l=(lift_l, 2 * step), leg_r=(lift_r, -2 * step), view=view))
+            # In profile the legs stride ahead and behind, the arms swing,
+            # and the cape and hair stream back.
+            frames.append(F(body=(0, bob), arm_l=("down", -arm, 0), arm_r=("down", arm, 0),
+                            leg_l=(lift_l, 2 * step), leg_r=(lift_r, -2 * step), view=view, trail=-1 - (1 if bob else 0)))
         else:
-            frames.append(F(body=(0, bob), arm_l=("down", 0, -abs(step)), arm_r=("down", 0, -abs(step) if step < 0 else 0),
-                            leg_l=(lift_l, 0), leg_r=(lift_r, 0), view=view))
+            frames.append(F(body=(0, bob), arm_l=("down", 0, -abs(arm)), arm_r=("down", 0, -abs(arm) if arm < 0 else 0),
+                            leg_l=(lift_l, 0), leg_r=(lift_r, 0), view=view, trail=1 if step > 0 else -1 if step < 0 else 0))
     return frames
 
 
 def _run_view(view):
     frames = []
-    for i in range(8):
-        step = [0, 1, 2, 1, 0, -1, -2, -1][i]
+    for i in range(len(RUN_STEPS)):
+        step = RUN_STEPS[i]
         lift_l = 2 if step >= 2 else (1 if step == 1 else 0)
         lift_r = 2 if step <= -2 else (1 if step == -1 else 0)
         bob = -1 if abs(step) == 2 else 0
         if view == "side":
             frames.append(F(body=(1, bob), arm_l=("down", -step, 0), arm_r=("fwd_down" if step > 0 else "down", 0, 0),
-                            leg_l=(lift_l, 2 * step), leg_r=(lift_r, -2 * step), view=view, weapon=90 if step > 0 else 45))
+                            leg_l=(lift_l, 2 * step), leg_r=(lift_r, -2 * step), view=view, weapon=90 if step > 0 else 45,
+                            trail=-2 - (1 if bob else 0)))
         else:
             frames.append(F(body=(0, bob), arm_l=("down", 0, -1 if step > 0 else 0), arm_r=("down", 0, -1 if step < 0 else 0),
-                            leg_l=(lift_l, 0), leg_r=(lift_r, 0), view=view))
+                            leg_l=(lift_l, 0), leg_r=(lift_r, 0), view=view, trail=1 if step > 0 else -1 if step < 0 else 0))
     return frames
 
 
@@ -604,6 +625,15 @@ LAYOUT.update({"idle_fq": (23, 0), "idle_bq": (23, 4), "walk_fq": (24, 0), "run_
 for k, (name, _frames) in enumerate(VIEWED_BLOWS):
     LAYOUT[name] = (28 + k, 0)
 SHEET_ROWS = 28 + len(VIEWED_BLOWS)
+# A sheet stays eight frames wide; an animation longer than its row
+# carries on in a row of its own at the bottom (the twelve-frame strides).
+COLUMNS = 8
+WRAP = {}
+for name, frames in ANIMATIONS:
+    row, first = LAYOUT[name]
+    if first + len(frames) > COLUMNS:
+        WRAP[name] = SHEET_ROWS
+        SHEET_ROWS += 1
 
 # How each family carries its weapon when not attacking: [weapon angle].
 # 0 points straight up, 90 ahead, 180 down.
@@ -778,12 +808,15 @@ def body_frame(frame, height, build):
 
 
 def sheet(make_frame):
-    columns = max(len(frames) for _name, frames in ANIMATIONS)
-    out = Image.new("RGBA", (columns * FRAME, SHEET_ROWS * FRAME), (0, 0, 0, 0))
+    out = Image.new("RGBA", (COLUMNS * FRAME, SHEET_ROWS * FRAME), (0, 0, 0, 0))
     for name, frames in ANIMATIONS:
         row, first = LAYOUT[name]
         for col, frame in enumerate(frames):
-            out.paste(make_frame(frame), ((first + col) * FRAME, row * FRAME))
+            at = first + col
+            if at >= COLUMNS:
+                out.paste(make_frame(frame), ((at - COLUMNS) * FRAME, WRAP[name] * FRAME))
+            else:
+                out.paste(make_frame(frame), (at * FRAME, row * FRAME))
     return out
 
 
@@ -2210,12 +2243,17 @@ def layer_frame(spec, frame, height, build):
     view = frame.get("view", "front")
     name = spec.get("name", "")
     layers = []
+    trail = frame.get("trail", 0)
     if "torso" in spec:
         pixels = fit_build(spec["torso"], build) if spec.get("fit") else spec["torso"]
         pixels = view_torso(name, pixels, view, build, spec.get("behind", False))
+        if trail and name.startswith("cape"):
+            pixels = _trailed(pixels, trail, 34)
         layers.append({(x + bx, y + by): c for (x, y), c in pixels.items()})
     if "head" in spec:
         pixels = view_head(name, spec["head"], view)
+        if trail and name.startswith("hair"):
+            pixels = _trailed(pixels, trail, 25)
         layers.append({(x + hx, y + hy): c for (x, y), c in pixels.items()})
     if "hand_l" in spec:
         hand = where["arms"]["l"][3]
@@ -2229,6 +2267,25 @@ def layer_frame(spec, frame, height, build):
             pixels = leg(side, rows, lift, dx, trouser=spec.get("trouser"), boot=spec.get("boot"), parts=parts, view=view)
             layers.append({p: LAYER_LEGEND[ch] for p, ch in pixels.items()})
     return turned(to_image(layers, {}), frame)
+
+
+def _trailed(pixels, trail, below):
+    """The part of a layer below row `below` swung `trail` pixels to the
+    side, more toward its lowest edge, so a hem or long hair streams."""
+    if not pixels:
+        return pixels
+    bottom = max(y for _x, y in pixels)
+    if bottom <= below:
+        return pixels
+    out = {}
+    for (x, y), c in pixels.items():
+        if y > below:
+            shift = int(round(trail * (y - below) / (bottom - below)))
+            out[(x + shift, y)] = c
+        else:
+            out[(x, y)] = c
+    # Rows that moved keep no gaps against the still part above.
+    return out
 
 
 def weapon_frame(parts, frame, height, build):
@@ -2336,7 +2393,8 @@ def write_npcs():
     for name, spec in NPCS.items():
         legend = dict(BODY)
         legend.update({k: v for k, v in spec.items() if len(k) == 1})
-        frames = dict(ANIMATIONS)["idle"]
+        # Villagers' sheets keep four idle frames (every other breath).
+        frames = dict(ANIMATIONS)["idle"][::2]
         out = Image.new("RGBA", (len(frames) * FRAME, FRAME), (0, 0, 0, 0))
         for col, frame in enumerate(frames):
             where = place(frame, AVERAGE_HEIGHT, AVERAGE_BUILD)
