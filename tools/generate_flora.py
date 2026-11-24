@@ -3582,7 +3582,9 @@ def write_decor_sheet():
     """The decor sheet, with the props redrawn in phase 5
     (tools/generate_props.py) in place of their older drawings."""
     import generate_props
+    import generate_props2
     PROPS_V2.update(generate_props.PROPS)
+    PROPS_V2.update(generate_props2.PROPS)
     sheet([decor(k) for k in DECOR], 64, 64).save(os.path.join(ROOT, "decor.png"))
 
 

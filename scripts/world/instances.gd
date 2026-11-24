@@ -190,6 +190,21 @@ func enter_cave(cave_seed: int, level: int, lair: bool, on_chest: Callable) -> v
 		if piece in [Prop.Decor.LANTERN, Prop.Decor.CANDLES, Prop.Decor.BRAZIER]:
 			prop.add_light(0.8, 1.3)
 		cave.add_prop(prop)
+	# The cave's walls: webs in the crannies, roots and ivy hanging from
+	# above, chains in a lair; on the faces that look onto the floor.
+	var faces: Array[Vector2i] = []
+	for cell: Vector2i in cave.cells:
+		if cave.cells[cell] == T.WALL and cave.cells.has(cell + Vector2i.DOWN) and cave.cells[cell + Vector2i.DOWN] != T.WALL \
+				and not TerrainTiles.is_water(cave.cells[cell + Vector2i.DOWN]) and cell + Vector2i.DOWN != cave.entry:
+			faces.append(cell)
+	for i in mini(random.randi_range(5, 9), faces.size()):
+		var at: Vector2i = faces.pop_at(random.randi_range(0, faces.size() - 1))
+		var roll := random.randf()
+		var piece: Prop.Decor = Prop.Decor.COBWEB if roll < 0.45 else Prop.Decor.CHAINS if lair and roll < 0.6 else Prop.Decor.IVY_WALL
+		var hung := Prop.create_decor(piece, cave.cell_position(at + Vector2i.DOWN) + Vector2(0, -24), 0.0)
+		hung.hits_left = 0
+		hung.remove_from_group("breakables")
+		cave.add_prop(hung)
 	for i in random.randi_range(4, 7):
 		var glow := PointLight2D.new()
 		glow.texture = Prop.LIGHT
