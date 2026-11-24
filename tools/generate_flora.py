@@ -3573,10 +3573,18 @@ def write_flora_sheets():
     sheet(SMALL, 32, 32).save(os.path.join(ROOT, "flora_small.png"))
 
 
+def write_decor_sheet():
+    """The decor sheet, with the props redrawn in phase 5
+    (tools/generate_props.py) in place of their older drawings."""
+    import generate_props
+    PROPS_V2.update(generate_props.PROPS)
+    sheet([decor(k) for k in DECOR], 64, 64).save(os.path.join(ROOT, "decor.png"))
+
+
 if __name__ == "__main__":
     write_flora_sheets()
     # The critters are drawn at 32x32 by tools/generate_critters.py.
     import generate_critters
     generate_critters.main()
-    sheet([decor(k) for k in DECOR], 64, 64).save(os.path.join(ROOT, "decor.png"))
+    write_decor_sheet()
     manor().save(os.path.join(ROOT, "manor.png"))
