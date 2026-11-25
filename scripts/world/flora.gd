@@ -19,6 +19,10 @@ enum Tall { OAK, OAK_2, DEAD, PINE, SNOW_PINE, THORN, CRIMSON, MUSHROOM, BONE, C
 	BLOODWOOD, THORNWOOD, SPORE_TREE, ASH_HUSK, FALLEN_LOG }
 ## The first index on the grand sheet.
 const FIRST_GRAND := Tall.GREAT_OAK
+## Tall things that are not trees at all (a bone, a cactus, a crystal, a
+## salt pillar, a giant mushroom): they stand still in the wind, are never
+## taken for trees and leave no stump.
+const NOT_TREES: Array[int] = [Tall.MUSHROOM, Tall.BONE, Tall.CRYSTAL, Tall.SALT, Tall.CACTUS]
 ## Trees that give wood when chopped; the rest are scenery.
 const WOODEN: Array[int] = [Tall.OAK, Tall.OAK_2, Tall.DEAD, Tall.PINE, Tall.SNOW_PINE, Tall.THORN, Tall.CRIMSON, Tall.CHARRED, Tall.WILLOW,
 	Tall.BROAD_OAK, Tall.TALL_OAK, Tall.SLENDER_PINE, Tall.SLENDER_SNOW_PINE, Tall.SQUAT_PINE, Tall.AUTUMN_OAK, Tall.CHERRY, Tall.RED_MAPLE,

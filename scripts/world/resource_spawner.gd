@@ -166,11 +166,14 @@ func _on_chunk_built(chunk: Vector2i) -> void:
 					used[cell] = true
 					var kinds: Array = biome["trees"]
 					var was: int = kinds[absi(hash(Vector3i(cell.x, cell.y, 31))) % kinds.size()]
-					placed.append(_stump(_world.cell_to_world(cell) + jitter, was, hash(cell) % 2 == 0))
+					# Only a tree leaves a stump (not a bone or a cactus).
+					if was in Flora.WOODEN:
+						placed.append(_stump(_world.cell_to_world(cell) + jitter, was, hash(cell) % 2 == 0))
 			elif roll < tree_chance and not biome["trees"].is_empty():
 				used[cell] = true
-				trees_at[cell] = true
 				var look: int = biome["trees"][random.randi_range(0, biome["trees"].size() - 1)]
+				if not look in Flora.NOT_TREES:
+					trees_at[cell] = true
 				if look in Flora.WOODEN:
 					var id := GatherDB.pick("tree", tile, generator.enemy_level_at(cell), random)
 					_place_node(placed, id if id != "" else "oak", cell, look, jitter)
@@ -516,7 +519,8 @@ func _scenery(look: int, at: Vector2, solid: float) -> Node2D:
 	sprite.region_rect = Flora.tall_region(look)
 	sprite.position.y = Flora.tall_offset(look)
 	sprite.flip_h = hash(at) % 2 == 0
-	sprite.material = Seasons.material_for(look)
+	# A bone or a cactus does not bend in the wind.
+	sprite.material = Wind.still if look in Flora.NOT_TREES else Seasons.material_for(look)
 	if Seasons.is_leafy(look):
 		holder.add_to_group("leafy_trees")
 		holder.set_meta("tall", look)

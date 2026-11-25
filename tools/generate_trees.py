@@ -28,12 +28,12 @@ FOOT = 122
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "sprites")
 
 # The seasons' summer greens, darkest to lightest (the shader's ramp).
-SUMMER = [(46, 86, 40, 255), (70, 124, 54, 255), (104, 160, 70, 255), (144, 194, 88, 255), (196, 228, 128, 255)]
+SUMMER = [(62, 106, 48, 255), (90, 146, 62, 255), (124, 180, 76, 255), (162, 210, 96, 255), (210, 238, 140, 255)]
 OAK_BARK = [C("2a1e18"), C("443024"), C("5e4232"), C("7a5a42"), C("967458")]
 BIRCH_BARK = [C("3a3634"), C("8a8680"), C("c8c4b8"), C("e4e0d4"), C("f6f4ec")]
 DARK_BARK = [C("1c1618"), C("2e2426"), C("443438"), C("5a4648"), C("70585a")]
 PALM_BARK = [C("3e2e1e"), C("5e4628"), C("806238"), C("a2804a"), C("c0a066")]
-PINE = [C("1e4240"), C("2c5c56"), C("3e7a70"), C("54968a"), C("7ab4a6")]
+PINE = [C("2a564e"), C("3c7266"), C("52907e"), C("6eac96"), C("98ccb6")]
 CRIMSON = [C("3a0e16"), C("5e1a24"), C("8a2a34"), C("b03e44"), C("d8706a")]
 THORN = [C("2a2a16"), C("3e3e20"), C("56542c"), C("6e6a3a"), C("8c8650")]
 SPORE = [C("2a1838"), C("442a5a"), C("64407e"), C("8a5ca4"), C("b488cc")]
@@ -167,9 +167,19 @@ def cluster(c, cx, cy, rx, ry, tones, seed, depth=0, light=(-0.62, -0.78)):
 
 def crown(c, clusters, tones, seed):
     """A crown from (cx, cy, rx, ry, depth) clusters, back ones first, each
-    a little fuller than given so the crown reads thick and leafy."""
-    for k, (cx, cy, rx, ry, depth) in enumerate(sorted(clusters, key=lambda q: -q[4])):
-        cluster(c, cx, cy, rx * 1.1 + 0.5, ry * 1.1 + 0.5, tones, seed * 31 + k, depth)
+    a good deal fuller than given, with two low clumps hanging at either
+    side of its foot, so the crown reads thick and leafy and comes down
+    over the top of the trunk."""
+    left = min(cx - rx for cx, _cy, rx, _ry, _d in clusters)
+    right = max(cx + rx for cx, _cy, rx, _ry, _d in clusters)
+    bottom = max(cy + ry for _cx, cy, _rx, ry, _d in clusters)
+    ry_mean = sum(ry for *_r, ry, _d in clusters) / len(clusters)
+    mid = (left + right) / 2
+    width = right - left
+    skirts = [(mid - width * 0.27, bottom - ry_mean * 0.55, width * 0.2, ry_mean * 0.7, 1),
+              (mid + width * 0.27, bottom - ry_mean * 0.5, width * 0.2, ry_mean * 0.7, 1)]
+    for k, (cx, cy, rx, ry, depth) in enumerate(sorted(list(clusters) + skirts, key=lambda q: -q[4])):
+        cluster(c, cx, cy, rx * 1.2 + 0.8, ry * 1.2 + 0.8, tones, seed * 31 + k, depth)
 
 
 def shadow(c, cx, cy, rx, ry, alpha=70):

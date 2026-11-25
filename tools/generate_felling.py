@@ -2,9 +2,10 @@
 what it leaves. One row per tree (in Flora.WOODEN order), six cells of
 192 x 128, the tree's foot at FOOT_AT in each:
 
-    0..2  toppling: leaning 20, 45 and 70 degrees, falling to the right
+    0..2  toppling: leaning 20, 45 and 70 degrees, falling to the right;
+          only the tree above the axe's cut falls, the stump stays
     3     lying on the ground (turned exactly a quarter)
-    4     its trunk as a log, lying beside the stump, the cut end showing
+    4     its own trunk and boughs, the leaves shaken off, lying beside the stump
     5     its stump: its own roots and bark, the cut face on top with rings
 
 The leaning frames are turned the way pixel artists turn sprites: the
@@ -78,17 +79,49 @@ def _solid_only(img):
     return a
 
 
+## How far above its foot a tree is cut: the stump keeps what is below.
+CUT = 9
+
+
+def _above_cut(img, foot):
+    """The tree above the axe's cut (the stump stays standing): everything
+    from the cut line down is taken away, and the cut end shows pale wood."""
+    a = _solid_only(img)
+    fx, fy = foot
+    cut = fy - CUT
+    a[cut - 1:] = 0
+    run = _cut_run(img, foot)
+    for x in range(run[0], run[1] + 1):
+        if a[cut - 2, x, 3] >= 128:
+            a[cut - 2, x] = WOOD[1] if run[0] < x < run[1] else WOOD[3]
+    return a, (fx, cut - 1)
+
+
+def _cut_run(img, foot):
+    """The trunk's width where the axe cut it: taken from the stump's top
+    just below (a pine's skirt of needles can reach down to the cut)."""
+    fx, fy = foot
+    for y in range(fy - CUT, fy - 3):
+        run = _trunk_run(_rgba(img), y, fx)
+        if run and run[1] - run[0] <= 16:
+            return run
+    return (fx - 3, fx + 3)
+
+
 def _turned(img, foot, degrees):
-    """The tree turned clockwise about its foot by `degrees`, as a cell."""
-    big = _epx(_epx(_solid_only(img)))
+    """The tree above the cut turned clockwise about the cut by `degrees`,
+    as a cell: the stump stands where it was."""
+    upper, pivot = _above_cut(img, foot)
+    big = _epx(_epx(upper))
     s = 4
     t = math.radians(degrees)
+    lift = foot[1] - pivot[1]
     ys, xs = np.mgrid[0:CELL[1], 0:CELL[0]]
     dx = xs + 0.5 - FOOT_AT[0]
-    dy = ys + 0.5 - FOOT_AT[1]
+    dy = ys + 0.5 - (FOOT_AT[1] - lift)
     # Back from the frame to the picture: turn the other way.
-    sx = foot[0] + dx * math.cos(t) + dy * math.sin(t)
-    sy = foot[1] - dx * math.sin(t) + dy * math.cos(t)
+    sx = pivot[0] + dx * math.cos(t) + dy * math.sin(t)
+    sy = pivot[1] - dx * math.sin(t) + dy * math.cos(t)
     bx = np.floor(sx * s).astype(int)
     by = np.floor(sy * s).astype(int)
     inside = (bx >= 0) & (by >= 0) & (bx < big.shape[1]) & (by < big.shape[0])
@@ -97,22 +130,82 @@ def _turned(img, foot, degrees):
     return Image.fromarray(out, "RGBA")
 
 
-def _lying(img, foot):
-    """The tree turned exactly a quarter (top to the right), on the ground."""
-    a = _solid_only(img)
+def _lying(img, foot, bare=False):
+    """The tree above the cut turned exactly a quarter (top to the right),
+    lying on the ground with its cut end just past the stump. `bare`: only
+    its wood (trunk and boughs, the leaves shaken off), the log it leaves."""
+    a, (px, py) = _above_cut(img, foot)
+    if bare:
+        a = _bare_wood(img, foot, a)
     q = np.rot90(a, k=-1)  # clockwise
     h, w = a.shape[:2]
-    # After the turn the foot (fx, fy) sits at (h - 1 - fy, fx).
-    fx, fy = foot
+    # After the turn the cut (px, py) sits at (h - 1 - py, px).
     out = Image.new("RGBA", CELL, (0, 0, 0, 0))
-    layer = Image.fromarray(np.ascontiguousarray(q), "RGBA")
-    # It lands with its trunk on the ground line, its base by the stump; its
-    # crown spreads both ways from it (the near half toward us).
-    y = FOOT_AT[1] - 3 - fx
-    x = FOOT_AT[0] - (h - 1 - fy) + 4
+    layer = Image.fromarray(np.ascontiguousarray(q), "RGBA").copy()
+    if bare:
+        _outline(layer)
+    # It lands with its trunk on the ground line, its cut end by the stump;
+    # its crown spreads both ways from it (the near half toward us).
+    y = FOOT_AT[1] - 3 - px
+    x = FOOT_AT[0] - (h - 1 - py) + 7
     out.alpha_composite(_ground_shadow(layer), (x, y + 2))
     out.alpha_composite(layer, (x, y))
     return out
+
+
+def _bare_wood(img, foot, a):
+    """Only the tree's wood: pixels in its own bark colours (and their
+    outline) joined to the trunk, so the log is its trunk and boughs."""
+    _, rows, bark = _bark(img, foot)
+    # Its bark colours, not the near-black outline every part shares.
+    shades = {c for c in bark if sum(c[:3]) > 110}
+    keep = np.zeros(a.shape[:2], dtype=bool)
+    for y in range(a.shape[0]):
+        for x in range(a.shape[1]):
+            if a[y, x, 3] >= 128 and tuple(int(v) for v in a[y, x]) in shades:
+                keep[y, x] = True
+    # The trunk runs on up inside the crown where leaves hid it (a pine's
+    # all the way to near its tip): drawn in its own bark, thinning upward.
+    if rows:
+        fx, fy = foot
+        cut_row = fy - CUT - 2
+        solid = np.where(_solid_only(img)[..., 3] >= 128)[0]
+        top = int(solid.min()) if solid.size else cut_row - 20
+        reach = cut_row - int(top + (cut_row - top) * 0.12)
+        base_rows = sorted(rows, key=lambda r: r[2] - r[1])
+        y0, l0, r0 = base_rows[len(base_rows) // 2]
+        width = r0 - l0 + 1
+        src = _rgba(img)
+        for k in range(reach):
+            y = cut_row - k
+            if keep[y, max(fx - 1, 0):fx + 2].any() and k < 4:
+                continue
+            w = max(2, round(width * (1.0 - 0.7 * k / max(reach, 1))))
+            left = fx - w // 2
+            for d in range(w):
+                sx = l0 + round(d * (width - 1) / max(w - 1, 1))
+                if not keep[y, left + d]:
+                    a[y, left + d] = src[y0, sx]
+                    keep[y, left + d] = True
+    # The trunk's own piece and the boughs touching it.
+    fx = foot[0]
+    start = next(((y, fx) for y in range(a.shape[0] - 1, -1, -1) if keep[y, fx]), None)
+    joined = np.zeros_like(keep)
+    if start:
+        stack = [start]
+        while stack:
+            y, x = stack.pop()
+            if y < 0 or x < 0 or y >= keep.shape[0] or x >= keep.shape[1] or joined[y, x] or not keep[y, x]:
+                continue
+            joined[y, x] = True
+            stack.extend(((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1), (y + 1, x + 1), (y - 1, x - 1), (y + 1, x - 1), (y - 1, x + 1)))
+    o = np.zeros_like(a)
+    o[joined] = a[joined]
+    # Keep the pale cut end (the trunk's width of it only).
+    cut_row = foot[1] - CUT - 2
+    run = _cut_run(img, foot)
+    o[cut_row, run[0]:run[1] + 1] = a[cut_row, run[0]:run[1] + 1]
+    return o
 
 
 def _ground_shadow(layer):
@@ -216,7 +309,7 @@ def _stump(img, foot):
     green), cut flat with the rings showing on top."""
     a, rows, bark = _bark(img, foot)
     fx, fy = foot
-    cut = fy - 9
+    cut = fy - CUT
     keep = np.zeros(a.shape[:2], dtype=bool)
     # Everything bark-coloured joined to the trunk, below the cut.
     seeds = [(fy - 6, x) for x in range(a.shape[1]) if _trunk_run(a, fy - 6, fx) and
@@ -266,8 +359,8 @@ def main():
         foot = (fx, fy)
         cells = [_turned(img, foot, d) for d in (20, 45, 70)]
         cells.append(_lying(img, foot))
-        log, _ = _log(img, foot)
-        cells.append(log)
+        # What stays after the crown is shaken off: its own trunk and boughs.
+        cells.append(_lying(img, foot, bare=True))
         stump, _ = _stump(img, foot)
         cells.append(stump)
         rows.append(cells)

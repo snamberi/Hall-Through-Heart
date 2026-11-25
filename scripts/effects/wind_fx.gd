@@ -19,7 +19,7 @@ extends Node2D
 const GUST_SPEED := 300.0
 const SPACING := 0.0026
 const MAX_STREAKS := 26
-const MAX_FLYING := 70
+const MAX_FLYING := 110
 const MAX_LYING := 140
 const LEAF_LIE := Vector2(7.0, 13.0)
 
@@ -151,7 +151,9 @@ func _fall(delta: float) -> void:
 	if _trees.is_empty():
 		return
 	var season := Seasons.index(_day_night.day, _day_night.time)
-	var rate: float = [0.6, 0.25, 2.4, 0.0][season] * GameSettings.particles
+	# Leaves drift down all year but winter: enough in summer to be seen,
+	# a shower in autumn.
+	var rate: float = [1.0, 0.8, 3.0, 0.0][season] * GameSettings.particles
 	if Seasons.turning(_day_night.day, _day_night.time) > 0.0 and season == 2:
 		rate *= 0.5
 	_drop_left -= delta * rate * minf(float(_trees.size()), 12.0)
@@ -172,7 +174,9 @@ func _fall(delta: float) -> void:
 				colours = LEAVES["summer"][0]
 			_:
 				colours = LEAVES["autumn"][randi() % LEAVES["autumn"].size()]
-		var at := tree.global_position + Vector2(randf_range(-22.0, 22.0), randf_range(-74.0, -40.0))
+		# From anywhere in the crown: the grand trees' stand much higher.
+		var grand := tall >= Flora.FIRST_GRAND
+		var at := tree.global_position + (Vector2(randf_range(-34.0, 34.0), randf_range(-118.0, -58.0)) if grand else Vector2(randf_range(-24.0, 24.0), randf_range(-78.0, -40.0)))
 		_flying.append([at, Vector2(randf_range(-6.0, 6.0), randf_range(14.0, 22.0)), 0.0, colours, tree.global_position.y + randf_range(-4.0, 22.0), randf() * TAU, true])
 
 
